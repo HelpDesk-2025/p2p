@@ -440,15 +440,20 @@ export function PRApproval() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <a
-                          href={selectedRequest.merged_pdf}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => {
+                            const blob = fetch(selectedRequest.merged_pdf!)
+                              .then(res => res.blob())
+                              .then(blob => {
+                                const url = URL.createObjectURL(blob);
+                                window.open(url, '_blank');
+                              });
+                          }}
                           className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
                         >
                           <Eye size={16} />
                           View PDF
-                        </a>
+                        </button>
                         <a
                           href={selectedRequest.merged_pdf}
                           download={`PR_${selectedRequest.pr_number}_Attachments.pdf`}
