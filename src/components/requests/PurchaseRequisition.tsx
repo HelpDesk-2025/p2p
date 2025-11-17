@@ -9,6 +9,7 @@ interface PRItem {
   unit: string;
   unit_price: number;
   total_price: number;
+  item_number?: string;
 }
 
 interface ChecklistItem {
@@ -76,10 +77,11 @@ export function PurchaseRequisition() {
     pr_checklist_id: '',
     checklist_items: [] as ChecklistItem[],
     payee: '',
+    payee_number: '',
     amount_net_vat: '',
     payment_mode_id: '',
     payment_mode_lines: [] as PaymentModeLine[],
-    items: [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0 }],
+    items: [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
   });
 
   useEffect(() => {
@@ -334,7 +336,7 @@ export function PurchaseRequisition() {
       ...formData,
       items: [
         ...formData.items,
-        { description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0 },
+        { description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' },
       ],
     });
     setItemSearchTerms([...itemSearchTerms, '']);
@@ -437,6 +439,7 @@ export function PurchaseRequisition() {
         payload.items = formData.items;
       } else {
         payload.payee = formData.payee;
+        payload.payee_number = formData.payee_number;
         payload.amount_net_vat = parseFloat(formData.amount_net_vat) || 0;
         payload.payment_mode_id = formData.payment_mode_id || null;
         payload.payment_mode_lines = formData.payment_mode_lines;
@@ -469,10 +472,11 @@ export function PurchaseRequisition() {
       pr_checklist_id: '',
       checklist_items: [],
       payee: '',
+      payee_number: '',
       amount_net_vat: '',
       payment_mode_id: '',
       payment_mode_lines: [],
-      items: [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0 }],
+      items: [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
     });
     setSelectedChecklist(null);
     setSelectedPaymentMode(null);
@@ -717,6 +721,7 @@ export function PurchaseRequisition() {
                                 key={item.number}
                                 onClick={() => {
                                   updateItem(index, 'description', item.displayName);
+                                  updateItem(index, 'item_number', item.number);
                                   const newSearchTerms = [...itemSearchTerms];
                                   newSearchTerms[index] = item.displayName;
                                   setItemSearchTerms(newSearchTerms);
@@ -826,7 +831,7 @@ export function PurchaseRequisition() {
                           <div
                             key={vendor.number}
                             onClick={() => {
-                              setFormData({ ...formData, payee: vendor.displayName });
+                              setFormData({ ...formData, payee: vendor.displayName, payee_number: vendor.number });
                               setVendorSearchTerm(vendor.displayName);
                               setShowVendorDropdown(false);
                             }}
