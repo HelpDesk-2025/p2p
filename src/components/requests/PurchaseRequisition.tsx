@@ -420,6 +420,17 @@ export function PurchaseRequisition() {
         })
       );
 
+      const mergedAttachments = checklistItemsWithFiles
+        .filter(item => item.fileData !== null)
+        .map(item => ({
+          item_name: item.item_name,
+          fileName: item.fileName,
+          fileData: item.fileData,
+          fileType: item.fileType,
+          is_required: item.is_required,
+          description: item.description
+        }));
+
       const payload: any = {
         document_no: formData.document_no,
         pr_number: prNumber,
@@ -437,6 +448,7 @@ export function PurchaseRequisition() {
         current_approval_level: status === 'pending' ? 0 : 0,
         pr_checklist_id: formData.pr_checklist_id || null,
         checklist_items: checklistItemsWithFiles,
+        attachments: mergedAttachments,
       };
 
       if (formData.purchase_type === 'Purchase Order') {
