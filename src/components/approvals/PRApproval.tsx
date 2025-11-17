@@ -25,6 +25,7 @@ interface PurchaseReq {
   payment_mode_id?: string;
   payment_mode_lines?: any[];
   pr_checklist_id?: string;
+  purchase_type?: string;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -448,6 +449,26 @@ export function PRApproval() {
                     )}
                   </div>
                   <div className="space-y-2">
+                    <div className="border border-slate-200 rounded-lg p-3 bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm text-slate-900">Purchase Type</p>
+                        </div>
+                        <span className="text-xs text-slate-700 font-medium ml-3">
+                          {selectedRequest.purchase_type || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg p-3 bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm text-slate-900">PR Checklist Type</p>
+                        </div>
+                        <span className="text-xs text-slate-700 font-medium ml-3">
+                          {selectedRequest.pr_checklists?.pr_type || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
                     {selectedRequest.checklist_items.map((item: any, index: number) => (
                       <div key={index} className="border border-slate-200 rounded-lg p-3 bg-white">
                         <div className="flex items-start justify-between">
