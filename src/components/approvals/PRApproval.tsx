@@ -21,10 +21,16 @@ interface PurchaseReq {
   items: any[];
   attachments?: any[];
   merged_pdf?: string;
+  checklist_items?: any[];
+  payment_mode_id?: string;
+  payment_mode_lines?: any[];
   user_profiles?: {
     full_name: string;
     email: string;
     company_id: string;
+  };
+  payment_modes?: {
+    mode_name: string;
   };
 }
 
@@ -49,7 +55,8 @@ export function PRApproval() {
       .from('purchase_requisitions')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id)
+        user_profiles:requester_id (full_name, email, company_id),
+        payment_modes:payment_mode_id (mode_name)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -421,6 +428,52 @@ export function PRApproval() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {selectedRequest.checklist_items && selectedRequest.checklist_items.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Checklist Items</label>
+                  <div className="space-y-3">
+                    {selectedRequest.checklist_items.map((item: any, index: number) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                            <p className="text-xs text-slate-600 mt-1">{item.description}</p>
+                          </div>
+                          {item.fileData && (
+                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                              Attached
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedRequest.payment_modes && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Payment Mode</label>
+                  <p className="text-slate-900">{selectedRequest.payment_modes.mode_name}</p>
+                </div>
+              )}
+
+              {selectedRequest.payment_mode_lines && selectedRequest.payment_mode_lines.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Payment Mode Details</label>
+                  <div className="space-y-3">
+                    {selectedRequest.payment_mode_lines.map((line: any, index: number) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-700">{line.name}</span>
+                          <span className="text-sm text-slate-900 font-semibold">{line.value || 'N/A'}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
