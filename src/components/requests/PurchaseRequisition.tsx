@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { mergeAttachmentsToPDF } from '../../lib/pdfMerger';
 
 interface PRItem {
   description: string;
@@ -420,16 +421,18 @@ export function PurchaseRequisition() {
         })
       );
 
-      const mergedAttachments = checklistItemsWithFiles
-        .filter(item => item.fileData !== null)
-        .map(item => ({
-          item_name: item.item_name,
-          fileName: item.fileName,
-          fileData: item.fileData,
-          fileType: item.fileType,
-          is_required: item.is_required,
-          description: item.description
-        }));
+      const filesWithData = checklistItemsWithFiles.filter(item => item.fileData !== null);
+
+      let mergedPdfData = null;
+      if (filesWithData.length > 0) {
+        mergedPdfData = await mergeAttachmentsToPDF(
+          filesWithData.map(item => ({
+            fileName: item.fileName,
+            fileData: item.fileData,
+            fileType: item.fileType
+          }))
+        );
+      }
 
       const payload: any = {
         document_no: formData.document_no,
@@ -448,7 +451,7 @@ export function PurchaseRequisition() {
         current_approval_level: status === 'pending' ? 0 : 0,
         pr_checklist_id: formData.pr_checklist_id || null,
         checklist_items: checklistItemsWithFiles,
-        attachments: mergedAttachments,
+        merged_pdf: mergedPdfData,
       };
 
       if (formData.purchase_type === 'Purchase Order') {

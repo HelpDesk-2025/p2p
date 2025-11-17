@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 
 interface PurchaseReq {
@@ -20,6 +20,7 @@ interface PurchaseReq {
   current_approval_level: number;
   items: any[];
   attachments?: any[];
+  merged_pdf?: string;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -424,33 +425,39 @@ export function PRApproval() {
                 </div>
               )}
 
-              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+              {selectedRequest.merged_pdf && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
-                  <div className="space-y-2">
-                    {selectedRequest.attachments.map((attachment: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition"
-                      >
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-slate-900">{attachment.item_name}</p>
-                          <p className="text-xs text-slate-600">{attachment.fileName}</p>
-                          {attachment.description && (
-                            <p className="text-xs text-slate-500 mt-1">{attachment.description}</p>
-                          )}
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <FileText className="text-red-600" size={24} />
                         </div>
-                        {attachment.fileData && (
-                          <a
-                            href={attachment.fileData}
-                            download={attachment.fileName}
-                            className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
-                          >
-                            Download
-                          </a>
-                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Merged Attachments</p>
+                          <p className="text-xs text-slate-600">All checklist attachments in one PDF</p>
+                        </div>
                       </div>
-                    ))}
+                      <div className="flex gap-2">
+                        <a
+                          href={selectedRequest.merged_pdf}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
+                        >
+                          <Eye size={16} />
+                          View PDF
+                        </a>
+                        <a
+                          href={selectedRequest.merged_pdf}
+                          download={`PR_${selectedRequest.pr_number}_Attachments.pdf`}
+                          className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold"
+                        >
+                          Download
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
