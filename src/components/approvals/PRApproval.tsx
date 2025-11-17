@@ -423,6 +423,37 @@ export function PRApproval() {
                 </div>
               )}
 
+              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
+                  <div className="space-y-2">
+                    {selectedRequest.attachments.map((attachment: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-slate-900">{attachment.item_name}</p>
+                          <p className="text-xs text-slate-600">{attachment.fileName}</p>
+                          {attachment.description && (
+                            <p className="text-xs text-slate-500 mt-1">{attachment.description}</p>
+                          )}
+                        </div>
+                        {attachment.fileData && (
+                          <a
+                            href={attachment.fileData}
+                            download={attachment.fileName}
+                            className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition"
+                          >
+                            Download
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {approvalFlows.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
