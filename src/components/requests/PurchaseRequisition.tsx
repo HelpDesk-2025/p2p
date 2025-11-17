@@ -425,6 +425,7 @@ export function PurchaseRequisition() {
         description: formData.description,
         department: formData.department,
         request_date: new Date().toISOString().split('T')[0],
+        required_date: formData.date_required,
         date_required: formData.date_required,
         purpose: formData.purpose,
         is_budgeted: formData.is_budgeted,
