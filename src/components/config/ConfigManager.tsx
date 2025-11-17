@@ -183,6 +183,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         return;
       }
 
+      const company = companies.find(c => c.name === formData.company);
+      const companyId = company ? company.id : null;
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -190,6 +193,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           data: {
             full_name: formData.full_name,
             company: formData.company || null,
+            company_id: companyId,
             department: formData.department || null,
             role: formData.role,
             approver_type: formData.approver_type || null,
@@ -247,10 +251,14 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     try {
       if (!editingId) return;
 
+      const company = companies.find(c => c.name === formData.company);
+      const companyId = company ? company.id : null;
+
       const updateData = {
         full_name: formData.full_name,
         email: formData.email,
         company: formData.company || null,
+        company_id: companyId,
         department: formData.department || null,
         role: formData.role,
         approver_type: formData.approver_type || null,
