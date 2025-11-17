@@ -59,6 +59,16 @@ export async function mergeAttachmentsToPDF(attachments: AttachmentFile[]): Prom
   }
 
   const pdfBytes = await mergedPdf.save();
-  const base64Pdf = btoa(String.fromCharCode(...Array.from(pdfBytes)));
+
+  // Convert to base64 in chunks to avoid call stack size exceeded error
+  const chunkSize = 8192;
+  let binaryString = '';
+
+  for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+    const chunk = pdfBytes.slice(i, i + chunkSize);
+    binaryString += String.fromCharCode(...chunk);
+  }
+
+  const base64Pdf = btoa(binaryString);
   return `data:application/pdf;base64,${base64Pdf}`;
 }
