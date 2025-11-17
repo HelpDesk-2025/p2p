@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow } from '../../lib/approvalFlow';
+import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 
 interface PurchaseReq {
   id: string;
@@ -138,6 +138,57 @@ export function PRApproval() {
         comments,
         selectedRequest.current_approval_level + 1
       );
+
+      if (action === 'approved' && !isLastApproval) {
+        const nextApprover = approvalFlows[nextLevel];
+        const nextApproverInfo = await getApproverEmail(
+          nextApprover,
+          profile.company_id,
+          selectedRequest.department
+        );
+
+        if (nextApproverInfo) {
+          await sendApprovalEmail(
+            nextApproverInfo.email,
+            nextApproverInfo.name,
+            'Purchase Requisition',
+            selectedRequest.document_no,
+            selectedRequest.user_profiles?.full_name || 'Unknown',
+            selectedRequest.department,
+            selectedRequest.total_amount,
+            'Approved',
+            profile.full_name || 'Unknown',
+            comments,
+            nextApprover.approver_type
+          );
+        }
+      } else if (action === 'approved' && isLastApproval) {
+        await sendApprovalEmail(
+          selectedRequest.user_profiles?.email || '',
+          selectedRequest.user_profiles?.full_name || 'User',
+          'Purchase Requisition',
+          selectedRequest.document_no,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          selectedRequest.department,
+          selectedRequest.total_amount,
+          'Fully Approved',
+          profile.full_name || 'Unknown',
+          comments
+        );
+      } else if (action === 'rejected') {
+        await sendApprovalEmail(
+          selectedRequest.user_profiles?.email || '',
+          selectedRequest.user_profiles?.full_name || 'User',
+          'Purchase Requisition',
+          selectedRequest.document_no,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          selectedRequest.department,
+          selectedRequest.total_amount,
+          'Rejected',
+          profile.full_name || 'Unknown',
+          comments
+        );
+      }
 
       setShowModal(false);
       setSelectedRequest(null);

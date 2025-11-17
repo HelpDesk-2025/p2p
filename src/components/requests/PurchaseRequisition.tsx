@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X } from 'lucide-react';
-import { getApprovalFlow, createApprovalLedgerEntry } from '../../lib/approvalFlow';
+import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 
 interface PRItem {
   description: string;
@@ -475,6 +475,29 @@ export function PurchaseRequisition() {
             'Initial submission',
             0
           );
+
+          const firstApprover = approvalFlows[0];
+          const approverInfo = await getApproverEmail(
+            firstApprover,
+            profile.company_id,
+            formData.department
+          );
+
+          if (approverInfo) {
+            await sendApprovalEmail(
+              approverInfo.email,
+              approverInfo.name,
+              'Purchase Requisition',
+              formData.document_no,
+              profile.full_name || 'Unknown',
+              formData.department,
+              total,
+              'Submitted',
+              undefined,
+              undefined,
+              firstApprover.approver_type
+            );
+          }
         }
       }
 

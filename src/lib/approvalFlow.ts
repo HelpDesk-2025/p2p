@@ -153,3 +153,119 @@ export async function createApprovalLedgerEntry(
     throw error;
   }
 }
+
+export async function sendApprovalEmail(
+  recipientEmail: string,
+  recipientName: string,
+  requestType: string,
+  documentNo: string,
+  requesterName: string,
+  department: string,
+  totalAmount: number,
+  action: string,
+  actionBy?: string,
+  comments?: string,
+  nextApprover?: string
+): Promise<void> {
+  try {
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-approval-email`;
+
+    const headers = {
+      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    };
+
+    const emailData = {
+      to: recipientEmail,
+      subject: `${requestType} ${action} - ${documentNo}`,
+      recipientName,
+      requestType,
+      documentNo,
+      requesterName,
+      department,
+      totalAmount,
+      action,
+      actionBy,
+      comments,
+      nextApprover,
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(emailData),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error('Failed to send email:', result.error);
+    }
+  } catch (error) {
+    console.error('Error sending approval email:', error);
+  }
+}
+
+export async function getApproverEmail(
+  approvalFlow: ApprovalFlow,
+  companyId: string,
+  department: string
+): Promise<{ email: string; name: string } | null> {
+  try {
+    if (approvalFlow.user_id) {
+      const { data: user, error } = await supabase
+        .from('user_profiles')
+        .select('email, full_name')
+        .eq('id', approvalFlow.user_id)
+        .single();
+
+      if (error) throw error;
+      return { email: user.email, name: user.full_name || 'User' };
+    }
+
+    const approverType = approvalFlow.approver_type;
+
+    if (approverType === 'Department Head') {
+      const { data: user, error } = await supabase
+        .from('user_profiles')
+        .select('email, full_name')
+        .eq('company_id', companyId)
+        .eq('department', department)
+        .eq('role', 'approver')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (user) return { email: user.email, name: user.full_name || 'Department Head' };
+    }
+
+    if (approverType === 'Procurement' || approverType === 'Procurement Head') {
+      const { data: user, error } = await supabase
+        .from('user_profiles')
+        .select('email, full_name')
+        .eq('company_id', companyId)
+        .eq('department', 'Procurement')
+        .eq('role', 'approver')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (user) return { email: user.email, name: user.full_name || 'Procurement' };
+    }
+
+    if (approverType === 'President') {
+      const { data: user, error } = await supabase
+        .from('user_profiles')
+        .select('email, full_name')
+        .eq('company_id', companyId)
+        .eq('role', 'approver')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (user) return { email: user.email, name: user.full_name || 'President' };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting approver email:', error);
+    return null;
+  }
+}
