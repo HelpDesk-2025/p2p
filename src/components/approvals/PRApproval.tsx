@@ -19,6 +19,7 @@ interface PurchaseReq {
   status: string;
   current_approval_level: number;
   items: any[];
+  attachments?: any[];
   user_profiles?: {
     full_name: string;
     email: string;
