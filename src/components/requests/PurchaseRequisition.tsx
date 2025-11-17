@@ -122,7 +122,12 @@ export function PurchaseRequisition() {
     try {
       const { data, error } = await supabase
         .from('purchase_requisitions')
-        .select('*')
+        .select(`
+          *,
+          pr_checklists (
+            pr_type
+          )
+        `)
         .eq('requester_id', profile?.id)
         .order('created_at', { ascending: false });
 
@@ -1150,6 +1155,10 @@ export function PurchaseRequisition() {
                   <p className="text-slate-900">{viewingRequest.department}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Requester</label>
+                  <p className="text-slate-900">{profile?.full_name || 'N/A'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
                 </div>
@@ -1160,6 +1169,10 @@ export function PurchaseRequisition() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Purchase Type</label>
                   <p className="text-slate-900">{viewingRequest.purchase_type}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">PR Checklist</label>
+                  <p className="text-slate-900">{(viewingRequest as any).pr_checklists?.pr_type || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>
