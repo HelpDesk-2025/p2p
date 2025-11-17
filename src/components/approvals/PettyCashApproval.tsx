@@ -59,6 +59,11 @@ export function PettyCashApproval() {
       req.user_profiles?.company_id === profile.company_id
     );
 
+    if (profile.role === 'admin') {
+      setRequests(companyFilteredRequests);
+      return;
+    }
+
     const requestsForCurrentUser = await Promise.all(
       companyFilteredRequests.map(async (req) => {
         const flows = await getApprovalFlow(
@@ -84,9 +89,9 @@ export function PettyCashApproval() {
           if (approverType === 'Department Head' && profile.role === 'approver') {
             isCurrentApprover = requestDepartment === profile.department;
           } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-            isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+            isCurrentApprover = profile.role === 'approver';
           } else if (approverType === 'President') {
-            isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+            isCurrentApprover = profile.role === 'approver';
           }
         }
 
@@ -119,7 +124,13 @@ export function PettyCashApproval() {
   };
 
   const canApprove = (): boolean => {
-    if (!currentApproverStep || !profile || !selectedRequest) return false;
+    if (!profile || !selectedRequest) return false;
+
+    if (profile.role === 'admin') {
+      return true;
+    }
+
+    if (!currentApproverStep) return false;
 
     if (currentApproverStep.user_id) {
       return currentApproverStep.user_id === profile.id;
@@ -133,11 +144,11 @@ export function PettyCashApproval() {
     }
 
     if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-      return profile.role === 'approver' || profile.role === 'admin';
+      return profile.role === 'approver';
     }
 
     if (approverType === 'President') {
-      return profile.role === 'approver' || profile.role === 'admin';
+      return profile.role === 'approver';
     }
 
     return false;
