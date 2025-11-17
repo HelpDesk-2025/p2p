@@ -754,10 +754,8 @@ export function PurchaseRequisition() {
                           const newSearchTerms = [...itemSearchTerms];
                           newSearchTerms[index] = e.target.value;
                           setItemSearchTerms(newSearchTerms);
+                          updateItem(index, 'description', e.target.value);
                           setShowItemDropdown(index);
-                          if (!e.target.value) {
-                            updateItem(index, 'description', '');
-                          }
                         }}
                         onFocus={() => setShowItemDropdown(index)}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
