@@ -1,0 +1,239 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { Plus, Save, Send, Eye, FileText } from 'lucide-react';
+
+interface CanvassReq {
+  id: string;
+  canvass_number: string;
+  request_date: string;
+  required_date: string;
+  status: string;
+  total_amount: number;
+}
+
+export function Canvass() {
+  const { profile } = useAuth();
+  const [requests, setRequests] = useState<CanvassReq[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    document_no: '',
+    required_date: '',
+    items: [{ description: '', quantity: 1, unit: 'pcs' }],
+  });
+
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const generateDocumentNo = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_next_number', {
+        p_series_name: 'Canvass'
+      });
+      if (error) throw error;
+      setFormData(prev => ({ ...prev, document_no: data }));
+    } catch (error) {
+      console.error('Error generating document number:', error);
+    }
+  };
+
+  const loadRequests = async () => {
+    const { data } = await supabase
+      .from('canvass_requests')
+      .select('*')
+      .eq('requester_id', profile?.id)
+      .order('created_at', { ascending: false });
+    setRequests(data || []);
+  };
+
+  const generateNumber = () => {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `CV-${year}${month}-${random}`;
+  };
+
+  const handleSubmit = async (status: 'draft' | 'pending') => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('canvass_requests').insert({
+        canvass_number: formData.document_no,
+        requester_id: profile?.id,
+        request_date: new Date().toISOString().split('T')[0],
+        required_date: formData.required_date,
+        items: formData.items,
+        status,
+      });
+
+      if (error) throw error;
+      setShowForm(false);
+      setFormData({ document_no: '', required_date: '', items: [{ description: '', quantity: 1, unit: 'pcs' }] });
+      loadRequests();
+      generateDocumentNo();
+    } catch (error: any) {
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      draft: 'bg-slate-100 text-slate-700',
+      pending: 'bg-yellow-100 text-yellow-700',
+      approved: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
+    };
+    return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  if (showForm) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-slate-900">New Canvass Request</h2>
+          <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-600">Cancel</button>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+              <FileText size={18} className="text-slate-400" />
+              <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Required Date</label>
+            <input
+              type="date"
+              value={formData.required_date}
+              onChange={(e) => setFormData({ ...formData, required_date: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Items to Canvass</label>
+            {formData.items.map((item, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="Description"
+                  value={item.description}
+                  onChange={(e) => {
+                    const newItems = [...formData.items];
+                    newItems[idx].description = e.target.value;
+                    setFormData({ ...formData, items: newItems });
+                  }}
+                  className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg"
+                />
+                <input
+                  type="number"
+                  placeholder="Qty"
+                  value={item.quantity}
+                  onChange={(e) => {
+                    const newItems = [...formData.items];
+                    newItems[idx].quantity = Number(e.target.value);
+                    setFormData({ ...formData, items: newItems });
+                  }}
+                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg"
+                />
+                <input
+                  type="text"
+                  placeholder="Unit"
+                  value={item.unit}
+                  onChange={(e) => {
+                    const newItems = [...formData.items];
+                    newItems[idx].unit = e.target.value;
+                    setFormData({ ...formData, items: newItems });
+                  }}
+                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => setFormData({ ...formData, items: [...formData.items, { description: '', quantity: 1, unit: 'pcs' }] })}
+              className="mt-2 flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+            >
+              <Plus size={16} />
+              Add Item
+            </button>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <button onClick={() => handleSubmit('draft')} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+              <Save size={18} />
+              Save as Draft
+            </button>
+            <button onClick={() => handleSubmit('pending')} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <Send size={18} />
+              Submit
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-slate-900">Canvass Requests</h2>
+        <button
+          onClick={() => {
+            setShowForm(true);
+            generateDocumentNo();
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          <Plus size={20} />
+          New Request
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-50 border-b">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Canvass Number</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Required Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {requests.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No canvass requests found</td>
+              </tr>
+            ) : (
+              requests.map((req) => (
+                <tr key={req.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.canvass_number}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.required_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>{req.status}</span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <button className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                      <Eye size={16} />
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
