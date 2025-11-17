@@ -4,32 +4,31 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 
-interface PurchaseReq {
+interface ReimbursementReq {
   id: string;
-  document_no: string;
-  pr_number: string;
+  reimb_number: string;
   requester_id: string;
-  department: string;
+  department?: string;
   request_date: string;
-  required_date: string;
+  expense_date: string;
   purpose: string;
-  description: string;
-  is_budgeted: boolean;
-  total_amount: number;
+  amount: number;
+  payment_mode_id?: string;
   status: string;
   current_approval_level: number;
-  items: any[];
+  receipts?: any[];
   user_profiles?: {
     full_name: string;
     email: string;
     company_id: string;
+    department?: string;
   };
 }
 
-export function PRApproval() {
+export function ReimbursementApproval() {
   const { profile } = useAuth();
-  const [requests, setRequests] = useState<PurchaseReq[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<PurchaseReq | null>(null);
+  const [requests, setRequests] = useState<ReimbursementReq[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<ReimbursementReq | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,13 +43,13 @@ export function PRApproval() {
     if (!profile?.company_id) return;
 
     const { data } = await supabase
-      .from('purchase_requisitions')
+      .from('reimbursement_requests')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id)
+        user_profiles:requester_id (full_name, email, company_id, department)
       `)
       .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
 
     if (!data) {
       setRequests([]);
@@ -65,10 +64,10 @@ export function PRApproval() {
       companyFilteredRequests.map(async (req) => {
         const flows = await getApprovalFlow(
           profile.company_id,
-          req.department,
-          'Purchase Requisition',
-          req.is_budgeted,
-          req.total_amount
+          req.department || req.user_profiles?.department || profile.department || '',
+          'Reimbursement',
+          false,
+          req.amount
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -76,6 +75,7 @@ export function PRApproval() {
         if (!currentStep) return null;
 
         let isCurrentApprover = false;
+        const requestDepartment = req.department || req.user_profiles?.department;
 
         if (currentStep.user_id) {
           isCurrentApprover = currentStep.user_id === profile.id;
@@ -83,7 +83,7 @@ export function PRApproval() {
           const approverType = currentStep.approver_type;
 
           if (approverType === 'Department Head' && profile.role === 'approver') {
-            isCurrentApprover = req.department === profile.department;
+            isCurrentApprover = requestDepartment === profile.department;
           } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
             isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
           } else if (approverType === 'President') {
@@ -95,11 +95,11 @@ export function PRApproval() {
       })
     );
 
-    const filteredRequests = requestsForCurrentUser.filter(req => req !== null) as PurchaseReq[];
+    const filteredRequests = requestsForCurrentUser.filter(req => req !== null) as ReimbursementReq[];
     setRequests(filteredRequests);
   };
 
-  const handleViewRequest = async (request: PurchaseReq) => {
+  const handleViewRequest = async (request: ReimbursementReq) => {
     setSelectedRequest(request);
     setShowModal(true);
     setComments('');
@@ -107,10 +107,10 @@ export function PRApproval() {
     if (profile?.company_id) {
       const flows = await getApprovalFlow(
         profile.company_id,
-        request.department,
-        'Purchase Requisition',
-        request.is_budgeted,
-        request.total_amount
+        request.department || request.user_profiles?.department || profile.department || '',
+        'Reimbursement',
+        false,
+        request.amount
       );
       setApprovalFlows(flows);
 
@@ -120,16 +120,17 @@ export function PRApproval() {
   };
 
   const canApprove = (): boolean => {
-    if (!currentApproverStep || !profile) return false;
+    if (!currentApproverStep || !profile || !selectedRequest) return false;
 
     if (currentApproverStep.user_id) {
       return currentApproverStep.user_id === profile.id;
     }
 
     const approverType = currentApproverStep.approver_type;
+    const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department;
 
     if (approverType === 'Department Head' && profile.role === 'approver') {
-      return selectedRequest?.department === profile.department;
+      return requestDepartment === profile.department;
     }
 
     if (approverType === 'Procurement' || approverType === 'Procurement Head') {
@@ -159,7 +160,7 @@ export function PRApproval() {
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
       const { error: updateError } = await supabase
-        .from('purchase_requisitions')
+        .from('reimbursement_requests')
         .update({
           status: newStatus,
           current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
@@ -169,9 +170,9 @@ export function PRApproval() {
       if (updateError) throw updateError;
 
       await createApprovalLedgerEntry(
-        'Purchase Requisition',
+        'Reimbursement',
         selectedRequest.id,
-        selectedRequest.document_no,
+        selectedRequest.reimb_number,
         profile.id,
         profile.full_name || 'Unknown',
         currentApproverStep?.approver_type || 'Approver',
@@ -180,23 +181,25 @@ export function PRApproval() {
         selectedRequest.current_approval_level + 1
       );
 
+      const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A';
+
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
         const nextApproverInfo = await getApproverEmail(
           nextApprover,
           profile.company_id,
-          selectedRequest.department
+          requestDepartment
         );
 
         if (nextApproverInfo) {
           await sendApprovalEmail(
             nextApproverInfo.email,
             nextApproverInfo.name,
-            'Purchase Requisition',
-            selectedRequest.document_no,
+            'Reimbursement',
+            selectedRequest.reimb_number,
             selectedRequest.user_profiles?.full_name || 'Unknown',
-            selectedRequest.department,
-            selectedRequest.total_amount,
+            requestDepartment,
+            selectedRequest.amount,
             'Approved',
             profile.full_name || 'Unknown',
             comments,
@@ -207,11 +210,11 @@ export function PRApproval() {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',
-          'Purchase Requisition',
-          selectedRequest.document_no,
+          'Reimbursement',
+          selectedRequest.reimb_number,
           selectedRequest.user_profiles?.full_name || 'Unknown',
-          selectedRequest.department,
-          selectedRequest.total_amount,
+          requestDepartment,
+          selectedRequest.amount,
           'Fully Approved',
           profile.full_name || 'Unknown',
           comments
@@ -220,11 +223,11 @@ export function PRApproval() {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',
-          'Purchase Requisition',
-          selectedRequest.document_no,
+          'Reimbursement',
+          selectedRequest.reimb_number,
           selectedRequest.user_profiles?.full_name || 'Unknown',
-          selectedRequest.department,
-          selectedRequest.total_amount,
+          requestDepartment,
+          selectedRequest.amount,
           'Rejected',
           profile.full_name || 'Unknown',
           comments
@@ -245,8 +248,8 @@ export function PRApproval() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-slate-900">Purchase Requisition Approvals</h2>
-        <p className="text-slate-600 mt-1">Review and approve purchase requisitions</p>
+        <h2 className="text-3xl font-bold text-slate-900">Reimbursement Approvals</h2>
+        <p className="text-slate-600 mt-1">Review and approve reimbursement requests</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -260,10 +263,7 @@ export function PRApproval() {
             <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Document No.
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  PR Number
+                  Reimbursement Number
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Requester
@@ -272,7 +272,7 @@ export function PRApproval() {
                   Department
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Total Amount
+                  Amount
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Approval Level
@@ -286,10 +286,7 @@ export function PRApproval() {
               {requests.map((request) => (
                 <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-mono font-semibold text-slate-900">{request.document_no}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-mono text-slate-700">{request.pr_number}</span>
+                    <span className="font-mono font-semibold text-slate-900">{request.reimb_number}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-slate-900">
@@ -298,11 +295,13 @@ export function PRApproval() {
                     <div className="text-xs text-slate-500">{request.user_profiles?.email}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-slate-700">{request.department}</span>
+                    <span className="text-sm text-slate-700">
+                      {request.department || request.user_profiles?.department || 'N/A'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-semibold text-slate-900">
-                      ₱{request.total_amount.toLocaleString()}
+                      ₱{request.amount.toLocaleString()}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -331,8 +330,8 @@ export function PRApproval() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Review Purchase Requisition</h3>
-                <p className="text-sm text-slate-600 mt-1">{selectedRequest.document_no}</p>
+                <h3 className="text-xl font-bold text-slate-900">Review Reimbursement Request</h3>
+                <p className="text-sm text-slate-600 mt-1">{selectedRequest.reimb_number}</p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
@@ -345,72 +344,37 @@ export function PRApproval() {
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">PR Number</label>
-                  <p className="text-slate-900 font-mono">{selectedRequest.pr_number}</p>
+                  <label className="text-sm font-semibold text-slate-700">Reimbursement Number</label>
+                  <p className="text-slate-900 font-mono">{selectedRequest.reimb_number}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Department</label>
-                  <p className="text-slate-900">{selectedRequest.department}</p>
+                  <p className="text-slate-900">
+                    {selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Requester</label>
                   <p className="text-slate-900">{selectedRequest.user_profiles?.full_name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Total Amount</label>
-                  <p className="text-slate-900 font-bold">₱{selectedRequest.total_amount.toLocaleString()}</p>
+                  <label className="text-sm font-semibold text-slate-700">Amount</label>
+                  <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString()}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Budget Status</label>
-                  <p className="text-slate-900">{selectedRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}</p>
+                  <label className="text-sm font-semibold text-slate-700">Request Date</label>
+                  <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Required Date</label>
-                  <p className="text-slate-900">{new Date(selectedRequest.required_date).toLocaleDateString()}</p>
+                  <label className="text-sm font-semibold text-slate-700">Expense Date</label>
+                  <p className="text-slate-900">{new Date(selectedRequest.expense_date).toLocaleDateString()}</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Description</label>
-                <p className="text-slate-900">{selectedRequest.description}</p>
               </div>
 
               <div>
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
-
-              {selectedRequest.items && selectedRequest.items.length > 0 && (
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit Price</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selectedRequest.items.map((item: any, index: number) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.description}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">₱{item.unit_price.toFixed(2)}</td>
-                            <td className="px-4 py-2 text-sm font-semibold text-slate-900">
-                              ₱{item.total_price.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
 
               {approvalFlows.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText } from 'lucide-react';
+import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 
 interface CanvassReq {
   id: string;
@@ -59,16 +60,73 @@ export function Canvass() {
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('canvass_requests').insert({
-        canvass_number: formData.document_no,
-        requester_id: profile?.id,
-        request_date: new Date().toISOString().split('T')[0],
-        required_date: formData.required_date,
-        items: formData.items,
-        status,
-      });
+      const totalAmount = 0;
+
+      const { data: insertedRequest, error } = await supabase
+        .from('canvass_requests')
+        .insert({
+          canvass_number: formData.document_no,
+          requester_id: profile?.id,
+          department: profile?.department || '',
+          request_date: new Date().toISOString().split('T')[0],
+          required_date: formData.required_date,
+          items: formData.items,
+          status,
+          current_approval_level: status === 'pending' ? 0 : 0,
+          total_amount: totalAmount,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (status === 'pending' && insertedRequest && profile?.company_id) {
+        const approvalFlows = await getApprovalFlow(
+          profile.company_id,
+          profile.department || '',
+          'Canvass',
+          false,
+          totalAmount
+        );
+
+        if (approvalFlows.length > 0) {
+          await createApprovalLedgerEntry(
+            'Canvass',
+            insertedRequest.id,
+            formData.document_no,
+            profile.id,
+            profile.full_name || 'Unknown',
+            'Requestor',
+            'Submitted',
+            'Initial submission',
+            0
+          );
+
+          const firstApprover = approvalFlows[0];
+          const approverInfo = await getApproverEmail(
+            firstApprover,
+            profile.company_id,
+            profile.department || ''
+          );
+
+          if (approverInfo) {
+            await sendApprovalEmail(
+              approverInfo.email,
+              approverInfo.name,
+              'Canvass',
+              formData.document_no,
+              profile.full_name || 'Unknown',
+              profile.department || '',
+              totalAmount,
+              'Submitted',
+              undefined,
+              undefined,
+              firstApprover.approver_type
+            );
+          }
+        }
+      }
+
       setShowForm(false);
       setFormData({ document_no: '', required_date: '', items: [{ description: '', quantity: 1, unit: 'pcs' }] });
       loadRequests();

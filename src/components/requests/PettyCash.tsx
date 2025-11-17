@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText } from 'lucide-react';
+import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 
 interface PaymentMode {
   id: string;
@@ -74,17 +75,71 @@ export function PettyCash() {
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
-      const { error } = await supabase.from('petty_cash_requests').insert({
-        pc_number: formData.document_no,
-        requester_id: profile?.id,
-        request_date: new Date().toISOString().split('T')[0],
-        purpose: formData.purpose,
-        amount: formData.amount,
-        payment_mode_id: formData.payment_mode_id || null,
-        status,
-      });
+      const { data: insertedRequest, error } = await supabase
+        .from('petty_cash_requests')
+        .insert({
+          pc_number: formData.document_no,
+          requester_id: profile?.id,
+          department: profile?.department || '',
+          request_date: new Date().toISOString().split('T')[0],
+          purpose: formData.purpose,
+          amount: formData.amount,
+          payment_mode_id: formData.payment_mode_id || null,
+          status,
+          current_approval_level: status === 'pending' ? 0 : 0,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (status === 'pending' && insertedRequest && profile?.company_id) {
+        const approvalFlows = await getApprovalFlow(
+          profile.company_id,
+          profile.department || '',
+          'Petty Cash',
+          false,
+          formData.amount
+        );
+
+        if (approvalFlows.length > 0) {
+          await createApprovalLedgerEntry(
+            'Petty Cash',
+            insertedRequest.id,
+            formData.document_no,
+            profile.id,
+            profile.full_name || 'Unknown',
+            'Requestor',
+            'Submitted',
+            'Initial submission',
+            0
+          );
+
+          const firstApprover = approvalFlows[0];
+          const approverInfo = await getApproverEmail(
+            firstApprover,
+            profile.company_id,
+            profile.department || ''
+          );
+
+          if (approverInfo) {
+            await sendApprovalEmail(
+              approverInfo.email,
+              approverInfo.name,
+              'Petty Cash',
+              formData.document_no,
+              profile.full_name || 'Unknown',
+              profile.department || '',
+              formData.amount,
+              'Submitted',
+              undefined,
+              undefined,
+              firstApprover.approver_type
+            );
+          }
+        }
+      }
+
       setShowForm(false);
       setFormData({ document_no: '', purpose: '', amount: 0, payment_mode_id: '' });
       loadRequests();

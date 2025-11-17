@@ -8,6 +8,9 @@ import { PettyCash } from './components/requests/PettyCash';
 import { Canvass } from './components/requests/Canvass';
 import { Reimbursement } from './components/requests/Reimbursement';
 import { PRApproval } from './components/approvals/PRApproval';
+import { CanvassApproval } from './components/approvals/CanvassApproval';
+import { PettyCashApproval } from './components/approvals/PettyCashApproval';
+import { ReimbursementApproval } from './components/approvals/ReimbursementApproval';
 import { ConfigManager } from './components/config/ConfigManager';
 import { ApprovalLedger } from './components/ApprovalLedger';
 
@@ -41,6 +44,12 @@ function AppContent() {
         return <Reimbursement />;
       case 'pr-approval':
         return <PRApproval />;
+      case 'canvass-approval':
+        return <CanvassApproval />;
+      case 'petty-cash-approval':
+        return <PettyCashApproval />;
+      case 'reimbursement-approval':
+        return <ReimbursementApproval />;
       case 'approval-ledger':
         return <ApprovalLedger />;
       case 'config-users':
