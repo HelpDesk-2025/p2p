@@ -476,6 +476,8 @@ export function PurchaseRequisition() {
         );
 
         if (approvalFlows.length > 0) {
+          console.log('📋 Approval flows found:', approvalFlows.length);
+
           await createApprovalLedgerEntry(
             'Purchase Requisition',
             insertedPR.id,
@@ -489,11 +491,15 @@ export function PurchaseRequisition() {
           );
 
           const firstApprover = approvalFlows[0];
+          console.log('👤 First approver:', firstApprover);
+
           const approverInfo = await getApproverEmail(
             firstApprover,
             profile.company_id,
             formData.department
           );
+
+          console.log('📧 Approver info:', approverInfo);
 
           if (approverInfo) {
             await sendApprovalEmail(
@@ -509,7 +515,12 @@ export function PurchaseRequisition() {
               undefined,
               firstApprover.approver_type
             );
+          } else {
+            console.error('❌ No approver email found for first approver');
+            alert('Warning: Could not find approver email. Request created but notification not sent.');
           }
+        } else {
+          console.warn('⚠️ No approval flows found for this request');
         }
       }
 

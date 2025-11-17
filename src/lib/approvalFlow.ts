@@ -172,6 +172,8 @@ export async function sendApprovalEmail(
   nextApprover?: string
 ): Promise<void> {
   try {
+    console.log('📧 Sending approval email to:', recipientEmail, 'for action:', action);
+
     const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-approval-email`;
 
     const headers = {
@@ -194,6 +196,8 @@ export async function sendApprovalEmail(
       nextApprover,
     };
 
+    console.log('📧 Email data:', JSON.stringify(emailData, null, 2));
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
@@ -203,10 +207,13 @@ export async function sendApprovalEmail(
     const result = await response.json();
 
     if (!result.success) {
-      console.error('Failed to send email:', result.error);
+      console.error('❌ Failed to send email:', result);
+      alert(`Email notification failed: ${result.message || 'Unknown error'}. The request was created successfully.`);
+    } else {
+      console.log('✅ Email sent successfully:', result);
     }
   } catch (error) {
-    console.error('Error sending approval email:', error);
+    console.error('❌ Error sending approval email:', error);
   }
 }
 
