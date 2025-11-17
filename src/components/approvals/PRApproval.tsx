@@ -438,55 +438,6 @@ export function PRApproval() {
                 </div>
               )}
 
-              {selectedRequest.checklist_items && selectedRequest.checklist_items.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-semibold text-slate-700">Checklist Items</label>
-                    {selectedRequest.pr_checklists && (
-                      <span className="text-xs font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                        {selectedRequest.pr_checklists.pr_type}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <div className="border border-slate-200 rounded-lg p-3 bg-white">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm text-slate-900">Purchase Type</p>
-                        </div>
-                        <span className="text-xs text-slate-700 font-medium ml-3">
-                          {selectedRequest.purchase_type || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="border border-slate-200 rounded-lg p-3 bg-white">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm text-slate-900">PR Checklist Type</p>
-                        </div>
-                        <span className="text-xs text-slate-700 font-medium ml-3">
-                          {selectedRequest.pr_checklists?.pr_type || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedRequest.checklist_items.map((item: any, index: number) => (
-                      <div key={index} className="border border-slate-200 rounded-lg p-3 bg-white">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm text-slate-900">{item.name}</p>
-                          </div>
-                          {item.fileData && (
-                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium ml-3">
-                              Attached
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {selectedRequest.payment_modes && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Payment Mode</label>
