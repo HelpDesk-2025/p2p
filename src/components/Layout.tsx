@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  BookOpen,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ export type ViewType =
   | 'petty-cash-approval'
   | 'reimbursement-approval'
   | 'procurement-checking'
+  | 'approval-ledger'
   | 'config-approvers'
   | 'config-users'
   | 'config-checklists'
@@ -97,6 +99,13 @@ const menuItems: MenuItem[] = [
     id: 'procurement-checking',
     label: 'Procurement Checking',
     icon: ClipboardCheck,
+    roles: ['approver', 'admin'],
+    group: 'procurement',
+  },
+  {
+    id: 'approval-ledger',
+    label: 'Approval Ledger',
+    icon: BookOpen,
     roles: ['approver', 'admin'],
     group: 'procurement',
   },

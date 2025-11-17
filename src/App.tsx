@@ -9,6 +9,7 @@ import { Canvass } from './components/requests/Canvass';
 import { Reimbursement } from './components/requests/Reimbursement';
 import { PRApproval } from './components/approvals/PRApproval';
 import { ConfigManager } from './components/config/ConfigManager';
+import { ApprovalLedger } from './components/ApprovalLedger';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -40,6 +41,8 @@ function AppContent() {
         return <Reimbursement />;
       case 'pr-approval':
         return <PRApproval />;
+      case 'approval-ledger':
+        return <ApprovalLedger />;
       case 'config-users':
         return <ConfigManager type="users" />;
       case 'config-checklists':
