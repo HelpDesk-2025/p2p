@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 
 interface PurchaseReq {
@@ -215,6 +215,18 @@ export function PRApproval() {
         comments,
         selectedRequest.current_approval_level + 1
       );
+
+      if (action === 'rejected') {
+        await createRejectedLedgerEntries(
+          'Purchase Requisition',
+          selectedRequest.id,
+          selectedRequest.document_no,
+          approvalFlows,
+          selectedRequest.current_approval_level,
+          profile.company_id,
+          selectedRequest.department
+        );
+      }
 
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];

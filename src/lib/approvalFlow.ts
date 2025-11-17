@@ -273,3 +273,38 @@ export async function getApproverEmail(
     return null;
   }
 }
+
+export async function createRejectedLedgerEntries(
+  requestType: string,
+  requestId: string,
+  requestNumber: string,
+  approvalFlows: ApprovalFlow[],
+  currentLevel: number,
+  companyId: string,
+  department: string
+): Promise<void> {
+  try {
+    const remainingApprovers = approvalFlows.slice(currentLevel + 1);
+
+    for (const flow of remainingApprovers) {
+      const approverInfo = await getApproverEmail(flow, companyId, department);
+
+      if (approverInfo) {
+        await createApprovalLedgerEntry(
+          requestType,
+          requestId,
+          requestNumber,
+          'system',
+          approverInfo.name,
+          flow.approver_type,
+          'Auto-Rejected',
+          'Previous step was rejected',
+          flow.sequence
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error creating rejected ledger entries:', error);
+    throw error;
+  }
+}

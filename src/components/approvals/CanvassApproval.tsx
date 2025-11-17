@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 
 interface CanvassReq {
   id: string;
@@ -188,6 +188,18 @@ export function CanvassApproval() {
         comments,
         selectedRequest.current_approval_level + 1
       );
+
+      if (action === 'rejected') {
+        await createRejectedLedgerEntries(
+          'Canvass',
+          selectedRequest.id,
+          selectedRequest.canvass_number,
+          approvalFlows,
+          selectedRequest.current_approval_level,
+          profile.company_id,
+          selectedRequest.department || profile.department || ''
+        );
+      }
 
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];

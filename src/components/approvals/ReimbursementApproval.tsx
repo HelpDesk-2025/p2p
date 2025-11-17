@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 
 interface ReimbursementReq {
   id: string;
@@ -193,6 +193,18 @@ export function ReimbursementApproval() {
       );
 
       const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A';
+
+      if (action === 'rejected') {
+        await createRejectedLedgerEntries(
+          'Reimbursement',
+          selectedRequest.id,
+          selectedRequest.reimb_number,
+          approvalFlows,
+          selectedRequest.current_approval_level,
+          profile.company_id,
+          requestDepartment
+        );
+      }
 
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
