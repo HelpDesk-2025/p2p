@@ -24,6 +24,7 @@ interface PurchaseReq {
   checklist_items?: any[];
   payment_mode_id?: string;
   payment_mode_lines?: any[];
+  pr_checklist_id?: string;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -31,6 +32,9 @@ interface PurchaseReq {
   };
   payment_modes?: {
     mode_name: string;
+  };
+  pr_checklists?: {
+    pr_type: string;
   };
 }
 
@@ -56,7 +60,8 @@ export function PRApproval() {
       .select(`
         *,
         user_profiles:requester_id (full_name, email, company_id),
-        payment_modes:payment_mode_id (mode_name)
+        payment_modes:payment_mode_id (mode_name),
+        pr_checklists:pr_checklist_id (pr_type)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -429,6 +434,13 @@ export function PRApproval() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {selectedRequest.pr_checklists && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Checklist Type</label>
+                  <p className="text-slate-900">{selectedRequest.pr_checklists.pr_type}</p>
                 </div>
               )}
 
