@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../lib/supabase';
 import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
@@ -273,7 +273,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
       console.log('Updating user:', editingId, updateData);
 
-      const { data: result, error } = await supabase
+      // Use admin client to bypass RLS for updating other users
+      const client = supabaseAdmin || supabase;
+      const { data: result, error } = await client
         .from('user_profiles')
         .update(updateData)
         .eq('id', editingId)
