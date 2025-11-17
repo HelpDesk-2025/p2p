@@ -26,6 +26,8 @@ interface PurchaseReq {
   payment_mode_lines?: any[];
   pr_checklist_id?: string;
   purchase_type?: string;
+  payee?: string;
+  amount_net_vat?: number;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -413,6 +415,21 @@ export function PRApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.payee && (
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Payee</label>
+                    <p className="text-slate-900">{selectedRequest.payee}</p>
+                  </div>
+                  {selectedRequest.amount_net_vat !== undefined && (
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700">Amount (Net of VAT)</label>
+                      <p className="text-slate-900 font-bold">₱{selectedRequest.amount_net_vat.toFixed(2)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {selectedRequest.items && selectedRequest.items.length > 0 && (
                 <div>
