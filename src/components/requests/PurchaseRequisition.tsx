@@ -66,6 +66,8 @@ export function PurchaseRequisition() {
   const [itemSearchTerms, setItemSearchTerms] = useState<string[]>(['']);
   const [showItemDropdown, setShowItemDropdown] = useState<number | null>(null);
   const itemDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [viewingRequest, setViewingRequest] = useState<PurchaseReq | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const [formData, setFormData] = useState({
     document_no: '',
@@ -1086,7 +1088,13 @@ export function PurchaseRequisition() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setViewingRequest(req);
+                          setShowViewModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
                         <Eye size={16} />
                         View
                       </button>
@@ -1098,6 +1106,134 @@ export function PurchaseRequisition() {
           </table>
         </div>
       </div>
+
+      {showViewModal && viewingRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Purchase Requisition Details</h3>
+                <p className="text-sm text-slate-600 mt-1">{viewingRequest.document_no || viewingRequest.pr_number}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setViewingRequest(null);
+                }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Document No.</label>
+                  <p className="text-slate-900 font-mono">{viewingRequest.document_no || viewingRequest.pr_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Department</label>
+                  <p className="text-slate-900">{viewingRequest.department}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Request Date</label>
+                  <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Required Date</label>
+                  <p className="text-slate-900">{new Date(viewingRequest.required_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Purchase Type</label>
+                  <p className="text-slate-900">{viewingRequest.purchase_type}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Budget Status</label>
+                  <p className="text-slate-900">{viewingRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Total Amount</label>
+                  <p className="text-slate-900 font-bold">₱{viewingRequest.total_amount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Status</label>
+                  <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
+                    {viewingRequest.status}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Description</label>
+                <p className="text-slate-900">{viewingRequest.description}</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Purpose</label>
+                <p className="text-slate-900">{viewingRequest.purpose}</p>
+              </div>
+
+              {viewingRequest.purchase_type === 'Purchase Order' && viewingRequest.items && viewingRequest.items.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit Price</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {viewingRequest.items.map((item: any, index: number) => (
+                          <tr key={index}>
+                            <td className="px-4 py-2 text-sm text-slate-900">{item.description}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">₱{item.unit_price.toFixed(2)}</td>
+                            <td className="px-4 py-2 text-sm font-semibold text-slate-900">
+                              ₱{item.total_price.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {viewingRequest.purchase_type === 'Non-Purchase Order' && (
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Payee</label>
+                    <p className="text-slate-900">{viewingRequest.payee}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Amount Net of VAT</label>
+                    <p className="text-slate-900 font-bold">₱{viewingRequest.amount_net_vat?.toFixed(2)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setViewingRequest(null);
+                }}
+                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
