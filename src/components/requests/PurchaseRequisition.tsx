@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
-import { mergeAttachmentsToPDF } from '../../lib/pdfMerger';
+import { uploadAttachments } from '../../lib/storageHelper';
 
 interface PRItem {
   description: string;
@@ -385,14 +385,6 @@ export function PurchaseRequisition() {
     return `PR-${year}${month}-${random}`;
   };
 
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
@@ -400,42 +392,27 @@ export function PurchaseRequisition() {
       const total = calculateTotal();
       const prNumber = generatePRNumber();
 
-      const checklistItemsWithFiles = await Promise.all(
-        formData.checklist_items.map(async (item) => {
-          if (item.file) {
-            const fileData = await convertFileToBase64(item.file);
-            return {
-              id: item.id,
-              item_name: item.item_name,
-              description: item.description,
-              is_required: item.is_required,
-              fileName: item.fileName,
-              fileData: fileData,
-              fileType: item.file.type
-            };
-          }
-          return {
-            id: item.id,
-            item_name: item.item_name,
-            description: item.description,
-            is_required: item.is_required,
-            fileName: '',
-            fileData: null,
-            fileType: null
-          };
-        })
-      );
+      const checklistItemsWithoutFiles = formData.checklist_items.map((item) => ({
+        id: item.id,
+        item_name: item.item_name,
+        description: item.description,
+        is_required: item.is_required,
+        fileName: item.fileName || ''
+      }));
 
-      const filesWithData = checklistItemsWithFiles.filter(item => item.fileData !== null);
+      const filesToUpload = formData.checklist_items
+        .filter(item => item.file)
+        .map(item => ({
+          file: item.file!,
+          fileName: item.fileName || item.file!.name
+        }));
 
-      let mergedPdfData = null;
-      if (filesWithData.length > 0) {
-        mergedPdfData = await mergeAttachmentsToPDF(
-          filesWithData.map(item => ({
-            fileName: item.fileName,
-            fileData: item.fileData,
-            fileType: item.fileType
-          }))
+      let attachmentPaths = [];
+      if (filesToUpload.length > 0 && profile?.id) {
+        attachmentPaths = await uploadAttachments(
+          filesToUpload,
+          'purchase-requisitions',
+          profile.id
         );
       }
 
@@ -455,8 +432,8 @@ export function PurchaseRequisition() {
         status,
         current_approval_level: status === 'pending' ? 0 : 0,
         pr_checklist_id: formData.pr_checklist_id || null,
-        checklist_items: checklistItemsWithFiles,
-        merged_pdf: mergedPdfData,
+        checklist_items: checklistItemsWithoutFiles,
+        attachment_paths: attachmentPaths,
       };
 
       if (formData.purchase_type === 'Purchase Order') {
