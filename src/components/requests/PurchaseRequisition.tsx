@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X } from 'lucide-react';
+import { getApprovalFlow, createApprovalLedgerEntry } from '../../lib/approvalFlow';
 
 interface PRItem {
   description: string;
@@ -391,7 +392,6 @@ export function PurchaseRequisition() {
       const total = calculateTotal();
       const prNumber = generatePRNumber();
 
-      // Convert checklist items files to base64
       const checklistItemsWithFiles = await Promise.all(
         formData.checklist_items.map(async (item) => {
           if (item.file) {
@@ -432,6 +432,7 @@ export function PurchaseRequisition() {
         purchase_type: formData.purchase_type,
         total_amount: total,
         status,
+        current_approval_level: status === 'pending' ? 0 : 0,
         pr_checklist_id: formData.pr_checklist_id || null,
         checklist_items: checklistItemsWithFiles,
       };
@@ -446,9 +447,36 @@ export function PurchaseRequisition() {
         payload.payment_mode_lines = formData.payment_mode_lines;
       }
 
-      const { error } = await supabase.from('purchase_requisitions').insert(payload);
+      const { data: insertedPR, error } = await supabase
+        .from('purchase_requisitions')
+        .insert(payload)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      if (status === 'pending' && insertedPR && profile?.company_id) {
+        const approvalFlows = await getApprovalFlow(
+          profile.company_id,
+          formData.department,
+          formData.is_budgeted,
+          total
+        );
+
+        if (approvalFlows.length > 0) {
+          await createApprovalLedgerEntry(
+            'Purchase Requisition',
+            insertedPR.id,
+            formData.document_no,
+            profile.id,
+            profile.full_name || 'Unknown',
+            'Requestor',
+            'Submitted',
+            'Initial submission',
+            0
+          );
+        }
+      }
 
       setShowForm(false);
       resetForm();
