@@ -1172,6 +1172,37 @@ export function PurchaseRequisition() {
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
 
+              {viewingRequest.checklist_items && viewingRequest.checklist_items.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Checklist Items & Attachments</label>
+                  <div className="space-y-3">
+                    {viewingRequest.checklist_items.map((item: any, index: number) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-slate-900">{item.item_name}</span>
+                              {item.is_required && (
+                                <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full">Required</span>
+                              )}
+                            </div>
+                            {item.description && (
+                              <p className="text-xs text-slate-600 mt-1">{item.description}</p>
+                            )}
+                            {item.fileName && (
+                              <div className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+                                <FileText size={16} className="text-blue-600" />
+                                <span>{item.fileName}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {viewingRequest.purchase_type === 'Purchase Order' && viewingRequest.items && viewingRequest.items.length > 0 && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
@@ -1205,16 +1236,41 @@ export function PurchaseRequisition() {
               )}
 
               {viewingRequest.purchase_type === 'Non-Purchase Order' && (
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700">Payee</label>
-                    <p className="text-slate-900">{viewingRequest.payee}</p>
+                <>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700">Payee</label>
+                      <p className="text-slate-900">{viewingRequest.payee}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700">Amount Net of VAT</label>
+                      <p className="text-slate-900 font-bold">₱{viewingRequest.amount_net_vat?.toFixed(2)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700">Amount Net of VAT</label>
-                    <p className="text-slate-900 font-bold">₱{viewingRequest.amount_net_vat?.toFixed(2)}</p>
-                  </div>
-                </div>
+
+                  {viewingRequest.payment_mode_lines && viewingRequest.payment_mode_lines.length > 0 && (
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 mb-3 block">Payment Mode Details</label>
+                      <div className="space-y-3">
+                        {viewingRequest.payment_mode_lines.map((line: any, index: number) => (
+                          <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-slate-900">{line.name}</span>
+                                  {line.is_required && (
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Required</span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-700 mt-1">{line.value || <span className="text-slate-400 italic">Not provided</span>}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
