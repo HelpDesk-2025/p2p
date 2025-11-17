@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments } from '../../lib/storageHelper';
+import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 
 interface PRItem {
   description: string;
@@ -402,18 +403,29 @@ export function PurchaseRequisition() {
 
       const filesToUpload = formData.checklist_items
         .filter(item => item.file)
-        .map(item => ({
-          file: item.file!,
-          fileName: item.fileName || item.file!.name
-        }));
+        .map(item => item.file!);
 
-      let attachmentPaths = [];
+      let mergedPdfPath = null;
       if (filesToUpload.length > 0 && profile?.id) {
-        attachmentPaths = await uploadAttachments(
-          filesToUpload,
-          'purchase-requisitions',
-          profile.id
-        );
+        const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
+
+        const timestamp = Date.now();
+        const mergedFileName = `merged_${timestamp}.pdf`;
+        const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
+
+        const { data, error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, mergedPdfBlob, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'application/pdf'
+          });
+
+        if (uploadError) {
+          throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
+        }
+
+        mergedPdfPath = data.path;
       }
 
       const payload: any = {
@@ -433,7 +445,7 @@ export function PurchaseRequisition() {
         current_approval_level: status === 'pending' ? 0 : 0,
         pr_checklist_id: formData.pr_checklist_id || null,
         checklist_items: checklistItemsWithoutFiles,
-        attachment_paths: attachmentPaths,
+        merged_pdf_path: mergedPdfPath,
       };
 
       if (formData.purchase_type === 'Purchase Order') {

@@ -22,6 +22,7 @@ interface PurchaseReq {
   items: any[];
   attachments?: any[];
   merged_pdf?: string;
+  merged_pdf_path?: string;
   attachment_paths?: Array<{
     path: string;
     name: string;
@@ -493,60 +494,56 @@ export function PRApproval() {
                 </div>
               )}
 
-              {selectedRequest.attachment_paths && selectedRequest.attachment_paths.length > 0 && (
+              {selectedRequest.merged_pdf_path && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
-                  <div className="space-y-2">
-                    {selectedRequest.attachment_paths.map((attachment, index) => (
-                      <div key={index} className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
-                        <div className="p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                              <FileText className="text-blue-600" size={20} />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">{attachment.name}</p>
-                              <p className="text-xs text-slate-600">{(attachment.size / 1024).toFixed(2)} KB</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const signedUrl = await createSignedUrl(attachment.path, 300);
-                                  window.open(signedUrl, '_blank');
-                                } catch (error) {
-                                  alert('Error viewing file');
-                                }
-                              }}
-                              className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
-                            >
-                              <Eye size={16} />
-                              View
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const blob = await downloadAttachment(attachment.path);
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = attachment.name;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                } catch (error) {
-                                  alert('Error downloading file');
-                                }
-                              }}
-                              className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2"
-                            >
-                              <Download size={16} />
-                              Download
-                            </button>
-                          </div>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <FileText className="text-red-600" size={24} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Merged Attachments</p>
+                          <p className="text-xs text-slate-600">All checklist attachments in one PDF</p>
                         </div>
                       </div>
-                    ))}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const signedUrl = await createSignedUrl(selectedRequest.merged_pdf_path!, 300);
+                              window.open(signedUrl, '_blank');
+                            } catch (error) {
+                              alert('Error viewing PDF');
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
+                        >
+                          <Eye size={16} />
+                          View PDF
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const blob = await downloadAttachment(selectedRequest.merged_pdf_path!);
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `PR_${selectedRequest.pr_number}_Attachments.pdf`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            } catch (error) {
+                              alert('Error downloading PDF');
+                            }
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
