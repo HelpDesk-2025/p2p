@@ -437,26 +437,25 @@ export function PRApproval() {
                 </div>
               )}
 
-              {selectedRequest.pr_checklists && (
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Checklist Type</label>
-                  <p className="text-slate-900">{selectedRequest.pr_checklists.pr_type}</p>
-                </div>
-              )}
-
               {selectedRequest.checklist_items && selectedRequest.checklist_items.length > 0 && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Checklist Items</label>
-                  <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold text-slate-700">Checklist Items</label>
+                    {selectedRequest.pr_checklists && (
+                      <span className="text-xs font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                        {selectedRequest.pr_checklists.pr_type}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
                     {selectedRequest.checklist_items.map((item: any, index: number) => (
-                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                      <div key={index} className="border border-slate-200 rounded-lg p-3 bg-white">
                         <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">{item.name}</p>
-                            <p className="text-xs text-slate-600 mt-1">{item.description}</p>
+                          <div className="flex-1">
+                            <p className="text-sm text-slate-900">{item.name}</p>
                           </div>
                           {item.fileData && (
-                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium ml-3">
                               Attached
                             </span>
                           )}
