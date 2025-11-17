@@ -68,6 +68,7 @@ export function PRApproval() {
       const flows = await getApprovalFlow(
         profile.company_id,
         request.department,
+        'Purchase Requisition',
         request.is_budgeted,
         request.total_amount
       );

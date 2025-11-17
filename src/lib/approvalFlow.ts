@@ -19,6 +19,7 @@ export interface ApprovalFlowSetup {
   name: string;
   company_id: string;
   department: string | null;
+  request_type: string;
   is_active: boolean;
 }
 
@@ -31,6 +32,7 @@ export const WORKFLOW_TYPES = {
 export async function getApprovalFlow(
   companyId: string,
   department: string,
+  requestType: string,
   isBudgeted: boolean,
   totalAmount: number
 ): Promise<ApprovalFlow[]> {
@@ -58,7 +60,8 @@ export async function getApprovalFlow(
       .from('approval_flow_setups')
       .select('id')
       .eq('company_id', companyId)
-      .eq('department', department)
+      .eq('department_id', department)
+      .eq('request_type', requestType)
       .eq('is_active', true)
       .maybeSingle();
 
@@ -84,7 +87,8 @@ export async function getApprovalFlow(
       .from('approval_flow_setups')
       .select('id')
       .eq('company_id', companyId)
-      .is('department', null)
+      .is('department_id', null)
+      .eq('request_type', requestType)
       .eq('is_active', true)
       .maybeSingle();
 

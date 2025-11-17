@@ -7,6 +7,7 @@ interface ApprovalFlowSetup {
   name: string;
   company_id: string;
   department_id: string | null;
+  request_type: string;
   is_active: boolean;
   companies?: { name: string; president_min_amount: number };
 }
@@ -29,7 +30,8 @@ export function ApprovalFlowSetupConfig() {
   const [formData, setFormData] = useState({
     name: "",
     company_id: "",
-    department: ""
+    department: "",
+    request_type: "Purchase Requisition"
   });
   const [companies, setCompanies] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -137,19 +139,19 @@ export function ApprovalFlowSetupConfig() {
   }, [formData.company_id, companies, editingSetupId]);
 
   useEffect(() => {
-    if (!editingSetupId && formData.company_id && formData.department) {
+    if (!editingSetupId && formData.company_id && formData.department && formData.request_type) {
       const selectedCompany = companies.find(c => c.id === formData.company_id);
       if (selectedCompany) {
-        const autoName = `${selectedCompany.name} - ${formData.department}`;
+        const autoName = `${selectedCompany.name} - ${formData.department} - ${formData.request_type}`;
         setFormData(prev => ({ ...prev, name: autoName }));
       }
     }
-  }, [formData.company_id, formData.department, companies, editingSetupId]);
+  }, [formData.company_id, formData.department, formData.request_type, companies, editingSetupId]);
 
   const handleSaveSetup = async () => {
     try {
-      if (!formData.company_id || !formData.department) {
-        alert("Please select a company and department");
+      if (!formData.company_id || !formData.department || !formData.request_type) {
+        alert("Please select a company, department, and request type");
         return;
       }
 
@@ -157,6 +159,7 @@ export function ApprovalFlowSetupConfig() {
         name: formData.name,
         company_id: formData.company_id,
         department_id: formData.department || null,
+        request_type: formData.request_type,
         is_active: true
       };
 
@@ -175,7 +178,7 @@ export function ApprovalFlowSetupConfig() {
 
       setShowForm(false);
       setEditingSetupId(null);
-      setFormData({ name: "", company_id: "", department: "" });
+      setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
       loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -305,7 +308,8 @@ export function ApprovalFlowSetupConfig() {
     setFormData({
       name: setup.name,
       company_id: setup.company_id,
-      department: setup.department_id || ""
+      department: setup.department_id || "",
+      request_type: setup.request_type
     });
     setShowForm(true);
   };
@@ -324,7 +328,7 @@ export function ApprovalFlowSetupConfig() {
           onClick={() => {
             setShowForm(true);
             setEditingSetupId(null);
-            setFormData({ name: "", company_id: "", department: "" });
+            setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
           }}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30 transition-all"
         >
@@ -343,7 +347,7 @@ export function ApprovalFlowSetupConfig() {
               onClick={() => {
                 setShowForm(false);
                 setEditingSetupId(null);
-                setFormData({ name: "", company_id: "", department: "" });
+                setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
               }}
               className="text-slate-400 hover:text-slate-600 transition-colors"
             >
@@ -352,7 +356,7 @@ export function ApprovalFlowSetupConfig() {
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Company *</label>
                 <select
@@ -386,6 +390,21 @@ export function ApprovalFlowSetupConfig() {
                   ))}
                 </select>
               </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Request Type *</label>
+                <select
+                  value={formData.request_type}
+                  onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white disabled:bg-slate-100"
+                  disabled={!!editingSetupId}
+                >
+                  <option value="Purchase Requisition">Purchase Requisition</option>
+                  <option value="Canvass">Canvass</option>
+                  <option value="Petty Cash">Petty Cash</option>
+                  <option value="Reimbursement">Reimbursement</option>
+                </select>
+              </div>
             </div>
 
             {formData.name && (
@@ -408,7 +427,7 @@ export function ApprovalFlowSetupConfig() {
                 onClick={() => {
                   setShowForm(false);
                   setEditingSetupId(null);
-                  setFormData({ name: "", company_id: "", department: "" });
+                  setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
                 }}
                 className="px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition-all"
               >
@@ -633,6 +652,7 @@ export function ApprovalFlowSetupConfig() {
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Name</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Company</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Department</th>
+                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Request Type</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Total Steps</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
@@ -647,6 +667,11 @@ export function ApprovalFlowSetupConfig() {
                     <td className="px-4 py-4 text-sm text-slate-600">{setup.companies?.name || "-"}</td>
                     <td className="px-4 py-4 text-sm text-slate-600">
                       {setup.department_id || <span className="text-slate-400 italic">Whole Company</span>}
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800">
+                        {setup.request_type}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-sm">
                       <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800">

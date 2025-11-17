@@ -459,6 +459,7 @@ export function PurchaseRequisition() {
         const approvalFlows = await getApprovalFlow(
           profile.company_id,
           formData.department,
+          'Purchase Requisition',
           formData.is_budgeted,
           total
         );
