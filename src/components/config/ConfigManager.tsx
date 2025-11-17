@@ -251,8 +251,14 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     try {
       if (!editingId) return;
 
+      console.log('Form data company:', formData.company);
+      console.log('Available companies:', companies);
+
       const company = companies.find(c => c.name === formData.company);
       const companyId = company ? company.id : null;
+
+      console.log('Found company:', company);
+      console.log('Company ID:', companyId);
 
       const updateData = {
         full_name: formData.full_name,
