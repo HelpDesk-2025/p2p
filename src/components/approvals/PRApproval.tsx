@@ -394,6 +394,14 @@ export function PRApproval() {
                   <label className="text-sm font-semibold text-slate-700">Required Date</label>
                   <p className="text-slate-900">{new Date(selectedRequest.required_date).toLocaleDateString()}</p>
                 </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Purchase Type</label>
+                  <p className="text-slate-900">{selectedRequest.purchase_type || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">PR Checklist</label>
+                  <p className="text-slate-900">{selectedRequest.pr_checklists?.pr_type || 'N/A'}</p>
+                </div>
               </div>
 
               <div>
