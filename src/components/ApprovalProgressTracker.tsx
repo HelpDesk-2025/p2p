@@ -51,11 +51,22 @@ export function ApprovalProgressTracker({
         setCurrentApprovalLevel(data.current_approval_level || 0);
         setStatus(data.status || 'pending');
 
+        // Get company_id from user profile if not in request
+        let companyId = data.company_id;
+        if (!companyId && data.requester_id) {
+          const { data: profileData } = await supabase
+            .from('user_profiles')
+            .select('company_id')
+            .eq('id', data.requester_id)
+            .single();
+          companyId = profileData?.company_id;
+        }
+
         // Load approval flows for this request
-        if (data.company_id) {
+        if (companyId) {
           const { getApprovalFlow } = await import('../lib/approvalFlow');
           const flows = await getApprovalFlow(
-            data.company_id,
+            companyId,
             data.department || '',
             requestType,
             data.is_budgeted || false,
