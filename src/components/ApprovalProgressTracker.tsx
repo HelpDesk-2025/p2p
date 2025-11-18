@@ -162,15 +162,16 @@ export function ApprovalProgressTracker({
     );
   }
 
-  if (approvalFlows.length === 0) {
+  const submitterEntry = ledgerEntries.find(e => e.sequence === 0);
+  const approvalEntries = ledgerEntries.filter(e => e.sequence > 0);
+
+  if (approvalFlows.length === 0 && approvalEntries.length === 0) {
     return (
       <div className="bg-white rounded-lg p-6 border border-slate-200">
         <p className="text-slate-500">No approval flow configured for this request.</p>
       </div>
     );
   }
-
-  const submitterEntry = ledgerEntries.find(e => e.sequence === 0);
 
   return (
     <div className="bg-white rounded-lg p-6 border border-slate-200">
@@ -199,7 +200,7 @@ export function ApprovalProgressTracker({
           </div>
         )}
 
-        {approvalFlows.map((flow, index) => {
+        {approvalFlows.length > 0 ? approvalFlows.map((flow, index) => {
           const stepStatus = getStepStatus(index);
           const ledgerEntry = getLedgerEntry(index + 1);
           const isLast = index === approvalFlows.length - 1;
@@ -271,6 +272,79 @@ export function ApprovalProgressTracker({
                       {stepStatus === 'current' ? 'Waiting for approval...' : 'Not yet reached'}
                     </p>
                   )}
+                </div>
+              </div>
+            </div>
+          );
+        }) : approvalEntries.map((entry, index) => {
+          const isLast = index === approvalEntries.length - 1;
+          const isApproved = entry.action === 'approved';
+          const isRejected = entry.action === 'rejected';
+
+          return (
+            <div key={entry.id} className="relative">
+              {!isLast && (
+                <div
+                  className={`absolute left-5 top-12 w-0.5 h-full -mb-4 ${
+                    isApproved ? 'bg-green-600' :
+                    isRejected ? 'bg-red-600' :
+                    'bg-gray-200'
+                  }`}
+                />
+              )}
+
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 z-10">
+                  <div
+                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
+                      isApproved ? 'bg-green-50 border-green-600' :
+                      isRejected ? 'bg-red-50 border-red-600' :
+                      'bg-blue-50 border-blue-600'
+                    }`}
+                  >
+                    {isApproved ? (
+                      <CheckCircle size={20} className="text-green-600" />
+                    ) : isRejected ? (
+                      <XCircle size={20} className="text-red-600" />
+                    ) : (
+                      <Clock size={20} className="text-blue-600" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-slate-900">
+                      Step {index + 1}: {entry.approver_type}
+                    </span>
+                    {isApproved && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                        Approved
+                      </span>
+                    )}
+                    {isRejected && (
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                        Rejected
+                      </span>
+                    )}
+                    {!isApproved && !isRejected && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                        Pending Approval
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2">
+                    <p className="text-sm text-slate-600">{entry.approver_name}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {new Date(entry.approval_date).toLocaleString()}
+                    </p>
+                    {entry.comments && (
+                      <p className="text-sm text-slate-700 mt-2 p-3 bg-slate-50 rounded border border-slate-200 italic">
+                        "{entry.comments}"
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
