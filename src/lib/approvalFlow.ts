@@ -37,6 +37,14 @@ export async function getApprovalFlow(
   totalAmount: number
 ): Promise<ApprovalFlow[]> {
   try {
+    console.log('🔍 Getting approval flow with params:', {
+      companyId,
+      department,
+      requestType,
+      isBudgeted,
+      totalAmount
+    });
+
     const { data: company, error: companyError } = await supabase
       .from('companies')
       .select('president_minimum_approval_amount')
@@ -56,6 +64,8 @@ export async function getApprovalFlow(
       workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
     }
 
+    console.log('📊 Workflow type determined:', workflowType, '(1=Unbudgeted, 2=Budgeted<Min, 3=Budgeted>Min)');
+
     const { data: departmentSetup, error: deptError } = await supabase
       .from('approval_flow_setups')
       .select('id')
@@ -65,9 +75,12 @@ export async function getApprovalFlow(
       .eq('is_active', true)
       .maybeSingle();
 
+    console.log('🏢 Department setup lookup result:', departmentSetup, 'Error:', deptError);
+
     if (deptError) throw deptError;
 
     if (departmentSetup) {
+      console.log('✅ Found department setup, looking for flows...');
       const { data: flows, error: flowsError } = await supabase
         .from('approval_flows')
         .select('*')
@@ -78,10 +91,14 @@ export async function getApprovalFlow(
 
       if (flowsError) throw flowsError;
 
+      console.log('📋 Flows found for department:', flows?.length || 0, flows);
+
       if (flows && flows.length > 0) {
         return flows;
       }
     }
+
+    console.log('⚠️ No department setup found, trying company-wide setup...');
 
     const { data: companySetup, error: companySetupError } = await supabase
       .from('approval_flow_setups')
@@ -92,9 +109,12 @@ export async function getApprovalFlow(
       .eq('is_active', true)
       .maybeSingle();
 
+    console.log('🏢 Company setup lookup result:', companySetup, 'Error:', companySetupError);
+
     if (companySetupError) throw companySetupError;
 
     if (!companySetup) {
+      console.error('❌ No approval flow setup found for this request');
       return [];
     }
 
@@ -107,6 +127,8 @@ export async function getApprovalFlow(
       .order('sequence', { ascending: true });
 
     if (flowsError) throw flowsError;
+
+    console.log('📋 Flows found for company:', flows?.length || 0, flows);
 
     return flows || [];
   } catch (error) {
