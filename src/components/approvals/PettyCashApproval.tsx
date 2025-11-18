@@ -398,9 +398,6 @@ export function PettyCashApproval() {
               <ApprovalProgressTracker
                 requestType="Petty Cash"
                 requestId={selectedRequest.id}
-                approvalFlows={approvalFlows}
-                currentApprovalLevel={selectedRequest.current_approval_level}
-                status={selectedRequest.status}
               />
 
               <div>
