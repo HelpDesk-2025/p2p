@@ -70,6 +70,7 @@ export function Canvass() {
         .insert({
           canvass_number: formData.document_no,
           requester_id: profile?.id,
+          company_id: profile?.company_id,
           department: profile?.department || '',
           request_date: new Date().toISOString().split('T')[0],
           required_date: formData.required_date,

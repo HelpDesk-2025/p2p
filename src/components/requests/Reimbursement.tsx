@@ -83,6 +83,7 @@ export function Reimbursement() {
         .insert({
           reimb_number: formData.document_no,
           requester_id: profile?.id,
+          company_id: profile?.company_id,
           department: profile?.department || '',
           request_date: new Date().toISOString().split('T')[0],
           expense_date: formData.expense_date,

@@ -16,24 +16,69 @@ interface ApprovalLedgerEntry {
 interface ApprovalProgressTrackerProps {
   requestType: string;
   requestId: string;
-  approvalFlows: ApprovalFlow[];
-  currentApprovalLevel: number;
-  status: string;
 }
 
 export function ApprovalProgressTracker({
   requestType,
   requestId,
-  approvalFlows,
-  currentApprovalLevel,
-  status,
 }: ApprovalProgressTrackerProps) {
   const [ledgerEntries, setLedgerEntries] = useState<ApprovalLedgerEntry[]>([]);
+  const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
+  const [currentApprovalLevel, setCurrentApprovalLevel] = useState(0);
+  const [status, setStatus] = useState('pending');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadApprovalLedger();
+    loadData();
   }, [requestId]);
+
+  const loadData = async () => {
+    await Promise.all([loadApprovalLedger(), loadRequestData()]);
+  };
+
+  const loadRequestData = async () => {
+    try {
+      const tableName = getTableName(requestType);
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setCurrentApprovalLevel(data.current_approval_level || 0);
+        setStatus(data.status || 'pending');
+
+        // Load approval flows for this request
+        if (data.company_id) {
+          const { getApprovalFlow } = await import('../lib/approvalFlow');
+          const flows = await getApprovalFlow(
+            data.company_id,
+            data.department || '',
+            requestType,
+            data.is_budgeted || false,
+            data.total_amount || data.amount || 0
+          );
+          setApprovalFlows(flows || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading request data:', error);
+    }
+  };
+
+  const getTableName = (requestType: string): string => {
+    const typeMap: Record<string, string> = {
+      'Purchase Requisition': 'purchase_requisitions',
+      'Canvass': 'canvass_requests',
+      'Petty Cash': 'petty_cash_requests',
+      'Reimbursement': 'reimbursement_requests',
+      'Cash Advance': 'cash_advance_requests',
+    };
+    return typeMap[requestType] || 'purchase_requisitions';
+  };
 
   const loadApprovalLedger = async () => {
     try {
