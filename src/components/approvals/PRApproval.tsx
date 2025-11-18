@@ -423,7 +423,7 @@ export function PRApproval() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">PR Checklist</label>
-                  <p className="text-slate-900">{selectedRequest.pr_checklists?.pr_type || 'N/A'}</p>
+                  <p className="text-slate-900">{selectedRequest.pr_checklists?.item_name || 'N/A'}</p>
                 </div>
               </div>
 

@@ -1172,7 +1172,7 @@ export function PurchaseRequisition() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">PR Checklist</label>
-                  <p className="text-slate-900">{(viewingRequest as any).pr_checklists?.pr_type || 'N/A'}</p>
+                  <p className="text-slate-900">{(viewingRequest as any).pr_checklists?.item_name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>
