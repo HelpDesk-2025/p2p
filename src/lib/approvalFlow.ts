@@ -102,7 +102,7 @@ export async function getApprovalFlow(
       .from('approval_flow_setups')
       .select('id, name')
       .eq('company_id', companyId)
-      .eq('department', department)
+      .eq('department_id', department)
       .eq('request_type', requestType)
       .eq('is_active', true)
       .maybeSingle();
@@ -145,7 +145,7 @@ export async function getApprovalFlow(
       .from('approval_flow_setups')
       .select('id, name')
       .eq('company_id', companyId)
-      .is('department', null)
+      .is('department_id', null)
       .eq('request_type', requestType)
       .eq('is_active', true)
       .maybeSingle();
