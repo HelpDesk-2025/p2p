@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
 interface PettyCashReq {
   id: string;
@@ -394,37 +395,13 @@ export function PettyCashApproval() {
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
 
-              {approvalFlows.length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
-                    <ArrowRight size={16} />
-                    Approval Flow Progress
-                  </h4>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {approvalFlows.map((flow, index) => (
-                      <div key={flow.id} className="flex items-center gap-2">
-                        <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${
-                          index < selectedRequest.current_approval_level
-                            ? 'bg-green-600 text-white'
-                            : index === selectedRequest.current_approval_level
-                            ? 'bg-yellow-500 text-white'
-                            : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {flow.approver_type}
-                        </div>
-                        {index < approvalFlows.length - 1 && (
-                          <ArrowRight size={16} className="text-slate-400" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {currentApproverStep && (
-                    <p className="text-xs text-blue-700 mt-3">
-                      Current step: <span className="font-bold">{currentApproverStep.approver_type}</span>
-                    </p>
-                  )}
-                </div>
-              )}
+              <ApprovalProgressTracker
+                requestType="Petty Cash"
+                requestId={selectedRequest.id}
+                approvalFlows={approvalFlows}
+                currentApprovalLevel={selectedRequest.current_approval_level}
+                status={selectedRequest.status}
+              />
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Comments</label>
