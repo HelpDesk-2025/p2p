@@ -227,7 +227,7 @@ export function ReimbursementApproval() {
             'Approved',
             profile.full_name || 'Unknown',
             comments,
-            nextApprover.approver_type
+            nextApproverInfo.name
           );
         }
       } else if (action === 'approved' && isLastApproval) {

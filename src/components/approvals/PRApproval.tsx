@@ -313,7 +313,7 @@ export function PRApproval() {
             'Approved',
             profile.full_name || 'Unknown',
             comments,
-            nextApprover.approver_type
+            nextApproverInfo.name
           );
 
           console.log(`✅ Step ${currentLevel + 1} approved, waiting for Step ${nextLevel + 1}`);

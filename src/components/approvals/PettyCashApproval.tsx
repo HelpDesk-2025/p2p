@@ -226,7 +226,7 @@ export function PettyCashApproval() {
             'Approved',
             profile.full_name || 'Unknown',
             comments,
-            nextApprover.approver_type
+            nextApproverInfo.name
           );
         }
       } else if (action === 'approved' && isLastApproval) {
