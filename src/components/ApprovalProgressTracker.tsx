@@ -24,6 +24,7 @@ export function ApprovalProgressTracker({
 }: ApprovalProgressTrackerProps) {
   const [ledgerEntries, setLedgerEntries] = useState<ApprovalLedgerEntry[]>([]);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
+  const [approverNames, setApproverNames] = useState<Record<string, string>>({});
   const [currentApprovalLevel, setCurrentApprovalLevel] = useState(0);
   const [status, setStatus] = useState('pending');
   const [loading, setLoading] = useState(true);
@@ -73,6 +74,28 @@ export function ApprovalProgressTracker({
             data.total_amount || data.amount || 0
           );
           setApprovalFlows(flows || []);
+
+          // Load approver names for flows with user_id
+          if (flows && flows.length > 0) {
+            const userIds = flows
+              .filter(f => f.user_id)
+              .map(f => f.user_id as string);
+
+            if (userIds.length > 0) {
+              const { data: profiles } = await supabase
+                .from('user_profiles')
+                .select('id, full_name')
+                .in('id', userIds);
+
+              if (profiles) {
+                const nameMap: Record<string, string> = {};
+                profiles.forEach(profile => {
+                  nameMap[profile.id] = profile.full_name;
+                });
+                setApproverNames(nameMap);
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -242,7 +265,7 @@ export function ApprovalProgressTracker({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-slate-900">
-                      Step {index + 1}: {flow.approver_type}
+                      Step {index + 1}: {flow.user_id && approverNames[flow.user_id] ? approverNames[flow.user_id] : flow.approver_type}
                     </span>
                     {stepStatus === 'current' && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
