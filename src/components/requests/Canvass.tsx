@@ -323,7 +323,7 @@ export function Canvass() {
             </div>
 
             <div className="p-6 space-y-6">
-              {viewingRequest.status === 'pending' && (
+              {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected') && (
                 <ApprovalProgressTracker
                   requestType="Canvass"
                   requestId={viewingRequest.id}
