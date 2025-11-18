@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
 interface CanvassReq {
   id: string;
@@ -18,6 +19,8 @@ export function Canvass() {
   const [requests, setRequests] = useState<CanvassReq[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -281,7 +284,13 @@ export function Canvass() {
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>{req.status}</span>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <button className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setViewingRequest(req);
+                        setShowViewModal(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
                       <Eye size={16} />
                       View
                     </button>
@@ -292,6 +301,70 @@ export function Canvass() {
           </tbody>
         </table>
       </div>
+
+      {showViewModal && viewingRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Canvass Request Details</h3>
+                <p className="text-sm text-slate-600 mt-1">{viewingRequest.canvass_number}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setViewingRequest(null);
+                }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {viewingRequest.status === 'pending' && (
+                <ApprovalProgressTracker
+                  requestType="Canvass"
+                  requestId={viewingRequest.id}
+                />
+              )}
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Canvass Number</label>
+                  <p className="text-slate-900 font-mono">{viewingRequest.canvass_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Request Date</label>
+                  <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Required Date</label>
+                  <p className="text-slate-900">{new Date(viewingRequest.required_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Status</label>
+                  <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
+                    {viewingRequest.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setViewingRequest(null);
+                }}
+                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

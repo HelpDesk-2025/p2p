@@ -5,6 +5,7 @@ import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X } from 'lucide-react
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
+import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
 interface PRItem {
   description: string;
@@ -1167,6 +1168,13 @@ export function PurchaseRequisition() {
             </div>
 
             <div className="p-6 space-y-6">
+              {viewingRequest.status === 'pending' && (
+                <ApprovalProgressTracker
+                  requestType="Purchase Requisition"
+                  requestId={viewingRequest.id}
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Document No.</label>
