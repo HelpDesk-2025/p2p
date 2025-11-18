@@ -53,7 +53,7 @@ export async function getApprovalFlow(
 
     const { data: company, error: companyError } = await supabase
       .from('companies')
-      .select('president_minimum_approval_amount')
+      .select('president_min_amount')
       .eq('id', companyId)
       .single();
 
@@ -75,7 +75,7 @@ export async function getApprovalFlow(
     }
 
     // STEP 4: Determine workflow type based on budget setup
-    const presidentMinAmount = company?.president_minimum_approval_amount || 0;
+    const presidentMinAmount = company?.president_min_amount || 0;
     let workflowType: number;
 
     // For Purchase Requisition and Canvass, check budget setup
