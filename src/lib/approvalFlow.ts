@@ -37,7 +37,7 @@ export async function getApprovalFlow(
   totalAmount: number
 ): Promise<ApprovalFlow[]> {
   try {
-    console.log('🔍 Getting approval flow with params:', {
+    console.log('🔍 STRICT APPROVAL FLOW CHECK with params:', {
       companyId,
       department,
       requestType,
@@ -45,42 +45,77 @@ export async function getApprovalFlow(
       totalAmount
     });
 
+    // STEP 1: Validate company exists
+    if (!companyId) {
+      console.error('❌ VALIDATION FAILED: Company ID is required');
+      throw new Error('Company ID is required for approval flow');
+    }
+
     const { data: company, error: companyError } = await supabase
       .from('companies')
       .select('president_minimum_approval_amount')
       .eq('id', companyId)
       .single();
 
-    if (companyError) throw companyError;
-
-    const presidentMinAmount = company?.president_minimum_approval_amount || 0;
-
-    let workflowType: number;
-    if (!isBudgeted) {
-      workflowType = WORKFLOW_TYPES.UNBUDGETED;
-    } else if (totalAmount < presidentMinAmount) {
-      workflowType = WORKFLOW_TYPES.BUDGETED_BELOW_MIN;
-    } else {
-      workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
+    if (companyError) {
+      console.error('❌ VALIDATION FAILED: Company not found');
+      throw companyError;
     }
 
-    console.log('📊 Workflow type determined:', workflowType, '(1=Unbudgeted, 2=Budgeted<Min, 3=Budgeted>Min)');
+    // STEP 2: Validate department
+    if (!department) {
+      console.error('❌ VALIDATION FAILED: Department is required');
+      throw new Error('Department is required for approval flow');
+    }
 
+    // STEP 3: Validate request type
+    if (!requestType) {
+      console.error('❌ VALIDATION FAILED: Request type is required');
+      throw new Error('Request type is required for approval flow');
+    }
+
+    // STEP 4: Determine workflow type based on budget setup
+    const presidentMinAmount = company?.president_minimum_approval_amount || 0;
+    let workflowType: number;
+
+    // For Purchase Requisition and Canvass, check budget setup
+    if (requestType === 'Purchase Requisition' || requestType === 'Canvass') {
+      if (!isBudgeted) {
+        workflowType = WORKFLOW_TYPES.UNBUDGETED;
+        console.log('📊 Budget Setup: UNBUDGETED - Workflow Type 1');
+      } else if (totalAmount < presidentMinAmount) {
+        workflowType = WORKFLOW_TYPES.BUDGETED_BELOW_MIN;
+        console.log(`📊 Budget Setup: BUDGETED < ₱${presidentMinAmount.toLocaleString()} - Workflow Type 2`);
+      } else {
+        workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
+        console.log(`📊 Budget Setup: BUDGETED ≥ ₱${presidentMinAmount.toLocaleString()} - Workflow Type 3`);
+      }
+    } else {
+      // For other request types, use unbudgeted workflow
+      workflowType = WORKFLOW_TYPES.UNBUDGETED;
+      console.log('📊 Non-budget request type - Using Workflow Type 1');
+    }
+
+    // STEP 5: Look for department-specific approval flow setup
+    console.log('🔍 STEP 5: Looking for department-specific approval flow setup...');
     const { data: departmentSetup, error: deptError } = await supabase
       .from('approval_flow_setups')
-      .select('id')
+      .select('id, name')
       .eq('company_id', companyId)
-      .eq('department_id', department)
+      .eq('department', department)
       .eq('request_type', requestType)
       .eq('is_active', true)
       .maybeSingle();
 
-    console.log('🏢 Department setup lookup result:', departmentSetup, 'Error:', deptError);
-
-    if (deptError) throw deptError;
+    if (deptError) {
+      console.error('❌ Error looking up department setup:', deptError);
+      throw deptError;
+    }
 
     if (departmentSetup) {
-      console.log('✅ Found department setup, looking for flows...');
+      console.log('✅ Found department-specific setup:', departmentSetup.name);
+      console.log('🔍 STEP 6: Looking for approval steps matching workflow type', workflowType);
+
       const { data: flows, error: flowsError } = await supabase
         .from('approval_flows')
         .select('*')
@@ -89,34 +124,45 @@ export async function getApprovalFlow(
         .eq('is_active', true)
         .order('sequence', { ascending: true });
 
-      if (flowsError) throw flowsError;
-
-      console.log('📋 Flows found for department:', flows?.length || 0, flows);
+      if (flowsError) {
+        console.error('❌ Error fetching approval flows:', flowsError);
+        throw flowsError;
+      }
 
       if (flows && flows.length > 0) {
+        console.log('✅ Found', flows.length, 'approval steps for department:', flows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
         return flows;
       }
+
+      console.log('⚠️ No approval steps found for department setup with workflow type', workflowType);
+    } else {
+      console.log('⚠️ No department-specific setup found');
     }
 
-    console.log('⚠️ No department setup found, trying company-wide setup...');
-
+    // STEP 7: Fallback to company-wide approval flow setup
+    console.log('🔍 STEP 7: Looking for company-wide approval flow setup...');
     const { data: companySetup, error: companySetupError } = await supabase
       .from('approval_flow_setups')
-      .select('id')
+      .select('id, name')
       .eq('company_id', companyId)
-      .is('department_id', null)
+      .is('department', null)
       .eq('request_type', requestType)
       .eq('is_active', true)
       .maybeSingle();
 
-    console.log('🏢 Company setup lookup result:', companySetup, 'Error:', companySetupError);
-
-    if (companySetupError) throw companySetupError;
+    if (companySetupError) {
+      console.error('❌ Error looking up company setup:', companySetupError);
+      throw companySetupError;
+    }
 
     if (!companySetup) {
-      console.error('❌ No approval flow setup found for this request');
-      return [];
+      console.error('❌ VALIDATION FAILED: No approval flow setup found');
+      console.error('Missing setup for:', { companyId, department, requestType, workflowType });
+      throw new Error(`No approval flow configured for ${requestType} in ${department}`);
     }
+
+    console.log('✅ Found company-wide setup:', companySetup.name);
+    console.log('🔍 STEP 8: Looking for approval steps matching workflow type', workflowType);
 
     const { data: flows, error: flowsError } = await supabase
       .from('approval_flows')
@@ -126,14 +172,21 @@ export async function getApprovalFlow(
       .eq('is_active', true)
       .order('sequence', { ascending: true });
 
-    if (flowsError) throw flowsError;
+    if (flowsError) {
+      console.error('❌ Error fetching approval flows:', flowsError);
+      throw flowsError;
+    }
 
-    console.log('📋 Flows found for company:', flows?.length || 0, flows);
+    if (!flows || flows.length === 0) {
+      console.error('❌ VALIDATION FAILED: No approval steps configured');
+      throw new Error(`No approval steps configured for workflow type ${workflowType}`);
+    }
 
-    return flows || [];
+    console.log('✅ Found', flows.length, 'approval steps:', flows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
+    return flows;
   } catch (error) {
-    console.error('Error getting approval flow:', error);
-    return [];
+    console.error('❌ Error in getApprovalFlow:', error);
+    throw error;
   }
 }
 

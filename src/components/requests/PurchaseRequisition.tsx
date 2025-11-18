@@ -467,17 +467,33 @@ export function PurchaseRequisition() {
       if (error) throw error;
 
       if (status === 'pending' && insertedPR && profile?.company_id) {
-        const approvalFlows = await getApprovalFlow(
-          profile.company_id,
-          formData.department,
-          'Purchase Requisition',
-          formData.is_budgeted,
-          total
-        );
+        console.log('🚀 Starting approval process...');
+        console.log('📋 Request details:', {
+          companyId: profile.company_id,
+          department: formData.department,
+          requestType: 'Purchase Requisition',
+          isBudgeted: formData.is_budgeted,
+          totalAmount: total
+        });
 
-        if (approvalFlows.length > 0) {
-          console.log('📋 Approval flows found:', approvalFlows.length);
+        try {
+          // STRICT: Get approval flow based on company, department, request type, and budget setup
+          const approvalFlows = await getApprovalFlow(
+            profile.company_id,
+            formData.department,
+            'Purchase Requisition',
+            formData.is_budgeted,
+            total
+          );
 
+          if (!approvalFlows || approvalFlows.length === 0) {
+            throw new Error('No approval flow configured for this request. Please contact administrator.');
+          }
+
+          console.log('✅ Approval flows found:', approvalFlows.length, 'steps');
+          console.log('📋 Approval steps:', approvalFlows.map((f, i) => `Step ${i + 1}: ${f.approver_type}`).join(' → '));
+
+          // Create initial ledger entry for submission
           await createApprovalLedgerEntry(
             'Purchase Requisition',
             insertedPR.id,
@@ -490,8 +506,9 @@ export function PurchaseRequisition() {
             0
           );
 
+          // Get first approver (Step 1)
           const firstApprover = approvalFlows[0];
-          console.log('👤 First approver:', firstApprover);
+          console.log('👤 Step 1 Approver:', firstApprover.approver_type);
 
           const approverInfo = await getApproverEmail(
             firstApprover,
@@ -499,28 +516,33 @@ export function PurchaseRequisition() {
             formData.department
           );
 
-          console.log('📧 Approver info:', approverInfo);
-
-          if (approverInfo) {
-            await sendApprovalEmail(
-              approverInfo.email,
-              approverInfo.name,
-              'Purchase Requisition',
-              formData.document_no,
-              profile.full_name || 'Unknown',
-              formData.department,
-              total,
-              'Submitted',
-              undefined,
-              undefined,
-              firstApprover.approver_type
-            );
-          } else {
-            console.error('❌ No approver email found for first approver');
-            alert('Warning: Could not find approver email. Request created but notification not sent.');
+          if (!approverInfo) {
+            throw new Error(`Could not find approver for ${firstApprover.approver_type}. Please contact administrator.`);
           }
-        } else {
-          console.warn('⚠️ No approval flows found for this request');
+
+          console.log('📧 Sending email to Step 1 approver:', approverInfo.name, '(' + approverInfo.email + ')');
+
+          // Send email to ONLY Step 1 approver
+          await sendApprovalEmail(
+            approverInfo.email,
+            approverInfo.name,
+            'Purchase Requisition',
+            formData.document_no,
+            profile.full_name || 'Unknown',
+            formData.department,
+            total,
+            'Submitted',
+            undefined,
+            undefined,
+            firstApprover.approver_type
+          );
+
+          console.log('✅ Approval process initiated successfully');
+        } catch (approvalError: any) {
+          console.error('❌ Approval flow error:', approvalError);
+          // Rollback: Delete the created PR
+          await supabase.from('purchase_requisitions').delete().eq('id', insertedPR.id);
+          throw new Error(`Approval flow error: ${approvalError.message}`);
         }
       }
 

@@ -191,53 +191,117 @@ export function PRApproval() {
     setLoading(true);
 
     try {
-      const nextLevel = selectedRequest.current_approval_level + 1;
+      console.log('🎯 Processing approval action:', action);
+      console.log('📊 Current approval level:', selectedRequest.current_approval_level);
+      console.log('📋 Total approval steps:', approvalFlows.length);
+
+      const currentLevel = selectedRequest.current_approval_level;
+      const nextLevel = currentLevel + 1;
       const isLastApproval = nextLevel >= approvalFlows.length;
-      const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
-      const { error: updateError } = await supabase
-        .from('purchase_requisitions')
-        .update({
-          status: newStatus,
-          current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
-        })
-        .eq('id', selectedRequest.id);
-
-      if (updateError) throw updateError;
-
-      await createApprovalLedgerEntry(
-        'Purchase Requisition',
-        selectedRequest.id,
-        selectedRequest.document_no,
-        profile.id,
-        profile.full_name || 'Unknown',
-        currentApproverStep?.approver_type || 'Approver',
-        action === 'approved' ? 'Approved' : 'Rejected',
-        comments,
-        selectedRequest.current_approval_level + 1
-      );
-
+      // STRICT: If rejected, entire request is rejected
       if (action === 'rejected') {
+        console.log('❌ REJECTION: Cascading rejection to all remaining steps');
+
+        // Update request status to rejected
+        const { error: updateError } = await supabase
+          .from('purchase_requisitions')
+          .update({
+            status: 'rejected',
+            current_approval_level: currentLevel
+          })
+          .eq('id', selectedRequest.id);
+
+        if (updateError) throw updateError;
+
+        // Create ledger entry for this rejection
+        await createApprovalLedgerEntry(
+          'Purchase Requisition',
+          selectedRequest.id,
+          selectedRequest.document_no,
+          profile.id,
+          profile.full_name || 'Unknown',
+          currentApproverStep?.approver_type || 'Approver',
+          'Rejected',
+          comments,
+          currentLevel + 1
+        );
+
+        // Create auto-rejected entries for all remaining approvers
         await createRejectedLedgerEntries(
           'Purchase Requisition',
           selectedRequest.id,
           selectedRequest.document_no,
           approvalFlows,
-          selectedRequest.current_approval_level,
+          currentLevel,
           profile.company_id,
           selectedRequest.department
         );
+
+        // Notify requester of rejection
+        console.log('📧 Notifying requester of rejection');
+        await sendApprovalEmail(
+          selectedRequest.user_profiles?.email || '',
+          selectedRequest.user_profiles?.full_name || 'User',
+          'Purchase Requisition',
+          selectedRequest.document_no,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          selectedRequest.department,
+          selectedRequest.total_amount,
+          'Rejected',
+          profile.full_name || 'Unknown',
+          comments
+        );
+
+        console.log('✅ Rejection process completed');
       }
+      // STRICT: If approved, move to next step or mark as fully approved
+      else if (action === 'approved') {
+        const newStatus = isLastApproval ? 'approved' : 'pending';
 
-      if (action === 'approved' && !isLastApproval) {
-        const nextApprover = approvalFlows[nextLevel];
-        const nextApproverInfo = await getApproverEmail(
-          nextApprover,
-          profile.company_id,
-          selectedRequest.department
+        console.log(`✅ APPROVAL: Moving from step ${currentLevel + 1} to ${isLastApproval ? 'COMPLETED' : `step ${nextLevel + 1}`}`);
+
+        // Update request with new level
+        const { error: updateError } = await supabase
+          .from('purchase_requisitions')
+          .update({
+            status: newStatus,
+            current_approval_level: nextLevel
+          })
+          .eq('id', selectedRequest.id);
+
+        if (updateError) throw updateError;
+
+        // Create ledger entry for this approval
+        await createApprovalLedgerEntry(
+          'Purchase Requisition',
+          selectedRequest.id,
+          selectedRequest.document_no,
+          profile.id,
+          profile.full_name || 'Unknown',
+          currentApproverStep?.approver_type || 'Approver',
+          'Approved',
+          comments,
+          currentLevel + 1
         );
 
-        if (nextApproverInfo) {
+        // STRICT: Send email ONLY to next approver (sequential approval)
+        if (!isLastApproval) {
+          const nextApprover = approvalFlows[nextLevel];
+          console.log(`👤 Next approver (Step ${nextLevel + 1}):`, nextApprover.approver_type);
+
+          const nextApproverInfo = await getApproverEmail(
+            nextApprover,
+            profile.company_id,
+            selectedRequest.department
+          );
+
+          if (!nextApproverInfo) {
+            throw new Error(`Could not find email for next approver: ${nextApprover.approver_type}`);
+          }
+
+          console.log(`📧 Sending email to Step ${nextLevel + 1} approver:`, nextApproverInfo.name);
+
           await sendApprovalEmail(
             nextApproverInfo.email,
             nextApproverInfo.name,
@@ -251,33 +315,29 @@ export function PRApproval() {
             comments,
             nextApprover.approver_type
           );
+
+          console.log(`✅ Step ${currentLevel + 1} approved, waiting for Step ${nextLevel + 1}`);
         }
-      } else if (action === 'approved' && isLastApproval) {
-        await sendApprovalEmail(
-          selectedRequest.user_profiles?.email || '',
-          selectedRequest.user_profiles?.full_name || 'User',
-          'Purchase Requisition',
-          selectedRequest.document_no,
-          selectedRequest.user_profiles?.full_name || 'Unknown',
-          selectedRequest.department,
-          selectedRequest.total_amount,
-          'Fully Approved',
-          profile.full_name || 'Unknown',
-          comments
-        );
-      } else if (action === 'rejected') {
-        await sendApprovalEmail(
-          selectedRequest.user_profiles?.email || '',
-          selectedRequest.user_profiles?.full_name || 'User',
-          'Purchase Requisition',
-          selectedRequest.document_no,
-          selectedRequest.user_profiles?.full_name || 'Unknown',
-          selectedRequest.department,
-          selectedRequest.total_amount,
-          'Rejected',
-          profile.full_name || 'Unknown',
-          comments
-        );
+        // This was the last approval - notify requester
+        else {
+          console.log('🎉 FINAL APPROVAL: All steps completed');
+          console.log('📧 Notifying requester of full approval');
+
+          await sendApprovalEmail(
+            selectedRequest.user_profiles?.email || '',
+            selectedRequest.user_profiles?.full_name || 'User',
+            'Purchase Requisition',
+            selectedRequest.document_no,
+            selectedRequest.user_profiles?.full_name || 'Unknown',
+            selectedRequest.department,
+            selectedRequest.total_amount,
+            'Fully Approved',
+            profile.full_name || 'Unknown',
+            comments
+          );
+
+          console.log('✅ Request fully approved and requester notified');
+        }
       }
 
       setShowModal(false);
@@ -285,6 +345,7 @@ export function PRApproval() {
       setComments('');
       loadRequests();
     } catch (error: any) {
+      console.error('❌ Error processing approval:', error);
       alert('Error: ' + error.message);
     } finally {
       setLoading(false);
