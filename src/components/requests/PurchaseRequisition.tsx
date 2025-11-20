@@ -1387,7 +1387,7 @@ export function PurchaseRequisition() {
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
+                {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && viewingRequest.purchase_type !== 'Purchase Order' && (
                   <>
                     <button
                       onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}

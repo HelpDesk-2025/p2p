@@ -287,15 +287,18 @@ export function PRApproval() {
         );
 
         // Generate RFP PDF if this is the final approval (AFTER ledger entry)
-        if (isLastApproval) {
+        // Only generate RFP for Non-Purchase Order requests
+        if (isLastApproval && selectedRequest.purchase_type !== 'Purchase Order') {
           try {
-            console.log('🎯 Final approval - generating RFP with all approval records');
+            console.log('🎯 Final approval - generating RFP for Non-PO request with all approval records');
             await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
             console.log('✅ RFP generated successfully for', selectedRequest.document_no);
           } catch (rfpError) {
             console.error('❌ Error generating RFP:', rfpError);
             // Don't fail the approval if RFP generation fails
           }
+        } else if (isLastApproval) {
+          console.log('⏭️ Skipping RFP generation for Purchase Order request:', selectedRequest.document_no);
         }
 
         // STRICT: Send email ONLY to next approver (sequential approval)
