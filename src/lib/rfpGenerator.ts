@@ -255,7 +255,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 }
 
 export async function generateAndUploadRFP(
-  requestType: 'petty_cash' | 'reimbursement',
+  requestType: 'petty_cash' | 'reimbursement' | 'purchase_requisition',
   requestId: string,
   requestNumber: string
 ): Promise<string> {
@@ -263,7 +263,8 @@ export async function generateAndUploadRFP(
     console.log('Starting RFP generation for:', { requestType, requestId, requestNumber });
 
     // Fetch request data
-    const tableName = requestType === 'petty_cash' ? 'petty_cash_requests' : 'reimbursement_requests';
+    const tableName = requestType === 'purchase_requisition' ? 'purchase_requisitions' :
+                      requestType === 'petty_cash' ? 'petty_cash_requests' : 'reimbursement_requests';
     const { data: request, error: requestError } = await supabase
       .from(tableName)
       .select(`
@@ -284,6 +285,9 @@ export async function generateAndUploadRFP(
     console.log('Request data fetched:', request);
 
     // Fetch approval records
+    const requestTypeName = requestType === 'purchase_requisition' ? 'Purchase Requisition' :
+                           requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement';
+
     const { data: approvals, error: approvalsError } = await supabase
       .from('approval_ledger')
       .select(`
@@ -292,7 +296,7 @@ export async function generateAndUploadRFP(
         approver:user_profiles!approver_id(full_name, e_sig)
       `)
       .eq('request_id', requestId)
-      .eq('request_type', requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement')
+      .eq('request_type', requestTypeName)
       .eq('status', 'Approved')
       .order('sequence', { ascending: true });
 
@@ -305,7 +309,11 @@ export async function generateAndUploadRFP(
 
     // Format payment mode lines
     const paymentModeLines: PaymentModeLine[] = [];
-    if (request.payment_mode?.line_names && Array.isArray(request.payment_mode.line_names)) {
+
+    // For PR, use payment_mode_lines if available
+    if (requestType === 'purchase_requisition' && request.payment_mode_lines && Array.isArray(request.payment_mode_lines)) {
+      paymentModeLines.push(...request.payment_mode_lines);
+    } else if (request.payment_mode?.line_names && Array.isArray(request.payment_mode.line_names)) {
       for (const lineName of request.payment_mode.line_names) {
         paymentModeLines.push({
           label: lineName,
@@ -314,26 +322,27 @@ export async function generateAndUploadRFP(
       }
     }
 
-    // Prepare RFP data
+    // Prepare RFP data - handle different field names between PR and others
     const rfpData: RFPData = {
       companyName: request.company?.name || 'Company Name',
-      requestType: requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement',
+      requestType: requestType === 'purchase_requisition' ? 'Purchase Requisition' :
+                   requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement',
       dateOfRequest: new Date(request.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       }),
       payee: request.payee || '',
-      purpose: request.purpose || '',
-      dateNeeded: request.date_needed
-        ? new Date(request.date_needed).toLocaleDateString('en-US', {
+      purpose: request.purpose || request.description || '',
+      dateNeeded: (request.date_needed || request.date_required || request.required_date)
+        ? new Date(request.date_needed || request.date_required || request.required_date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
           })
         : '',
-      amount: parseFloat(request.amount) || 0,
-      budgeted: request.budgeted !== false,
+      amount: parseFloat(request.amount || request.total_amount || request.amount_net_vat) || 0,
+      budgeted: requestType === 'purchase_requisition' ? (request.is_budgeted !== false) : (request.budgeted !== false),
       paymentMode: request.payment_mode?.mode_name || '',
       paymentModeLines,
       requestorName: request.requester?.full_name || '',

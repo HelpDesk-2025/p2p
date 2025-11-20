@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download } from 'lu
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 
 interface PurchaseReq {
   id: string;
@@ -271,6 +272,17 @@ export function PRApproval() {
           .eq('id', selectedRequest.id);
 
         if (updateError) throw updateError;
+
+        // Generate RFP PDF if this is the final approval
+        if (isLastApproval) {
+          try {
+            await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
+            console.log('RFP generated successfully for', selectedRequest.document_no);
+          } catch (rfpError) {
+            console.error('Error generating RFP:', rfpError);
+            // Don't fail the approval if RFP generation fails
+          }
+        }
 
         // Create ledger entry for this approval
         await createApprovalLedgerEntry(
