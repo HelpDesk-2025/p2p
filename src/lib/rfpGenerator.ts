@@ -128,7 +128,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   yPosition -= 20;
 
   // Requested By section
-  drawText('REQUESTED BY', leftMargin, yPosition, 10, true);
+  drawText('REQUESTED BY:', leftMargin, yPosition, 10, true);
   yPosition -= 10;
 
   // Add e-signature if available
@@ -159,9 +159,9 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   const totalApprovals = data.approvals.length;
 
   if (totalApprovals === 1) {
-    // Single approver - APPROVED BY
+    // Single approver - APPROVED BY only
     const approval = data.approvals[0];
-    drawText('APPROVED BY', leftMargin, yPosition, 10, true);
+    drawText('APPROVED BY:', leftMargin, yPosition, 10, true);
     yPosition -= 10;
 
     if (approval.approver_esig) {
@@ -185,15 +185,15 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
     drawText(approval.approver_name, leftMargin, yPosition, 10, false);
     yPosition -= 15;
     drawText(approval.approval_date, leftMargin, yPosition, 10, false);
-  } else if (totalApprovals > 1) {
-    // Multiple approvers - split into recommending and final approval
+  } else if (totalApprovals >= 2) {
+    // Multiple approvers - first to second-to-last are recommending, last is final approval
     const recommendingApprovers = data.approvals.slice(0, -1);
     const finalApprover = data.approvals[data.approvals.length - 1];
 
     // Recommending Approval(s) on the left
     let leftY = yPosition;
-    drawText('RECOMMENDING APPROVAL', leftMargin, leftY, 10, true);
-    leftY -= 20;
+    drawText('RECOMMENDING APPROVAL:', leftMargin, leftY, 10, true);
+    leftY -= 10;
 
     for (const approval of recommendingApprovers) {
       if (approval.approver_esig) {
@@ -223,8 +223,8 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
     // Final Approval on the right
     const rightMargin = width / 2 + 50;
     let rightY = yPosition;
-    drawText('APPROVED BY', rightMargin, rightY, 10, true);
-    rightY -= 20;
+    drawText('APPROVED BY:', rightMargin, rightY, 10, true);
+    rightY -= 10;
 
     if (finalApprover.approver_esig) {
       try {
