@@ -1278,7 +1278,7 @@ export function PurchaseRequisition() {
                       <tbody className="divide-y divide-slate-100">
                         {viewingRequest.items.map((item: any, index: number) => (
                           <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.description}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900">{item.item_description || item.description || 'N/A'}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">₱{item.unit_price.toFixed(2)}</td>
