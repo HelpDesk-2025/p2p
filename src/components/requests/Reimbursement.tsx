@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -18,6 +18,7 @@ interface ReimbursementReq {
   purpose: string;
   amount: number;
   status: string;
+  rfp_pdf_path?: string;
 }
 
 export function Reimbursement() {
@@ -171,6 +172,28 @@ export function Reimbursement() {
       reimbursed: 'bg-blue-100 text-blue-700',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  const downloadRFP = async (rfpPath: string, reimbNumber: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(rfpPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `RFP_${reimbNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading RFP:', error);
+      alert('Failed to download RFP');
+    }
   };
 
   if (showForm) {
@@ -405,7 +428,18 @@ export function Reimbursement() {
               </div>
             </div>
 
-            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
+            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
+              <div>
+                {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
+                  <button
+                    onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.reimb_number)}
+                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Download size={18} />
+                    Download RFP
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => {
                   setShowViewModal(false);
