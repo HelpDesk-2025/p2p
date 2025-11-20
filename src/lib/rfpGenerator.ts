@@ -40,6 +40,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
   // Helper function to draw text
   const drawText = (text: string, x: number, y: number, size = 10, isBold = false) => {
+    if (!text || text.trim() === '') return; // Skip empty text
     page.drawText(text, {
       x,
       y,
