@@ -273,18 +273,7 @@ export function PRApproval() {
 
         if (updateError) throw updateError;
 
-        // Generate RFP PDF if this is the final approval
-        if (isLastApproval) {
-          try {
-            await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
-            console.log('RFP generated successfully for', selectedRequest.document_no);
-          } catch (rfpError) {
-            console.error('Error generating RFP:', rfpError);
-            // Don't fail the approval if RFP generation fails
-          }
-        }
-
-        // Create ledger entry for this approval
+        // Create ledger entry for this approval FIRST (before RFP generation)
         await createApprovalLedgerEntry(
           'Purchase Requisition',
           selectedRequest.id,
@@ -296,6 +285,18 @@ export function PRApproval() {
           comments,
           currentLevel + 1
         );
+
+        // Generate RFP PDF if this is the final approval (AFTER ledger entry)
+        if (isLastApproval) {
+          try {
+            console.log('🎯 Final approval - generating RFP with all approval records');
+            await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
+            console.log('✅ RFP generated successfully for', selectedRequest.document_no);
+          } catch (rfpError) {
+            console.error('❌ Error generating RFP:', rfpError);
+            // Don't fail the approval if RFP generation fails
+          }
+        }
 
         // STRICT: Send email ONLY to next approver (sequential approval)
         if (!isLastApproval) {
