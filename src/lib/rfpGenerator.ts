@@ -260,6 +260,8 @@ export async function generateAndUploadRFP(
   requestNumber: string
 ): Promise<string> {
   try {
+    console.log('Starting RFP generation for:', { requestType, requestId, requestNumber });
+
     // Fetch request data
     const tableName = requestType === 'petty_cash' ? 'petty_cash_requests' : 'reimbursement_requests';
     const { data: request, error: requestError } = await supabase
@@ -273,8 +275,13 @@ export async function generateAndUploadRFP(
       .eq('id', requestId)
       .single();
 
-    if (requestError) throw requestError;
+    if (requestError) {
+      console.error('Error fetching request:', requestError);
+      throw requestError;
+    }
     if (!request) throw new Error('Request not found');
+
+    console.log('Request data fetched:', request);
 
     // Fetch approval records
     const { data: approvals, error: approvalsError } = await supabase
@@ -286,10 +293,15 @@ export async function generateAndUploadRFP(
       `)
       .eq('request_id', requestId)
       .eq('request_type', requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement')
-      .eq('status', 'approved')
+      .eq('status', 'Approved')
       .order('sequence', { ascending: true });
 
-    if (approvalsError) throw approvalsError;
+    if (approvalsError) {
+      console.error('Error fetching approvals:', approvalsError);
+      throw approvalsError;
+    }
+
+    console.log('Approvals fetched:', approvals);
 
     // Format payment mode lines
     const paymentModeLines: PaymentModeLine[] = [];
@@ -339,12 +351,15 @@ export async function generateAndUploadRFP(
     };
 
     // Generate PDF
+    console.log('Generating PDF with data:', rfpData);
     const pdfBytes = await generateRFP(rfpData);
+    console.log('PDF generated, size:', pdfBytes.length);
 
     // Upload to storage
     const fileName = `rfp_${requestNumber}_${Date.now()}.pdf`;
     const filePath = `rfp/${fileName}`;
 
+    console.log('Uploading PDF to:', filePath);
     const { error: uploadError } = await supabase.storage
       .from('attachments')
       .upload(filePath, pdfBytes, {
@@ -352,7 +367,12 @@ export async function generateAndUploadRFP(
         upsert: true
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    console.log('PDF uploaded successfully');
 
     // Update request with RFP path
     const { error: updateError } = await supabase
@@ -360,7 +380,12 @@ export async function generateAndUploadRFP(
       .update({ rfp_pdf_path: filePath })
       .eq('id', requestId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Update error:', updateError);
+      throw updateError;
+    }
+
+    console.log('Request updated with RFP path:', filePath);
 
     return filePath;
   } catch (error) {
