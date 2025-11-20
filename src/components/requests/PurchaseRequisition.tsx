@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { regenerateRFP } from '../../lib/rfpGenerator';
 
 interface PRItem {
   description: string;
@@ -581,6 +582,24 @@ export function PurchaseRequisition() {
     setSelectedChecklist(null);
     setSelectedPaymentMode(null);
     setItemSearchTerms(['']);
+  };
+
+  const handleRegenerateRFP = async (request: PurchaseReq) => {
+    if (!confirm('Are you sure you want to regenerate the RFP? This will replace the existing RFP PDF.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await regenerateRFP('purchase_requisition', request.id, request.document_no || request.pr_number);
+      alert('RFP regenerated successfully!');
+      await loadRequests(); // Reload to get the new RFP path
+    } catch (error) {
+      console.error('Error regenerating RFP:', error);
+      alert('Failed to regenerate RFP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const downloadRFP = async (rfpPath: string, prNumber: string) => {
@@ -1358,15 +1377,25 @@ export function PurchaseRequisition() {
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-3">
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
-                  <button
-                    onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  >
-                    <Download size={18} />
-                    Download RFP
-                  </button>
+                  <>
+                    <button
+                      onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Download size={18} />
+                      Download RFP
+                    </button>
+                    <button
+                      onClick={() => handleRegenerateRFP(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                      Regenerate RFP
+                    </button>
+                  </>
                 )}
               </div>
               <button

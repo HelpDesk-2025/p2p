@@ -255,6 +255,34 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   return pdfBytes;
 }
 
+export async function regenerateRFP(
+  requestType: 'petty_cash' | 'reimbursement' | 'purchase_requisition',
+  requestId: string,
+  requestNumber: string
+): Promise<string> {
+  console.log('Regenerating RFP for:', { requestType, requestId, requestNumber });
+
+  // Delete the old RFP file if it exists
+  const tableName = requestType === 'purchase_requisition' ? 'purchase_requisitions' :
+                    requestType === 'petty_cash' ? 'petty_cash_requests' : 'reimbursement_requests';
+
+  const { data: existingRequest } = await supabase
+    .from(tableName)
+    .select('rfp_pdf_path')
+    .eq('id', requestId)
+    .single();
+
+  if (existingRequest?.rfp_pdf_path) {
+    console.log('Deleting old RFP:', existingRequest.rfp_pdf_path);
+    await supabase.storage
+      .from('attachments')
+      .remove([existingRequest.rfp_pdf_path]);
+  }
+
+  // Generate new RFP
+  return await generateAndUploadRFP(requestType, requestId, requestNumber);
+}
+
 export async function generateAndUploadRFP(
   requestType: 'petty_cash' | 'reimbursement' | 'purchase_requisition',
   requestId: string,
