@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseAdmin } from '../../lib/supabase';
 import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
@@ -275,8 +275,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
       console.log('Updating user:', editingId, updateData);
 
-      // Update user profile (RLS policies allow admins to update any profile)
-      const { data: result, error } = await supabase
+      // Update user profile using admin client (bypasses RLS)
+      if (!supabaseAdmin) {
+        throw new Error('Service role key not configured');
+      }
+
+      const { data: result, error } = await supabaseAdmin
         .from('user_profiles')
         .update(updateData)
         .eq('id', editingId)
