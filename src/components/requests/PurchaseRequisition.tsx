@@ -127,7 +127,8 @@ export function PurchaseRequisition() {
         .select(`
           *,
           pr_checklists (
-            pr_type
+            pr_type,
+            item_name
           )
         `)
         .eq('requester_id', profile?.id)
