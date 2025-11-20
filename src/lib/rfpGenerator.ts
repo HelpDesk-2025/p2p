@@ -265,14 +265,24 @@ export async function generateAndUploadRFP(
     // Fetch request data
     const tableName = requestType === 'purchase_requisition' ? 'purchase_requisitions' :
                       requestType === 'petty_cash' ? 'petty_cash_requests' : 'reimbursement_requests';
-    const { data: request, error: requestError } = await supabase
-      .from(tableName)
-      .select(`
+
+    // Different query for PR vs others (PR doesn't have company_id directly)
+    const selectQuery = requestType === 'purchase_requisition'
+      ? `
+        *,
+        requester:user_profiles!requester_id(full_name, e_sig, company:companies(name)),
+        payment_mode:payment_modes!payment_mode_id(mode_name, line_names)
+      `
+      : `
         *,
         requester:user_profiles!requester_id(full_name, e_sig),
         company:companies!company_id(name),
         payment_mode:payment_modes!payment_mode_id(mode_name, line_names)
-      `)
+      `;
+
+    const { data: request, error: requestError } = await supabase
+      .from(tableName)
+      .select(selectQuery)
       .eq('id', requestId)
       .single();
 
@@ -324,7 +334,9 @@ export async function generateAndUploadRFP(
 
     // Prepare RFP data - handle different field names between PR and others
     const rfpData: RFPData = {
-      companyName: request.company?.name || 'Company Name',
+      companyName: requestType === 'purchase_requisition'
+        ? (request.requester?.company?.name || 'Company Name')
+        : (request.company?.name || 'Company Name'),
       requestType: requestType === 'purchase_requisition' ? 'Purchase Requisition' :
                    requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement',
       dateOfRequest: new Date(request.request_date).toLocaleDateString('en-US', {
