@@ -496,7 +496,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                         <ImageIcon size={16} className="text-blue-600" />
                         Signature uploaded
                       </p>
-                      <p className="text-xs text-slate-600 mt-1">Ready to save</p>
+                      <p className="text-xs text-orange-600 mt-1 font-medium">Click "Update User" to save changes</p>
                     </div>
                     <button
                       type="button"
