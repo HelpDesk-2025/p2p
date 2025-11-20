@@ -591,12 +591,21 @@ export function PurchaseRequisition() {
 
     setLoading(true);
     try {
-      await regenerateRFP('purchase_requisition', request.id, request.document_no || request.pr_number);
+      console.log('Starting RFP regeneration for:', request.document_no || request.pr_number);
+      const newPath = await regenerateRFP('purchase_requisition', request.id, request.document_no || request.pr_number);
+      console.log('RFP regenerated successfully, new path:', newPath);
+
+      // Close the modal first
+      setShowViewModal(false);
+      setViewingRequest(null);
+
       alert('RFP regenerated successfully!');
-      await loadRequests(); // Reload to get the new RFP path
+
+      // Reload requests to get updated data
+      await loadRequests();
     } catch (error) {
       console.error('Error regenerating RFP:', error);
-      alert('Failed to regenerate RFP. Please try again.');
+      alert(`Failed to regenerate RFP: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

@@ -345,6 +345,11 @@ export async function generateAndUploadRFP(
     }
 
     console.log('Approvals fetched:', approvals);
+    console.log('Number of approvals:', approvals?.length || 0);
+
+    if (!approvals || approvals.length === 0) {
+      console.warn('No approved approvals found in ledger for request:', requestId);
+    }
 
     // Format payment mode lines
     const paymentModeLines: PaymentModeLine[] = [];
@@ -388,20 +393,33 @@ export async function generateAndUploadRFP(
       paymentModeLines,
       requestorName: request.requester?.full_name || '',
       requestorEsig: request.requester?.e_sig || null,
-      approvals: (approvals || []).map((a: any) => ({
-        approver_name: a.approver?.full_name || '',
-        approver_esig: a.approver?.e_sig || null,
-        approval_date: new Date(a.approval_date).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        }),
-        sequence: a.sequence
-      }))
+      approvals: (approvals || []).map((a: any) => {
+        console.log('Processing approval:', {
+          raw: a,
+          name: a.approver?.full_name,
+          esig: a.approver?.e_sig ? 'Present' : 'Missing',
+          date: a.approval_date,
+          sequence: a.sequence
+        });
+        return {
+          approver_name: a.approver?.full_name || '',
+          approver_esig: a.approver?.e_sig || null,
+          approval_date: new Date(a.approval_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }),
+          sequence: a.sequence
+        };
+      })
     };
 
     // Generate PDF
     console.log('Generating PDF with data:', rfpData);
+    console.log('Total approvals being passed to PDF:', rfpData.approvals.length);
+    rfpData.approvals.forEach((a, i) => {
+      console.log(`Approval ${i + 1}:`, a.approver_name, 'Seq:', a.sequence, 'Date:', a.approval_date);
+    });
     const pdfBytes = await generateRFP(rfpData);
     console.log('PDF generated, size:', pdfBytes.length);
 
