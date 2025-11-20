@@ -109,6 +109,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     days_of_approval: '',
     e_sig: ''
   });
+  const [originalESig, setOriginalESig] = useState<string>('');
   const [companies, setCompanies] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
@@ -172,6 +173,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       e_sig: user.e_sig || ''
     };
     console.log('Setting form data:', formDataToSet);
+    setOriginalESig(user.e_sig || '');
     setFormData(formDataToSet);
     setShowForm(true);
   };
@@ -289,6 +291,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       alert('User updated successfully!');
       setShowForm(false);
       setEditingId(null);
+      setOriginalESig('');
       setFormData({
         full_name: '',
         email: '',
@@ -311,6 +314,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
+    setOriginalESig('');
     setFormData({
       full_name: '',
       email: '',
@@ -496,7 +500,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                         <ImageIcon size={16} className="text-blue-600" />
                         Signature uploaded
                       </p>
-                      <p className="text-xs text-orange-600 mt-1 font-medium">Click "Update User" to save changes</p>
+                      {formData.e_sig !== originalESig ? (
+                        <p className="text-xs text-orange-600 mt-1 font-medium">Click "Update User" to save changes</p>
+                      ) : (
+                        <p className="text-xs text-green-600 mt-1 font-medium">Signature saved</p>
+                      )}
                     </div>
                     <button
                       type="button"
