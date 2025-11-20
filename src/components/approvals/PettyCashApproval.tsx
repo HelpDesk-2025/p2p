@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 
 interface PettyCashReq {
   id: string;
@@ -179,6 +180,17 @@ export function PettyCashApproval() {
         .eq('id', selectedRequest.id);
 
       if (updateError) throw updateError;
+
+      // Generate RFP PDF if this is the final approval
+      if (action === 'approved' && isLastApproval) {
+        try {
+          await generateAndUploadRFP('petty_cash', selectedRequest.id, selectedRequest.pc_number);
+          console.log('RFP generated successfully for', selectedRequest.pc_number);
+        } catch (rfpError) {
+          console.error('Error generating RFP:', rfpError);
+          // Don't fail the approval if RFP generation fails
+        }
+      }
 
       await createApprovalLedgerEntry(
         'Petty Cash',

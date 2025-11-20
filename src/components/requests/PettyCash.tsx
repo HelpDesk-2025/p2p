@@ -29,8 +29,11 @@ export function PettyCash() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [formData, setFormData] = useState({
     document_no: '',
+    payee: '',
     purpose: '',
     amount: 0,
+    date_needed: '',
+    budgeted: true,
     payment_mode_id: '',
   });
 
@@ -86,8 +89,11 @@ export function PettyCash() {
           company_id: profile?.company_id,
           department: profile?.department || '',
           request_date: new Date().toISOString().split('T')[0],
+          payee: formData.payee,
           purpose: formData.purpose,
           amount: formData.amount,
+          date_needed: formData.date_needed || null,
+          budgeted: formData.budgeted,
           payment_mode_id: formData.payment_mode_id || null,
           status,
           current_approval_level: status === 'pending' ? 0 : 0,
@@ -186,6 +192,17 @@ export function PettyCash() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
+            <input
+              type="text"
+              value={formData.payee}
+              onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
             <textarea
               value={formData.purpose}
@@ -193,6 +210,16 @@ export function PettyCash() {
               rows={3}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date Needed</label>
+            <input
+              type="date"
+              value={formData.date_needed}
+              onChange={(e) => setFormData({ ...formData, date_needed: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
@@ -205,6 +232,18 @@ export function PettyCash() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.budgeted}
+                onChange={(e) => setFormData({ ...formData, budgeted: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-slate-700">Budgeted</span>
+            </label>
           </div>
 
           <div>
