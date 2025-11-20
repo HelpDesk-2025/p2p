@@ -307,7 +307,7 @@ export async function generateAndUploadRFP(
       `)
       .eq('request_id', requestId)
       .eq('request_type', requestTypeName)
-      .eq('status', 'Approved')
+      .eq('action', 'Approved')
       .order('sequence', { ascending: true });
 
     if (approvalsError) {
