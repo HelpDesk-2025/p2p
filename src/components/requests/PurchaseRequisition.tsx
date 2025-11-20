@@ -817,6 +817,7 @@ export function PurchaseRequisition() {
                                 key={item.number}
                                 onClick={() => {
                                   updateItem(index, 'description', item.displayName);
+                                  updateItem(index, 'item_description', item.displayName);
                                   updateItem(index, 'item_number', item.number);
                                   const newSearchTerms = [...itemSearchTerms];
                                   newSearchTerms[index] = item.displayName;
