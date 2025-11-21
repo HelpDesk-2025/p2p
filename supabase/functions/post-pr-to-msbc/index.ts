@@ -19,13 +19,16 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  let requestId: string | null = null;
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const { requestId } = await req.json();
+    const body = await req.json();
+    requestId = body.requestId;
 
     if (!requestId) {
       return new Response(
@@ -295,27 +298,30 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('❌ Error posting to MSBC:', error);
 
-    if (req.json && (await req.json()).requestId) {
-      const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      );
+    if (requestId) {
+      try {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        );
 
-      const { requestId } = await req.json();
-      await supabaseClient
-        .from('purchase_requisitions')
-        .update({
-          msbc_posting_status: 'Failed',
-          msbc_error_message: error.message,
-        })
-        .eq('id', requestId);
+        await supabaseClient
+          .from('purchase_requisitions')
+          .update({
+            msbc_posting_status: 'Failed',
+            msbc_error_message: error instanceof Error ? error.message : String(error),
+          })
+          .eq('id', requestId);
+      } catch (dbError) {
+        console.error('❌ Failed to update error status in DB:', dbError);
+      }
     }
 
     return new Response(
       JSON.stringify({
         success: false,
         error: 'Failed to post to MSBC',
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
       }),
       {
         status: 500,
