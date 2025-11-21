@@ -119,9 +119,9 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   drawText(data.paymentMode, leftMargin + labelWidth, yPosition, 10, false);
   yPosition -= 20;
 
-  // Payment Mode Lines
+  // Payment Mode Lines - show labels in bold
   for (const line of data.paymentModeLines) {
-    drawText(line.label, leftMargin, yPosition, 10, false);
+    drawText(line.label, leftMargin, yPosition, 10, true);
     drawText(line.value, leftMargin + labelWidth, yPosition, 10, false);
     yPosition -= 15;
   }
@@ -137,7 +137,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
       const esigData = data.requestorEsig.split(',')[1] || data.requestorEsig;
       const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
       const esigImage = await pdfDoc.embedPng(esigBytes);
-      const esigDims = esigImage.scale(0.15);
+      const esigDims = esigImage.scale(0.25);
       page.drawImage(esigImage, {
         x: leftMargin + 20,
         y: yPosition - esigDims.height,
@@ -148,7 +148,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
       console.error('Error embedding requestor signature:', error);
     }
   }
-  yPosition -= 40;
+  yPosition -= 50;
 
   drawText(data.requestorName, leftMargin, yPosition, 10, false);
   yPosition -= 15;
@@ -180,7 +180,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
         console.error('Error embedding approver signature:', error);
       }
     }
-    yPosition -= 40;
+    yPosition -= 50;
 
     drawText(approval.approver_name, leftMargin, yPosition, 10, false);
     yPosition -= 15;
@@ -212,7 +212,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
           console.error('Error embedding recommending approver signature:', error);
         }
       }
-      leftY -= 40;
+      leftY -= 50;
 
       drawText(approval.approver_name, leftMargin, leftY, 10, false);
       leftY -= 15;
@@ -242,7 +242,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
         console.error('Error embedding final approver signature:', error);
       }
     }
-    rightY -= 40;
+    rightY -= 50;
 
     drawText(finalApprover.approver_name, rightMargin, rightY, 10, false);
     rightY -= 15;
