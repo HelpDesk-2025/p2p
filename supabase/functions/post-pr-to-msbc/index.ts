@@ -252,26 +252,34 @@ Deno.serve(async (req: Request) => {
     const etag = firstGetBody['@odata.etag'];
     console.log('✅ STEP 10: Got etag:', etag);
 
-    console.log('📤 STEP 13: Uploading attachment content...');
-    const step13Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})/content`,
-      {
-        method: 'PATCH',
-        headers: {
-          ...headers,
-          'If-Match': etag,
-          'Content-Type': 'application/octet-stream',
-        },
-        body: mergedPdfBytes,
+    let attachmentUploadWarning = '';
+
+    try {
+      console.log('📤 STEP 13: Uploading attachment content...');
+      const step13Response = await fetch(
+        `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})/content`,
+        {
+          method: 'PATCH',
+          headers: {
+            ...headers,
+            'If-Match': etag,
+            'Content-Type': 'application/octet-stream',
+          },
+          body: mergedPdfBytes,
+        }
+      );
+
+      if (!step13Response.ok) {
+        const errorText = await step13Response.text();
+        console.warn('⚠️ STEP 13 failed but continuing:', errorText);
+        attachmentUploadWarning = `Attachment upload warning: ${errorText}`;
+      } else {
+        console.log('✅ STEP 13: Attachment content uploaded successfully');
       }
-    );
-
-    if (!step13Response.ok) {
-      const errorText = await step13Response.text();
-      throw new Error(`STEP 13 failed (${step13Response.status}): ${errorText}`);
+    } catch (step13Error) {
+      console.warn('⚠️ STEP 13 failed with exception but continuing:', step13Error);
+      attachmentUploadWarning = `Attachment upload warning: ${step13Error instanceof Error ? step13Error.message : String(step13Error)}`;
     }
-
-    console.log('✅ STEP 13: Attachment content uploaded successfully');
 
     await supabaseClient
       .from('purchase_requisitions')
@@ -279,7 +287,7 @@ Deno.serve(async (req: Request) => {
         msbc_posting_status: 'Success',
         msbc_posting_date: new Date().toISOString(),
         msbc_journal_batch_id: parentID,
-        msbc_error_message: null,
+        msbc_error_message: attachmentUploadWarning || null,
       })
       .eq('id', requestId);
 
@@ -290,6 +298,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         message: 'Purchase Requisition posted to MSBC successfully',
         journalBatchId: parentID,
+        warning: attachmentUploadWarning || undefined,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
