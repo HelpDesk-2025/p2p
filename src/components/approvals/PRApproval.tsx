@@ -320,6 +320,27 @@ export function PRApproval() {
 
             const postResult = await postResponse.json();
             console.log('✅ PR posted to MSBC successfully:', postResult);
+
+            // Poll for MSBC status update (wait for edge function to complete)
+            let retries = 0;
+            const maxRetries = 10;
+            while (retries < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+
+              const { data: updatedPR } = await supabase
+                .from('purchase_requisitions')
+                .select('msbc_posting_status')
+                .eq('id', selectedRequest.id)
+                .single();
+
+              if (updatedPR?.msbc_posting_status === 'Success' || updatedPR?.msbc_posting_status === 'Failed') {
+                console.log(`✅ MSBC posting completed with status: ${updatedPR.msbc_posting_status}`);
+                break;
+              }
+
+              retries++;
+              console.log(`⏳ Waiting for MSBC posting to complete... (${retries}/${maxRetries})`);
+            }
           } catch (rfpError) {
             console.error('❌ Error generating RFP or posting to MSBC:', rfpError);
             // Don't fail the approval if RFP generation or MSBC posting fails
