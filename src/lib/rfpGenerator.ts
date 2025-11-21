@@ -356,7 +356,11 @@ export async function generateAndUploadRFP(
 
     // For PR, use payment_mode_lines if available
     if (requestType === 'purchase_requisition' && request.payment_mode_lines && Array.isArray(request.payment_mode_lines)) {
-      paymentModeLines.push(...request.payment_mode_lines);
+      // Map the PR payment_mode_lines structure to RFP structure
+      paymentModeLines.push(...request.payment_mode_lines.map((line: any) => ({
+        label: line.name || line.label || '',
+        value: line.value || ''
+      })));
     } else if (request.payment_mode?.line_names && Array.isArray(request.payment_mode.line_names)) {
       for (const lineName of request.payment_mode.line_names) {
         paymentModeLines.push({
@@ -365,6 +369,8 @@ export async function generateAndUploadRFP(
         });
       }
     }
+
+    console.log('Payment mode lines for RFP:', paymentModeLines);
 
     // Prepare RFP data - handle different field names between PR and others
     const rfpData: RFPData = {
