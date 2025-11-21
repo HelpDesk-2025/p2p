@@ -82,10 +82,16 @@ export function PettyCash() {
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
+      // Get final document number by consuming from the sequence
+      const { data: finalDocNo, error: docNoError } = await supabase.rpc('consume_next_number', {
+        p_series_name: 'Petty Cash'
+      });
+      if (docNoError) throw docNoError;
+
       const { data: insertedRequest, error } = await supabase
         .from('petty_cash_requests')
         .insert({
-          pc_number: formData.document_no,
+          pc_number: finalDocNo,
           requester_id: profile?.id,
           company_id: profile?.company_id,
           department: profile?.department || '',
@@ -117,7 +123,7 @@ export function PettyCash() {
           await createApprovalLedgerEntry(
             'Petty Cash',
             insertedRequest.id,
-            formData.document_no,
+            finalDocNo,
             profile.id,
             profile.full_name || 'Unknown',
             'Requestor',

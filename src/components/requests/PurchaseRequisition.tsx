@@ -401,6 +401,12 @@ export function PurchaseRequisition() {
       const total = calculateTotal();
       const prNumber = generatePRNumber();
 
+      // Get final document number by consuming from the sequence
+      const { data: finalDocNo, error: docNoError } = await supabase.rpc('consume_next_number', {
+        p_series_name: 'Purchase Requisition'
+      });
+      if (docNoError) throw docNoError;
+
       const checklistItemsWithoutFiles = formData.checklist_items.map((item) => ({
         id: item.id,
         item_name: item.item_name,
@@ -437,7 +443,7 @@ export function PurchaseRequisition() {
       }
 
       const payload: any = {
-        document_no: formData.document_no,
+        document_no: finalDocNo,
         pr_number: prNumber,
         requester_id: profile?.id,
         description: formData.description,
