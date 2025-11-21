@@ -137,7 +137,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
       const esigData = data.requestorEsig.split(',')[1] || data.requestorEsig;
       const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
       const esigImage = await pdfDoc.embedPng(esigBytes);
-      const esigDims = esigImage.scale(0.25);
+      const esigDims = esigImage.scale(0.5);
       page.drawImage(esigImage, {
         x: leftMargin + 20,
         y: yPosition - esigDims.height,
@@ -169,7 +169,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
         const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
         const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
         const esigImage = await pdfDoc.embedPng(esigBytes);
-        const esigDims = esigImage.scale(0.15);
+        const esigDims = esigImage.scale(0.5);
         page.drawImage(esigImage, {
           x: leftMargin + 20,
           y: yPosition - esigDims.height,
@@ -201,7 +201,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
           const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
           const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
           const esigImage = await pdfDoc.embedPng(esigBytes);
-          const esigDims = esigImage.scale(0.15);
+          const esigDims = esigImage.scale(0.5);
           page.drawImage(esigImage, {
             x: leftMargin + 20,
             y: leftY - esigDims.height,
@@ -231,7 +231,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
         const esigData = finalApprover.approver_esig.split(',')[1] || finalApprover.approver_esig;
         const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
         const esigImage = await pdfDoc.embedPng(esigBytes);
-        const esigDims = esigImage.scale(0.15);
+        const esigDims = esigImage.scale(0.5);
         page.drawImage(esigImage, {
           x: rightMargin + 20,
           y: rightY - esigDims.height,
