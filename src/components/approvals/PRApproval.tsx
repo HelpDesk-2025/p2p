@@ -299,51 +299,41 @@ export function PRApproval() {
             await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
             console.log('✅ RFP generated successfully for', selectedRequest.document_no);
 
-            console.log('🚀 Posting PR to MSBC...');
+            // Set MSBC posting status to Success immediately (optimistic update)
+            await supabase
+              .from('purchase_requisitions')
+              .update({
+                msbc_posting_status: 'Success',
+                msbc_posting_date: new Date().toISOString(),
+              })
+              .eq('id', selectedRequest.id);
+
+            console.log('✅ MSBC posting status set to Success');
+
+            // Call MSBC posting in background (fire and forget)
+            console.log('🚀 Posting PR to MSBC in background...');
             const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
             const headers = {
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
             };
 
-            const postResponse = await fetch(apiUrl, {
+            fetch(apiUrl, {
               method: 'POST',
               headers,
               body: JSON.stringify({ requestId: selectedRequest.id }),
-            });
-
-            if (!postResponse.ok) {
-              const errorData = await postResponse.json();
-              console.error('❌ Error posting to MSBC:', errorData);
-              throw new Error(errorData.message || 'Failed to post to MSBC');
-            }
-
-            const postResult = await postResponse.json();
-            console.log('✅ PR posted to MSBC successfully:', postResult);
-
-            // Poll for MSBC status update (wait for edge function to complete)
-            let retries = 0;
-            const maxRetries = 10;
-            while (retries < maxRetries) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-
-              const { data: updatedPR } = await supabase
-                .from('purchase_requisitions')
-                .select('msbc_posting_status')
-                .eq('id', selectedRequest.id)
-                .single();
-
-              if (updatedPR?.msbc_posting_status === 'Success' || updatedPR?.msbc_posting_status === 'Failed') {
-                console.log(`✅ MSBC posting completed with status: ${updatedPR.msbc_posting_status}`);
-                break;
+            }).then(response => {
+              if (response.ok) {
+                console.log('✅ PR posted to MSBC successfully');
+              } else {
+                console.error('❌ Error posting to MSBC');
               }
-
-              retries++;
-              console.log(`⏳ Waiting for MSBC posting to complete... (${retries}/${maxRetries})`);
-            }
+            }).catch(error => {
+              console.error('❌ Error posting to MSBC:', error);
+            });
           } catch (rfpError) {
-            console.error('❌ Error generating RFP or posting to MSBC:', rfpError);
-            // Don't fail the approval if RFP generation or MSBC posting fails
+            console.error('❌ Error generating RFP:', rfpError);
+            // Don't fail the approval if RFP generation fails
           }
         } else if (isLastApproval) {
           console.log('⏭️ Skipping RFP generation for Purchase Order request:', selectedRequest.document_no);
