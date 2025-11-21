@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
         'Authorization': `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: 'Procure to Pay <notifications@updates.yourcompany.com>',
+        from: 'Procure to Pay <onboarding@resend.dev>',
         to: [to],
         subject: subject,
         html: htmlContent,
