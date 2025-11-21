@@ -50,6 +50,10 @@ interface PurchaseReq {
   payee?: string;
   amount_net_vat?: number;
   rfp_pdf_path?: string;
+  msbc_posting_status?: string;
+  msbc_posting_date?: string;
+  msbc_journal_batch_id?: string;
+  msbc_error_message?: string;
 }
 
 export function PurchaseRequisition() {
@@ -605,7 +609,51 @@ export function PurchaseRequisition() {
       await loadRequests();
     } catch (error) {
       console.error('Error regenerating RFP:', error);
-      alert(`Failed to regenerate RFP: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert('Failed to regenerate RFP: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRepostToMSBC = async (request: PurchaseReq) => {
+    if (!confirm('Are you sure you want to repost this request to MSBC?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Starting MSBC posting for:', request.document_no || request.pr_number);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const postResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ requestId: request.id }),
+      });
+
+      if (!postResponse.ok) {
+        const errorData = await postResponse.json();
+        throw new Error(errorData.message || 'Failed to post to MSBC');
+      }
+
+      const postResult = await postResponse.json();
+      console.log('MSBC posting successful:', postResult);
+
+      // Close the modal first
+      setShowViewModal(false);
+      setViewingRequest(null);
+
+      alert('Request posted to MSBC successfully!\nJournal Batch ID: ' + postResult.journalBatchId);
+
+      // Reload requests to get updated data
+      await loadRequests();
+    } catch (error) {
+      console.error('Error posting to MSBC:', error);
+      alert('Failed to post to MSBC: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -1403,6 +1451,14 @@ export function PurchaseRequisition() {
                     >
                       <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                       Regenerate RFP
+                    </button>
+                    <button
+                      onClick={() => handleRepostToMSBC(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Repost to MSBC
                     </button>
                   </>
                 )}

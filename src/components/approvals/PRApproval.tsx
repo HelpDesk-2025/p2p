@@ -764,67 +764,27 @@ export function PRApproval() {
               {profile?.role === 'admin' && selectedRequest.status === 'approved' && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-3">Admin Actions</label>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={async () => {
-                        if (!confirm('Are you sure you want to regenerate the RFP document?')) return;
-                        setLoading(true);
-                        try {
-                          await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
-                          alert('RFP regenerated successfully!');
-                          fetchRequests();
-                        } catch (error) {
-                          console.error('Error regenerating RFP:', error);
-                          alert('Failed to regenerate RFP: ' + (error as Error).message);
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
-                    >
-                      <RefreshCw size={18} />
-                      Regenerate RFP
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!confirm('Are you sure you want to repost this request to MSBC?')) return;
-                        setLoading(true);
-                        try {
-                          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
-                          const headers = {
-                            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                          };
-
-                          const postResponse = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers,
-                            body: JSON.stringify({ requestId: selectedRequest.id }),
-                          });
-
-                          if (!postResponse.ok) {
-                            const errorData = await postResponse.json();
-                            throw new Error(errorData.message || 'Failed to post to MSBC');
-                          }
-
-                          const postResult = await postResponse.json();
-                          alert('Request posted to MSBC successfully!\\nJournal Batch ID: ' + postResult.journalBatchId);
-                          fetchRequests();
-                        } catch (error) {
-                          console.error('Error posting to MSBC:', error);
-                          alert('Failed to post to MSBC: ' + (error as Error).message);
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
-                    >
-                      <Send size={18} />
-                      Repost to MSBC
-                    </button>
-                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Are you sure you want to regenerate the RFP document?')) return;
+                      setLoading(true);
+                      try {
+                        await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
+                        alert('RFP regenerated successfully!');
+                        fetchRequests();
+                      } catch (error) {
+                        console.error('Error regenerating RFP:', error);
+                        alert('Failed to regenerate RFP: ' + (error as Error).message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  >
+                    <RefreshCw size={18} />
+                    Regenerate RFP
+                  </button>
                 </div>
               )}
 
