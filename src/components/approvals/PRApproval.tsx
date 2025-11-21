@@ -25,6 +25,11 @@ interface PurchaseReq {
   attachments?: any[];
   merged_pdf?: string;
   merged_pdf_path?: string;
+  msbc_posting_status?: string;
+  msbc_posting_date?: string;
+  msbc_journal_batch_id?: string;
+  msbc_error_message?: string;
+  merged_rfp_attachment_path?: string;
   attachment_paths?: Array<{
     path: string;
     name: string;
@@ -293,9 +298,31 @@ export function PRApproval() {
             console.log('🎯 Final approval - generating RFP for Non-PO request with all approval records');
             await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
             console.log('✅ RFP generated successfully for', selectedRequest.document_no);
+
+            console.log('🚀 Posting PR to MSBC...');
+            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
+            const headers = {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            };
+
+            const postResponse = await fetch(apiUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ requestId: selectedRequest.id }),
+            });
+
+            if (!postResponse.ok) {
+              const errorData = await postResponse.json();
+              console.error('❌ Error posting to MSBC:', errorData);
+              throw new Error(errorData.message || 'Failed to post to MSBC');
+            }
+
+            const postResult = await postResponse.json();
+            console.log('✅ PR posted to MSBC successfully:', postResult);
           } catch (rfpError) {
-            console.error('❌ Error generating RFP:', rfpError);
-            // Don't fail the approval if RFP generation fails
+            console.error('❌ Error generating RFP or posting to MSBC:', rfpError);
+            // Don't fail the approval if RFP generation or MSBC posting fails
           }
         } else if (isLastApproval) {
           console.log('⏭️ Skipping RFP generation for Purchase Order request:', selectedRequest.document_no);
@@ -580,6 +607,55 @@ export function PRApproval() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedRequest.msbc_posting_status && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">MSBC Posting Status</label>
+                  <div className={`border rounded-lg p-4 ${
+                    selectedRequest.msbc_posting_status === 'Success' ? 'bg-green-50 border-green-200' :
+                    selectedRequest.msbc_posting_status === 'Failed' ? 'bg-red-50 border-red-200' :
+                    'bg-yellow-50 border-yellow-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {selectedRequest.msbc_posting_status === 'Success' && (
+                          <CheckCircle className="text-green-600" size={24} />
+                        )}
+                        {selectedRequest.msbc_posting_status === 'Failed' && (
+                          <XCircle className="text-red-600" size={24} />
+                        )}
+                        {selectedRequest.msbc_posting_status === 'Pending' && (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+                        )}
+                        <div>
+                          <p className={`font-semibold ${
+                            selectedRequest.msbc_posting_status === 'Success' ? 'text-green-900' :
+                            selectedRequest.msbc_posting_status === 'Failed' ? 'text-red-900' :
+                            'text-yellow-900'
+                          }`}>
+                            {selectedRequest.msbc_posting_status}
+                          </p>
+                          {selectedRequest.msbc_posting_date && (
+                            <p className="text-xs text-slate-600">
+                              Posted on {new Date(selectedRequest.msbc_posting_date).toLocaleString()}
+                            </p>
+                          )}
+                          {selectedRequest.msbc_journal_batch_id && (
+                            <p className="text-xs text-slate-600">
+                              Journal Batch ID: {selectedRequest.msbc_journal_batch_id}
+                            </p>
+                          )}
+                          {selectedRequest.msbc_error_message && (
+                            <p className="text-xs text-red-700 mt-1">
+                              Error: {selectedRequest.msbc_error_message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

@@ -134,3 +134,67 @@ export async function mergeFilesToPDFBlob(files: File[]): Promise<Blob> {
   const pdfBytes = await mergedPdf.save();
   return new Blob([pdfBytes], { type: 'application/pdf' });
 }
+
+export async function mergeRFPWithAttachments(
+  rfpBytes: Uint8Array,
+  attachmentBlobs: Array<{ data: Uint8Array; type: string }>
+): Promise<Uint8Array> {
+  const mergedPdf = await PDFDocument.create();
+
+  try {
+    const rfpPdf = await PDFDocument.load(rfpBytes);
+    const rfpPages = await mergedPdf.copyPages(rfpPdf, rfpPdf.getPageIndices());
+    rfpPages.forEach((page) => mergedPdf.addPage(page));
+  } catch (error) {
+    console.error('Error loading RFP PDF:', error);
+    throw error;
+  }
+
+  for (const attachment of attachmentBlobs) {
+    try {
+      if (attachment.type === 'application/pdf') {
+        const pdf = await PDFDocument.load(attachment.data);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+      } else if (attachment.type.startsWith('image/')) {
+        let image;
+        if (attachment.type === 'image/png') {
+          image = await mergedPdf.embedPng(attachment.data);
+        } else if (attachment.type === 'image/jpeg' || attachment.type === 'image/jpg') {
+          image = await mergedPdf.embedJpg(attachment.data);
+        } else {
+          continue;
+        }
+
+        const page = mergedPdf.addPage();
+        const { width, height } = page.getSize();
+
+        const imageAspectRatio = image.width / image.height;
+        const pageAspectRatio = width / height;
+
+        let imageWidth, imageHeight;
+        if (imageAspectRatio > pageAspectRatio) {
+          imageWidth = width - 40;
+          imageHeight = imageWidth / imageAspectRatio;
+        } else {
+          imageHeight = height - 40;
+          imageWidth = imageHeight * imageAspectRatio;
+        }
+
+        const x = (width - imageWidth) / 2;
+        const y = (height - imageHeight) / 2;
+
+        page.drawImage(image, {
+          x,
+          y,
+          width: imageWidth,
+          height: imageHeight,
+        });
+      }
+    } catch (error) {
+      console.error('Error processing attachment:', error);
+    }
+  }
+
+  return await mergedPdf.save();
+}
