@@ -267,13 +267,21 @@ export function PRApproval() {
 
         console.log(`✅ APPROVAL: Moving from step ${currentLevel + 1} to ${isLastApproval ? 'COMPLETED' : `step ${nextLevel + 1}`}`);
 
-        // Update request with new level
+        // Update request with new level (and MSBC status if final approval for Non-PO)
+        const updatePayload: any = {
+          status: newStatus,
+          current_approval_level: nextLevel
+        };
+
+        // For final approval of Non-PO requests, set MSBC posting status optimistically
+        if (isLastApproval && selectedRequest.purchase_type !== 'Purchase Order') {
+          updatePayload.msbc_posting_status = 'Success';
+          updatePayload.msbc_posting_date = new Date().toISOString();
+        }
+
         const { error: updateError } = await supabase
           .from('purchase_requisitions')
-          .update({
-            status: newStatus,
-            current_approval_level: nextLevel
-          })
+          .update(updatePayload)
           .eq('id', selectedRequest.id);
 
         if (updateError) throw updateError;
@@ -299,16 +307,8 @@ export function PRApproval() {
             await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
             console.log('✅ RFP generated successfully for', selectedRequest.document_no);
 
-            // Set MSBC posting status to Success immediately (optimistic update)
-            await supabase
-              .from('purchase_requisitions')
-              .update({
-                msbc_posting_status: 'Success',
-                msbc_posting_date: new Date().toISOString(),
-              })
-              .eq('id', selectedRequest.id);
-
-            console.log('✅ MSBC posting status set to Success');
+            // MSBC posting status was already set to Success in the approval update above
+            console.log('✅ MSBC posting status already set to Success');
 
             // Call MSBC posting in background (fire and forget)
             console.log('🚀 Posting PR to MSBC in background...');
