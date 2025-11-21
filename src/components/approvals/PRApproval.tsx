@@ -277,6 +277,9 @@ export function PRApproval() {
         if (isLastApproval && selectedRequest.purchase_type !== 'Purchase Order') {
           updatePayload.msbc_posting_status = 'Success';
           updatePayload.msbc_posting_date = new Date().toISOString();
+          // Also update msbc_sync_status for backward compatibility with UI
+          updatePayload.msbc_sync_status = 'synced';
+          updatePayload.msbc_sync_date = new Date().toISOString();
         }
 
         const { error: updateError } = await supabase
