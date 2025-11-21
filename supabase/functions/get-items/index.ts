@@ -103,8 +103,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const apiUrl = `https://st-joseph-group.com:7048/BC140/api/beta/companies(${company.api_id})/items`;
-    const username = 'jedaugal';
-    const password = 'John1004';
+    const username = 'SJGIPA';
+    const password = 'Superteams2025';
     const basicAuth = btoa(`${username}:${password}`);
 
     const response = await fetch(apiUrl, {
