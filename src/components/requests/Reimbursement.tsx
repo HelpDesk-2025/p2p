@@ -82,16 +82,10 @@ export function Reimbursement() {
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
-      // Get final document number by consuming from the sequence
-      const { data: finalDocNo, error: docNoError } = await supabase.rpc('consume_next_number', {
-        p_series_name: 'Reimbursement'
-      });
-      if (docNoError) throw docNoError;
-
       const { data: insertedRequest, error } = await supabase
         .from('reimbursement_requests')
         .insert({
-          reimb_number: finalDocNo,
+          reimb_number: formData.document_no,
           requester_id: profile?.id,
           company_id: profile?.company_id,
           department: profile?.department || '',
@@ -124,7 +118,7 @@ export function Reimbursement() {
           await createApprovalLedgerEntry(
             'Reimbursement',
             insertedRequest.id,
-            finalDocNo,
+            formData.document_no,
             profile.id,
             profile.full_name || 'Unknown',
             'Requestor',

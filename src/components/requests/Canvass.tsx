@@ -65,16 +65,10 @@ export function Canvass() {
     try {
       const totalAmount = 0;
 
-      // Get final document number by consuming from the sequence
-      const { data: finalDocNo, error: docNoError } = await supabase.rpc('consume_next_number', {
-        p_series_name: 'Canvass'
-      });
-      if (docNoError) throw docNoError;
-
       const { data: insertedRequest, error } = await supabase
         .from('canvass_requests')
         .insert({
-          canvass_number: finalDocNo,
+          canvass_number: formData.document_no,
           requester_id: profile?.id,
           company_id: profile?.company_id,
           department: profile?.department || '',
@@ -103,7 +97,7 @@ export function Canvass() {
           await createApprovalLedgerEntry(
             'Canvass',
             insertedRequest.id,
-            finalDocNo,
+            formData.document_no,
             profile.id,
             profile.full_name || 'Unknown',
             'Requestor',
