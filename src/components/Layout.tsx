@@ -41,7 +41,9 @@ export type ViewType =
   | 'config-holidays'
   | 'config-companies'
   | 'config-approval-flows'
-  | 'config-vendors-items';
+  | 'config-number-series'
+  | 'config-vendors-items'
+  | 'config-smtp';
 
 interface MenuItem {
   id: ViewType;
@@ -121,6 +123,7 @@ const configItems: MenuItem[] = [
   { id: 'config-approval-flows', label: 'Approval Flows', icon: Settings, roles: ['admin'] },
   { id: 'config-number-series', label: 'Number Series', icon: Settings, roles: ['admin'] },
   { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, roles: ['admin'] },
+  { id: 'config-smtp', label: 'SMTP Email', icon: Settings, roles: ['admin'] },
 ];
 
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
