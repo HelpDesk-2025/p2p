@@ -6,6 +6,7 @@ import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFl
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
+import { ConfirmationModal } from '../ConfirmationModal';
 
 interface PurchaseReq {
   id: string;
@@ -65,6 +66,9 @@ export function PRApproval() {
   const [loading, setLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{request: PurchaseReq, action: 'approve' | 'reject'} | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -823,7 +827,10 @@ export function PRApproval() {
 
               <div className="flex gap-3 pt-4 border-t border-slate-200">
                 <button
-                  onClick={() => handleAction('approved')}
+                  onClick={() => {
+                    setPendingAction({request: selectedRequest, action: 'approve'});
+                    setShowApproveConfirm(true);
+                  }}
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
@@ -831,7 +838,10 @@ export function PRApproval() {
                   Approve
                 </button>
                 <button
-                  onClick={() => handleAction('rejected')}
+                  onClick={() => {
+                    setPendingAction({request: selectedRequest, action: 'reject'});
+                    setShowRejectConfirm(true);
+                  }}
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
@@ -843,6 +853,46 @@ export function PRApproval() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showApproveConfirm}
+        onClose={() => {
+          setShowApproveConfirm(false);
+          setPendingAction(null);
+        }}
+        onConfirm={async () => {
+          setShowApproveConfirm(false);
+          if (pendingAction) {
+            await handleAction('approved');
+            setPendingAction(null);
+          }
+        }}
+        title="Approve Purchase Requisition?"
+        message={`Are you sure you want to approve this purchase requisition (${selectedRequest?.document_no})? This action cannot be undone.`}
+        confirmText="Approve"
+        type="success"
+        loading={loading}
+      />
+
+      <ConfirmationModal
+        isOpen={showRejectConfirm}
+        onClose={() => {
+          setShowRejectConfirm(false);
+          setPendingAction(null);
+        }}
+        onConfirm={async () => {
+          setShowRejectConfirm(false);
+          if (pendingAction) {
+            await handleAction('rejected');
+            setPendingAction(null);
+          }
+        }}
+        title="Reject Purchase Requisition?"
+        message={`Are you sure you want to reject this purchase requisition (${selectedRequest?.document_no})? This will terminate the approval process.`}
+        confirmText="Reject"
+        type="danger"
+        loading={loading}
+      />
     </div>
   );
 }
