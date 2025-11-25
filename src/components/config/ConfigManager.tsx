@@ -3,8 +3,9 @@ import { supabase } from '../../lib/supabase';
 import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
+import { SmtpConfig } from './SmtpConfig';
 
-type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items';
+type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp';
 
 interface ConfigManagerProps {
   type: ConfigType;
@@ -78,6 +79,8 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         return <NumberSeriesConfig />;
       case 'vendors-items':
         return <VendorsAndItemsConfig />;
+      case 'smtp':
+        return <SmtpConfig />;
       default:
         return <div>Select a configuration type</div>;
     }
