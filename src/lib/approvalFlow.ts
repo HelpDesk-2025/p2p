@@ -205,7 +205,7 @@ export async function createApprovalLedgerEntry(
   requestType: string,
   requestId: string,
   requestNumber: string,
-  approverId: string,
+  approverId: string | null,
   approverName: string,
   approverType: string,
   action: string,
@@ -376,7 +376,7 @@ export async function createRejectedLedgerEntries(
           requestType,
           requestId,
           requestNumber,
-          'system',
+          null, // System entry, no specific approver
           approverInfo.name,
           flow.approver_type,
           'Auto-Rejected',
