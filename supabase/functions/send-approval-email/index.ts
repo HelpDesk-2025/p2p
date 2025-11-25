@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,6 +101,142 @@ function generateEmailHTML(data: EmailRequest): string {
   `;
 }
 
+async function sendEmailWithSMTP(
+  smtpConfig: any,
+  to: string,
+  subject: string,
+  htmlContent: string
+) {
+  const message = [
+    `From: ${smtpConfig.from_name} <${smtpConfig.from_address}>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=utf-8',
+    '',
+    htmlContent,
+  ].join('\r\n');
+
+  const encoder = new TextEncoder();
+  const base64Message = btoa(
+    String.fromCharCode(...encoder.encode(message))
+  );
+
+  try {
+    const conn = await Deno.connect({
+      hostname: smtpConfig.host,
+      port: smtpConfig.port,
+    });
+
+    const reader = conn.readable.getReader();
+    const writer = conn.writable.getWriter();
+
+    const read = async () => {
+      const { value } = await reader.read();
+      if (value) {
+        return new TextDecoder().decode(value);
+      }
+      return '';
+    };
+
+    const write = async (data: string) => {
+      await writer.write(encoder.encode(data + '\r\n'));
+    };
+
+    await read();
+    await write(`EHLO ${smtpConfig.host}`);
+    await read();
+
+    if (smtpConfig.encryption === 'tls') {
+      await write('STARTTLS');
+      await read();
+      
+      const tlsConn = await Deno.startTls(conn, {
+        hostname: smtpConfig.host,
+      });
+
+      const tlsReader = tlsConn.readable.getReader();
+      const tlsWriter = tlsConn.writable.getWriter();
+
+      const tlsRead = async () => {
+        const { value } = await tlsReader.read();
+        if (value) {
+          return new TextDecoder().decode(value);
+        }
+        return '';
+      };
+
+      const tlsWrite = async (data: string) => {
+        await tlsWriter.write(encoder.encode(data + '\r\n'));
+      };
+
+      await tlsWrite(`EHLO ${smtpConfig.host}`);
+      await tlsRead();
+
+      await tlsWrite('AUTH LOGIN');
+      await tlsRead();
+
+      const base64Username = btoa(smtpConfig.username);
+      await tlsWrite(base64Username);
+      await tlsRead();
+
+      const base64Password = btoa(smtpConfig.password);
+      await tlsWrite(base64Password);
+      await tlsRead();
+
+      await tlsWrite(`MAIL FROM:<${smtpConfig.from_address}>`);
+      await tlsRead();
+
+      await tlsWrite(`RCPT TO:<${to}>`);
+      await tlsRead();
+
+      await tlsWrite('DATA');
+      await tlsRead();
+
+      await tlsWrite(message + '\r\n.');
+      await tlsRead();
+
+      await tlsWrite('QUIT');
+      await tlsRead();
+
+      tlsConn.close();
+    } else {
+      await write('AUTH LOGIN');
+      await read();
+
+      const base64Username = btoa(smtpConfig.username);
+      await write(base64Username);
+      await read();
+
+      const base64Password = btoa(smtpConfig.password);
+      await write(base64Password);
+      await read();
+
+      await write(`MAIL FROM:<${smtpConfig.from_address}>`);
+      await read();
+
+      await write(`RCPT TO:<${to}>`);
+      await read();
+
+      await write('DATA');
+      await read();
+
+      await write(message + '\r\n.');
+      await read();
+
+      await write('QUIT');
+      await read();
+
+      conn.close();
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('SMTP Error:', error);
+    throw new Error(`Failed to send email via SMTP: ${error.message}`);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -117,12 +254,18 @@ Deno.serve(async (req: Request) => {
       throw new Error('Missing required fields: to, subject');
     }
 
-    const htmlContent = generateEmailHTML(emailData);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    
-    if (!resendApiKey) {
-      console.error('RESEND_API_KEY not configured');
+    const { data: smtpConfig, error: configError } = await supabase
+      .from('smtp_configurations')
+      .select('*')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (configError || !smtpConfig) {
+      console.error('Failed to fetch SMTP configuration:', configError);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -138,38 +281,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${resendApiKey}`,
-      },
-      body: JSON.stringify({
-        from: 'Procure to Pay <notifications@updates.yourcompany.com>',
-        to: [to],
-        subject: subject,
-        html: htmlContent,
-      }),
-    });
+    const htmlContent = generateEmailHTML(emailData);
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error('Resend API error:', data);
-      return new Response(
-        JSON.stringify({ success: false, error: data }),
-        {
-          status: res.status,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
+    await sendEmailWithSMTP(smtpConfig, to, subject, htmlContent);
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, message: 'Email sent successfully' }),
       {
         headers: {
           ...corsHeaders,
