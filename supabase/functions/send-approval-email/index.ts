@@ -118,11 +118,14 @@ Deno.serve(async (req: Request) => {
       throw new Error('Missing required fields: to, subject');
     }
 
+    console.log('📧 Sending email to:', to);
+
     const htmlContent = generateEmailHTML(emailData);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+    console.log('🔍 Fetching SMTP configuration...');
     const smtpConfigResponse = await fetch(`${supabaseUrl}/rest/v1/smtp_configurations?is_active=eq.true&order=created_at.desc&limit=1`, {
       headers: {
         'apikey': supabaseKey,
@@ -133,11 +136,11 @@ Deno.serve(async (req: Request) => {
     const smtpConfigs = await smtpConfigResponse.json();
 
     if (!smtpConfigs || smtpConfigs.length === 0) {
-      console.error('No active SMTP configuration found');
+      console.error('❌ No active SMTP configuration found');
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Email service not configured. Please contact administrator.'
+          error: 'Email service not configured. Please configure SMTP settings in the admin panel.'
         }),
         {
           status: 200,
@@ -150,7 +153,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const smtpConfig = smtpConfigs[0];
+    console.log('✅ SMTP config found:', smtpConfig.host);
 
+    console.log('🔌 Connecting to SMTP server...');
     const client = new SMTPClient({
       connection: {
         hostname: smtpConfig.host,
@@ -163,6 +168,7 @@ Deno.serve(async (req: Request) => {
       },
     });
 
+    console.log('📤 Sending email...');
     await client.send({
       from: `${smtpConfig.from_name} <${smtpConfig.from_address}>`,
       to: to,
@@ -171,8 +177,10 @@ Deno.serve(async (req: Request) => {
       html: htmlContent,
     });
 
+    console.log('🔒 Closing connection...');
     await client.close();
 
+    console.log('✅ Email sent successfully');
     return new Response(
       JSON.stringify({ success: true, message: 'Email sent successfully' }),
       {
@@ -183,11 +191,20 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error: any) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: `Failed to send email: ${error.message || 'Unknown error'}` 
+      }),
       {
-        status: 400,
+        status: 200,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
