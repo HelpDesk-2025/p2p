@@ -194,6 +194,14 @@ export function PRApproval() {
       return;
     }
 
+    // Confirmation dialog
+    const actionText = action === 'approved' ? 'approve' : 'reject';
+    const confirmMessage = `Are you sure you want to ${actionText} this Purchase Requisition (${selectedRequest.document_no})?`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
     setLoading(true);
 
     try {

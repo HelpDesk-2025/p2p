@@ -163,6 +163,14 @@ export function PettyCashApproval() {
       return;
     }
 
+    // Confirmation dialog
+    const actionText = action === 'approved' ? 'approve' : 'reject';
+    const confirmMessage = `Are you sure you want to ${actionText} this Petty Cash (${selectedRequest.pc_number})?`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
     setLoading(true);
 
     try {
