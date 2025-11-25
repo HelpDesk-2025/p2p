@@ -71,6 +71,11 @@ export function Canvass() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    if (!formData.required_date) {
+      alert('Please select a Date Required before submitting.');
+      return;
+    }
+
     setLoading(true);
     try {
       const totalAmount = 0;

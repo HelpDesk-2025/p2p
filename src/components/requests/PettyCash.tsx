@@ -90,6 +90,11 @@ export function PettyCash() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    if (!formData.needed_date) {
+      alert('Please select a Date Needed before submitting.');
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: insertedRequest, error } = await supabase

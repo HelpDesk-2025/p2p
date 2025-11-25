@@ -406,6 +406,27 @@ export function PurchaseRequisition() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    if (!formData.date_required) {
+      alert('Please select a Date Required before submitting.');
+      return;
+    }
+
+    const validItems = formData.items.filter(item =>
+      item.description.trim() !== '' && item.unit_price > 0
+    );
+
+    if (validItems.length === 0) {
+      alert('Please add at least one item with a description and unit price.');
+      return;
+    }
+
+    if (validItems.length !== formData.items.length) {
+      const confirmProceed = window.confirm(
+        'Some items have no description or unit price and will not be saved. Do you want to proceed?'
+      );
+      if (!confirmProceed) return;
+    }
+
     setLoading(true);
     try {
       const total = calculateTotal();
@@ -467,7 +488,7 @@ export function PurchaseRequisition() {
       };
 
       if (formData.purchase_type === 'Purchase Order') {
-        payload.items = formData.items;
+        payload.items = validItems;
       } else {
         payload.payee = formData.payee;
         payload.payee_number = formData.payee_number;
