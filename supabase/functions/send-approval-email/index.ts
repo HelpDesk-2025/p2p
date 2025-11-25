@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,113 +172,36 @@ Deno.serve(async (req: Request) => {
     }
 
     const smtpConfig = smtpConfigs[0];
-    console.log('✅ SMTP config found:', smtpConfig.host);
+    console.log('✅ SMTP config found:', smtpConfig.host, 'Port:', smtpConfig.port);
+    console.log('🔐 Username:', smtpConfig.username);
+    console.log('📤 From:', smtpConfig.from_address);
 
-    // Use Resend API format which is compatible with many SMTP providers
-    const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
-    const emailMessage = [
-      `MIME-Version: 1.0`,
-      `From: ${smtpConfig.from_name} <${smtpConfig.from_address}>`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      `Content-Type: multipart/alternative; boundary="${boundary}"`,
-      ``,
-      `--${boundary}`,
-      `Content-Type: text/plain; charset=utf-8`,
-      ``,
-      textContent,
-      ``,
-      `--${boundary}`,
-      `Content-Type: text/html; charset=utf-8`,
-      ``,
-      htmlContent,
-      ``,
-      `--${boundary}--`,
-    ].join('\r\n');
-
-    // Use a direct HTTP-based email service (Resend) which is more reliable in serverless
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    
-    if (resendApiKey) {
-      console.log('📮 Using Resend API...');
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
+    // Initialize SMTP client with Exchange/Office365 settings
+    const client = new SMTPClient({
+      connection: {
+        hostname: smtpConfig.host,
+        port: smtpConfig.port,
+        tls: smtpConfig.encryption === 'tls',
+        auth: {
+          username: smtpConfig.username,
+          password: smtpConfig.password,
         },
-        body: JSON.stringify({
-          from: `${smtpConfig.from_name} <${smtpConfig.from_address}>`,
-          to: [to],
-          subject: subject,
-          html: htmlContent,
-          text: textContent,
-        }),
-      });
+      },
+    });
 
-      if (!resendResponse.ok) {
-        const error = await resendResponse.text();
-        throw new Error(`Resend API error: ${error}`);
-      }
+    console.log('📮 Sending email...');
+    
+    await client.send({
+      from: `${smtpConfig.from_name} <${smtpConfig.from_address}>`,
+      to: to,
+      subject: subject,
+      content: textContent,
+      html: htmlContent,
+    });
 
-      console.log('✅ Email sent via Resend');
-    } else {
-      // Fallback to basic fetch-based email sending
-      console.log('📮 Using SMTP relay...');
-      
-      // For Office365, we'll use Microsoft Graph API if available
-      const graphToken = Deno.env.get('MS_GRAPH_TOKEN');
-      
-      if (graphToken) {
-        console.log('📮 Using Microsoft Graph API...');
-        const graphResponse = await fetch(
-          `https://graph.microsoft.com/v1.0/users/${smtpConfig.from_address}/sendMail`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${graphToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              message: {
-                subject: subject,
-                body: {
-                  contentType: 'HTML',
-                  content: htmlContent,
-                },
-                toRecipients: [
-                  {
-                    emailAddress: {
-                      address: to,
-                    },
-                  },
-                ],
-              },
-            }),
-          }
-        );
+    await client.close();
 
-        if (!graphResponse.ok) {
-          const error = await graphResponse.text();
-          throw new Error(`Microsoft Graph API error: ${error}`);
-        }
-
-        console.log('✅ Email sent via Microsoft Graph');
-      } else {
-        // Log the email attempt but mark as success
-        // This allows the workflow to continue while you set up proper email delivery
-        console.warn('⚠️ No email service configured (Resend or MS Graph)');
-        console.log('📧 Email would be sent to:', to);
-        console.log('📧 Subject:', subject);
-        console.log('📧 Content preview:', textContent.substring(0, 200));
-        
-        // Return success so the request can be processed
-        // In production, you should set up Resend or MS Graph
-      }
-    }
-
-    console.log('✅ Email notification completed');
+    console.log('✅ Email sent successfully');
     return new Response(
       JSON.stringify({ success: true, message: 'Email sent successfully' }),
       {
@@ -292,15 +216,14 @@ Deno.serve(async (req: Request) => {
     console.error('Error details:', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
+      cause: error.cause
     });
     
-    // Return success with a warning so the request isn't blocked
     return new Response(
       JSON.stringify({ 
-        success: true,
-        warning: `Email notification skipped: ${error.message}`,
-        message: 'Request processed successfully (email pending setup)'
+        success: false, 
+        error: `Failed to send email: ${error.message || 'Unknown error'}` 
       }),
       {
         status: 200,
