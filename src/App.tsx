@@ -68,8 +68,6 @@ function AppContent() {
         return <ConfigManager type="number-series" />;
       case 'config-vendors-items':
         return <ConfigManager type="vendors-items" />;
-      case 'config-smtp':
-        return <ConfigManager type="smtp" />;
       default:
         return (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">

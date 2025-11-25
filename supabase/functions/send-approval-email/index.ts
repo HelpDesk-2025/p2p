@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,10 +22,10 @@ interface EmailRequest {
 }
 
 function generateEmailHTML(data: EmailRequest): string {
-  const actionColor = data.action === 'Submitted' ? '#3b82f6' :
+  const actionColor = data.action === 'Submitted' ? '#3b82f6' : 
                       data.action === 'Approved' ? '#22c55e' : '#ef4444';
-
-  const actionSection = data.action === 'Submitted'
+  
+  const actionSection = data.action === 'Submitted' 
     ? `
       <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
         <p style="margin: 0; color: #1e40af; font-weight: 600;">Action Required</p>
@@ -52,17 +51,17 @@ function generateEmailHTML(data: EmailRequest): string {
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px 24px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${data.requestType} ${data.action}</h1>
         </div>
-
+        
         <div style="padding: 32px 24px;">
           <p style="margin: 0 0 16px 0; font-size: 16px;">Hello ${data.recipientName},</p>
-
+          
           <p style="margin: 0 0 24px 0; color: #6b7280;">A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.</p>
-
+          
           ${actionSection}
-
+          
           <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
             <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #111827;">Request Details</h2>
-
+            
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Document No:</td>
@@ -82,16 +81,16 @@ function generateEmailHTML(data: EmailRequest): string {
               </tr>
             </table>
           </div>
-
+          
           ${data.nextApprover ? `
             <div style="background: #eff6ff; border-radius: 8px; padding: 16px; margin: 20px 0;">
               <p style="margin: 0; color: #1e40af;"><strong>Next Approver:</strong> ${data.nextApprover}</p>
             </div>
           ` : ''}
-
+          
           <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px;">Please log in to the system to review and take action on this request.</p>
         </div>
-
+        
         <div style="background: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
           <p style="margin: 0; color: #9ca3af; font-size: 12px;">This is an automated notification. Please do not reply to this email.</p>
         </div>
@@ -99,25 +98,6 @@ function generateEmailHTML(data: EmailRequest): string {
     </body>
     </html>
   `;
-}
-
-function generatePlainText(data: EmailRequest): string {
-  return `Hello ${data.recipientName},
-
-A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.
-
-${data.action === 'Submitted' ? 'ACTION REQUIRED: This request requires your approval.' : `${data.action} by ${data.actionBy}${data.comments ? '\nComments: ' + data.comments : ''}`}
-
-Request Details:
-- Document No: ${data.documentNo}
-- Requester: ${data.requesterName}
-- Department: ${data.department}
-- Total Amount: ₱${data.totalAmount.toLocaleString()}
-
-${data.nextApprover ? `Next Approver: ${data.nextApprover}\n` : ''}Please log in to the system to review and take action on this request.
-
----
-This is an automated notification. Please do not reply to this email.`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -130,36 +110,23 @@ Deno.serve(async (req: Request) => {
 
   try {
     const emailData: EmailRequest = await req.json();
+
     const { to, subject } = emailData;
 
     if (!to || !subject) {
       throw new Error('Missing required fields: to, subject');
     }
 
-    console.log('📧 Preparing email to:', to);
-
     const htmlContent = generateEmailHTML(emailData);
-    const textContent = generatePlainText(emailData);
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    console.log('🔍 Fetching SMTP configuration...');
-    const smtpConfigResponse = await fetch(`${supabaseUrl}/rest/v1/smtp_configurations?is_active=eq.true&order=created_at.desc&limit=1`, {
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-      },
-    });
-
-    const smtpConfigs = await smtpConfigResponse.json();
-
-    if (!smtpConfigs || smtpConfigs.length === 0) {
-      console.error('❌ No active SMTP configuration found');
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY not configured');
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Email service not configured. Please configure SMTP settings in the admin panel.'
+        JSON.stringify({ 
+          success: false, 
+          message: 'Email service not configured. Please contact administrator.' 
         }),
         {
           status: 200,
@@ -171,39 +138,38 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const smtpConfig = smtpConfigs[0];
-    console.log('✅ SMTP config found:', smtpConfig.host, 'Port:', smtpConfig.port);
-    console.log('🔐 Username:', smtpConfig.username);
-    console.log('📤 From:', smtpConfig.from_address);
-
-    // Initialize SMTP client with Exchange/Office365 settings
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpConfig.host,
-        port: smtpConfig.port,
-        tls: smtpConfig.encryption === 'tls',
-        auth: {
-          username: smtpConfig.username,
-          password: smtpConfig.password,
-        },
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${resendApiKey}`,
       },
+      body: JSON.stringify({
+        from: 'Procure to Pay <notifications@updates.yourcompany.com>',
+        to: [to],
+        subject: subject,
+        html: htmlContent,
+      }),
     });
 
-    console.log('📮 Sending email...');
-    
-    await client.send({
-      from: `${smtpConfig.from_name} <${smtpConfig.from_address}>`,
-      to: to,
-      subject: subject,
-      content: textContent,
-      html: htmlContent,
-    });
+    const data = await res.json();
 
-    await client.close();
+    if (!res.ok) {
+      console.error('Resend API error:', data);
+      return new Response(
+        JSON.stringify({ success: false, error: data }),
+        {
+          status: res.status,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
-    console.log('✅ Email sent successfully');
     return new Response(
-      JSON.stringify({ success: true, message: 'Email sent successfully' }),
+      JSON.stringify({ success: true, data }),
       {
         headers: {
           ...corsHeaders,
@@ -212,21 +178,11 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error: any) {
-    console.error('❌ Error sending email:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      cause: error.cause
-    });
-    
+    console.error('Error sending email:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: `Failed to send email: ${error.message || 'Unknown error'}` 
-      }),
+      JSON.stringify({ success: false, error: error.message }),
       {
-        status: 200,
+        status: 400,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',

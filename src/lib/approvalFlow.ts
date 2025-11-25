@@ -283,8 +283,7 @@ export async function sendApprovalEmail(
 
     if (!result.success) {
       console.error('❌ Failed to send email:', result);
-      const errorMessage = result.message || result.error || 'Unknown error';
-      alert(`Email notification failed: ${errorMessage}. The request was created successfully.`);
+      alert(`Email notification failed: ${result.message || 'Unknown error'}. The request was created successfully.`);
     } else {
       console.log('✅ Email sent successfully:', result);
     }
