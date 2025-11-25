@@ -244,7 +244,9 @@ export async function sendApprovalEmail(
   action: string,
   actionBy?: string,
   comments?: string,
-  nextApprover?: string
+  nextApprover?: string,
+  requestId?: string,
+  approverId?: string
 ): Promise<void> {
   try {
     console.log('📧 Sending approval email to:', recipientEmail, 'for action:', action);
@@ -255,6 +257,8 @@ export async function sendApprovalEmail(
       'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       'Content-Type': 'application/json',
     };
+
+    const appUrl = window.location.origin;
 
     const emailData = {
       to: recipientEmail,
@@ -269,6 +273,9 @@ export async function sendApprovalEmail(
       actionBy,
       comments,
       nextApprover,
+      requestId,
+      approverId,
+      appUrl,
     };
 
     console.log('📧 Email data:', JSON.stringify(emailData, null, 2));
@@ -296,17 +303,17 @@ export async function getApproverEmail(
   approvalFlow: ApprovalFlow,
   companyId: string,
   department: string
-): Promise<{ email: string; name: string } | null> {
+): Promise<{ email: string; name: string; id: string } | null> {
   try {
     if (approvalFlow.user_id) {
       const { data: user, error } = await supabase
         .from('user_profiles')
-        .select('email, full_name')
+        .select('id, email, full_name')
         .eq('id', approvalFlow.user_id)
         .single();
 
       if (error) throw error;
-      return { email: user.email, name: user.full_name || 'User' };
+      return { email: user.email, name: user.full_name || 'User', id: user.id };
     }
 
     const approverType = approvalFlow.approver_type;
@@ -314,39 +321,39 @@ export async function getApproverEmail(
     if (approverType === 'Department Head') {
       const { data: user, error } = await supabase
         .from('user_profiles')
-        .select('email, full_name')
+        .select('id, email, full_name')
         .eq('company_id', companyId)
         .eq('department', department)
         .eq('role', 'approver')
         .maybeSingle();
 
       if (error) throw error;
-      if (user) return { email: user.email, name: user.full_name || 'Department Head' };
+      if (user) return { email: user.email, name: user.full_name || 'Department Head', id: user.id };
     }
 
     if (approverType === 'Procurement' || approverType === 'Procurement Head') {
       const { data: user, error } = await supabase
         .from('user_profiles')
-        .select('email, full_name')
+        .select('id, email, full_name')
         .eq('company_id', companyId)
         .eq('department', 'Procurement')
         .eq('role', 'approver')
         .maybeSingle();
 
       if (error) throw error;
-      if (user) return { email: user.email, name: user.full_name || 'Procurement' };
+      if (user) return { email: user.email, name: user.full_name || 'Procurement', id: user.id };
     }
 
     if (approverType === 'President') {
       const { data: user, error } = await supabase
         .from('user_profiles')
-        .select('email, full_name')
+        .select('id, email, full_name')
         .eq('company_id', companyId)
         .eq('role', 'approver')
         .maybeSingle();
 
       if (error) throw error;
-      if (user) return { email: user.email, name: user.full_name || 'President' };
+      if (user) return { email: user.email, name: user.full_name || 'President', id: user.id };
     }
 
     return null;

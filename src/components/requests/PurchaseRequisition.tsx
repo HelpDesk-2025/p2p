@@ -542,7 +542,9 @@ export function PurchaseRequisition() {
             'Submitted',
             undefined,
             undefined,
-            firstApprover.approver_type
+            firstApprover.approver_type,
+            insertedPR.id,
+            approverInfo.id
           );
 
           console.log('✅ Approval process initiated successfully');
