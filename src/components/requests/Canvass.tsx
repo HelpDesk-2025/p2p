@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
-import { ConfirmationModal } from '../ConfirmationModal';
 
 interface CanvassReq {
   id: string;
@@ -22,8 +21,6 @@ export function Canvass() {
   const [loading, setLoading] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [pendingSubmitStatus, setPendingSubmitStatus] = useState<'draft' | 'pending' | null>(null);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -63,19 +60,7 @@ export function Canvass() {
     return `CV-${year}${month}-${random}`;
   };
 
-  const handleConfirmSubmit = async () => {
-    if (!pendingSubmitStatus) return;
-    setShowSubmitConfirm(false);
-    await handleSubmit(pendingSubmitStatus);
-    setPendingSubmitStatus(null);
-  };
-
   const handleSubmit = async (status: 'draft' | 'pending') => {
-    if (!formData.required_date) {
-      alert('Please select a Date Required before submitting.');
-      return;
-    }
-
     setLoading(true);
     try {
       const totalAmount = 0;
@@ -244,11 +229,11 @@ export function Canvass() {
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
-            <button onClick={() => { setPendingSubmitStatus('draft'); setShowSubmitConfirm(true); }} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+            <button onClick={() => handleSubmit('draft')} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
               <Save size={18} />
               Save as Draft
             </button>
-            <button onClick={() => { setPendingSubmitStatus('pending'); setShowSubmitConfirm(true); }} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button onClick={() => handleSubmit('pending')} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Send size={18} />
               Submit
             </button>
@@ -381,24 +366,6 @@ export function Canvass() {
           </div>
         </div>
       )}
-
-      <ConfirmationModal
-        isOpen={showSubmitConfirm}
-        onClose={() => {
-          setShowSubmitConfirm(false);
-          setPendingSubmitStatus(null);
-        }}
-        onConfirm={handleConfirmSubmit}
-        title={pendingSubmitStatus === 'pending' ? 'Submit for Approval?' : 'Save as Draft?'}
-        message={
-          pendingSubmitStatus === 'pending'
-            ? 'Are you sure you want to submit this canvass request for approval? Once submitted, you cannot edit it.'
-            : 'Do you want to save this canvass request as a draft? You can edit and submit it later.'
-        }
-        confirmText={pendingSubmitStatus === 'pending' ? 'Submit' : 'Save'}
-        type={pendingSubmitStatus === 'pending' ? 'success' : 'warning'}
-        loading={loading}
-      />
     </div>
   );
 }

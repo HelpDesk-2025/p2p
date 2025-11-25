@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
-import { ConfirmationModal } from '../ConfirmationModal';
 
 interface ReimbursementReq {
   id: string;
@@ -36,9 +35,6 @@ export function ReimbursementApproval() {
   const [loading, setLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
-  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
-  const [pendingAction, setPendingAction] = useState<{request: any, action: 'approve' | 'reject'} | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -430,10 +426,7 @@ export function ReimbursementApproval() {
 
               <div className="flex gap-3 pt-4 border-t border-slate-200">
                 <button
-                  onClick={() => {
-                    setPendingAction({request: selectedRequest, action: 'approve'});
-                    setShowApproveConfirm(true);
-                  }}
+                  onClick={() => handleAction('approved')}
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
@@ -441,10 +434,7 @@ export function ReimbursementApproval() {
                   Approve
                 </button>
                 <button
-                  onClick={() => {
-                    setPendingAction({request: selectedRequest, action: 'reject'});
-                    setShowRejectConfirm(true);
-                  }}
+                  onClick={() => handleAction('rejected')}
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
@@ -456,46 +446,6 @@ export function ReimbursementApproval() {
           </div>
         </div>
       )}
-
-      <ConfirmationModal
-        isOpen={showApproveConfirm}
-        onClose={() => {
-          setShowApproveConfirm(false);
-          setPendingAction(null);
-        }}
-        onConfirm={async () => {
-          setShowApproveConfirm(false);
-          if (pendingAction) {
-            await handleAction('approved');
-            setPendingAction(null);
-          }
-        }}
-        title="Approve Reimbursement Request?"
-        message={`Are you sure you want to approve this reimbursement request (${selectedRequest?.document_no || selectedRequest?.reimbursement_number})? This action cannot be undone.`}
-        confirmText="Approve"
-        type="success"
-        loading={loading}
-      />
-
-      <ConfirmationModal
-        isOpen={showRejectConfirm}
-        onClose={() => {
-          setShowRejectConfirm(false);
-          setPendingAction(null);
-        }}
-        onConfirm={async () => {
-          setShowRejectConfirm(false);
-          if (pendingAction) {
-            await handleAction('rejected');
-            setPendingAction(null);
-          }
-        }}
-        title="Reject Reimbursement Request?"
-        message={`Are you sure you want to reject this reimbursement request (${selectedRequest?.document_no || selectedRequest?.reimbursement_number})? This will terminate the approval process.`}
-        confirmText="Reject"
-        type="danger"
-        loading={loading}
-      />
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { uploadAttachments } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { regenerateRFP } from '../../lib/rfpGenerator';
-import { ConfirmationModal } from '../ConfirmationModal';
 
 interface PRItem {
   description: string;
@@ -67,8 +66,6 @@ export function PurchaseRequisition() {
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
   const [vendors, setVendors] = useState<any[]>([]);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [pendingSubmitStatus, setPendingSubmitStatus] = useState<'draft' | 'pending' | null>(null);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [vendorSearchTerm, setVendorSearchTerm] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
@@ -398,35 +395,7 @@ export function PurchaseRequisition() {
   };
 
 
-  const handleConfirmSubmit = async () => {
-    if (!pendingSubmitStatus) return;
-    setShowSubmitConfirm(false);
-    await handleSubmit(pendingSubmitStatus);
-    setPendingSubmitStatus(null);
-  };
-
   const handleSubmit = async (status: 'draft' | 'pending') => {
-    if (!formData.date_required) {
-      alert('Please select a Date Required before submitting.');
-      return;
-    }
-
-    const validItems = formData.items.filter(item =>
-      item.description.trim() !== '' && item.unit_price > 0
-    );
-
-    if (validItems.length === 0) {
-      alert('Please add at least one item with a description and unit price.');
-      return;
-    }
-
-    if (validItems.length !== formData.items.length) {
-      const confirmProceed = window.confirm(
-        'Some items have no description or unit price and will not be saved. Do you want to proceed?'
-      );
-      if (!confirmProceed) return;
-    }
-
     setLoading(true);
     try {
       const total = calculateTotal();
@@ -488,7 +457,7 @@ export function PurchaseRequisition() {
       };
 
       if (formData.purchase_type === 'Purchase Order') {
-        payload.items = validItems;
+        payload.items = formData.items;
       } else {
         payload.payee = formData.payee;
         payload.payee_number = formData.payee_number;
@@ -1163,10 +1132,7 @@ export function PurchaseRequisition() {
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button
-              onClick={() => {
-                setPendingSubmitStatus('draft');
-                setShowSubmitConfirm(true);
-              }}
+              onClick={() => handleSubmit('draft')}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
             >
@@ -1174,10 +1140,7 @@ export function PurchaseRequisition() {
               Save as Draft
             </button>
             <button
-              onClick={() => {
-                setPendingSubmitStatus('pending');
-                setShowSubmitConfirm(true);
-              }}
+              onClick={() => handleSubmit('pending')}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
@@ -1513,24 +1476,6 @@ export function PurchaseRequisition() {
           </div>
         </div>
       )}
-
-      <ConfirmationModal
-        isOpen={showSubmitConfirm}
-        onClose={() => {
-          setShowSubmitConfirm(false);
-          setPendingSubmitStatus(null);
-        }}
-        onConfirm={handleConfirmSubmit}
-        title={pendingSubmitStatus === 'pending' ? 'Submit for Approval?' : 'Save as Draft?'}
-        message={
-          pendingSubmitStatus === 'pending'
-            ? 'Are you sure you want to submit this purchase requisition for approval? Once submitted, you cannot edit it.'
-            : 'Do you want to save this purchase requisition as a draft? You can edit and submit it later.'
-        }
-        confirmText={pendingSubmitStatus === 'pending' ? 'Submit' : 'Save'}
-        type={pendingSubmitStatus === 'pending' ? 'success' : 'warning'}
-        loading={loading}
-      />
     </div>
   );
 }

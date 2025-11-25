@@ -85,7 +85,7 @@ function generateEmailHTML(data: EmailRequest): string {
 
           ${data.nextApprover ? `
             <div style="background: #eff6ff; border-radius: 8px; padding: 16px; margin: 20px 0;">
-              <p style="margin: 0; color: #1e40af;"><strong>Current Approver:</strong> ${data.nextApprover}</p>
+              <p style="margin: 0; color: #1e40af;"><strong>Next Approver:</strong> ${data.nextApprover}</p>
             </div>
           ` : ''}
 
