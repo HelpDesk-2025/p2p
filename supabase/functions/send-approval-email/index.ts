@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,6 +100,154 @@ function generateEmailHTML(data: EmailRequest): string {
   `;
 }
 
+function generatePlainText(data: EmailRequest): string {
+  return `
+Hello ${data.recipientName},
+
+A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.
+
+${data.action === 'Submitted' ? 'ACTION REQUIRED: This request requires your approval.' : `${data.action} by ${data.actionBy}${data.comments ? '\nComments: ' + data.comments : ''}`}
+
+Request Details:
+- Document No: ${data.documentNo}
+- Requester: ${data.requesterName}
+- Department: ${data.department}
+- Total Amount: ₱${data.totalAmount.toLocaleString()}
+
+${data.nextApprover ? `Next Approver: ${data.nextApprover}\n` : ''}Please log in to the system to review and take action on this request.
+
+---
+This is an automated notification. Please do not reply to this email.
+  `;
+}
+
+async function sendEmailViaSMTP(
+  smtpConfig: any,
+  to: string,
+  subject: string,
+  htmlContent: string,
+  textContent: string
+): Promise<void> {
+  const boundary = `----=_Part${Date.now()}`;
+  
+  const emailBody = [
+    `From: ${smtpConfig.from_name} <${smtpConfig.from_address}>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/plain; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    textContent,
+    ``,
+    `--${boundary}`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 8bit`,
+    ``,
+    htmlContent,
+    ``,
+    `--${boundary}--`,
+  ].join('\r\n');
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  console.log('🔌 Opening connection to', smtpConfig.host, 'port', smtpConfig.port);
+  const conn = await Deno.connect({
+    hostname: smtpConfig.host,
+    port: smtpConfig.port,
+  });
+
+  try {
+    const reader = conn.readable.getReader();
+    const writer = conn.writable.getWriter();
+
+    async function readResponse(): Promise<string> {
+      const { value } = await reader.read();
+      const response = decoder.decode(value);
+      console.log('⬅️', response.trim());
+      return response;
+    }
+
+    async function sendCommand(command: string): Promise<string> {
+      console.log('➡️', command.trim());
+      await writer.write(encoder.encode(command + '\r\n'));
+      return await readResponse();
+    }
+
+    await readResponse();
+
+    await sendCommand('EHLO localhost');
+    
+    if (smtpConfig.encryption === 'tls') {
+      await sendCommand('STARTTLS');
+      
+      reader.releaseLock();
+      writer.releaseLock();
+      
+      const tlsConn = await Deno.startTls(conn, {
+        hostname: smtpConfig.host,
+      });
+      
+      const tlsReader = tlsConn.readable.getReader();
+      const tlsWriter = tlsConn.writable.getWriter();
+      
+      async function tlsReadResponse(): Promise<string> {
+        const { value } = await tlsReader.read();
+        const response = decoder.decode(value);
+        console.log('⬅️', response.trim());
+        return response;
+      }
+
+      async function tlsSendCommand(command: string): Promise<string> {
+        console.log('➡️', command.trim());
+        await tlsWriter.write(encoder.encode(command + '\r\n'));
+        return await tlsReadResponse();
+      }
+      
+      await tlsSendCommand('EHLO localhost');
+      
+      const authString = btoa(`\0${smtpConfig.username}\0${smtpConfig.password}`);
+      await tlsSendCommand(`AUTH PLAIN ${authString}`);
+      
+      await tlsSendCommand(`MAIL FROM:<${smtpConfig.from_address}>`);
+      await tlsSendCommand(`RCPT TO:<${to}>`);
+      await tlsSendCommand('DATA');
+      
+      await tlsWriter.write(encoder.encode(emailBody + '\r\n.\r\n'));
+      await tlsReadResponse();
+      
+      await tlsSendCommand('QUIT');
+      
+      tlsReader.releaseLock();
+      tlsWriter.releaseLock();
+      tlsConn.close();
+    } else {
+      const authString = btoa(`\0${smtpConfig.username}\0${smtpConfig.password}`);
+      await sendCommand(`AUTH PLAIN ${authString}`);
+      
+      await sendCommand(`MAIL FROM:<${smtpConfig.from_address}>`);
+      await sendCommand(`RCPT TO:<${to}>`);
+      await sendCommand('DATA');
+      
+      await writer.write(encoder.encode(emailBody + '\r\n.\r\n'));
+      await readResponse();
+      
+      await sendCommand('QUIT');
+      
+      reader.releaseLock();
+      writer.releaseLock();
+      conn.close();
+    }
+  } catch (error) {
+    conn.close();
+    throw error;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -121,6 +268,7 @@ Deno.serve(async (req: Request) => {
     console.log('📧 Sending email to:', to);
 
     const htmlContent = generateEmailHTML(emailData);
+    const textContent = generatePlainText(emailData);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -155,43 +303,7 @@ Deno.serve(async (req: Request) => {
     const smtpConfig = smtpConfigs[0];
     console.log('✅ SMTP config found:', smtpConfig.host, 'Port:', smtpConfig.port, 'Encryption:', smtpConfig.encryption);
 
-    console.log('🔌 Connecting to SMTP server...');
-    
-    const clientConfig: any = {
-      connection: {
-        hostname: smtpConfig.host,
-        port: smtpConfig.port,
-        auth: {
-          username: smtpConfig.username,
-          password: smtpConfig.password,
-        },
-      },
-    };
-
-    if (smtpConfig.encryption === 'tls') {
-      clientConfig.connection.tls = true;
-    } else if (smtpConfig.encryption === 'ssl') {
-      clientConfig.connection.tls = true;
-    }
-
-    const client = new SMTPClient(clientConfig);
-
-    console.log('📤 Sending email...');
-    await client.send({
-      from: smtpConfig.from_address,
-      to: to,
-      subject: subject,
-      content: 'auto',
-      mimeContent: [
-        {
-          contentType: 'text/html; charset=utf-8',
-          content: htmlContent,
-        },
-      ],
-    });
-
-    console.log('🔒 Closing connection...');
-    await client.close();
+    await sendEmailViaSMTP(smtpConfig, to, subject, htmlContent, textContent);
 
     console.log('✅ Email sent successfully');
     return new Response(
