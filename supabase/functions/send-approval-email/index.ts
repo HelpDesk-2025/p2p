@@ -20,13 +20,24 @@ interface EmailRequest {
   actionBy?: string;
   comments?: string;
   nextApprover?: string;
+  requestId?: string;
+  approverId?: string;
+  appUrl?: string;
 }
 
 function generateEmailHTML(data: EmailRequest): string {
-  const actionColor = data.action === 'Submitted' ? '#3b82f6' : 
+  const actionColor = data.action === 'Submitted' ? '#3b82f6' :
                       data.action === 'Approved' ? '#22c55e' : '#ef4444';
-  
-  const actionSection = data.action === 'Submitted' 
+
+  const baseUrl = data.appUrl || 'https://your-app-url.com';
+  const approveUrl = data.requestId && data.approverId
+    ? `${baseUrl}/approve?requestId=${data.requestId}&approverId=${data.approverId}&action=approve&type=${encodeURIComponent(data.requestType)}`
+    : null;
+  const rejectUrl = data.requestId && data.approverId
+    ? `${baseUrl}/approve?requestId=${data.requestId}&approverId=${data.approverId}&action=reject&type=${encodeURIComponent(data.requestType)}`
+    : null;
+
+  const actionSection = data.action === 'Submitted'
     ? `
       <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
         <p style="margin: 0; color: #1e40af; font-weight: 600;">Action Required</p>
@@ -39,6 +50,27 @@ function generateEmailHTML(data: EmailRequest): string {
         ${data.comments ? `<p style="margin: 8px 0 0 0; color: #78350f;">Comments: ${data.comments}</p>` : ''}
       </div>
     `;
+
+  const actionButtons = (data.action === 'Submitted' && approveUrl && rejectUrl) ? `
+    <div style="margin: 32px 0; text-align: center;">
+      <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; font-weight: 600;">Quick Actions:</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 0 8px 0 0;">
+            <a href="${approveUrl}" style="display: block; background: #22c55e; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; text-align: center; transition: background 0.2s;">
+              ✓ Approve
+            </a>
+          </td>
+          <td style="padding: 0 0 0 8px;">
+            <a href="${rejectUrl}" style="display: block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; text-align: center; transition: background 0.2s;">
+              ✗ Reject
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin: 16px 0 0 0; color: #9ca3af; font-size: 12px;">Or log in to the system for detailed review</p>
+    </div>
+  ` : '';
 
   return `
     <!DOCTYPE html>
@@ -88,8 +120,10 @@ function generateEmailHTML(data: EmailRequest): string {
               <p style="margin: 0; color: #1e40af;"><strong>Current Approver:</strong> ${data.nextApprover}</p>
             </div>
           ` : ''}
-          
-          <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px;">Please log in to the system to review and take action on this request.</p>
+
+          ${actionButtons}
+
+          ${!actionButtons ? '<p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px;">Please log in to the system to review and take action on this request.</p>' : ''}
         </div>
         
         <div style="background: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
