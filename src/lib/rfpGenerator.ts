@@ -407,13 +407,18 @@ export async function generateAndUploadRFP(
           date: a.approval_date,
           sequence: a.sequence
         });
+        const approvalDate = new Date(a.approval_date);
         return {
           approver_name: a.approver?.full_name || '',
           approver_esig: a.approver?.e_sig || null,
-          approval_date: new Date(a.approval_date).toLocaleDateString('en-US', {
+          approval_date: approvalDate.toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
+          }) + ' ' + approvalDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
           }),
           sequence: a.sequence
         };
