@@ -161,6 +161,12 @@ export function CanvassApproval() {
       return;
     }
 
+    // Validate comments for rejection
+    if (action === 'rejected' && !comments.trim()) {
+      alert('Please provide a comment explaining the reason for rejection.');
+      return;
+    }
+
     // Confirmation dialog
     const actionText = action === 'approved' ? 'approve' : 'reject';
     const confirmMessage = `Are you sure you want to ${actionText} this Canvass (${selectedRequest.canvass_number})?`;
