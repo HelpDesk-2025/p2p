@@ -153,28 +153,41 @@ Deno.serve(async (req: Request) => {
     }
 
     const smtpConfig = smtpConfigs[0];
-    console.log('✅ SMTP config found:', smtpConfig.host);
+    console.log('✅ SMTP config found:', smtpConfig.host, 'Port:', smtpConfig.port, 'Encryption:', smtpConfig.encryption);
 
     console.log('🔌 Connecting to SMTP server...');
-    const client = new SMTPClient({
+    
+    const clientConfig: any = {
       connection: {
         hostname: smtpConfig.host,
         port: smtpConfig.port,
-        tls: smtpConfig.encryption === 'tls',
         auth: {
           username: smtpConfig.username,
           password: smtpConfig.password,
         },
       },
-    });
+    };
+
+    if (smtpConfig.encryption === 'tls') {
+      clientConfig.connection.tls = true;
+    } else if (smtpConfig.encryption === 'ssl') {
+      clientConfig.connection.tls = true;
+    }
+
+    const client = new SMTPClient(clientConfig);
 
     console.log('📤 Sending email...');
     await client.send({
-      from: `${smtpConfig.from_name} <${smtpConfig.from_address}>`,
+      from: smtpConfig.from_address,
       to: to,
       subject: subject,
-      content: htmlContent,
-      html: htmlContent,
+      content: 'auto',
+      mimeContent: [
+        {
+          contentType: 'text/html; charset=utf-8',
+          content: htmlContent,
+        },
+      ],
     });
 
     console.log('🔒 Closing connection...');
