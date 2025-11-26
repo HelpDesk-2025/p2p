@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, X, FileText, Download, UserCheck } from 'lucide-react';
+import { Eye, X, FileText, Download, UserCheck, ClipboardList } from 'lucide-react';
 
 interface PurchaseReq {
   id: string;
@@ -319,12 +319,20 @@ export function ProcurementChecking() {
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
-              <button
-                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
-              >
-                <UserCheck size={20} />
-                Subject Matter Expert
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+                >
+                  <UserCheck size={20} />
+                  Subject Matter Expert
+                </button>
+                <button
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                >
+                  <ClipboardList size={20} />
+                  Ready for Canvass
+                </button>
+              </div>
               <button
                 onClick={() => {
                   setShowViewModal(false);
