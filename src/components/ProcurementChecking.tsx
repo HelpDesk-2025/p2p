@@ -186,6 +186,18 @@ export function ProcurementChecking() {
     }
 
     try {
+      // Check if an SME request already exists for this PR
+      const { data: existingRequest } = await supabase
+        .from('sme_requests')
+        .select('id, status')
+        .eq('pr_id', viewingRequest.id)
+        .maybeSingle();
+
+      if (existingRequest) {
+        alert(`An SME request already exists for this Purchase Requisition (Status: ${existingRequest.status}). Only one SME request is allowed per PR.`);
+        return;
+      }
+
       const { error } = await supabase
         .from('sme_requests')
         .insert({
