@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, X, FileText } from 'lucide-react';
-import { ApprovalProgressTracker } from './ApprovalProgressTracker';
+import { Eye, X, FileText, Download, UserCheck } from 'lucide-react';
 
 interface PurchaseReq {
   id: string;
@@ -32,6 +31,7 @@ interface PurchaseReq {
   pr_checklists?: {
     item_name: string;
   };
+  merged_pdf_path?: string;
 }
 
 export function ProcurementChecking() {
@@ -68,6 +68,28 @@ export function ProcurementChecking() {
     );
 
     setRequests(companyFilteredRequests);
+  };
+
+  const downloadMergedPDF = async (pdfPath: string, documentNo: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${documentNo}_merged.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading merged PDF:', error);
+      alert('Failed to download merged PDF');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -192,11 +214,6 @@ export function ProcurementChecking() {
             </div>
 
             <div className="p-6 space-y-6">
-              <ApprovalProgressTracker
-                requestType="Purchase Requisition"
-                requestId={viewingRequest.id}
-              />
-
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Document No.</label>
@@ -248,33 +265,28 @@ export function ProcurementChecking() {
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
 
-              {viewingRequest.checklist_items && viewingRequest.checklist_items.length > 0 && (
+              {viewingRequest.merged_pdf_path && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Checklist Items & Attachments</label>
-                  <div className="space-y-3">
-                    {viewingRequest.checklist_items.map((item: any, index: number) => (
-                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-slate-900">{item.item_name}</span>
-                              {item.is_required && (
-                                <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full">Required</span>
-                              )}
-                            </div>
-                            {item.description && (
-                              <p className="text-xs text-slate-600 mt-1">{item.description}</p>
-                            )}
-                            {item.fileName && (
-                              <div className="mt-2 flex items-center gap-2 text-sm text-slate-700">
-                                <FileText size={16} className="text-blue-600" />
-                                <span>{item.fileName}</span>
-                              </div>
-                            )}
-                          </div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Merged Attachment</label>
+                  <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                          <FileText size={24} className="text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Merged PDF Document</p>
+                          <p className="text-xs text-slate-600 mt-1">All attachments combined</p>
                         </div>
                       </div>
-                    ))}
+                      <button
+                        onClick={() => downloadMergedPDF(viewingRequest.merged_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      >
+                        <Download size={16} />
+                        Download
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -306,7 +318,13 @@ export function ProcurementChecking() {
               )}
             </div>
 
-            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-end">
+            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
+              <button
+                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+              >
+                <UserCheck size={20} />
+                Subject Matter Expert
+              </button>
               <button
                 onClick={() => {
                   setShowViewModal(false);
