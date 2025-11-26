@@ -162,6 +162,83 @@ export function PettyCash() {
     }
   };
 
+  const handleSubmitDraft = async (request: PettyCashReq) => {
+    if (!confirm('Are you sure you want to submit this draft for approval?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (!profile?.company_id) {
+        throw new Error('Company information not found');
+      }
+
+      const approvalFlows = await getApprovalFlow(
+        profile.company_id,
+        profile.department || '',
+        'Petty Cash',
+        request.budgeted,
+        request.amount
+      );
+
+      if (!approvalFlows || approvalFlows.length === 0) {
+        throw new Error('No approval flow configured for this request. Please contact administrator.');
+      }
+
+      const { error: updateError } = await supabase
+        .from('petty_cash_requests')
+        .update({ status: 'pending', current_approval_level: 0 })
+        .eq('id', request.id);
+
+      if (updateError) throw updateError;
+
+      await createApprovalLedgerEntry(
+        'Petty Cash',
+        request.id,
+        request.pc_number,
+        profile.id,
+        profile.full_name || 'Unknown',
+        'Requestor',
+        'Submitted',
+        'Initial submission',
+        0
+      );
+
+      const firstApprover = approvalFlows[0];
+      const approverInfo = await getApproverEmail(
+        firstApprover,
+        profile.company_id,
+        profile.department || ''
+      );
+
+      if (approverInfo) {
+        await sendApprovalEmail(
+          approverInfo.email,
+          approverInfo.name,
+          'Petty Cash',
+          request.pc_number,
+          profile.full_name || 'Unknown',
+          profile.department || '',
+          request.amount,
+          'Submitted',
+          undefined,
+          undefined,
+          firstApprover.approver_type
+        );
+      }
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+      alert('Draft submitted for approval successfully!');
+      await loadRequests();
+    } catch (error: any) {
+      console.error('Error submitting draft:', error);
+      alert('Failed to submit draft: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-slate-100 text-slate-700',
@@ -447,7 +524,17 @@ export function PettyCash() {
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
-              <div>
+              <div className="flex items-center gap-3">
+                {viewingRequest.status === 'draft' && (
+                  <button
+                    onClick={() => handleSubmitDraft(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Send size={18} />
+                    Submit for Approval
+                  </button>
+                )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
                   <button
                     onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.pc_number)}
