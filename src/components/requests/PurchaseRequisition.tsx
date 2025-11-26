@@ -10,6 +10,7 @@ import { regenerateRFP } from '../../lib/rfpGenerator';
 
 interface PRItem {
   description: string;
+  item_description?: string;
   quantity: number;
   unit: string;
   unit_price: number;
