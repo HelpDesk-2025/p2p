@@ -14,10 +14,34 @@ interface CanvassReq {
   total_amount: number;
 }
 
+interface PurchaseRequisition {
+  id: string;
+  document_no: string;
+  pr_number: string;
+  description: string;
+  purpose: string;
+  department: string;
+  total_amount: number;
+  request_date: string;
+  items: any[];
+  merged_pdf_path: string | null;
+  ready_for_canvass: boolean;
+}
+
+interface QuotationForm {
+  vendor_name: string;
+  vendor_contact: string;
+  quoted_amount: number;
+  quotation_file?: File | null;
+}
+
 export function Canvass() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<CanvassReq[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showPRSelection, setShowPRSelection] = useState(false);
+  const [availablePRs, setAvailablePRs] = useState<PurchaseRequisition[]>([]);
+  const [selectedPR, setSelectedPR] = useState<PurchaseRequisition | null>(null);
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -29,10 +53,29 @@ export function Canvass() {
     required_date: '',
     items: [{ description: '', quantity: 1, unit: 'pcs' }],
   });
+  const [quotations, setQuotations] = useState<QuotationForm[]>([
+    { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+    { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+    { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+  ]);
 
   useEffect(() => {
     loadRequests();
   }, []);
+
+  const loadAvailablePRs = async () => {
+    if (!profile?.company_id) return;
+
+    const { data } = await supabase
+      .from('purchase_requisitions')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .eq('ready_for_canvass', true)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    setAvailablePRs(data || []);
+  };
 
   const generateDocumentNo = async () => {
     try {
@@ -277,93 +320,293 @@ export function Canvass() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const previewMergedPDF = async (pdfPath: string) => {
+    const { data } = await supabase.storage.from('attachments').createSignedUrl(pdfPath, 60);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, '_blank');
+    }
+  };
+
+  const handlePRSelection = (pr: PurchaseRequisition) => {
+    setSelectedPR(pr);
+    setShowPRSelection(false);
+    setShowForm(true);
+    generateDocumentNo();
+    setQuotations([
+      { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+      { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+      { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+    ]);
+  };
+
+  if (showPRSelection) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Select Purchase Requisition</h2>
+            <p className="text-sm text-slate-600 mt-1">Choose a PR that is ready for canvass</p>
+          </div>
+          <button
+            onClick={() => setShowPRSelection(false)}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document No.</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Total Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {availablePRs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                    No purchase requisitions ready for canvass
+                  </td>
+                </tr>
+              ) : (
+                availablePRs.map((pr) => (
+                  <tr key={pr.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 text-sm font-mono font-medium text-slate-900">
+                      {pr.document_no || pr.pr_number}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                      ₱{pr.total_amount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {new Date(pr.request_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <button
+                        onClick={() => handlePRSelection(pr)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Select
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   if (showForm) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Canvass Request' : 'New Canvass Request'}</h2>
-          <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-4 py-2 text-slate-600">Cancel</button>
+          <h2 className="text-2xl font-bold text-slate-900">New Canvass Request</h2>
+          <button
+            onClick={() => {
+              setShowForm(false);
+              setSelectedPR(null);
+              setQuotations([
+                { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+                { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+                { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+              ]);
+            }}
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+          >
+            Cancel
+          </button>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-              <FileText size={18} className="text-slate-400" />
-              <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+        {selectedPR && (
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-blue-900 mb-4">Selected Purchase Requisition</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <label className="font-semibold text-blue-700">Document No.</label>
+                  <p className="text-blue-900 font-mono">{selectedPR.document_no || selectedPR.pr_number}</p>
+                </div>
+                <div>
+                  <label className="font-semibold text-blue-700">Department</label>
+                  <p className="text-blue-900">{selectedPR.department}</p>
+                </div>
+                <div>
+                  <label className="font-semibold text-blue-700">Total Amount</label>
+                  <p className="text-blue-900 font-semibold">₱{selectedPR.total_amount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="font-semibold text-blue-700">Request Date</label>
+                  <p className="text-blue-900">{new Date(selectedPR.request_date).toLocaleDateString()}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="font-semibold text-blue-700">Description</label>
+                  <p className="text-blue-900">{selectedPR.description}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="font-semibold text-blue-700">Purpose</label>
+                  <p className="text-blue-900">{selectedPR.purpose}</p>
+                </div>
+              </div>
+
+              {selectedPR.merged_pdf_path && (
+                <div className="mt-4">
+                  <label className="font-semibold text-blue-700 block mb-2">Merged PDF Document</label>
+                  <button
+                    onClick={() => previewMergedPDF(selectedPR.merged_pdf_path!)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <FileText size={16} />
+                    View Merged PDF
+                  </button>
+                </div>
+              )}
+
+              {selectedPR.items && selectedPR.items.length > 0 && (
+                <div className="mt-4">
+                  <label className="font-semibold text-blue-700 block mb-2">Items</label>
+                  <div className="bg-white border border-blue-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-blue-100">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-blue-900">Description</th>
+                          <th className="px-3 py-2 text-left text-blue-900">Quantity</th>
+                          <th className="px-3 py-2 text-left text-blue-900">Unit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-blue-100">
+                        {selectedPR.items.map((item: any, index: number) => (
+                          <tr key={index}>
+                            <td className="px-3 py-2 text-slate-900">{item.item_description || item.description}</td>
+                            <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
+                            <td className="px-3 py-2 text-slate-700">{item.unit}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Required Date</label>
-            <input
-              type="date"
-              value={formData.required_date}
-              onChange={(e) => setFormData({ ...formData, required_date: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              required
-            />
-          </div>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Canvass Document No.</label>
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                  <FileText size={18} className="text-slate-400" />
+                  <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Items to Canvass</label>
-            {formData.items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Required Date</label>
                 <input
-                  type="text"
-                  placeholder="Description"
-                  value={item.description}
-                  onChange={(e) => {
-                    const newItems = [...formData.items];
-                    newItems[idx].description = e.target.value;
-                    setFormData({ ...formData, items: newItems });
-                  }}
-                  className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg"
-                />
-                <input
-                  type="number"
-                  placeholder="Qty"
-                  value={item.quantity}
-                  onChange={(e) => {
-                    const newItems = [...formData.items];
-                    newItems[idx].quantity = Number(e.target.value);
-                    setFormData({ ...formData, items: newItems });
-                  }}
-                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg"
-                />
-                <input
-                  type="text"
-                  placeholder="Unit"
-                  value={item.unit}
-                  onChange={(e) => {
-                    const newItems = [...formData.items];
-                    newItems[idx].unit = e.target.value;
-                    setFormData({ ...formData, items: newItems });
-                  }}
-                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg"
+                  type="date"
+                  value={formData.required_date}
+                  onChange={(e) => setFormData({ ...formData, required_date: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
                 />
               </div>
-            ))}
-            <button
-              onClick={() => setFormData({ ...formData, items: [...formData.items, { description: '', quantity: 1, unit: 'pcs' }] })}
-              className="mt-2 flex items-center gap-2 px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
-            >
-              <Plus size={16} />
-              Add Item
-            </button>
-          </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t">
-            <button onClick={() => handleSubmit('draft')} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-              {savingDraft ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {savingDraft ? 'Saving...' : 'Save as Draft'}
-            </button>
-            <button onClick={() => handleSubmit('pending')} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Send size={18} />
-              Submit
-            </button>
-          </div>
-        </div>
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Quotations (3 Required)</h3>
+                <div className="space-y-6">
+                  {quotations.map((quotation, idx) => (
+                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                      <h4 className="font-semibold text-slate-900">Quotation {idx + 1}</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name</label>
+                          <input
+                            type="text"
+                            placeholder="Enter vendor name"
+                            value={quotation.vendor_name}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].vendor_name = e.target.value;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Contact</label>
+                          <input
+                            type="text"
+                            placeholder="Email or phone"
+                            value={quotation.vendor_contact}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].vendor_contact = e.target.value;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Quoted Amount</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={quotation.quoted_amount || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].quoted_amount = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File</label>
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].quotation_file = e.target.files?.[0] || null;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4 border-t">
+                <button
+                  onClick={() => handleSubmit('draft')}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingDraft ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  {savingDraft ? 'Saving...' : 'Save as Draft'}
+                </button>
+                <button
+                  onClick={() => handleSubmit('pending')}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {submitting ? 'Submitting...' : 'Submit for Approval'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -374,8 +617,8 @@ export function Canvass() {
         <h2 className="text-2xl font-bold text-slate-900">Canvass Requests</h2>
         <button
           onClick={() => {
-            setShowForm(true);
-            generateDocumentNo();
+            loadAvailablePRs();
+            setShowPRSelection(true);
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
