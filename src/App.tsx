@@ -11,6 +11,7 @@ import { PRApproval } from './components/approvals/PRApproval';
 import { CanvassApproval } from './components/approvals/CanvassApproval';
 import { PettyCashApproval } from './components/approvals/PettyCashApproval';
 import { ReimbursementApproval } from './components/approvals/ReimbursementApproval';
+import { SmeApproval } from './components/approvals/SmeApproval';
 import { ConfigManager } from './components/config/ConfigManager';
 import { ApprovalLedger } from './components/ApprovalLedger';
 import { ProcurementChecking } from './components/ProcurementChecking';
@@ -51,6 +52,8 @@ function AppContent() {
         return <PettyCashApproval />;
       case 'reimbursement-approval':
         return <ReimbursementApproval />;
+      case 'sme-approval':
+        return <SmeApproval />;
       case 'procurement-checking':
         return <ProcurementChecking />;
       case 'approval-ledger':

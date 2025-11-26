@@ -14,6 +14,7 @@ import {
   X,
   ChevronDown,
   BookOpen,
+  UserCheck,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ export type ViewType =
   | 'canvass-approval'
   | 'petty-cash-approval'
   | 'reimbursement-approval'
+  | 'sme-approval'
   | 'procurement-checking'
   | 'approval-ledger'
   | 'config-approvers'
@@ -93,6 +95,12 @@ const menuItems: MenuItem[] = [
     label: 'Reimbursement Approval',
     icon: CheckSquare,
     roles: ['approver', 'admin'],
+    group: 'approvals',
+  },
+  {
+    id: 'sme-approval',
+    label: 'SME Approval',
+    icon: UserCheck,
     group: 'approvals',
   },
   {
