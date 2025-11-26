@@ -54,6 +54,7 @@ export function ProcurementChecking() {
   const [selectedSmeUser, setSelectedSmeUser] = useState<string>('');
   const [smePurpose, setSmePurpose] = useState('');
   const [submittingSme, setSubmittingSme] = useState(false);
+  const [smeRequestStatus, setSmeRequestStatus] = useState<{status: string, sme_name: string} | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -164,6 +165,28 @@ export function ProcurementChecking() {
     } catch (error) {
       console.error('Error marking PR as ready for canvass:', error);
       alert('Failed to mark PR as ready for canvass. Please try again.');
+    }
+  };
+
+  const checkSmeRequestStatus = async (prId: string) => {
+    const { data } = await supabase
+      .from('sme_requests')
+      .select(`
+        status,
+        sme_user:sme_user_id (
+          full_name
+        )
+      `)
+      .eq('pr_id', prId)
+      .maybeSingle();
+
+    if (data) {
+      setSmeRequestStatus({
+        status: data.status,
+        sme_name: (data.sme_user as any)?.full_name || 'Unknown'
+      });
+    } else {
+      setSmeRequestStatus(null);
     }
   };
 
@@ -341,6 +364,7 @@ export function ProcurementChecking() {
                         onClick={() => {
                           setViewingRequest(req);
                           setShowViewModal(true);
+                          checkSmeRequestStatus(req.id);
                         }}
                         className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                       >
@@ -368,6 +392,7 @@ export function ProcurementChecking() {
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingRequest(null);
+                  setSmeRequestStatus(null);
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
@@ -376,6 +401,40 @@ export function ProcurementChecking() {
             </div>
 
             <div className="p-6 space-y-6">
+              {smeRequestStatus && (
+                <div className={`border rounded-lg p-4 ${
+                  smeRequestStatus.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
+                  smeRequestStatus.status === 'approved' ? 'bg-green-50 border-green-200' :
+                  smeRequestStatus.status === 'rejected' ? 'bg-red-50 border-red-200' :
+                  'bg-blue-50 border-blue-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <UserCheck size={20} className={`${
+                      smeRequestStatus.status === 'pending' ? 'text-yellow-600' :
+                      smeRequestStatus.status === 'approved' ? 'text-green-600' :
+                      smeRequestStatus.status === 'rejected' ? 'text-red-600' :
+                      'text-blue-600'
+                    } mt-0.5`} />
+                    <div className="flex-1">
+                      <h4 className={`text-sm font-semibold mb-1 ${
+                        smeRequestStatus.status === 'pending' ? 'text-yellow-900' :
+                        smeRequestStatus.status === 'approved' ? 'text-green-900' :
+                        smeRequestStatus.status === 'rejected' ? 'text-red-900' :
+                        'text-blue-900'
+                      }`}>SME Request Status: {smeRequestStatus.status.charAt(0).toUpperCase() + smeRequestStatus.status.slice(1)}</h4>
+                      <p className={`text-sm ${
+                        smeRequestStatus.status === 'pending' ? 'text-yellow-800' :
+                        smeRequestStatus.status === 'approved' ? 'text-green-800' :
+                        smeRequestStatus.status === 'rejected' ? 'text-red-800' :
+                        'text-blue-800'
+                      }`}>
+                        This PR has been submitted to <span className="font-medium">{smeRequestStatus.sme_name}</span> for expert review.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Document No.</label>
@@ -493,7 +552,9 @@ export function ProcurementChecking() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleOpenSmeModal}
-                  className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+                  disabled={!!smeRequestStatus}
+                  className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={smeRequestStatus ? `SME request already exists (${smeRequestStatus.status})` : 'Request Subject Matter Expert'}
                 >
                   <UserCheck size={20} />
                   Subject Matter Expert
@@ -510,6 +571,7 @@ export function ProcurementChecking() {
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingRequest(null);
+                  setSmeRequestStatus(null);
                 }}
                 className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
               >
