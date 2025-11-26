@@ -537,10 +537,12 @@ export function PRApproval() {
                   <label className="text-sm font-semibold text-slate-700">Requester</label>
                   <p className="text-slate-900">{selectedRequest.user_profiles?.full_name}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Total Amount</label>
-                  <p className="text-slate-900 font-bold">₱{selectedRequest.total_amount.toLocaleString()}</p>
-                </div>
+                {selectedRequest.purchase_type === 'Non-Purchase Order' && (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Total Amount</label>
+                    <p className="text-slate-900 font-bold">₱{selectedRequest.total_amount.toLocaleString()}</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>
                   <p className="text-slate-900">{selectedRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}</p>

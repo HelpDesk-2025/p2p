@@ -1091,15 +1091,6 @@ export function PurchaseRequisition() {
                   </div>
                 ))}
               </div>
-
-              <div className="mt-4 flex justify-end">
-                <div className="bg-slate-100 px-6 py-3 rounded-lg">
-                  <span className="text-sm font-medium text-slate-700">Total Amount: </span>
-                  <span className="text-xl font-bold text-slate-900">
-                    ₱{calculateTotal().toFixed(2)}
-                  </span>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1418,10 +1409,12 @@ export function PurchaseRequisition() {
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>
                   <p className="text-slate-900">{viewingRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Total Amount</label>
-                  <p className="text-slate-900 font-bold">₱{viewingRequest.total_amount.toLocaleString()}</p>
-                </div>
+                {viewingRequest.purchase_type === 'Non-Purchase Order' && (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Total Amount</label>
+                    <p className="text-slate-900 font-bold">₱{viewingRequest.total_amount.toLocaleString()}</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
