@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, Edit } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -28,6 +28,7 @@ export function PettyCash() {
   const [loading, setLoading] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<PettyCashReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<PettyCashReq | null>(null);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -79,30 +80,69 @@ export function PettyCash() {
     return `PC-${year}${month}-${random}`;
   };
 
+  const handleEditDraft = (request: PettyCashReq) => {
+    setEditingRequest(request);
+    setFormData({
+      document_no: request.pc_number,
+      payee: request.payee,
+      purpose: request.purpose,
+      amount: request.amount,
+      date_needed: (request as any).date_needed || '',
+      budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
+      payment_mode_id: (request as any).payment_mode_id || '',
+    });
+    setShowViewModal(false);
+    setViewingRequest(null);
+    setShowForm(true);
+  };
+
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
-      const { data: insertedRequest, error } = await supabase
-        .from('petty_cash_requests')
-        .insert({
-          pc_number: formData.document_no,
-          requester_id: profile?.id,
-          company_id: profile?.company_id,
-          department: profile?.department || '',
-          request_date: new Date().toISOString().split('T')[0],
-          payee: formData.payee,
-          purpose: formData.purpose,
-          amount: formData.amount,
-          date_needed: formData.date_needed || null,
-          budgeted: formData.budgeted,
-          payment_mode_id: formData.payment_mode_id || null,
-          status,
-          current_approval_level: status === 'pending' ? 0 : 0,
-        })
-        .select()
-        .single();
+      let insertedRequest;
 
-      if (error) throw error;
+      if (editingRequest) {
+        const { data, error } = await supabase
+          .from('petty_cash_requests')
+          .update({
+            payee: formData.payee,
+            purpose: formData.purpose,
+            amount: formData.amount,
+            date_needed: formData.date_needed || null,
+            budgeted: formData.budgeted,
+            payment_mode_id: formData.payment_mode_id || null,
+            status,
+          })
+          .eq('id', editingRequest.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        insertedRequest = data;
+      } else {
+        const { data, error } = await supabase
+          .from('petty_cash_requests')
+          .insert({
+            pc_number: formData.document_no,
+            requester_id: profile?.id,
+            company_id: profile?.company_id,
+            department: profile?.department || '',
+            request_date: new Date().toISOString().split('T')[0],
+            payee: formData.payee,
+            purpose: formData.purpose,
+            amount: formData.amount,
+            date_needed: formData.date_needed || null,
+            budgeted: formData.budgeted,
+            payment_mode_id: formData.payment_mode_id || null,
+            status,
+            current_approval_level: 0,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        insertedRequest = data;
+      }
 
       if (status === 'pending' && insertedRequest && profile?.company_id) {
         const approvalFlows = await getApprovalFlow(
@@ -152,9 +192,12 @@ export function PettyCash() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', purpose: '', amount: 0, payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '' });
+      setEditingRequest(null);
       loadRequests();
-      generateDocumentNo();
+      if (!editingRequest) {
+        generateDocumentNo();
+      }
     } catch (error: any) {
       alert('Error: ' + error.message);
     } finally {
@@ -276,8 +319,8 @@ export function PettyCash() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">New Petty Cash Request</h2>
-          <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-600">
+          <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Petty Cash Request' : 'New Petty Cash Request'}</h2>
+          <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-4 py-2 text-slate-600">
             Cancel
           </button>
         </div>
@@ -526,14 +569,24 @@ export function PettyCash() {
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {viewingRequest.status === 'draft' && (
-                  <button
-                    onClick={() => handleSubmitDraft(viewingRequest)}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send size={18} />
-                    Submit for Approval
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleEditDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Edit size={18} />
+                      Edit Draft
+                    </button>
+                    <button
+                      onClick={() => handleSubmitDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Submit for Approval
+                    </button>
+                  </>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
                   <button

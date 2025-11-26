@@ -77,6 +77,7 @@ export function PurchaseRequisition() {
   const itemDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [viewingRequest, setViewingRequest] = useState<PurchaseReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<PurchaseReq | null>(null);
 
   const [formData, setFormData] = useState({
     document_no: '',
@@ -395,6 +396,30 @@ export function PurchaseRequisition() {
   };
 
 
+  const handleEditDraft = async (request: PurchaseReq) => {
+    setEditingRequest(request);
+    setFormData({
+      document_no: request.document_no,
+      description: request.description,
+      department: request.department,
+      date_required: request.date_required || request.required_date,
+      purpose: request.purpose,
+      is_budgeted: request.is_budgeted,
+      purchase_type: request.purchase_type,
+      pr_checklist_id: (request as any).pr_checklist_id || '',
+      checklist_items: (request as any).checklist_items || [],
+      payee: request.payee || '',
+      payee_number: (request as any).payee_number || '',
+      amount_net_vat: request.amount_net_vat?.toString() || '',
+      payment_mode_id: (request as any).payment_mode_id || '',
+      payment_mode_lines: (request as any).payment_mode_lines || [],
+      items: request.items && request.items.length > 0 ? request.items : [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
+    });
+    setShowViewModal(false);
+    setViewingRequest(null);
+    setShowForm(true);
+  };
+
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
@@ -413,7 +438,7 @@ export function PurchaseRequisition() {
         .filter(item => item.file)
         .map(item => item.file!);
 
-      let mergedPdfPath = null;
+      let mergedPdfPath = editingRequest?.merged_pdf_path || null;
       if (filesToUpload.length > 0 && profile?.id) {
         const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
@@ -437,12 +462,8 @@ export function PurchaseRequisition() {
       }
 
       const payload: any = {
-        document_no: formData.document_no,
-        pr_number: prNumber,
-        requester_id: profile?.id,
         description: formData.description,
         department: formData.department,
-        request_date: new Date().toISOString().split('T')[0],
         required_date: formData.date_required,
         date_required: formData.date_required,
         purpose: formData.purpose,
@@ -450,7 +471,6 @@ export function PurchaseRequisition() {
         purchase_type: formData.purchase_type,
         total_amount: total,
         status,
-        current_approval_level: status === 'pending' ? 0 : 0,
         pr_checklist_id: formData.pr_checklist_id || null,
         checklist_items: checklistItemsWithoutFiles,
         merged_pdf_path: mergedPdfPath,
@@ -466,13 +486,36 @@ export function PurchaseRequisition() {
         payload.payment_mode_lines = formData.payment_mode_lines;
       }
 
-      const { data: insertedPR, error } = await supabase
-        .from('purchase_requisitions')
-        .insert(payload)
-        .select()
-        .single();
+      let insertedPR;
 
-      if (error) throw error;
+      if (editingRequest) {
+        // Update existing draft
+        const { data, error } = await supabase
+          .from('purchase_requisitions')
+          .update(payload)
+          .eq('id', editingRequest.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        insertedPR = data;
+      } else {
+        // Create new request
+        payload.document_no = formData.document_no;
+        payload.pr_number = prNumber;
+        payload.requester_id = profile?.id;
+        payload.request_date = new Date().toISOString().split('T')[0];
+        payload.current_approval_level = 0;
+
+        const { data, error } = await supabase
+          .from('purchase_requisitions')
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+        insertedPR = data;
+      }
 
       if (status === 'pending' && insertedPR && profile?.company_id) {
         console.log('🚀 Starting approval process...');
@@ -557,9 +600,11 @@ export function PurchaseRequisition() {
       setShowForm(false);
       resetForm();
       loadRequests();
-      generateDocumentNo();
+      if (!editingRequest) {
+        generateDocumentNo();
+      }
     } catch (error: any) {
-      alert('Error creating request: ' + error.message);
+      alert('Error ' + (editingRequest ? 'updating' : 'creating') + ' request: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -586,6 +631,7 @@ export function PurchaseRequisition() {
     setSelectedChecklist(null);
     setSelectedPaymentMode(null);
     setItemSearchTerms(['']);
+    setEditingRequest(null);
   };
 
   const handleRegenerateRFP = async (request: PurchaseReq) => {
@@ -773,7 +819,9 @@ export function PurchaseRequisition() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">New Purchase Requisition</h2>
+          <h2 className="text-2xl font-bold text-slate-900">
+            {editingRequest ? 'Edit Purchase Requisition' : 'New Purchase Requisition'}
+          </h2>
           <button
             onClick={() => {
               setShowForm(false);
@@ -1513,14 +1561,24 @@ export function PurchaseRequisition() {
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {viewingRequest.status === 'draft' && (
-                  <button
-                    onClick={() => handleSubmitDraft(viewingRequest)}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send size={18} />
-                    Submit for Approval
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleEditDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <FileText size={18} />
+                      Edit Draft
+                    </button>
+                    <button
+                      onClick={() => handleSubmitDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Submit for Approval
+                    </button>
+                  </>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && viewingRequest.purchase_type !== 'Purchase Order' && (
                   <>

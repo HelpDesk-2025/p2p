@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Edit } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -21,6 +21,7 @@ export function Canvass() {
   const [loading, setLoading] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<CanvassReq | null>(null);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -60,29 +61,61 @@ export function Canvass() {
     return `CV-${year}${month}-${random}`;
   };
 
+  const handleEditDraft = (request: CanvassReq) => {
+    setEditingRequest(request);
+    setFormData({
+      document_no: request.canvass_number,
+      required_date: request.required_date,
+      items: (request as any).items || [{ description: '', quantity: 1, unit: 'pcs' }],
+    });
+    setShowViewModal(false);
+    setViewingRequest(null);
+    setShowForm(true);
+  };
+
   const handleSubmit = async (status: 'draft' | 'pending') => {
     setLoading(true);
     try {
       const totalAmount = 0;
 
-      const { data: insertedRequest, error } = await supabase
-        .from('canvass_requests')
-        .insert({
-          canvass_number: formData.document_no,
-          requester_id: profile?.id,
-          company_id: profile?.company_id,
-          department: profile?.department || '',
-          request_date: new Date().toISOString().split('T')[0],
-          required_date: formData.required_date,
-          items: formData.items,
-          status,
-          current_approval_level: status === 'pending' ? 0 : 0,
-          total_amount: totalAmount,
-        })
-        .select()
-        .single();
+      let insertedRequest;
 
-      if (error) throw error;
+      if (editingRequest) {
+        const { data, error } = await supabase
+          .from('canvass_requests')
+          .update({
+            required_date: formData.required_date,
+            items: formData.items,
+            status,
+            total_amount: totalAmount,
+          })
+          .eq('id', editingRequest.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        insertedRequest = data;
+      } else {
+        const { data, error } = await supabase
+          .from('canvass_requests')
+          .insert({
+            canvass_number: formData.document_no,
+            requester_id: profile?.id,
+            company_id: profile?.company_id,
+            department: profile?.department || '',
+            request_date: new Date().toISOString().split('T')[0],
+            required_date: formData.required_date,
+            items: formData.items,
+            status,
+            current_approval_level: 0,
+            total_amount: totalAmount,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        insertedRequest = data;
+      }
 
       if (status === 'pending' && insertedRequest && profile?.company_id) {
         const approvalFlows = await getApprovalFlow(
@@ -133,7 +166,11 @@ export function Canvass() {
 
       setShowForm(false);
       setFormData({ document_no: '', required_date: '', items: [{ description: '', quantity: 1, unit: 'pcs' }] });
+      setEditingRequest(null);
       loadRequests();
+      if (!editingRequest) {
+        generateDocumentNo();
+      }
       generateDocumentNo();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -233,8 +270,8 @@ export function Canvass() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">New Canvass Request</h2>
-          <button onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-600">Cancel</button>
+          <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Canvass Request' : 'New Canvass Request'}</h2>
+          <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-4 py-2 text-slate-600">Cancel</button>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
@@ -432,14 +469,24 @@ export function Canvass() {
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {viewingRequest.status === 'draft' && (
-                  <button
-                    onClick={() => handleSubmitDraft(viewingRequest)}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send size={18} />
-                    Submit for Approval
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleEditDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Edit size={18} />
+                      Edit Draft
+                    </button>
+                    <button
+                      onClick={() => handleSubmitDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Submit for Approval
+                    </button>
+                  </>
                 )}
               </div>
               <button
