@@ -64,12 +64,9 @@ export function Canvass() {
   }, []);
 
   const loadAvailablePRs = async () => {
-    if (!profile?.company_id) return;
-
     const { data } = await supabase
       .from('purchase_requisitions')
       .select('*')
-      .eq('company_id', profile.company_id)
       .eq('ready_for_canvass', true)
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
