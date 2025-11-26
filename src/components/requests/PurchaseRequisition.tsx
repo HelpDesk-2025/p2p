@@ -1070,7 +1070,7 @@ export function PurchaseRequisition() {
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-3">
                       <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
                       <input
                         type="text"
@@ -1078,12 +1078,6 @@ export function PurchaseRequisition() {
                         onChange={(e) => updateItem(index, 'unit', e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
-                    </div>
-                    <div className="col-span-3">
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Total</label>
-                      <div className="px-3 py-2 text-sm font-medium text-slate-900 bg-white border border-slate-300 rounded-lg">
-                        {item.total_price.toFixed(2)}
-                      </div>
                     </div>
                     <div className="col-span-1">
                       <button
@@ -1486,7 +1480,6 @@ export function PurchaseRequisition() {
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1495,9 +1488,6 @@ export function PurchaseRequisition() {
                             <td className="px-4 py-2 text-sm text-slate-900">{item.item_description || item.description || 'N/A'}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
-                            <td className="px-4 py-2 text-sm font-semibold text-slate-900">
-                              ₱{item.total_price.toFixed(2)}
-                            </td>
                           </tr>
                         ))}
                       </tbody>

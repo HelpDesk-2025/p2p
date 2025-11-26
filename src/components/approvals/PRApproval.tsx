@@ -594,7 +594,6 @@ export function PRApproval() {
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -603,9 +602,6 @@ export function PRApproval() {
                             <td className="px-4 py-2 text-sm text-slate-900">{item.item_description || item.description || 'N/A'}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
-                            <td className="px-4 py-2 text-sm font-semibold text-slate-900">
-                              ₱{item.total_price.toFixed(2)}
-                            </td>
                           </tr>
                         ))}
                       </tbody>
