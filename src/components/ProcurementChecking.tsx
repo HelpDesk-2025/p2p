@@ -32,6 +32,7 @@ interface PurchaseReq {
     item_name: string;
   };
   merged_pdf_path?: string;
+  ready_for_canvass?: boolean;
 }
 
 export function ProcurementChecking() {
@@ -105,6 +106,33 @@ export function ProcurementChecking() {
     } catch (error) {
       console.error('Error downloading merged PDF:', error);
       alert('Failed to download merged PDF');
+    }
+  };
+
+  const handleReadyForCanvass = async () => {
+    if (!viewingRequest) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to mark this Purchase Requisition (${viewingRequest.document_no || viewingRequest.pr_number}) as ready for canvass?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('purchase_requisitions')
+        .update({ ready_for_canvass: true })
+        .eq('id', viewingRequest.id);
+
+      if (error) throw error;
+
+      alert('Purchase Requisition marked as ready for canvass successfully!');
+      setShowViewModal(false);
+      setViewingRequest(null);
+      loadRequests();
+    } catch (error) {
+      console.error('Error marking PR as ready for canvass:', error);
+      alert('Failed to mark PR as ready for canvass. Please try again.');
     }
   };
 
@@ -352,6 +380,7 @@ export function ProcurementChecking() {
                   Subject Matter Expert
                 </button>
                 <button
+                  onClick={handleReadyForCanvass}
                   className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
                 >
                   <ClipboardList size={20} />
