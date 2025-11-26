@@ -367,26 +367,37 @@ export async function createRejectedLedgerEntries(
 ): Promise<void> {
   try {
     const remainingApprovers = approvalFlows.slice(currentLevel + 1);
+    console.log('🔄 Creating auto-rejected entries for remaining approvers:', remainingApprovers.length);
+
+    if (remainingApprovers.length === 0) {
+      console.log('ℹ️ No remaining approvers to auto-reject');
+      return;
+    }
 
     for (const flow of remainingApprovers) {
+      console.log(`🔍 Processing auto-rejection for sequence ${flow.sequence}: ${flow.approver_type}`);
       const approverInfo = await getApproverEmail(flow, companyId, department);
 
       if (approverInfo) {
+        console.log(`✅ Found approver info: ${approverInfo.name}`);
         await createApprovalLedgerEntry(
           requestType,
           requestId,
           requestNumber,
-          null, // System entry, no specific approver
+          null,
           approverInfo.name,
           flow.approver_type,
           'Auto-Rejected',
           'Previous step was rejected',
           flow.sequence
         );
+        console.log(`✅ Auto-rejected entry created for ${approverInfo.name}`);
+      } else {
+        console.warn(`⚠️ Could not find approver info for ${flow.approver_type}`);
       }
     }
   } catch (error) {
-    console.error('Error creating rejected ledger entries:', error);
+    console.error('❌ Error creating rejected ledger entries:', error);
     throw error;
   }
 }
