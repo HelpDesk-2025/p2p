@@ -57,6 +57,7 @@ export function ProcurementChecking() {
       `)
       .eq('status', 'approved')
       .eq('purchase_type', 'Purchase Order')
+      .eq('ready_for_canvass', false)
       .order('created_at', { ascending: false });
 
     if (!data) {
