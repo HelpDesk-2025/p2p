@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, X, CheckCircle, XCircle, FileText, User } from 'lucide-react';
+import { Eye, X, ClipboardList, FileText, User, Download, ExternalLink } from 'lucide-react';
 
 interface SmeRequest {
   id: string;
@@ -22,6 +22,8 @@ interface SmeRequest {
     total_amount: number;
     request_date: string;
     items: any[];
+    merged_pdf_path: string | null;
+    ready_for_canvass: boolean;
   };
   requester: {
     full_name: string;
@@ -62,7 +64,9 @@ export function SmeApproval() {
           department,
           total_amount,
           request_date,
-          items
+          items,
+          merged_pdf_path,
+          ready_for_canvass
         ),
         requester:requested_by (
           full_name,
@@ -88,38 +92,68 @@ export function SmeApproval() {
     }
   };
 
-  const handleAction = async (action: 'approved' | 'rejected') => {
+  const handleReadyForCanvass = async () => {
     if (!viewingRequest || !profile) return;
 
-    if (!comments.trim() && action === 'rejected') {
-      alert('Please provide comments for rejection');
+    if (!comments.trim()) {
+      alert('Please provide comments before marking as ready for canvass');
       return;
     }
 
     setActionLoading(true);
 
     try {
-      const { error } = await supabase
+      // Update the SME request status
+      const { error: smeError } = await supabase
         .from('sme_requests')
         .update({
-          status: action,
-          sme_comments: comments.trim() || null,
+          status: 'approved',
+          sme_comments: comments.trim(),
           updated_at: new Date().toISOString()
         })
         .eq('id', viewingRequest.id);
 
-      if (error) throw error;
+      if (smeError) throw smeError;
 
-      alert(`SME request ${action} successfully!`);
+      // Update the purchase requisition ready_for_canvass status
+      const { error: prError } = await supabase
+        .from('purchase_requisitions')
+        .update({ ready_for_canvass: true })
+        .eq('id', viewingRequest.pr_id);
+
+      if (prError) throw prError;
+
+      alert('Purchase Requisition marked as ready for canvass successfully!');
       setShowViewModal(false);
       setViewingRequest(null);
       setComments('');
       loadSmeRequests();
     } catch (error) {
-      console.error(`Error ${action} SME request:`, error);
-      alert(`Failed to ${action} SME request. Please try again.`);
+      console.error('Error marking as ready for canvass:', error);
+      alert('Failed to mark as ready for canvass. Please try again.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const previewMergedPDF = async (pdfPath: string) => {
+    const { data } = await supabase.storage.from('attachments').createSignedUrl(pdfPath, 60);
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, '_blank');
+    }
+  };
+
+  const downloadMergedPDF = async (pdfPath: string, documentNo: string) => {
+    const { data } = await supabase.storage.from('attachments').download(pdfPath);
+    if (data) {
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${documentNo}_merged.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -314,6 +348,44 @@ export function SmeApproval() {
                 <p className="text-slate-900">{viewingRequest.purchase_requisitions?.purpose}</p>
               </div>
 
+              {viewingRequest.purchase_requisitions?.merged_pdf_path && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Merged PDF Document</label>
+                  <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                          <FileText size={24} className="text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Merged PDF Document</p>
+                          <p className="text-xs text-slate-600 mt-1">All attachments combined</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewMergedPDF(viewingRequest.purchase_requisitions!.merged_pdf_path!)}
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+                        >
+                          <ExternalLink size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadMergedPDF(
+                            viewingRequest.purchase_requisitions!.merged_pdf_path!,
+                            viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number || 'document'
+                          )}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {viewingRequest.purchase_requisitions?.items && viewingRequest.purchase_requisitions.items.length > 0 && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
@@ -345,7 +417,7 @@ export function SmeApproval() {
               {viewingRequest.status === 'pending' && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Comments {viewingRequest.status === 'pending' && '(Required for rejection)'}
+                    Comments *
                   </label>
                   <textarea
                     value={comments}
@@ -369,24 +441,15 @@ export function SmeApproval() {
 
             {viewingRequest.status === 'pending' && (
               <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleAction('approved')}
-                    disabled={actionLoading}
-                    className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <CheckCircle size={20} />
-                    {actionLoading ? 'Processing...' : 'Approve'}
-                  </button>
-                  <button
-                    onClick={() => handleAction('rejected')}
-                    disabled={actionLoading}
-                    className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <XCircle size={20} />
-                    {actionLoading ? 'Processing...' : 'Reject'}
-                  </button>
-                </div>
+                <button
+                  onClick={handleReadyForCanvass}
+                  disabled={actionLoading || !comments.trim()}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!comments.trim() ? 'Please provide comments before marking as ready for canvass' : ''}
+                >
+                  <ClipboardList size={20} />
+                  {actionLoading ? 'Processing...' : 'Ready for Canvass'}
+                </button>
                 <button
                   onClick={() => {
                     setShowViewModal(false);
