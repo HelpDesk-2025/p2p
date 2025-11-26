@@ -29,6 +29,10 @@ interface SmeRequest {
     department: string;
     company: string;
   };
+  sme_user: {
+    full_name: string;
+    email: string;
+  };
 }
 
 export function SmeApproval() {
@@ -46,7 +50,7 @@ export function SmeApproval() {
   const loadSmeRequests = async () => {
     if (!profile?.id) return;
 
-    const { data } = await supabase
+    let query = supabase
       .from('sme_requests')
       .select(`
         *,
@@ -65,10 +69,19 @@ export function SmeApproval() {
           email,
           department,
           company
+        ),
+        sme_user:sme_user_id (
+          full_name,
+          email
         )
-      `)
-      .eq('sme_user_id', profile.id)
-      .order('created_at', { ascending: false });
+      `);
+
+    // If not admin, filter by sme_user_id
+    if (profile.role !== 'admin') {
+      query = query.eq('sme_user_id', profile.id);
+    }
+
+    const { data } = await query.order('created_at', { ascending: false });
 
     if (data) {
       setRequests(data as any);
@@ -144,6 +157,11 @@ export function SmeApproval() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Department
                 </th>
+                {profile?.role === 'admin' && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Assigned SME
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Purpose
                 </th>
@@ -161,7 +179,7 @@ export function SmeApproval() {
             <tbody className="divide-y divide-slate-200">
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={profile?.role === 'admin' ? 8 : 7} className="px-6 py-8 text-center text-slate-500">
                     No SME requests found
                   </td>
                 </tr>
@@ -177,6 +195,11 @@ export function SmeApproval() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       {req.purchase_requisitions?.department}
                     </td>
+                    {profile?.role === 'admin' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                        {req.sme_user?.full_name}
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
                       {req.purpose}
                     </td>
@@ -240,7 +263,7 @@ export function SmeApproval() {
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-blue-900 mb-1">Request from Procurement</h4>
                     <p className="text-sm text-blue-800">
-                      <span className="font-medium">{viewingRequest.requester?.full_name}</span> is seeking your expertise for this Purchase Requisition.
+                      <span className="font-medium">{viewingRequest.requester?.full_name}</span> is seeking {profile?.role === 'admin' ? <><span className="font-medium">{viewingRequest.sme_user?.full_name}</span>'s</> : 'your'} expertise for this Purchase Requisition.
                     </p>
                     <div className="mt-3 bg-white border border-blue-200 rounded-lg p-3">
                       <p className="text-xs font-medium text-blue-700 mb-1">Purpose:</p>
