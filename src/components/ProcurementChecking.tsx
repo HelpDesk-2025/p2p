@@ -198,6 +198,33 @@ export function ProcurementChecking() {
 
       if (error) throw error;
 
+      const selectedUser = users.find(u => u.id === selectedSmeUser);
+      if (selectedUser?.email) {
+        try {
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-approval-email`;
+          await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: selectedUser.email,
+              subject: `SME Approval Required - ${viewingRequest.document_no || viewingRequest.pr_number}`,
+              recipientName: selectedUser.full_name,
+              requestType: 'SME Request',
+              documentNo: viewingRequest.document_no || viewingRequest.pr_number,
+              requesterName: profile.full_name || profile.email,
+              department: viewingRequest.department,
+              totalAmount: viewingRequest.total_amount,
+              action: 'Submitted',
+            }),
+          });
+        } catch (emailError) {
+          console.error('Error sending email notification:', emailError);
+        }
+      }
+
       alert('SME request submitted successfully!');
       setShowSmeModal(false);
       setShowViewModal(false);
