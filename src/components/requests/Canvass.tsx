@@ -19,6 +19,8 @@ export function Canvass() {
   const [requests, setRequests] = useState<CanvassReq[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CanvassReq | null>(null);
@@ -74,6 +76,11 @@ export function Canvass() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    if (status === 'draft') {
+      setSavingDraft(true);
+    } else {
+      setSubmitting(true);
+    }
     setLoading(true);
     try {
       const totalAmount = 0;
@@ -176,6 +183,8 @@ export function Canvass() {
       alert('Error: ' + error.message);
     } finally {
       setLoading(false);
+      setSavingDraft(false);
+      setSubmitting(false);
     }
   };
 
@@ -184,6 +193,7 @@ export function Canvass() {
       return;
     }
 
+    setSubmitting(true);
     setLoading(true);
     try {
       if (!profile?.company_id) {
@@ -253,6 +263,7 @@ export function Canvass() {
       alert('Failed to submit draft: ' + error.message);
     } finally {
       setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -344,8 +355,8 @@ export function Canvass() {
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button onClick={() => handleSubmit('draft')} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {loading ? 'Saving...' : 'Save as Draft'}
+              {savingDraft ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {savingDraft ? 'Saving...' : 'Save as Draft'}
             </button>
             <button onClick={() => handleSubmit('pending')} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Send size={18} />
@@ -483,8 +494,8 @@ export function Canvass() {
                       disabled={loading}
                       className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                      {loading ? 'Submitting...' : 'Submit for Approval'}
+                      {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                      {submitting ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
                 )}

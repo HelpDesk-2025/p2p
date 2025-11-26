@@ -33,6 +33,8 @@ export function ReimbursementApproval() {
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
 
@@ -178,6 +180,11 @@ export function ReimbursementApproval() {
       return;
     }
 
+    if (action === 'approved') {
+      setApproving(true);
+    } else {
+      setRejecting(true);
+    }
     setLoading(true);
 
     try {
@@ -280,6 +287,8 @@ export function ReimbursementApproval() {
       alert('Error: ' + error.message);
     } finally {
       setLoading(false);
+      setApproving(false);
+      setRejecting(false);
     }
   };
 
@@ -444,16 +453,16 @@ export function ReimbursementApproval() {
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
-                  {loading ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
-                  {loading ? 'Approving...' : 'Approve'}
+                  {approving ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
+                  {approving ? 'Approving...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleAction('rejected')}
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
-                  {loading ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
-                  {loading ? 'Rejecting...' : 'Reject'}
+                  {rejecting ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
+                  {rejecting ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
             </div>
