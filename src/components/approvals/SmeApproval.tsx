@@ -108,7 +108,7 @@ export function SmeApproval() {
       const { error: smeError } = await supabase
         .from('sme_requests')
         .update({
-          status: 'approved',
+          status: 'reviewed',
           sme_comments: comments.trim(),
           updated_at: new Date().toISOString()
         })
