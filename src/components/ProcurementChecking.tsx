@@ -35,14 +35,28 @@ interface PurchaseReq {
   ready_for_canvass?: boolean;
 }
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  company: string;
+  department: string;
+  company_id: string;
+}
+
 export function ProcurementChecking() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<PurchaseReq[]>([]);
   const [viewingRequest, setViewingRequest] = useState<PurchaseReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showSmeModal, setShowSmeModal] = useState(false);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [selectedSmeUser, setSelectedSmeUser] = useState<string>('');
+  const [smePurpose, setSmePurpose] = useState('');
 
   useEffect(() => {
     loadRequests();
+    loadUsers();
   }, [profile]);
 
   const loadRequests = async () => {
@@ -70,6 +84,21 @@ export function ProcurementChecking() {
     );
 
     setRequests(companyFilteredRequests);
+  };
+
+  const loadUsers = async () => {
+    if (!profile?.company_id) return;
+
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('id, full_name, email, company, department, company_id')
+      .eq('company_id', profile.company_id)
+      .eq('is_active', true)
+      .order('full_name');
+
+    if (data) {
+      setUsers(data);
+    }
   };
 
   const previewMergedPDF = async (pdfPath: string) => {
@@ -134,6 +163,50 @@ export function ProcurementChecking() {
     } catch (error) {
       console.error('Error marking PR as ready for canvass:', error);
       alert('Failed to mark PR as ready for canvass. Please try again.');
+    }
+  };
+
+  const handleOpenSmeModal = () => {
+    setShowSmeModal(true);
+    setSelectedSmeUser('');
+    setSmePurpose('');
+  };
+
+  const handleSubmitSme = async () => {
+    if (!viewingRequest || !profile) return;
+
+    if (!selectedSmeUser) {
+      alert('Please select a Subject Matter Expert');
+      return;
+    }
+
+    if (!smePurpose.trim()) {
+      alert('Please provide a purpose for seeking SME help');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sme_requests')
+        .insert({
+          pr_id: viewingRequest.id,
+          requested_by: profile.id,
+          sme_user_id: selectedSmeUser,
+          purpose: smePurpose,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      alert('SME request submitted successfully!');
+      setShowSmeModal(false);
+      setShowViewModal(false);
+      setViewingRequest(null);
+      setSelectedSmeUser('');
+      setSmePurpose('');
+    } catch (error) {
+      console.error('Error submitting SME request:', error);
+      alert('Failed to submit SME request. Please try again.');
     }
   };
 
@@ -375,6 +448,7 @@ export function ProcurementChecking() {
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
+                  onClick={handleOpenSmeModal}
                   className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
                 >
                   <UserCheck size={20} />
@@ -396,6 +470,89 @@ export function ProcurementChecking() {
                 className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSmeModal && viewingRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full">
+            <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Subject Matter Expert Request</h3>
+                <p className="text-sm text-slate-600 mt-1">Request help from an expert for PR: {viewingRequest.document_no || viewingRequest.pr_number}</p>
+              </div>
+              <button
+                onClick={() => setShowSmeModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Select Subject Matter Expert *
+                </label>
+                <select
+                  value={selectedSmeUser}
+                  onChange={(e) => setSelectedSmeUser(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">-- Select User --</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedSmeUser && users.find(u => u.id === selectedSmeUser) && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Selected User Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Company</label>
+                      <p className="text-sm text-slate-900">{users.find(u => u.id === selectedSmeUser)?.company || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Department</label>
+                      <p className="text-sm text-slate-900">{users.find(u => u.id === selectedSmeUser)?.department || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Purpose for Seeking SME Help *
+                </label>
+                <textarea
+                  value={smePurpose}
+                  onChange={(e) => setSmePurpose(e.target.value)}
+                  rows={4}
+                  placeholder="Describe why you need help from a Subject Matter Expert..."
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-end gap-3 rounded-b-xl">
+              <button
+                onClick={() => setShowSmeModal(false)}
+                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitSme}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+              >
+                Submit Request
               </button>
             </div>
           </div>
