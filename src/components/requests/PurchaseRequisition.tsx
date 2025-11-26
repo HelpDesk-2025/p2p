@@ -1041,9 +1041,15 @@ export function PurchaseRequisition() {
                               <div
                                 key={item.number}
                                 onClick={() => {
-                                  updateItem(index, 'description', item.displayName);
-                                  updateItem(index, 'item_description', item.displayName);
-                                  updateItem(index, 'item_number', item.number);
+                                  const newItems = [...formData.items];
+                                  newItems[index] = {
+                                    ...newItems[index],
+                                    description: item.displayName,
+                                    item_description: item.displayName,
+                                    item_number: item.number
+                                  };
+                                  setFormData({ ...formData, items: newItems });
+
                                   const newSearchTerms = [...itemSearchTerms];
                                   newSearchTerms[index] = item.displayName;
                                   setItemSearchTerms(newSearchTerms);
@@ -1319,7 +1325,7 @@ export function PurchaseRequisition() {
                       {req.purchase_type || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                      ₱{req.total_amount.toFixed(2)}
+                      ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
