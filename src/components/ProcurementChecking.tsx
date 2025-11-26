@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, X, FileText, Download, UserCheck, ClipboardList } from 'lucide-react';
+import { Eye, X, FileText, Download, UserCheck, ClipboardList, ExternalLink } from 'lucide-react';
 
 interface PurchaseReq {
   id: string;
@@ -68,6 +68,22 @@ export function ProcurementChecking() {
     );
 
     setRequests(companyFilteredRequests);
+  };
+
+  const previewMergedPDF = async (pdfPath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing merged PDF:', error);
+      alert('Failed to preview merged PDF');
+    }
   };
 
   const downloadMergedPDF = async (pdfPath: string, documentNo: string) => {
@@ -279,13 +295,22 @@ export function ProcurementChecking() {
                           <p className="text-xs text-slate-600 mt-1">All attachments combined</p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => downloadMergedPDF(viewingRequest.merged_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                      >
-                        <Download size={16} />
-                        Download
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewMergedPDF(viewingRequest.merged_pdf_path!)}
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+                        >
+                          <ExternalLink size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadMergedPDF(viewingRequest.merged_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
