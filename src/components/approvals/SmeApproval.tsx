@@ -78,7 +78,8 @@ export function SmeApproval() {
           full_name,
           email
         )
-      `);
+      `)
+      .eq('status', 'pending');
 
     // If not admin, filter by sme_user_id
     if (profile.role !== 'admin') {
