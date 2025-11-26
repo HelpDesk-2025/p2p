@@ -1018,12 +1018,11 @@ export function PurchaseRequisition() {
                       </label>
                       <input
                         type="text"
-                        value={itemSearchTerms[index] || item.description}
+                        value={itemSearchTerms[index] !== undefined ? itemSearchTerms[index] : (item.item_description || item.description)}
                         onChange={(e) => {
                           const newSearchTerms = [...itemSearchTerms];
                           newSearchTerms[index] = e.target.value;
                           setItemSearchTerms(newSearchTerms);
-                          updateItem(index, 'description', e.target.value);
                           setShowItemDropdown(index);
                         }}
                         onFocus={() => setShowItemDropdown(index)}
