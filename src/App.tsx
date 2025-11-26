@@ -13,6 +13,7 @@ import { PettyCashApproval } from './components/approvals/PettyCashApproval';
 import { ReimbursementApproval } from './components/approvals/ReimbursementApproval';
 import { ConfigManager } from './components/config/ConfigManager';
 import { ApprovalLedger } from './components/ApprovalLedger';
+import { ProcurementChecking } from './components/ProcurementChecking';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -50,6 +51,8 @@ function AppContent() {
         return <PettyCashApproval />;
       case 'reimbursement-approval':
         return <ReimbursementApproval />;
+      case 'procurement-checking':
+        return <ProcurementChecking />;
       case 'approval-ledger':
         return <ApprovalLedger />;
       case 'config-users':
