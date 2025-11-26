@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2 } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -444,16 +444,16 @@ export function ReimbursementApproval() {
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
-                  <CheckCircle size={20} />
-                  Approve
+                  {loading ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
+                  {loading ? 'Approving...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleAction('rejected')}
                   disabled={loading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
-                  <XCircle size={20} />
-                  Reject
+                  {loading ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
+                  {loading ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2 } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -1239,18 +1239,18 @@ export function PurchaseRequisition() {
             <button
               onClick={() => handleSubmit('draft')}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save size={18} />
-              Save as Draft
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {loading ? 'Saving...' : 'Save as Draft'}
             </button>
             <button
               onClick={() => handleSubmit('pending')}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send size={18} />
-              Submit for Approval
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {loading ? 'Submitting...' : 'Submit for Approval'}
             </button>
           </div>
         </div>
@@ -1551,8 +1551,8 @@ export function PurchaseRequisition() {
                       disabled={loading}
                       className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send size={18} />
-                      Submit for Approval
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                      {loading ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
                 )}

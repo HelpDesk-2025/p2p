@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Edit } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Edit, Loader2 } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -343,9 +343,9 @@ export function Canvass() {
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
-            <button onClick={() => handleSubmit('draft')} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-              <Save size={18} />
-              Save as Draft
+            <button onClick={() => handleSubmit('draft')} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {loading ? 'Saving...' : 'Save as Draft'}
             </button>
             <button onClick={() => handleSubmit('pending')} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Send size={18} />
@@ -483,8 +483,8 @@ export function Canvass() {
                       disabled={loading}
                       className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send size={18} />
-                      Submit for Approval
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                      {loading ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
                 )}
