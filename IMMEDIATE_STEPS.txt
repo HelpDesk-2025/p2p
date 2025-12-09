@@ -1,0 +1,105 @@
+╔══════════════════════════════════════════════════════════════════╗
+║            🚨 DO THESE 3 THINGS RIGHT NOW 🚨                     ║
+╚══════════════════════════════════════════════════════════════════╝
+
+I CAN SEE YOUR ENV VARS ARE SET IN AZURE ✅
+
+BUT THERE ARE 3 ISSUES TO FIX:
+
+═══════════════════════════════════════════════════════════════════
+
+ISSUE 1: SUPABASE URL IS TRUNCATED ⚠️
+──────────────────────────────────────
+
+In your screenshot:
+  VITE_SUPABASE_URL = https://ijkhvcahxzpauvfyqvxp.supab
+                                                      ^^^^^ INCOMPLETE!
+
+Should be:
+  VITE_SUPABASE_URL = https://ijkhvcahxzpauvfyqvxp.supabase.co
+                                                      ^^^^^^^^^^^
+
+FIX NOW:
+  1. Azure Portal → Your App Service
+  2. Configuration → Application settings
+  3. Click on VITE_SUPABASE_URL row
+  4. Change value to: https://ijkhvcahxzpauvfyqvxp.supabase.co
+     (Make sure it ends with .supabase.co)
+  5. Click OK
+  6. Click SAVE at top
+
+═══════════════════════════════════════════════════════════════════
+
+ISSUE 2: APP NEEDS RESTART 🔄
+─────────────────────────────
+
+After fixing URL, restart the app:
+
+  Azure Portal:
+    Overview → Click "Restart" button → Wait 2 minutes
+
+  OR via CLI:
+    az webapp restart --name YOUR-APP --resource-group YOUR-RG
+
+═══════════════════════════════════════════════════════════════════
+
+ISSUE 3: CLEAR BROWSER CACHE 🌐
+────────────────────────────────
+
+Your browser has cached the old broken version.
+
+  Windows/Linux: Ctrl + Shift + R
+  Mac: Cmd + Shift + R
+
+  OR open in incognito/private window
+
+═══════════════════════════════════════════════════════════════════
+
+VERIFY IT WORKED:
+─────────────────
+
+1. Open: https://YOUR-APP-NAME.azurewebsites.net/config.js
+   
+   Should show:
+   window.__APP_CONFIG__ = {
+     VITE_SUPABASE_URL: "https://ijkhvcahxzpauvfyqvxp.supabase.co",
+     VITE_SUPABASE_ANON_KEY: "eyJhbGc..."
+   };
+
+   NOT empty strings!
+
+2. Open your app: https://YOUR-APP-NAME.azurewebsites.net
+   
+   Hard refresh: Ctrl+Shift+R
+   
+   Should work without "Missing Supabase" error!
+
+═══════════════════════════════════════════════════════════════════
+
+QUICK CLI COMMANDS:
+───────────────────
+
+# Check if URL is complete
+az webapp config appsettings list \
+  --name YOUR-APP \
+  --resource-group YOUR-RG \
+  --query "[?name=='VITE_SUPABASE_URL'].value" -o tsv
+
+# Fix URL
+az webapp config appsettings set \
+  --name YOUR-APP \
+  --resource-group YOUR-RG \
+  --settings VITE_SUPABASE_URL="https://ijkhvcahxzpauvfyqvxp.supabase.co"
+
+# Restart
+az webapp restart --name YOUR-APP --resource-group YOUR-RG
+
+# Test
+curl https://YOUR-APP-NAME.azurewebsites.net/config.js
+
+═══════════════════════════════════════════════════════════════════
+
+TIME TO FIX: 2 minutes
+EXPECTED RESULT: App works perfectly ✅
+
+═══════════════════════════════════════════════════════════════════
