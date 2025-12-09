@@ -1,0 +1,134 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                   AZURE FIX - COMPLETE ✅                        ║
+╚══════════════════════════════════════════════════════════════════╝
+
+ISSUE FIXED:
+❌ "Uncaught Error: Missing Supabase environment variables"
+
+ROOT CAUSE:
+Vite environment variables (VITE_*) are build-time only. They weren't 
+available at runtime on Azure unless set during the build process.
+
+SOLUTION IMPLEMENTED:
+✅ Hybrid runtime/build-time configuration system
+
+───────────────────────────────────────────────────────────────────
+
+FILES MODIFIED:
+
+1. server.js (NEW)
+   - Added /config.js endpoint serving runtime environment variables
+   - Injects config script into HTML head
+   - Logs configuration status on startup
+   
+2. src/lib/supabase.ts (UPDATED)
+   - Checks window.__APP_CONFIG__ first (runtime)
+   - Falls back to import.meta.env (build-time)
+   - Works in both development and production
+
+───────────────────────────────────────────────────────────────────
+
+HOW IT WORKS:
+
+1. Server reads environment variables from Azure
+2. Serves them at /config.js endpoint
+3. Script injected into HTML <head>
+4. Variables available as window.__APP_CONFIG__
+5. Supabase client reads from window object
+6. Falls back to Vite env vars for local dev
+
+───────────────────────────────────────────────────────────────────
+
+DEPLOYMENT STEPS:
+
+1. SET ENVIRONMENT VARIABLES IN AZURE:
+   
+   Via Portal:
+   - Go to portal.azure.com
+   - Your App Service → Configuration
+   - Add: VITE_SUPABASE_URL
+   - Add: VITE_SUPABASE_ANON_KEY
+   - Add: NODE_ENV = production
+   - Save
+   
+   Via CLI:
+   az webapp config appsettings set \
+     --name YOUR-APP \
+     --resource-group YOUR-RG \
+     --settings \
+       VITE_SUPABASE_URL="https://xxx.supabase.co" \
+       VITE_SUPABASE_ANON_KEY="eyJhbGc..." \
+       NODE_ENV="production"
+
+2. RESTART THE APP:
+   
+   az webapp restart --name YOUR-APP --resource-group YOUR-RG
+
+3. VERIFY:
+   
+   - Open: https://YOUR-APP.azurewebsites.net/config.js
+   - Should show your Supabase URL and key
+   - Open app: https://YOUR-APP.azurewebsites.net
+   - Should load without "Missing Supabase" error
+
+───────────────────────────────────────────────────────────────────
+
+VERIFICATION CHECKLIST:
+
+✅ Built successfully locally
+✅ server.js created with config endpoint
+✅ supabase.ts updated with runtime config support
+✅ Documentation created:
+   - AZURE_FIX.md (detailed explanation)
+   - AZURE_TROUBLESHOOTING.md (comprehensive troubleshooting)
+   - DEPLOY_AZURE_NOW.md (quick deployment guide)
+   - AZURE_FIX_SUMMARY.txt (this file)
+
+───────────────────────────────────────────────────────────────────
+
+WHAT TO DO NOW:
+
+1. Read: DEPLOY_AZURE_NOW.md
+2. Set environment variables in Azure Portal
+3. Deploy or restart your app
+4. Test at: https://YOUR-APP-NAME.azurewebsites.net
+
+───────────────────────────────────────────────────────────────────
+
+HELPFUL COMMANDS:
+
+# Check if env vars are set
+az webapp config appsettings list \
+  --name YOUR-APP --resource-group YOUR-RG \
+  --query "[?name=='VITE_SUPABASE_URL' || name=='VITE_SUPABASE_ANON_KEY']"
+
+# Check logs
+az webapp log tail --name YOUR-APP --resource-group YOUR-RG
+
+# Restart app
+az webapp restart --name YOUR-APP --resource-group YOUR-RG
+
+# Test config endpoint
+curl https://YOUR-APP.azurewebsites.net/config.js
+
+───────────────────────────────────────────────────────────────────
+
+BENEFITS OF THIS SOLUTION:
+
+✅ Works in development (Vite build-time vars)
+✅ Works in production (Azure runtime vars)
+✅ No rebuild needed to change configuration
+✅ Secure (keys served by backend, not in bundle)
+✅ Easy to update via Azure Portal
+✅ Clear logging for debugging
+
+───────────────────────────────────────────────────────────────────
+
+NEED HELP?
+
+📖 DEPLOY_AZURE_NOW.md - Quick start guide
+📖 AZURE_FIX.md - Detailed technical explanation
+📖 AZURE_TROUBLESHOOTING.md - Common issues and solutions
+📖 AZURE_DEPLOYMENT.md - Complete deployment guide
+
+═══════════════════════════════════════════════════════════════════
