@@ -32,7 +32,29 @@ const supabaseAnonKey = config.key;
 const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  // Enhanced error message with debugging info
+  const errorDetails = [
+    'Missing Supabase environment variables!',
+    '',
+    'Runtime config available:', typeof window !== 'undefined' && !!window.__APP_CONFIG__,
+    'Runtime URL:', typeof window !== 'undefined' && window.__APP_CONFIG__?.VITE_SUPABASE_URL ? 'SET' : 'NOT SET',
+    'Build-time URL:', import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET',
+    '',
+    'AZURE FIX REQUIRED:',
+    '1. Go to Azure Portal → Your App Service → Configuration',
+    '2. Add Application Settings:',
+    '   - VITE_SUPABASE_URL = your-supabase-url',
+    '   - VITE_SUPABASE_ANON_KEY = your-anon-key',
+    '3. Save and restart the app',
+    '',
+    'Check /config.js endpoint to verify:',
+    window.location.origin + '/config.js',
+    '',
+    'See DEPLOY_AZURE_NOW.md for complete instructions'
+  ].join('\n');
+
+  console.error(errorDetails);
+  throw new Error('Missing Supabase environment variables - Check console for details');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

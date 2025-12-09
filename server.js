@@ -34,10 +34,35 @@ const server = createServer((req, res) => {
 
   // Serve runtime config
   if (pathname === '/config.js') {
-    const config = `window.__APP_CONFIG__ = {
+    const hasUrl = !!process.env.VITE_SUPABASE_URL;
+    const hasKey = !!process.env.VITE_SUPABASE_ANON_KEY;
+
+    const config = `// Azure Environment Configuration
+// Generated: ${new Date().toISOString()}
+// URL configured: ${hasUrl}
+// Key configured: ${hasKey}
+
+window.__APP_CONFIG__ = {
   VITE_SUPABASE_URL: "${process.env.VITE_SUPABASE_URL || ''}",
   VITE_SUPABASE_ANON_KEY: "${process.env.VITE_SUPABASE_ANON_KEY || ''}"
-};`;
+};
+
+// Debugging info
+if (!window.__APP_CONFIG__.VITE_SUPABASE_URL || !window.__APP_CONFIG__.VITE_SUPABASE_ANON_KEY) {
+  console.error('⚠️ AZURE CONFIGURATION ERROR ⚠️');
+  console.error('Environment variables are NOT set in Azure App Service!');
+  console.error('');
+  console.error('TO FIX:');
+  console.error('1. Go to: https://portal.azure.com');
+  console.error('2. Find your App Service');
+  console.error('3. Configuration → Application settings');
+  console.error('4. Add these settings:');
+  console.error('   - VITE_SUPABASE_URL');
+  console.error('   - VITE_SUPABASE_ANON_KEY');
+  console.error('5. Save and restart');
+  console.error('');
+  console.error('See DEPLOY_AZURE_NOW.md for detailed instructions');
+}`;
 
     res.writeHead(200, {
       'Content-Type': 'application/javascript',
