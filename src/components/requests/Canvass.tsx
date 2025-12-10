@@ -4,6 +4,48 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Edit, Loader2 } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { PDFDocument } from 'pdf-lib';
+
+// Helper function to convert image to PDF
+const convertImageToPDF = async (imageFile: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const imageBytes = e.target?.result as ArrayBuffer;
+        const pdfDoc = await PDFDocument.create();
+
+        let image;
+        const fileType = imageFile.type.toLowerCase();
+
+        if (fileType === 'image/jpeg' || fileType === 'image/jpg') {
+          image = await pdfDoc.embedJpg(imageBytes);
+        } else if (fileType === 'image/png') {
+          image = await pdfDoc.embedPng(imageBytes);
+        } else {
+          // For other image types, try to load as PNG
+          image = await pdfDoc.embedPng(imageBytes);
+        }
+
+        const page = pdfDoc.addPage([image.width, image.height]);
+        page.drawImage(image, {
+          x: 0,
+          y: 0,
+          width: image.width,
+          height: image.height,
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        resolve(pdfBlob);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read image file'));
+    reader.readAsArrayBuffer(imageFile);
+  });
+};
 
 interface CanvassReq {
   id: string;
@@ -336,12 +378,31 @@ export function Canvass() {
           // If a new file was uploaded, upload it
           if (quotation.quotation_file && quotation.quotation_file instanceof File) {
             const timestamp = Date.now();
-            const fileName = `canvass_${formData.document_no}_quotation_${index + 1}_${timestamp}_${quotation.quotation_file.name}`;
+            let fileToUpload: File | Blob = quotation.quotation_file;
+            let fileName = `canvass_${formData.document_no}_quotation_${index + 1}_${timestamp}`;
+
+            // Check if file is an image and convert to PDF
+            const isImage = quotation.quotation_file.type.startsWith('image/');
+            if (isImage) {
+              try {
+                const pdfBlob = await convertImageToPDF(quotation.quotation_file);
+                fileToUpload = pdfBlob;
+                fileName += '.pdf';
+              } catch (error) {
+                console.error('Error converting image to PDF:', error);
+                alert(`Failed to convert image to PDF for quotation ${index + 1}`);
+                const { quotation_file, ...quotationWithoutFile } = quotation;
+                return quotationWithoutFile;
+              }
+            } else {
+              fileName += '_' + quotation.quotation_file.name;
+            }
+
             const filePath = `canvass/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
               .from('attachments')
-              .upload(filePath, quotation.quotation_file);
+              .upload(filePath, fileToUpload);
 
             if (uploadError) {
               console.error('Error uploading quotation file:', uploadError);
@@ -1200,17 +1261,29 @@ export function Canvass() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File (PDF or Image)</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Quotation File (1 file only)
+                          <span className="block text-xs text-slate-500 mt-0.5">PDF or Image (will be converted to PDF)</span>
+                        </label>
                         <input
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                           onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
                             const newQuotations = [...quotations];
-                            newQuotations[idx].quotation_file = e.target.files?.[0] || null;
+                            newQuotations[idx].quotation_file = file;
                             setQuotations(newQuotations);
                           }}
                           className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                         />
+                        {quotation.quotation_file && (
+                          <p className="text-xs text-slate-600 mt-1">
+                            Selected: {quotation.quotation_file.name}
+                            {quotation.quotation_file.type.startsWith('image/') && (
+                              <span className="text-blue-600"> (will be converted to PDF)</span>
+                            )}
+                          </p>
+                        )}
                       </div>
 
                       <div className="border-t pt-4 mt-4">
