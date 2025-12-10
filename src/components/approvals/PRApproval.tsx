@@ -602,17 +602,23 @@ export function PRApproval() {
                     <table className="w-full">
                       <thead className="bg-slate-50">
                         <tr>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Item Name</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit Price</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total Amount</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {selectedRequest.items.map((item: any, index: number) => (
                           <tr key={index}>
                             <td className="px-4 py-2 text-sm text-slate-900">{item.item_description || item.description || 'N/A'}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.item_notes || '-'}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">₱{item.unit_price?.toFixed(2) || '0.00'}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900 font-semibold">₱{item.total_price?.toFixed(2) || '0.00'}</td>
                           </tr>
                         ))}
                       </tbody>
