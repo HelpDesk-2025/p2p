@@ -1083,12 +1083,8 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.registered_name}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].registered_name = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -1096,25 +1092,17 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.tin}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].tin = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div className="col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Complete Address</label>
                             <textarea
                               value={quotation.complete_address}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].complete_address = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
+                              readOnly
                               rows={2}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
