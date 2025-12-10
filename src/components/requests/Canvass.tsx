@@ -26,6 +26,7 @@ interface PurchaseRequisition {
   items: any[];
   merged_pdf_path: string | null;
   ready_for_canvass: boolean;
+  company_id: string;
 }
 
 interface QuotationForm {
