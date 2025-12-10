@@ -775,7 +775,7 @@ export function Canvass() {
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Quotations (3 Required)</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Quotations (atleast 1)</h3>
                 {loadingVendors && (
                   <div className="flex items-center gap-2 mb-4 text-blue-600">
                     <Loader2 size={16} className="animate-spin" />
