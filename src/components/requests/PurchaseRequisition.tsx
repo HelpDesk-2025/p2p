@@ -11,6 +11,7 @@ import { regenerateRFP } from '../../lib/rfpGenerator';
 interface PRItem {
   description: string;
   item_description?: string;
+  item_notes?: string;
   quantity: number;
   unit: string;
   unit_price: number;
@@ -97,7 +98,7 @@ export function PurchaseRequisition() {
     amount_net_vat: '',
     payment_mode_id: '',
     payment_mode_lines: [] as PaymentModeLine[],
-    items: [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
+    items: [{ description: '', item_notes: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
   });
 
   useEffect(() => {
@@ -358,7 +359,7 @@ export function PurchaseRequisition() {
       ...formData,
       items: [
         ...formData.items,
-        { description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' },
+        { description: '', item_notes: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' },
       ],
     });
     setItemSearchTerms([...itemSearchTerms, '']);
@@ -636,7 +637,7 @@ export function PurchaseRequisition() {
       amount_net_vat: '',
       payment_mode_id: '',
       payment_mode_lines: [],
-      items: [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
+      items: [{ description: '', item_notes: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
     });
     setSelectedChecklist(null);
     setSelectedPaymentMode(null);
@@ -1023,9 +1024,9 @@ export function PurchaseRequisition() {
                     key={index}
                     className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-lg"
                   >
-                    <div className="col-span-3 relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
+                    <div className="col-span-2 relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
                       <label className="block text-xs font-medium text-slate-600 mb-1">
-                        Description
+                        Item Name
                       </label>
                       <input
                         type="text"
@@ -1076,6 +1077,18 @@ export function PurchaseRequisition() {
                         </div>
                       )}
                     </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        Description
+                      </label>
+                      <input
+                        type="text"
+                        value={item.item_notes || ''}
+                        onChange={(e) => updateItem(index, 'item_notes', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Additional description..."
+                      />
+                    </div>
                     <div className="col-span-1">
                       <label className="block text-xs font-medium text-slate-600 mb-1">
                         Quantity
@@ -1106,7 +1119,7 @@ export function PurchaseRequisition() {
                         step="0.01"
                       />
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-2">
                       <label className="block text-xs font-medium text-slate-600 mb-1">Estimated Total Amount</label>
                       <div className="w-full px-3 py-2 text-sm bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-medium">
                         ₱{item.total_price.toFixed(2)}
