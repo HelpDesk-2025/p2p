@@ -329,6 +329,34 @@ export function Canvass() {
     try {
       const totalAmount = selectedPR?.total_amount || 0;
 
+      // Upload quotation files to storage
+      const quotationsWithFiles = await Promise.all(
+        quotations.map(async (quotation, index) => {
+          if (quotation.quotation_file && quotation.quotation_file instanceof File) {
+            const timestamp = Date.now();
+            const fileName = `canvass_${formData.document_no}_quotation_${index + 1}_${timestamp}_${quotation.quotation_file.name}`;
+            const filePath = `canvass/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('attachments')
+              .upload(filePath, quotation.quotation_file);
+
+            if (uploadError) {
+              console.error('Error uploading quotation file:', uploadError);
+              return { ...quotation, quotation_file: null, quotation_file_path: null };
+            }
+
+            // Return quotation with file path instead of File object
+            const { quotation_file, ...quotationWithoutFile } = quotation;
+            return { ...quotationWithoutFile, quotation_file_path: filePath };
+          }
+
+          // Remove quotation_file if it's not a File object (already uploaded)
+          const { quotation_file, ...quotationWithoutFile } = quotation;
+          return quotationWithoutFile;
+        })
+      );
+
       let insertedRequest;
 
       if (editingRequest) {
@@ -339,7 +367,7 @@ export function Canvass() {
             items: formData.items,
             status,
             total_amount: totalAmount,
-            suppliers: quotations,
+            suppliers: quotationsWithFiles,
             recommended_quotation_index: status === 'pending' ? recommendedQuotationIndex : null,
             recommendation_remarks: status === 'pending' ? recommendationRemarks : null,
           })
@@ -361,7 +389,7 @@ export function Canvass() {
             request_date: new Date().toISOString().split('T')[0],
             required_date: formData.required_date,
             items: formData.items,
-            suppliers: quotations,
+            suppliers: quotationsWithFiles,
             status,
             current_approval_level: 0,
             total_amount: totalAmount,
@@ -1643,6 +1671,24 @@ export function Canvass() {
                                 <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Item</span>
                               )}
                             </div>
+                            {supplier.quotation_file_path && (
+                              <div className="mt-3 pt-3 border-t border-slate-200">
+                                <button
+                                  onClick={async () => {
+                                    const { data } = await supabase.storage
+                                      .from('attachments')
+                                      .createSignedUrl(supplier.quotation_file_path, 60);
+                                    if (data?.signedUrl) {
+                                      window.open(data.signedUrl, '_blank');
+                                    }
+                                  }}
+                                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                                >
+                                  <FileText size={16} />
+                                  View Quotation File
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

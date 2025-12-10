@@ -604,6 +604,24 @@ export function CanvassApproval() {
                                 <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Item</span>
                               )}
                             </div>
+                            {supplier.quotation_file_path && (
+                              <div className="mt-3 pt-3 border-t border-slate-200">
+                                <button
+                                  onClick={async () => {
+                                    const { data } = await supabase.storage
+                                      .from('attachments')
+                                      .createSignedUrl(supplier.quotation_file_path, 60);
+                                    if (data?.signedUrl) {
+                                      window.open(data.signedUrl, '_blank');
+                                    }
+                                  }}
+                                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                                >
+                                  <FileText size={16} />
+                                  View Quotation File
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
