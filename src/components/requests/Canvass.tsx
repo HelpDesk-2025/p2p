@@ -12,6 +12,12 @@ interface CanvassReq {
   required_date: string;
   status: string;
   total_amount: number;
+  pr_id?: string;
+  department?: string;
+  items?: any[];
+  suppliers?: any[];
+  recommended_quotation_index?: number | null;
+  recommendation_remarks?: string | null;
 }
 
 interface PurchaseRequisition {
@@ -23,6 +29,10 @@ interface PurchaseRequisition {
   department: string;
   total_amount: number;
   request_date: string;
+  required_date?: string;
+  request_type?: string;
+  line_name?: string;
+  is_budgeted?: boolean;
   items: any[];
   merged_pdf_path: string | null;
   ready_for_canvass: boolean;
@@ -94,6 +104,7 @@ export function Canvass() {
   const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CanvassReq | null>(null);
+  const [viewingPR, setViewingPR] = useState<PurchaseRequisition | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [vendorSearchTerm, setVendorSearchTerm] = useState<{ [key: number]: string }>({});
@@ -205,6 +216,31 @@ export function Canvass() {
     setRequests(data || []);
   };
 
+  const handleViewRequest = async (request: CanvassReq) => {
+    setViewingRequest(request);
+    setShowViewModal(true);
+    setViewingPR(null);
+
+    // Fetch full canvass details including PR if pr_id exists
+    if (request.pr_id) {
+      try {
+        const { data: prData, error: prError } = await supabase
+          .from('purchase_requisitions')
+          .select('*')
+          .eq('id', request.pr_id)
+          .maybeSingle();
+
+        if (prError) {
+          console.error('Error fetching PR:', prError);
+        } else if (prData) {
+          setViewingPR(prData as PurchaseRequisition);
+        }
+      } catch (error) {
+        console.error('Error loading PR details:', error);
+      }
+    }
+  };
+
   const generateNumber = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -254,6 +290,7 @@ export function Canvass() {
     });
     setShowViewModal(false);
     setViewingRequest(null);
+    setViewingPR(null);
     setShowForm(true);
   };
 
@@ -486,6 +523,7 @@ export function Canvass() {
 
       setShowViewModal(false);
       setViewingRequest(null);
+      setViewingPR(null);
       alert('Draft submitted for approval successfully!');
       await loadRequests();
     } catch (error: any) {
@@ -1375,10 +1413,7 @@ export function Canvass() {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <button
-                      onClick={() => {
-                        setViewingRequest(req);
-                        setShowViewModal(true);
-                      }}
+                      onClick={() => handleViewRequest(req)}
                       className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
                       <Eye size={16} />
@@ -1404,6 +1439,7 @@ export function Canvass() {
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingRequest(null);
+                  setViewingPR(null);
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
@@ -1438,7 +1474,189 @@ export function Canvass() {
                     {viewingRequest.status}
                   </span>
                 </div>
+                {viewingRequest.total_amount && (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Total Amount</label>
+                    <p className="text-slate-900 font-bold">₱{viewingRequest.total_amount.toLocaleString()}</p>
+                  </div>
+                )}
               </div>
+
+              {viewingPR && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <h4 className="text-base font-bold text-slate-900 border-b border-blue-200 pb-2">
+                    Purchase Requisition Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">PR Number</label>
+                      <p className="text-sm text-slate-900 font-mono">{viewingPR.pr_number}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Request Type</label>
+                      <p className="text-sm text-slate-900">{viewingPR.request_type || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Line Name</label>
+                      <p className="text-sm text-slate-900">{viewingPR.line_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Budgeted</label>
+                      <p className="text-sm text-slate-900">{viewingPR.is_budgeted ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-semibold text-slate-600">Purpose</label>
+                      <p className="text-sm text-slate-900">{viewingPR.purpose}</p>
+                    </div>
+                  </div>
+
+                  {viewingPR.items && viewingPR.items.length > 0 && (
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-2 block">PR Items</label>
+                      <div className="border border-blue-200 rounded-lg overflow-hidden bg-white">
+                        <table className="w-full">
+                          <thead className="bg-blue-100">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
+                              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700">Unit Price</th>
+                              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-blue-100">
+                            {viewingPR.items.map((item: any, index: number) => (
+                              <tr key={index}>
+                                <td className="px-3 py-2 text-xs text-slate-900">{item.description}</td>
+                                <td className="px-3 py-2 text-xs text-slate-700">{item.quantity}</td>
+                                <td className="px-3 py-2 text-xs text-slate-700">{item.unit}</td>
+                                <td className="px-3 py-2 text-xs text-slate-700 text-right">₱{item.unit_price?.toLocaleString()}</td>
+                                <td className="px-3 py-2 text-xs text-slate-900 font-semibold text-right">₱{item.amount?.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {viewingRequest.suppliers && viewingRequest.suppliers.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Quotations Summary</label>
+                  <div className="space-y-4">
+                    {viewingRequest.suppliers.map((supplier: any, index: number) => {
+                      if (!supplier.vendor_name || supplier.vendor_name.trim() === '') return null;
+                      const isRecommended = viewingRequest.recommended_quotation_index === index;
+                      return (
+                        <div
+                          key={index}
+                          className={`border rounded-lg p-4 ${isRecommended ? 'border-green-500 bg-green-50' : 'border-slate-200 bg-white'}`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-bold text-slate-900 flex items-center gap-2">
+                              Quotation {index + 1}
+                              {isRecommended && (
+                                <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">Recommended</span>
+                              )}
+                            </h5>
+                            <span className="text-lg font-bold text-blue-600">₱{supplier.net_payable?.toLocaleString() || '0'}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Vendor</label>
+                              <p className="text-slate-900">{supplier.vendor_name}</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Registered Name</label>
+                              <p className="text-slate-900">{supplier.registered_name || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Contact Person</label>
+                              <p className="text-slate-900">{supplier.contact_person || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Contact Number</label>
+                              <p className="text-slate-900">{supplier.contact_no || 'N/A'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-xs font-semibold text-slate-600">Address</label>
+                              <p className="text-slate-900 text-xs">{supplier.complete_address || 'N/A'}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Quantity</label>
+                                <p className="text-slate-900">{supplier.quantity}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Unit Price</label>
+                                <p className="text-slate-900">₱{supplier.unit_price?.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Quoted Amount</label>
+                                <p className="text-slate-900">₱{supplier.quoted_amount?.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Delivery Fee</label>
+                                <p className="text-slate-900">₱{supplier.delivery_fee?.toLocaleString() || '0'}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Discounted Price</label>
+                                <p className="text-slate-900">₱{supplier.discounted_price?.toLocaleString() || '0'}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Net of VAT</label>
+                                <p className="text-slate-900">₱{supplier.net_of_vat?.toLocaleString() || '0'}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">VAT (12%)</label>
+                                <p className="text-slate-900">₱{supplier.vat_12?.toLocaleString() || '0'}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">EWT</label>
+                                <p className="text-slate-900">₱{supplier.ewt?.toLocaleString() || '0'}</p>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {supplier.invoice_availability && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Invoice Available</span>
+                              )}
+                              {supplier.delivery && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Delivery</span>
+                              )}
+                              {supplier.installation && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Installation</span>
+                              )}
+                              {supplier.vatable && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">VATable</span>
+                              )}
+                              {supplier.withholding_tax && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Withholding Tax</span>
+                              )}
+                              {supplier.is_service && (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Service</span>
+                              )}
+                              {supplier.is_item && (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Item</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {viewingRequest.recommendation_remarks && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Recommendation Remarks</label>
+                  <p className="text-sm text-slate-900">{viewingRequest.recommendation_remarks}</p>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
@@ -1468,6 +1686,7 @@ export function Canvass() {
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingRequest(null);
+                  setViewingPR(null);
                 }}
                 className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
               >
