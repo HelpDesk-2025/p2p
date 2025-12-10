@@ -88,6 +88,8 @@ export function Canvass() {
   const [editingRequest, setEditingRequest] = useState<CanvassReq | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState<{ [key: number]: string }>({});
+  const [showVendorDropdown, setShowVendorDropdown] = useState<{ [key: number]: boolean }>({});
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -131,6 +133,18 @@ export function Canvass() {
 
   useEffect(() => {
     loadRequests();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.vendor-dropdown-container')) {
+        setShowVendorDropdown({});
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadAvailablePRs = async () => {
@@ -639,35 +653,55 @@ export function Canvass() {
                       <h4 className="font-semibold text-slate-900 text-lg">Quotation {idx + 1}</h4>
 
                       <div className="grid grid-cols-3 gap-3">
-                        <div>
+                        <div className="relative vendor-dropdown-container">
                           <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name *</label>
                           <input
                             type="text"
-                            list={`vendors-list-${idx}`}
-                            value={quotation.vendor_name}
+                            value={vendorSearchTerm[idx] !== undefined ? vendorSearchTerm[idx] : quotation.vendor_name}
                             onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              const selectedVendor = vendors.find(v => v.displayName === e.target.value);
-                              newQuotations[idx].vendor_name = e.target.value;
-                              if (selectedVendor) {
-                                newQuotations[idx].registered_name = selectedVendor.displayName;
-                                newQuotations[idx].complete_address = `${selectedVendor.address.street}, ${selectedVendor.address.city}, ${selectedVendor.address.state} ${selectedVendor.address.postalCode}`;
-                                newQuotations[idx].tin = selectedVendor.taxRegistrationNumber;
-                                newQuotations[idx].contact_no = selectedVendor.phoneNumber;
-                                newQuotations[idx].email_address = selectedVendor.email;
-                              }
-                              setQuotations(newQuotations);
+                              setVendorSearchTerm({ ...vendorSearchTerm, [idx]: e.target.value });
+                              setShowVendorDropdown({ ...showVendorDropdown, [idx]: true });
                             }}
-                            placeholder="Type or select vendor..."
+                            onFocus={() => setShowVendorDropdown({ ...showVendorDropdown, [idx]: true })}
+                            placeholder="Search vendors..."
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
-                          <datalist id={`vendors-list-${idx}`}>
-                            {vendors.map((vendor) => (
-                              <option key={vendor.number} value={vendor.displayName}>
-                                {vendor.displayName}
-                              </option>
-                            ))}
-                          </datalist>
+                          {showVendorDropdown[idx] && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                              {vendors
+                                .filter((vendor) =>
+                                  vendor.displayName.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase()) ||
+                                  vendor.number.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase())
+                                )
+                                .map((vendor) => (
+                                  <div
+                                    key={vendor.number}
+                                    className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                                    onClick={() => {
+                                      const newQuotations = [...quotations];
+                                      newQuotations[idx].vendor_name = vendor.displayName;
+                                      newQuotations[idx].registered_name = vendor.displayName;
+                                      newQuotations[idx].complete_address = `${vendor.address.street}, ${vendor.address.city}, ${vendor.address.state} ${vendor.address.postalCode}`;
+                                      newQuotations[idx].tin = vendor.taxRegistrationNumber;
+                                      newQuotations[idx].contact_no = vendor.phoneNumber;
+                                      newQuotations[idx].email_address = vendor.email;
+                                      setQuotations(newQuotations);
+                                      setVendorSearchTerm({ ...vendorSearchTerm, [idx]: vendor.displayName });
+                                      setShowVendorDropdown({ ...showVendorDropdown, [idx]: false });
+                                    }}
+                                  >
+                                    <div className="font-semibold text-slate-900">{vendor.displayName}</div>
+                                    <div className="text-sm text-slate-500">{vendor.number}</div>
+                                  </div>
+                                ))}
+                              {vendors.filter((vendor) =>
+                                vendor.displayName.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase()) ||
+                                vendor.number.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase())
+                              ).length === 0 && (
+                                <div className="px-4 py-3 text-sm text-slate-500">No vendors found</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
