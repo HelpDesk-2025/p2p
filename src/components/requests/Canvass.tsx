@@ -1068,10 +1068,10 @@ export function Canvass() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File (PDF or Image)</label>
                         <input
                           type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
+                          accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                           onChange={(e) => {
                             const newQuotations = [...quotations];
                             newQuotations[idx].quotation_file = e.target.files?.[0] || null;
