@@ -1116,8 +1116,12 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.contact_person}
-                              readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].contact_person = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
@@ -1125,8 +1129,12 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.contact_no}
-                              readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].contact_no = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
@@ -1134,8 +1142,12 @@ export function Canvass() {
                             <input
                               type="email"
                               value={quotation.email_address}
-                              readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].email_address = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
@@ -1143,8 +1155,12 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.bank_account_no}
-                              readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].bank_account_no = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
@@ -1152,8 +1168,12 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.depository_bank}
-                              readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].depository_bank = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div className="col-span-2">
