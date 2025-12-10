@@ -1023,7 +1023,7 @@ export function PurchaseRequisition() {
                     key={index}
                     className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-lg"
                   >
-                    <div className="col-span-4 relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
+                    <div className="col-span-3 relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
                       <label className="block text-xs font-medium text-slate-600 mb-1">
                         Description
                       </label>
@@ -1076,7 +1076,7 @@ export function PurchaseRequisition() {
                         </div>
                       )}
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <label className="block text-xs font-medium text-slate-600 mb-1">
                         Quantity
                       </label>
@@ -1087,7 +1087,7 @@ export function PurchaseRequisition() {
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-2">
                       <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
                       <input
                         type="text"
@@ -1095,6 +1095,22 @@ export function PurchaseRequisition() {
                         onChange={(e) => updateItem(index, 'unit', e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Unit Price</label>
+                      <input
+                        type="number"
+                        value={item.unit_price}
+                        onChange={(e) => updateItem(index, 'unit_price', Number(e.target.value))}
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        step="0.01"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Estimated Total Amount</label>
+                      <div className="w-full px-3 py-2 text-sm bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-medium">
+                        ₱{item.total_price.toFixed(2)}
+                      </div>
                     </div>
                     <div className="col-span-1">
                       <button
@@ -1106,6 +1122,15 @@ export function PurchaseRequisition() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <div className="bg-slate-100 px-6 py-3 rounded-lg">
+                  <span className="text-sm font-medium text-slate-700">Total Amount: </span>
+                  <span className="text-xl font-bold text-slate-900">
+                    ₱{calculateTotal().toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
           )}
