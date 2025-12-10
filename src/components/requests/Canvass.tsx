@@ -70,6 +70,7 @@ interface QuotationForm {
   depository_bank: string;
   other_information: string;
   quotation_file?: File | null;
+  quotation_file_path?: string;
 }
 
 interface Vendor {
@@ -332,6 +333,7 @@ export function Canvass() {
       // Upload quotation files to storage
       const quotationsWithFiles = await Promise.all(
         quotations.map(async (quotation, index) => {
+          // If a new file was uploaded, upload it
           if (quotation.quotation_file && quotation.quotation_file instanceof File) {
             const timestamp = Date.now();
             const fileName = `canvass_${formData.document_no}_quotation_${index + 1}_${timestamp}_${quotation.quotation_file.name}`;
@@ -343,15 +345,17 @@ export function Canvass() {
 
             if (uploadError) {
               console.error('Error uploading quotation file:', uploadError);
-              return { ...quotation, quotation_file: null, quotation_file_path: null };
+              // Preserve existing file path if upload failed
+              const { quotation_file, ...quotationWithoutFile } = quotation;
+              return quotationWithoutFile;
             }
 
-            // Return quotation with file path instead of File object
+            // Return quotation with new file path
             const { quotation_file, ...quotationWithoutFile } = quotation;
             return { ...quotationWithoutFile, quotation_file_path: filePath };
           }
 
-          // Remove quotation_file if it's not a File object (already uploaded)
+          // Remove quotation_file field but preserve quotation_file_path if it exists
           const { quotation_file, ...quotationWithoutFile } = quotation;
           return quotationWithoutFile;
         })
@@ -1671,13 +1675,21 @@ export function Canvass() {
                                 <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Item</span>
                               )}
                             </div>
-                            {supplier.quotation_file_path && (
+                            {(supplier.quotation_file_path || (supplier as any).quotation_file_path) && (
                               <div className="mt-3 pt-3 border-t border-slate-200">
                                 <button
                                   onClick={async () => {
-                                    const { data } = await supabase.storage
+                                    console.log('Supplier data:', supplier);
+                                    const filePath = supplier.quotation_file_path || (supplier as any).quotation_file_path;
+                                    console.log('File path:', filePath);
+                                    const { data, error } = await supabase.storage
                                       .from('attachments')
-                                      .createSignedUrl(supplier.quotation_file_path, 60);
+                                      .createSignedUrl(filePath, 60);
+                                    if (error) {
+                                      console.error('Error creating signed URL:', error);
+                                      alert('Error loading file: ' + error.message);
+                                      return;
+                                    }
                                     if (data?.signedUrl) {
                                       window.open(data.signedUrl, '_blank');
                                     }

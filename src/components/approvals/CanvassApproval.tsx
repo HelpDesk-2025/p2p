@@ -604,13 +604,21 @@ export function CanvassApproval() {
                                 <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Item</span>
                               )}
                             </div>
-                            {supplier.quotation_file_path && (
+                            {(supplier.quotation_file_path || (supplier as any).quotation_file_path) && (
                               <div className="mt-3 pt-3 border-t border-slate-200">
                                 <button
                                   onClick={async () => {
-                                    const { data } = await supabase.storage
+                                    console.log('Supplier data:', supplier);
+                                    const filePath = supplier.quotation_file_path || (supplier as any).quotation_file_path;
+                                    console.log('File path:', filePath);
+                                    const { data, error } = await supabase.storage
                                       .from('attachments')
-                                      .createSignedUrl(supplier.quotation_file_path, 60);
+                                      .createSignedUrl(filePath, 60);
+                                    if (error) {
+                                      console.error('Error creating signed URL:', error);
+                                      alert('Error loading file: ' + error.message);
+                                      return;
+                                    }
                                     if (data?.signedUrl) {
                                       window.open(data.signedUrl, '_blank');
                                     }
