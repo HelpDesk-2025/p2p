@@ -76,6 +76,9 @@ interface Vendor {
   phoneNumber: string;
   email: string;
   taxRegistrationNumber: string;
+  contactPerson?: string;
+  bankAccountNumber?: string;
+  bankName?: string;
 }
 
 export function Canvass() {
@@ -764,8 +767,11 @@ export function Canvass() {
                                       newQuotations[idx].registered_name = vendor.displayName;
                                       newQuotations[idx].complete_address = `${vendor.address.street}, ${vendor.address.city}, ${vendor.address.state} ${vendor.address.postalCode}`;
                                       newQuotations[idx].tin = vendor.taxRegistrationNumber;
+                                      newQuotations[idx].contact_person = vendor.contactPerson || '';
                                       newQuotations[idx].contact_no = vendor.phoneNumber;
                                       newQuotations[idx].email_address = vendor.email;
+                                      newQuotations[idx].bank_account_no = vendor.bankAccountNumber || '';
+                                      newQuotations[idx].depository_bank = vendor.bankName || '';
                                       setQuotations(newQuotations);
                                       setVendorSearchTerm({ ...vendorSearchTerm, [idx]: vendor.displayName });
                                       setShowVendorDropdown({ ...showVendorDropdown, [idx]: false });
@@ -1110,12 +1116,8 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.contact_person}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].contact_person = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -1123,12 +1125,8 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.contact_no}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].contact_no = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -1136,12 +1134,8 @@ export function Canvass() {
                             <input
                               type="email"
                               value={quotation.email_address}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].email_address = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -1149,12 +1143,8 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.bank_account_no}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].bank_account_no = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
@@ -1162,12 +1152,8 @@ export function Canvass() {
                             <input
                               type="text"
                               value={quotation.depository_bank}
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].depository_bank = e.target.value;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              readOnly
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div className="col-span-2">
