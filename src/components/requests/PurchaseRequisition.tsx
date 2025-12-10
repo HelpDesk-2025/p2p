@@ -355,6 +355,13 @@ export function PurchaseRequisition() {
   };
 
   const addItem = () => {
+    // Check if the last item has a valid total amount
+    const lastItem = formData.items[formData.items.length - 1];
+    if (lastItem && lastItem.total_price <= 0) {
+      alert('Please enter a valid quantity and unit price for the current item before adding a new one.');
+      return;
+    }
+
     setFormData({
       ...formData,
       items: [
@@ -385,7 +392,10 @@ export function PurchaseRequisition() {
 
   const calculateTotal = () => {
     if (formData.purchase_type === 'Purchase Order') {
-      return formData.items.reduce((sum, item) => sum + item.total_price, 0);
+      // Only sum items with valid total_price > 0
+      return formData.items
+        .filter(item => item.total_price > 0)
+        .reduce((sum, item) => sum + item.total_price, 0);
     } else {
       return parseFloat(formData.amount_net_vat) || 0;
     }
@@ -486,7 +496,14 @@ export function PurchaseRequisition() {
       };
 
       if (formData.purchase_type === 'Purchase Order') {
-        payload.items = formData.items;
+        // Filter out items with total_price <= 0
+        const validItems = formData.items.filter(item => item.total_price > 0);
+
+        if (validItems.length === 0) {
+          throw new Error('Please add at least one item with a valid quantity and unit price.');
+        }
+
+        payload.items = validItems;
       } else {
         payload.payee = formData.payee;
         payload.payee_number = formData.payee_number;
