@@ -948,6 +948,20 @@ export function Canvass() {
                         </div>
                       </div>
 
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File</label>
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const newQuotations = [...quotations];
+                            newQuotations[idx].quotation_file = e.target.files?.[0] || null;
+                            setQuotations(newQuotations);
+                          }}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        />
+                      </div>
+
                       <div className="border-t pt-4 mt-4">
                         <h5 className="font-semibold text-slate-900 mb-3">Vendor Details</h5>
                         <div className="grid grid-cols-2 gap-3">
@@ -1066,19 +1080,6 @@ export function Canvass() {
                               }}
                               rows={2}
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File</label>
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              onChange={(e) => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].quotation_file = e.target.files?.[0] || null;
-                                setQuotations(newQuotations);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                             />
                           </div>
                         </div>
