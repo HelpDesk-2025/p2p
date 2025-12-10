@@ -30,9 +30,47 @@ interface PurchaseRequisition {
 
 interface QuotationForm {
   vendor_name: string;
-  vendor_contact: string;
+  quantity: number;
+  unit_name: string;
+  unit_price: number;
   quoted_amount: number;
+  invoice_availability: boolean;
+  delivery: boolean;
+  installation: boolean;
+  delivery_fee: number;
+  total: number;
+  discounted_price: number;
+  purchase_price: number;
+  net_of_vat: number;
+  vat_12: number;
+  ewt: number;
+  net_payable: number;
+  registered_name: string;
+  complete_address: string;
+  tin: string;
+  contact_person: string;
+  contact_no: string;
+  email_address: string;
+  bank_account_no: string;
+  depository_bank: string;
+  other_information: string;
   quotation_file?: File | null;
+}
+
+interface Vendor {
+  number: string;
+  displayName: string;
+  type: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    countryLetterCode: string;
+    postalCode: string;
+  };
+  phoneNumber: string;
+  email: string;
+  taxRegistrationNumber: string;
 }
 
 export function Canvass() {
@@ -48,15 +86,47 @@ export function Canvass() {
   const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CanvassReq | null>(null);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
     items: [{ description: '', quantity: 1, unit: 'pcs' }],
   });
+
+  const createEmptyQuotation = (): QuotationForm => ({
+    vendor_name: '',
+    quantity: 0,
+    unit_name: '',
+    unit_price: 0,
+    quoted_amount: 0,
+    invoice_availability: false,
+    delivery: false,
+    installation: false,
+    delivery_fee: 0,
+    total: 0,
+    discounted_price: 0,
+    purchase_price: 0,
+    net_of_vat: 0,
+    vat_12: 0,
+    ewt: 0,
+    net_payable: 0,
+    registered_name: '',
+    complete_address: '',
+    tin: '',
+    contact_person: '',
+    contact_no: '',
+    email_address: '',
+    bank_account_no: '',
+    depository_bank: '',
+    other_information: '',
+    quotation_file: null,
+  });
+
   const [quotations, setQuotations] = useState<QuotationForm[]>([
-    { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
-    { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
-    { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+    createEmptyQuotation(),
+    createEmptyQuotation(),
+    createEmptyQuotation(),
   ]);
 
   useEffect(() => {
@@ -324,16 +394,59 @@ export function Canvass() {
     }
   };
 
-  const handlePRSelection = (pr: PurchaseRequisition) => {
+  const fetchVendors = async (companyId: string) => {
+    setLoadingVendors(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Session expired. Please log in again.');
+        return;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors?company_id=${companyId}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch vendors');
+      }
+
+      const data = await response.json();
+      setVendors(data.value || []);
+    } catch (error: any) {
+      console.error('Error fetching vendors:', error);
+      alert('Failed to load vendors: ' + error.message);
+      setVendors([]);
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  const handlePRSelection = async (pr: PurchaseRequisition) => {
     setSelectedPR(pr);
     setShowPRSelection(false);
     setShowForm(true);
     generateDocumentNo();
     setQuotations([
-      { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
-      { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
-      { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+      createEmptyQuotation(),
+      createEmptyQuotation(),
+      createEmptyQuotation(),
     ]);
+
+    const { data: prData } = await supabase
+      .from('purchase_requisitions')
+      .select('company_id')
+      .eq('id', pr.id)
+      .maybeSingle();
+
+    if (prData?.company_id) {
+      await fetchVendors(prData.company_id);
+    }
   };
 
   if (showPRSelection) {
@@ -408,10 +521,11 @@ export function Canvass() {
             onClick={() => {
               setShowForm(false);
               setSelectedPR(null);
+              setVendors([]);
               setQuotations([
-                { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
-                { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
-                { vendor_name: '', vendor_contact: '', quoted_amount: 0, quotation_file: null },
+                createEmptyQuotation(),
+                createEmptyQuotation(),
+                createEmptyQuotation(),
               ]);
             }}
             className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
@@ -513,34 +627,83 @@ export function Canvass() {
 
               <div className="border-t pt-6">
                 <h3 className="text-lg font-bold text-slate-900 mb-4">Quotations (3 Required)</h3>
+                {loadingVendors && (
+                  <div className="flex items-center gap-2 mb-4 text-blue-600">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-sm">Loading vendors...</span>
+                  </div>
+                )}
                 <div className="space-y-6">
                   {quotations.map((quotation, idx) => (
-                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-                      <h4 className="font-semibold text-slate-900">Quotation {idx + 1}</h4>
-                      <div className="grid grid-cols-2 gap-3">
+                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                      <h4 className="font-semibold text-slate-900 text-lg">Quotation {idx + 1}</h4>
+
+                      <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name</label>
-                          <input
-                            type="text"
-                            placeholder="Enter vendor name"
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name *</label>
+                          <select
                             value={quotation.vendor_name}
                             onChange={(e) => {
                               const newQuotations = [...quotations];
+                              const selectedVendor = vendors.find(v => v.displayName === e.target.value);
                               newQuotations[idx].vendor_name = e.target.value;
+                              if (selectedVendor) {
+                                newQuotations[idx].registered_name = selectedVendor.displayName;
+                                newQuotations[idx].complete_address = `${selectedVendor.address.street}, ${selectedVendor.address.city}, ${selectedVendor.address.state} ${selectedVendor.address.postalCode}`;
+                                newQuotations[idx].tin = selectedVendor.taxRegistrationNumber;
+                                newQuotations[idx].contact_no = selectedVendor.phoneNumber;
+                                newQuotations[idx].email_address = selectedVendor.email;
+                              }
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          >
+                            <option value="">Select vendor...</option>
+                            {vendors.map((vendor) => (
+                              <option key={vendor.number} value={vendor.displayName}>
+                                {vendor.displayName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
+                          <input
+                            type="number"
+                            value={quotation.quantity || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].quantity = Number(e.target.value);
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Contact</label>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Unit Name/Symbol</label>
                           <input
                             type="text"
-                            placeholder="Email or phone"
-                            value={quotation.vendor_contact}
+                            value={quotation.unit_name}
                             onChange={(e) => {
                               const newQuotations = [...quotations];
-                              newQuotations[idx].vendor_contact = e.target.value;
+                              newQuotations[idx].unit_name = e.target.value;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Unit Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.unit_price || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].unit_price = Number(e.target.value);
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -550,28 +713,309 @@ export function Canvass() {
                           <label className="block text-sm font-medium text-slate-700 mb-1">Quoted Amount</label>
                           <input
                             type="number"
-                            placeholder="0.00"
+                            step="0.01"
                             value={quotation.quoted_amount || ''}
                             onChange={(e) => {
                               const newQuotations = [...quotations];
                               newQuotations[idx].quoted_amount = Number(e.target.value);
+                              newQuotations[idx].total = newQuotations[idx].quoted_amount + newQuotations[idx].delivery_fee;
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File</label>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Delivery Fee</label>
                           <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
+                            type="number"
+                            step="0.01"
+                            value={quotation.delivery_fee || ''}
                             onChange={(e) => {
                               const newQuotations = [...quotations];
-                              newQuotations[idx].quotation_file = e.target.files?.[0] || null;
+                              newQuotations[idx].delivery_fee = Number(e.target.value);
+                              newQuotations[idx].total = newQuotations[idx].quoted_amount + newQuotations[idx].delivery_fee;
                               setQuotations(newQuotations);
                             }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Total (Quoted + Delivery)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.total || ''}
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Discounted Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.discounted_price || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].discounted_price = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Price</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.purchase_price || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].purchase_price = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Net of VAT</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.net_of_vat || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].net_of_vat = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">VAT 12%</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.vat_12 || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].vat_12 = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">EWT</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.ewt || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].ewt = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">Net Payable</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={quotation.net_payable || ''}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].net_payable = Number(e.target.value);
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={quotation.invoice_availability}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].invoice_availability = e.target.checked;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <label className="text-sm font-medium text-slate-700">Invoice Availability</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={quotation.delivery}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].delivery = e.target.checked;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <label className="text-sm font-medium text-slate-700">Delivery</label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={quotation.installation}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].installation = e.target.checked;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <label className="text-sm font-medium text-slate-700">Installation</label>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4 mt-4">
+                        <h5 className="font-semibold text-slate-900 mb-3">Vendor Details</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Registered Name</label>
+                            <input
+                              type="text"
+                              value={quotation.registered_name}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].registered_name = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">TIN</label>
+                            <input
+                              type="text"
+                              value={quotation.tin}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].tin = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Complete Address</label>
+                            <textarea
+                              value={quotation.complete_address}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].complete_address = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              rows={2}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Contact Person</label>
+                            <input
+                              type="text"
+                              value={quotation.contact_person}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].contact_person = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Contact No.</label>
+                            <input
+                              type="text"
+                              value={quotation.contact_no}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].contact_no = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                            <input
+                              type="email"
+                              value={quotation.email_address}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].email_address = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Bank Account No.</label>
+                            <input
+                              type="text"
+                              value={quotation.bank_account_no}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].bank_account_no = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Depository Bank</label>
+                            <input
+                              type="text"
+                              value={quotation.depository_bank}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].depository_bank = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Other Information</label>
+                            <textarea
+                              value={quotation.other_information}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].other_information = e.target.value;
+                                setQuotations(newQuotations);
+                              }}
+                              rows={2}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Quotation File</label>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].quotation_file = e.target.files?.[0] || null;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
