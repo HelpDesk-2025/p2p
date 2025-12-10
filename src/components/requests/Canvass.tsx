@@ -91,6 +91,8 @@ export function Canvass() {
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [vendorSearchTerm, setVendorSearchTerm] = useState<{ [key: number]: string }>({});
   const [showVendorDropdown, setShowVendorDropdown] = useState<{ [key: number]: boolean }>({});
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -134,6 +136,7 @@ export function Canvass() {
 
   useEffect(() => {
     loadRequests();
+    loadCompanies();
   }, []);
 
   useEffect(() => {
@@ -147,6 +150,14 @@ export function Canvass() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const loadCompanies = async () => {
+    const { data } = await supabase
+      .from('companies')
+      .select('id, name')
+      .order('name');
+    setCompanies(data || []);
+  };
 
   const loadAvailablePRs = async () => {
     const { data } = await supabase
@@ -452,16 +463,8 @@ export function Canvass() {
       createEmptyQuotation(),
       createEmptyQuotation(),
     ]);
-
-    const { data: prData } = await supabase
-      .from('purchase_requisitions')
-      .select('company_id')
-      .eq('id', pr.id)
-      .maybeSingle();
-
-    if (prData?.company_id) {
-      await fetchVendors(prData.company_id);
-    }
+    setSelectedCompanyId('');
+    setVendors([]);
   };
 
   if (showPRSelection) {
@@ -638,6 +641,30 @@ export function Canvass() {
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Company *</label>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => {
+                    setSelectedCompanyId(e.target.value);
+                    if (e.target.value) {
+                      fetchVendors(e.target.value);
+                    } else {
+                      setVendors([]);
+                    }
+                  }}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                >
+                  <option value="">Select a company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="border-t pt-6">
