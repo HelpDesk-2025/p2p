@@ -141,11 +141,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   console.log('Current profile:', profile);
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    await signOut();
   };
 
   const canAccessItem = (item: MenuItem) => {
