@@ -42,6 +42,10 @@ interface QuotationForm {
   total: number;
   discounted_price: number;
   purchase_price: number;
+  withholding_tax: boolean;
+  vatable: boolean;
+  is_service: boolean;
+  is_item: boolean;
   net_of_vat: number;
   vat_12: number;
   ewt: number;
@@ -112,6 +116,10 @@ export function Canvass() {
     total: 0,
     discounted_price: 0,
     purchase_price: 0,
+    withholding_tax: false,
+    vatable: false,
+    is_service: false,
+    is_item: false,
     net_of_vat: 0,
     vat_12: 0,
     ewt: 0,
@@ -197,6 +205,38 @@ export function Canvass() {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `CV-${year}${month}-${random}`;
+  };
+
+  const calculateQuotationValues = (quotation: QuotationForm): QuotationForm => {
+    const updated = { ...quotation };
+
+    updated.quoted_amount = updated.quantity * updated.unit_price;
+    updated.total = updated.quoted_amount + updated.delivery_fee;
+    updated.purchase_price = updated.total - updated.discounted_price;
+
+    if (updated.vatable) {
+      updated.net_of_vat = updated.purchase_price / 1.12;
+      updated.vat_12 = updated.purchase_price - updated.net_of_vat;
+    } else {
+      updated.net_of_vat = updated.purchase_price;
+      updated.vat_12 = 0;
+    }
+
+    if (updated.withholding_tax) {
+      if (updated.is_service) {
+        updated.ewt = updated.net_of_vat * 0.02;
+      } else if (updated.is_item) {
+        updated.ewt = updated.net_of_vat * 0.01;
+      } else {
+        updated.ewt = 0;
+      }
+    } else {
+      updated.ewt = 0;
+    }
+
+    updated.net_payable = updated.net_of_vat + updated.vat_12 - updated.ewt;
+
+    return updated;
   };
 
   const handleEditDraft = (request: CanvassReq) => {
@@ -752,6 +792,7 @@ export function Canvass() {
                             onChange={(e) => {
                               const newQuotations = [...quotations];
                               newQuotations[idx].quantity = Number(e.target.value);
+                              newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -782,6 +823,7 @@ export function Canvass() {
                             onChange={(e) => {
                               const newQuotations = [...quotations];
                               newQuotations[idx].unit_price = Number(e.target.value);
+                              newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -793,13 +835,8 @@ export function Canvass() {
                             type="number"
                             step="0.01"
                             value={quotation.quoted_amount || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].quoted_amount = Number(e.target.value);
-                              newQuotations[idx].total = newQuotations[idx].quoted_amount + newQuotations[idx].delivery_fee;
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
@@ -811,7 +848,7 @@ export function Canvass() {
                             onChange={(e) => {
                               const newQuotations = [...quotations];
                               newQuotations[idx].delivery_fee = Number(e.target.value);
-                              newQuotations[idx].total = newQuotations[idx].quoted_amount + newQuotations[idx].delivery_fee;
+                              newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -839,6 +876,7 @@ export function Canvass() {
                             onChange={(e) => {
                               const newQuotations = [...quotations];
                               newQuotations[idx].discounted_price = Number(e.target.value);
+                              newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                               setQuotations(newQuotations);
                             }}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -850,14 +888,86 @@ export function Canvass() {
                             type="number"
                             step="0.01"
                             value={quotation.purchase_price || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].purchase_price = Number(e.target.value);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={quotation.withholding_tax}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].withholding_tax = e.target.checked;
+                                if (!e.target.checked) {
+                                  newQuotations[idx].is_service = false;
+                                  newQuotations[idx].is_item = false;
+                                }
+                                newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <label className="text-sm font-medium text-slate-700">Withholding Tax</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={quotation.vatable}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].vatable = e.target.checked;
+                                newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <label className="text-sm font-medium text-slate-700">Vatable</label>
+                          </div>
+                        </div>
+
+                        {quotation.withholding_tax && (
+                          <div className="flex items-center gap-4 ml-6">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={quotation.is_service}
+                                onChange={(e) => {
+                                  const newQuotations = [...quotations];
+                                  newQuotations[idx].is_service = e.target.checked;
+                                  if (e.target.checked) {
+                                    newQuotations[idx].is_item = false;
+                                  }
+                                  newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                  setQuotations(newQuotations);
+                                }}
+                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              <label className="text-sm font-medium text-slate-700">Service</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={quotation.is_item}
+                                onChange={(e) => {
+                                  const newQuotations = [...quotations];
+                                  newQuotations[idx].is_item = e.target.checked;
+                                  if (e.target.checked) {
+                                    newQuotations[idx].is_service = false;
+                                  }
+                                  newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                  setQuotations(newQuotations);
+                                }}
+                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              <label className="text-sm font-medium text-slate-700">Item</label>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
@@ -867,12 +977,8 @@ export function Canvass() {
                             type="number"
                             step="0.01"
                             value={quotation.net_of_vat || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].net_of_vat = Number(e.target.value);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
@@ -881,12 +987,8 @@ export function Canvass() {
                             type="number"
                             step="0.01"
                             value={quotation.vat_12 || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].vat_12 = Number(e.target.value);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
@@ -895,12 +997,8 @@ export function Canvass() {
                             type="number"
                             step="0.01"
                             value={quotation.ewt || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].ewt = Number(e.target.value);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
@@ -909,12 +1007,8 @@ export function Canvass() {
                             type="number"
                             step="0.01"
                             value={quotation.net_payable || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].net_payable = Number(e.target.value);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            readOnly
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                       </div>
