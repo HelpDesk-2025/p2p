@@ -359,7 +359,6 @@ export function Canvass() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document No.</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Total Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
               </tr>
@@ -367,7 +366,7 @@ export function Canvass() {
             <tbody className="divide-y divide-slate-200">
               {availablePRs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                     No purchase requisitions ready for canvass
                   </td>
                 </tr>
@@ -379,9 +378,6 @@ export function Canvass() {
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      ₱{pr.total_amount.toLocaleString()}
-                    </td>
                     <td className="px-6 py-4 text-sm text-slate-600">
                       {new Date(pr.request_date).toLocaleDateString()}
                     </td>
