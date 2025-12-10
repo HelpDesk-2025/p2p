@@ -839,6 +839,53 @@ export function Canvass() {
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={quotation.invoice_availability}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].invoice_availability = e.target.checked;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <label className="text-sm font-medium text-slate-700">Invoice Availability</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={quotation.delivery}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].delivery = e.target.checked;
+                                if (!e.target.checked) {
+                                  newQuotations[idx].delivery_fee = 0;
+                                  newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                }
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <label className="text-sm font-medium text-slate-700">Delivery</label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={quotation.installation}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].installation = e.target.checked;
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                            />
+                            <label className="text-sm font-medium text-slate-700">Installation</label>
+                          </div>
+                        </div>
+
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Delivery Fee</label>
                           <input
@@ -851,7 +898,8 @@ export function Canvass() {
                               newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                               setQuotations(newQuotations);
                             }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            disabled={!quotation.delivery}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                           />
                         </div>
                       </div>
@@ -1010,48 +1058,6 @@ export function Canvass() {
                             readOnly
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={quotation.invoice_availability}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].invoice_availability = e.target.checked;
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                          <label className="text-sm font-medium text-slate-700">Invoice Availability</label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={quotation.delivery}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].delivery = e.target.checked;
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                          <label className="text-sm font-medium text-slate-700">Delivery</label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={quotation.installation}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].installation = e.target.checked;
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                          <label className="text-sm font-medium text-slate-700">Installation</label>
                         </div>
                       </div>
 
