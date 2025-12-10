@@ -517,9 +517,11 @@ export function Canvass() {
   const fetchVendors = async (companyId: string) => {
     setLoadingVendors(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        alert('Session expired. Please log in again.');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.error('Session error:', sessionError);
+        alert('Your session has expired. Please refresh the page and log in again.');
         return;
       }
 
@@ -527,13 +529,22 @@ export function Canvass() {
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch vendors');
+        let errorMessage = 'Failed to fetch vendors';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('Error response:', errorData);
+        } catch (e) {
+          const errorText = await response.text();
+          console.error('Error text:', errorText);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
