@@ -144,6 +144,8 @@ export function Canvass() {
     createEmptyQuotation(),
     createEmptyQuotation(),
   ]);
+  const [recommendedQuotationIndex, setRecommendedQuotationIndex] = useState<number | null>(null);
+  const [recommendationRemarks, setRecommendationRemarks] = useState<string>('');
 
   useEffect(() => {
     loadRequests();
@@ -176,6 +178,7 @@ export function Canvass() {
       .select('*')
       .eq('ready_for_canvass', true)
       .eq('status', 'approved')
+      .is('canvass_id', null)
       .order('created_at', { ascending: false });
 
     setAvailablePRs(data || []);
@@ -255,6 +258,31 @@ export function Canvass() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    // Validate quotations for pending submissions
+    if (status === 'pending') {
+      const filledQuotations = quotations.filter(q => q.vendor_name && q.vendor_name.trim() !== '');
+
+      if (filledQuotations.length === 0) {
+        alert('Please add at least one quotation before submitting.');
+        return;
+      }
+
+      if (recommendedQuotationIndex === null) {
+        alert('Please select a recommended quotation.');
+        return;
+      }
+
+      if (!recommendationRemarks || recommendationRemarks.trim() === '') {
+        alert('Please provide remarks for your recommended quotation.');
+        return;
+      }
+
+      if (!selectedPR) {
+        alert('Please select a Purchase Requisition.');
+        return;
+      }
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -262,7 +290,7 @@ export function Canvass() {
     }
     setLoading(true);
     try {
-      const totalAmount = 0;
+      const totalAmount = selectedPR?.total_amount || 0;
 
       let insertedRequest;
 
@@ -274,6 +302,9 @@ export function Canvass() {
             items: formData.items,
             status,
             total_amount: totalAmount,
+            suppliers: quotations,
+            recommended_quotation_index: status === 'pending' ? recommendedQuotationIndex : null,
+            recommendation_remarks: status === 'pending' ? recommendationRemarks : null,
           })
           .eq('id', editingRequest.id)
           .select()
@@ -288,25 +319,40 @@ export function Canvass() {
             canvass_number: formData.document_no,
             requester_id: profile?.id,
             company_id: profile?.company_id,
-            department: profile?.department || '',
+            pr_id: selectedPR?.id || null,
+            department: selectedPR?.department || profile?.department || '',
             request_date: new Date().toISOString().split('T')[0],
             required_date: formData.required_date,
             items: formData.items,
+            suppliers: quotations,
             status,
             current_approval_level: 0,
             total_amount: totalAmount,
+            recommended_quotation_index: status === 'pending' ? recommendedQuotationIndex : null,
+            recommendation_remarks: status === 'pending' ? recommendationRemarks : null,
           })
           .select()
           .single();
 
         if (error) throw error;
         insertedRequest = data;
+
+        // If pending, link the PR to this canvass request
+        if (status === 'pending' && selectedPR) {
+          const { error: prError } = await supabase
+            .from('purchase_requisitions')
+            .update({ canvass_id: insertedRequest.id })
+            .eq('id', selectedPR.id);
+
+          if (prError) throw prError;
+        }
       }
 
       if (status === 'pending' && insertedRequest && profile?.company_id) {
+        const department = selectedPR?.department || profile?.department || '';
         const approvalFlows = await getApprovalFlow(
           profile.company_id,
-          profile.department || '',
+          department,
           'Canvass',
           false,
           totalAmount
@@ -329,7 +375,7 @@ export function Canvass() {
           const approverInfo = await getApproverEmail(
             firstApprover,
             profile.company_id,
-            profile.department || ''
+            department
           );
 
           if (approverInfo) {
@@ -339,7 +385,7 @@ export function Canvass() {
               'Canvass',
               formData.document_no,
               profile.full_name || 'Unknown',
-              profile.department || '',
+              department,
               totalAmount,
               'Submitted',
               undefined,
@@ -351,7 +397,12 @@ export function Canvass() {
       }
 
       setShowForm(false);
+      setShowPRSelection(false);
+      setSelectedPR(null);
       setFormData({ document_no: '', required_date: '', items: [{ description: '', quantity: 1, unit: 'pcs' }] });
+      setQuotations([createEmptyQuotation(), createEmptyQuotation(), createEmptyQuotation()]);
+      setRecommendedQuotationIndex(null);
+      setRecommendationRemarks('');
       setEditingRequest(null);
       loadRequests();
       if (!editingRequest) {
@@ -1193,6 +1244,55 @@ export function Canvass() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Recommendation Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h4 className="text-lg font-bold text-slate-900 mb-4">Recommended Quotation</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Select Recommended Quotation <span className="text-red-500">*</span>
+                    </label>
+                    <div className="space-y-2">
+                      {quotations.map((quotation, idx) => (
+                        quotation.vendor_name && quotation.vendor_name.trim() !== '' && (
+                          <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                            <input
+                              type="radio"
+                              id={`quotation-${idx}`}
+                              name="recommended-quotation"
+                              checked={recommendedQuotationIndex === idx}
+                              onChange={() => setRecommendedQuotationIndex(idx)}
+                              className="mt-1 w-4 h-4 text-blue-600 border-slate-300 focus:ring-2 focus:ring-blue-500"
+                            />
+                            <label htmlFor={`quotation-${idx}`} className="flex-1 cursor-pointer">
+                              <div className="font-semibold text-slate-900">Quotation {idx + 1}: {quotation.vendor_name}</div>
+                              <div className="text-sm text-slate-600 mt-1">
+                                Net Payable: ₱{quotation.net_payable.toFixed(2)} |
+                                Unit Price: ₱{quotation.unit_price.toFixed(2)} |
+                                Quantity: {quotation.quantity} {quotation.unit_name}
+                              </div>
+                            </label>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Recommendation Remarks <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={recommendationRemarks}
+                      onChange={(e) => setRecommendationRemarks(e.target.value)}
+                      placeholder="Provide detailed remarks explaining why you recommend this quotation..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
