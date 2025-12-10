@@ -641,7 +641,9 @@ export function Canvass() {
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name *</label>
-                          <select
+                          <input
+                            type="text"
+                            list={`vendors-list-${idx}`}
                             value={quotation.vendor_name}
                             onChange={(e) => {
                               const newQuotations = [...quotations];
@@ -656,15 +658,16 @@ export function Canvass() {
                               }
                               setQuotations(newQuotations);
                             }}
+                            placeholder="Type or select vendor..."
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                          >
-                            <option value="">Select vendor...</option>
+                          />
+                          <datalist id={`vendors-list-${idx}`}>
                             {vendors.map((vendor) => (
                               <option key={vendor.number} value={vendor.displayName}>
                                 {vendor.displayName}
                               </option>
                             ))}
-                          </select>
+                          </datalist>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
