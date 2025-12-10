@@ -596,31 +596,38 @@ export function Canvass() {
                 </div>
               )}
 
-              {selectedPR.items && selectedPR.items.length > 0 && (
-                <div className="mt-4">
-                  <label className="font-semibold text-blue-700 block mb-2">Items</label>
-                  <div className="bg-white border border-blue-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-blue-100">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-blue-900">Description</th>
-                          <th className="px-3 py-2 text-left text-blue-900">Quantity</th>
-                          <th className="px-3 py-2 text-left text-blue-900">Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-blue-100">
-                        {selectedPR.items.map((item: any, index: number) => (
-                          <tr key={index}>
-                            <td className="px-3 py-2 text-slate-900">{item.item_description || item.description}</td>
-                            <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
-                            <td className="px-3 py-2 text-slate-700">{item.unit}</td>
+              {selectedPR.items && selectedPR.items.length > 0 && (() => {
+                // Filter items to only show those with valid total_price > 0
+                const validItems = selectedPR.items.filter((item: any) => item.total_price > 0);
+
+                if (validItems.length === 0) return null;
+
+                return (
+                  <div className="mt-4">
+                    <label className="font-semibold text-blue-700 block mb-2">Items</label>
+                    <div className="bg-white border border-blue-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-blue-100">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-blue-900">Description</th>
+                            <th className="px-3 py-2 text-left text-blue-900">Quantity</th>
+                            <th className="px-3 py-2 text-left text-blue-900">Unit</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-blue-100">
+                          {validItems.map((item: any, index: number) => (
+                            <tr key={index}>
+                              <td className="px-3 py-2 text-slate-900">{item.item_description || item.description}</td>
+                              <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
+                              <td className="px-3 py-2 text-slate-700">{item.unit}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">

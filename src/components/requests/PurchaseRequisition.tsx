@@ -1535,37 +1535,44 @@ export function PurchaseRequisition() {
                 </div>
               )}
 
-              {viewingRequest.purchase_type === 'Purchase Order' && viewingRequest.items && viewingRequest.items.length > 0 && (
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Item Name</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit Price</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {viewingRequest.items.map((item: any, index: number) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.item_description || item.description || 'N/A'}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.item_notes || '-'}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">₱{item.unit_price?.toFixed(2) || '0.00'}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 font-semibold">₱{item.total_price?.toFixed(2) || '0.00'}</td>
+              {viewingRequest.purchase_type === 'Purchase Order' && viewingRequest.items && viewingRequest.items.length > 0 && (() => {
+                // Filter items to only show those with valid total_price > 0
+                const validItems = viewingRequest.items.filter((item: any) => item.total_price > 0);
+
+                if (validItems.length === 0) return null;
+
+                return (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Item Name</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit Price</th>
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Total Amount</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {validItems.map((item: any, index: number) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 text-sm text-slate-900">{item.item_description || item.description || 'N/A'}</td>
+                              <td className="px-4 py-2 text-sm text-slate-700">{item.item_notes || '-'}</td>
+                              <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
+                              <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
+                              <td className="px-4 py-2 text-sm text-slate-700">₱{item.unit_price?.toFixed(2) || '0.00'}</td>
+                              <td className="px-4 py-2 text-sm text-slate-900 font-semibold">₱{item.total_price?.toFixed(2) || '0.00'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {viewingRequest.purchase_type === 'Non-Purchase Order' && (
                 <>
