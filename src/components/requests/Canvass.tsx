@@ -210,23 +210,23 @@ export function Canvass() {
   const calculateQuotationValues = (quotation: QuotationForm): QuotationForm => {
     const updated = { ...quotation };
 
-    updated.quoted_amount = updated.quantity * updated.unit_price;
-    updated.total = updated.quoted_amount + updated.delivery_fee;
-    updated.purchase_price = updated.total - updated.discounted_price;
+    updated.quoted_amount = Math.round(updated.quantity * updated.unit_price * 100) / 100;
+    updated.total = Math.round((updated.quoted_amount + updated.delivery_fee) * 100) / 100;
+    updated.purchase_price = Math.round((updated.total - updated.discounted_price) * 100) / 100;
 
     if (updated.vatable) {
-      updated.net_of_vat = updated.purchase_price / 1.12;
-      updated.vat_12 = updated.purchase_price - updated.net_of_vat;
+      updated.net_of_vat = Math.round((updated.purchase_price / 1.12) * 100) / 100;
+      updated.vat_12 = Math.round((updated.purchase_price - updated.net_of_vat) * 100) / 100;
     } else {
-      updated.net_of_vat = updated.purchase_price;
+      updated.net_of_vat = Math.round(updated.purchase_price * 100) / 100;
       updated.vat_12 = 0;
     }
 
     if (updated.withholding_tax) {
       if (updated.is_service) {
-        updated.ewt = updated.net_of_vat * 0.02;
+        updated.ewt = Math.round((updated.net_of_vat * 0.02) * 100) / 100;
       } else if (updated.is_item) {
-        updated.ewt = updated.net_of_vat * 0.01;
+        updated.ewt = Math.round((updated.net_of_vat * 0.01) * 100) / 100;
       } else {
         updated.ewt = 0;
       }
@@ -234,7 +234,7 @@ export function Canvass() {
       updated.ewt = 0;
     }
 
-    updated.net_payable = updated.net_of_vat + updated.vat_12 - updated.ewt;
+    updated.net_payable = Math.round((updated.net_of_vat + updated.vat_12 - updated.ewt) * 100) / 100;
 
     return updated;
   };
