@@ -675,12 +675,12 @@ export function Canvass() {
                     <span className="text-sm">Loading vendors...</span>
                   </div>
                 )}
-                <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-4">
                   {quotations.map((quotation, idx) => (
-                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
-                      <h4 className="font-semibold text-slate-900 text-lg">Quotation {idx + 1}</h4>
+                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                      <h4 className="font-semibold text-slate-900 text-base text-center border-b pb-2">Quotation {idx + 1}</h4>
 
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-3">
                         <div className="relative vendor-dropdown-container">
                           <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name *</label>
                           <input
@@ -759,7 +759,7 @@ export function Canvass() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-3">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Unit Price</label>
                           <input
@@ -806,7 +806,7 @@ export function Canvass() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-3">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Total (Quoted + Delivery)</label>
                           <input
@@ -847,7 +847,7 @@ export function Canvass() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-1">Net of VAT</label>
                           <input
@@ -906,7 +906,7 @@ export function Canvass() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
