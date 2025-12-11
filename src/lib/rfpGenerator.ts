@@ -301,7 +301,7 @@ interface CanvassSheetData {
 
 async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([792, 612]); // Landscape orientation
+  const page = pdfDoc.addPage([612, 792]); // Portrait orientation
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
@@ -386,7 +386,8 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   const tableStartY = yPosition;
   const tableLeft = 40;
   const tableRight = width - 40;
-  const supplierColWidth = (tableRight - tableLeft - 200) / data.suppliers.length;
+  const firstColWidth = 120; // Reduced for portrait orientation
+  const supplierColWidth = (tableRight - tableLeft - firstColWidth) / data.suppliers.length;
 
   // Draw table structure
   drawLine(tableLeft, yPosition, tableRight, yPosition);
@@ -394,7 +395,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
   // Supplier headers with highlighting for winner
   drawText('Supplier Name', tableLeft + 5, yPosition, 9, true);
-  let supplierX = tableLeft + 200;
+  let supplierX = tableLeft + firstColWidth;
   data.suppliers.forEach((supplier) => {
     // Highlight winning vendor background
     if (supplier.isWinner) {
@@ -458,11 +459,11 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   // Column headers
   yPosition -= 12;
   drawText('No', tableLeft + 5, yPosition, 8, true);
-  drawText('Details', tableLeft + 25, yPosition, 8, true);
-  drawText('Qty.', tableLeft + 120, yPosition, 8, true);
-  drawText('Unit', tableLeft + 150, yPosition, 8, true);
+  drawText('Details', tableLeft + 20, yPosition, 8, true);
+  drawText('Qty.', tableLeft + 70, yPosition, 8, true);
+  drawText('Unit', tableLeft + 95, yPosition, 8, true);
 
-  supplierX = tableLeft + 200;
+  supplierX = tableLeft + firstColWidth;
   data.suppliers.forEach((supplier) => {
     // Highlight winning vendor column headers
     if (supplier.isWinner) {
@@ -490,11 +491,11 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   data.items.forEach((item, index) => {
     yPosition -= 12;
     drawText(`${index + 1}`, tableLeft + 5, yPosition, 8, false);
-    drawText(item.description, tableLeft + 25, yPosition, 8, false);
-    drawText(item.quantity.toString(), tableLeft + 120, yPosition, 8, false);
-    drawText(item.unit, tableLeft + 150, yPosition, 8, false);
+    drawText(item.description, tableLeft + 20, yPosition, 8, false);
+    drawText(item.quantity.toString(), tableLeft + 70, yPosition, 8, false);
+    drawText(item.unit, tableLeft + 95, yPosition, 8, false);
 
-    supplierX = tableLeft + 200;
+    supplierX = tableLeft + firstColWidth;
     data.suppliers.forEach((supplier) => {
       // Highlight winning vendor data cells
       if (supplier.isWinner) {
@@ -544,9 +545,9 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
   additionalRows.forEach((rowLabel) => {
     yPosition -= 12;
-    drawText(rowLabel, tableLeft + 25, yPosition, 8, rowLabel === 'Net Payable' ? true : false);
+    drawText(rowLabel, tableLeft + 20, yPosition, 8, rowLabel === 'Net Payable' ? true : false);
 
-    supplierX = tableLeft + 200;
+    supplierX = tableLeft + firstColWidth;
     data.suppliers.forEach((supplier) => {
       // Highlight winning vendor data cells
       if (supplier.isWinner) {
@@ -625,7 +626,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
     const startY = yPosition - 10;
     drawText(label, tableLeft + 5, startY, 8, true);
 
-    supplierX = tableLeft + 200;
+    supplierX = tableLeft + firstColWidth;
     let maxLines = 1;
 
     // First pass: determine max number of lines needed for this row
@@ -666,7 +667,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
     const rowHeight = maxLines * 9 + 3;
 
     // Second pass: draw the values with wrapping
-    supplierX = tableLeft + 200;
+    supplierX = tableLeft + firstColWidth;
     data.suppliers.forEach((supplier) => {
       // Highlight winning vendor info cells
       if (supplier.isWinner) {
