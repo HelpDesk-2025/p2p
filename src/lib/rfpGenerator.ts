@@ -395,25 +395,16 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
   // Supplier headers with highlighting for winner
   drawText('Supplier Name', tableLeft + 5, yPosition, 9, true);
-  let supplierX = tableLeft + firstColWidth;
-  data.suppliers.forEach((supplier) => {
-    // Highlight winning vendor background
-    if (supplier.isWinner) {
-      page.drawRectangle({
-        x: supplierX,
-        y: yPosition - 8,
-        width: supplierColWidth,
-        height: 22,
-        color: rgb(0.8, 1, 0.8),
-      });
-    }
 
-    // Draw supplier name centered in the column with "AWARDED" label
+  // First pass: calculate maximum lines needed for any supplier name
+  const maxNameWidth = supplierColWidth - 10;
+  let maxNameLines = 1;
+  const allSupplierLines: string[][] = [];
+
+  data.suppliers.forEach((supplier) => {
     const supplierName = supplier.name || 'N/A';
     const displayText = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
 
-    // Wrap text if too long
-    const maxNameWidth = supplierColWidth - 10;
     const nameLines: string[] = [];
     const words = displayText.split(' ');
     let currentLine = '';
@@ -434,9 +425,30 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
       nameLines.push(currentLine);
     }
 
+    allSupplierLines.push(nameLines);
+    maxNameLines = Math.max(maxNameLines, nameLines.length);
+  });
+
+  // Calculate row height based on max lines needed
+  const supplierHeaderHeight = maxNameLines * 11 + 8;
+
+  // Second pass: draw supplier names with proper backgrounds
+  let supplierX = tableLeft + firstColWidth;
+  data.suppliers.forEach((supplier, index) => {
+    // Highlight winning vendor background
+    if (supplier.isWinner) {
+      page.drawRectangle({
+        x: supplierX,
+        y: yPosition - supplierHeaderHeight + 6,
+        width: supplierColWidth,
+        height: supplierHeaderHeight,
+        color: rgb(0.8, 1, 0.8),
+      });
+    }
+
     // Draw each line centered
     let lineY = yPosition;
-    nameLines.forEach((line) => {
+    allSupplierLines[index].forEach((line) => {
       const lineWidth = boldFont.widthOfTextAtSize(line, 9);
       const centerX = supplierX + (supplierColWidth - lineWidth) / 2;
 
@@ -448,12 +460,13 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         color: rgb(0, 0, 0),
       });
 
-      lineY -= 10;
+      lineY -= 11;
     });
 
     supplierX += supplierColWidth;
   });
-  yPosition -= 15;
+
+  yPosition -= supplierHeaderHeight;
   drawLine(tableLeft, yPosition, tableRight, yPosition);
 
   // Column headers
