@@ -972,35 +972,22 @@ export async function generateAndUploadCanvassRFP(
         year: 'numeric'
       }),
       requestFor: canvass.pr?.purpose || '',
-      items: (() => {
-        // If suppliers have items with descriptions, use the first supplier's items as the canonical list
-        if (canvass.suppliers?.[0]?.items && canvass.suppliers[0].items.length > 0) {
-          return canvass.suppliers[0].items.map((item: any) => ({
-            description: item.description || '',
-            quantity: item.quantity || 0,
-            unit: item.uom || item.unit || ''
-          }));
-        }
-        // Otherwise fall back to canvass.items
-        return (canvass.items || []).map((item: any) => ({
+      items: (canvass.items || []).map((item: any, itemIndex: number) => {
+        // Use the first supplier's quantity as the canonical quantity if PR items don't have it
+        const firstSupplierQty = canvass.suppliers?.[0]?.quantity;
+        return {
           description: item.description || '',
-          quantity: item.quantity || canvass.suppliers?.[0]?.quantity || 0,
-          unit: item.unit || item.uom || ''
-        }));
-      })(),
+          quantity: item.quantity || firstSupplierQty || 0,
+          unit: item.unit || ''
+        };
+      }),
       suppliers: (canvass.suppliers || []).map((supplier: any, supplierIndex: number) => {
-        // Build quotations array based on supplier's items if available
-        const quotations = (supplier.items && supplier.items.length > 0)
-          ? supplier.items.map((item: any) => ({
-              unitPrice: parseFloat(item.unit_price || 0),
-              amount: parseFloat(item.amount || 0)
-            }))
-          : (canvass.items || []).map(() => ({
-              unitPrice: parseFloat(supplier.unit_price || 0),
-              amount: parseFloat(supplier.quoted_amount || 0)
-            }));
+        const quotations = (canvass.items || []).map((item: any) => ({
+          unitPrice: parseFloat(supplier.unit_price || 0),
+          amount: parseFloat(supplier.quoted_amount || 0)
+        }));
 
-        const total = parseFloat(supplier.total || supplier.purchase_price || supplier.quoted_amount || 0);
+        const total = parseFloat(supplier.total || supplier.purchase_price || 0);
         const netOfVat = parseFloat(supplier.net_of_vat || (total / 1.12));
         const vat12 = parseFloat(supplier.vat_12 || (total - netOfVat));
         const ewt = parseFloat(supplier.ewt || (netOfVat * 0.02));
