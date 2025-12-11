@@ -492,7 +492,7 @@ export function CanvassApproval() {
                                 <td className="px-3 py-2 text-xs text-slate-700">{item.quantity}</td>
                                 <td className="px-3 py-2 text-xs text-slate-700">{item.unit}</td>
                                 <td className="px-3 py-2 text-xs text-slate-700 text-right">₱{item.unit_price?.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-xs text-slate-900 font-semibold text-right">₱{item.amount?.toLocaleString()}</td>
+                                <td className="px-3 py-2 text-xs text-slate-900 font-semibold text-right">₱{item.total_price?.toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
