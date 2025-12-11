@@ -115,17 +115,18 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   drawText(data.budgeted ? 'Yes' : 'No', leftMargin + labelWidth, yPosition, 10, false);
   yPosition -= 20;
 
-  drawText('MODE OF PAYMENT', leftMargin, yPosition, 10, true);
-  drawText(data.paymentMode, leftMargin + labelWidth, yPosition, 10, false);
-  yPosition -= 20;
+  if (data.paymentMode) {
+    drawText('MODE OF PAYMENT', leftMargin, yPosition, 10, true);
+    drawText(data.paymentMode, leftMargin + labelWidth, yPosition, 10, false);
+    yPosition -= 20;
 
-  // Payment Mode Lines - show labels in bold
-  for (const line of data.paymentModeLines) {
-    drawText(line.label, leftMargin, yPosition, 10, true);
-    drawText(line.value, leftMargin + labelWidth, yPosition, 10, false);
-    yPosition -= 15;
+    for (const line of data.paymentModeLines) {
+      drawText(line.label, leftMargin, yPosition, 10, true);
+      drawText(line.value, leftMargin + labelWidth, yPosition, 10, false);
+      yPosition -= 15;
+    }
+    yPosition -= 20;
   }
-  yPosition -= 20;
 
   // Requested By section
   drawText('REQUESTED BY:', leftMargin, yPosition, 10, true);
@@ -281,6 +282,136 @@ export async function regenerateRFP(
 
   // Generate new RFP
   return await generateAndUploadRFP(requestType, requestId, requestNumber);
+}
+
+export async function generateAndUploadCanvassRFP(
+  canvassId: string,
+  canvassNumber: string
+): Promise<string> {
+  try {
+    console.log('Starting Canvass RFP generation for:', { canvassId, canvassNumber });
+
+    const { data: canvass, error: canvassError } = await supabase
+      .from('canvass_requests')
+      .select(`
+        *,
+        requester:user_profiles!requester_id(full_name, e_sig, company:companies(name)),
+        pr:purchase_requisitions!pr_id(purpose, required_date, is_budgeted)
+      `)
+      .eq('id', canvassId)
+      .single();
+
+    if (canvassError) {
+      console.error('Error fetching canvass:', canvassError);
+      throw canvassError;
+    }
+    if (!canvass) throw new Error('Canvass not found');
+
+    console.log('Canvass data fetched:', canvass);
+
+    const winningVendor = canvass.suppliers?.[canvass.recommended_quotation_index || 0]?.name || '';
+    console.log('Winning vendor:', winningVendor);
+
+    const { data: approvals, error: approvalsError } = await supabase
+      .from('approval_ledger')
+      .select(`
+        approval_date,
+        sequence,
+        approver:user_profiles!approver_id(full_name, e_sig)
+      `)
+      .eq('request_id', canvassId)
+      .eq('request_type', 'Canvass')
+      .eq('action', 'Approved')
+      .order('sequence', { ascending: true });
+
+    if (approvalsError) {
+      console.error('Error fetching approvals:', approvalsError);
+      throw approvalsError;
+    }
+
+    console.log('Approvals fetched:', approvals);
+
+    const rfpData: RFPData = {
+      companyName: canvass.requester?.company?.name || 'Company Name',
+      requestType: 'Canvass',
+      dateOfRequest: new Date(canvass.request_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }),
+      payee: winningVendor,
+      purpose: canvass.pr?.purpose || '',
+      dateNeeded: canvass.pr?.required_date
+        ? new Date(canvass.pr.required_date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          })
+        : '',
+      amount: parseFloat(canvass.total_amount) || 0,
+      budgeted: canvass.pr?.is_budgeted !== false,
+      paymentMode: '',
+      paymentModeLines: [],
+      requestorName: canvass.requester?.full_name || '',
+      requestorEsig: canvass.requester?.e_sig || null,
+      approvals: (approvals || []).map((a: any) => {
+        const approvalDate = new Date(a.approval_date);
+        return {
+          approver_name: a.approver?.full_name || '',
+          approver_esig: a.approver?.e_sig || null,
+          approval_date: approvalDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) + ' ' + approvalDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
+          sequence: a.sequence
+        };
+      })
+    };
+
+    console.log('Generating PDF with data:', rfpData);
+    const pdfBytes = await generateRFP(rfpData);
+    console.log('PDF generated, size:', pdfBytes.length);
+
+    const fileName = `rfp_${canvassNumber}_${Date.now()}.pdf`;
+    const filePath = `rfp/${fileName}`;
+
+    console.log('Uploading PDF to:', filePath);
+    const { error: uploadError } = await supabase.storage
+      .from('attachments')
+      .upload(filePath, pdfBytes, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
+
+    console.log('PDF uploaded successfully');
+
+    const { error: updateError } = await supabase
+      .from('canvass_requests')
+      .update({ rfp_pdf_path: filePath })
+      .eq('id', canvassId);
+
+    if (updateError) {
+      console.error('Update error:', updateError);
+      throw updateError;
+    }
+
+    console.log('Canvass updated with RFP path:', filePath);
+
+    return filePath;
+  } catch (error) {
+    console.error('Error generating Canvass RFP:', error);
+    throw error;
+  }
 }
 
 export async function generateAndUploadRFP(

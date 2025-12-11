@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
 
 interface CanvassReq {
   id: string;
@@ -285,6 +286,13 @@ export function CanvassApproval() {
           );
         }
       } else if (action === 'approved' && isLastApproval) {
+        try {
+          await generateAndUploadCanvassRFP(selectedRequest.id, selectedRequest.canvass_number);
+          console.log('RFP generated successfully for canvass:', selectedRequest.canvass_number);
+        } catch (rfpError: any) {
+          console.error('Error generating RFP:', rfpError);
+        }
+
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',
