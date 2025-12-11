@@ -328,6 +328,31 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
     });
   };
 
+  const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+    if (!text) return [''];
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    return lines.length > 0 ? lines : [''];
+  };
+
   // Company Name (centered)
   const companyNameWidth = boldFont.widthOfTextAtSize(data.companyName, 14);
   drawText(data.companyName, (width - companyNameWidth) / 2, yPosition, 14, true);
@@ -384,7 +409,32 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     // Draw supplier name centered in the column with "AWARDED" label
     const supplierName = supplier.name || 'N/A';
-    const displayName = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
+    let displayName = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
+
+    // Truncate supplier name if too long
+    const maxNameWidth = supplierColWidth - 10;
+    let nameWidth = boldFont.widthOfTextAtSize(displayName, 9);
+
+    while (nameWidth > maxNameWidth && displayName.length > 3) {
+      if (supplier.isWinner) {
+        // For winner, trim the supplier name part
+        const suffix = ' - AWARDED';
+        const nameOnly = displayName.substring(0, displayName.length - suffix.length);
+        const trimmedName = nameOnly.substring(0, nameOnly.length - 1);
+        displayName = trimmedName + suffix;
+      } else {
+        displayName = displayName.substring(0, displayName.length - 1);
+      }
+      nameWidth = boldFont.widthOfTextAtSize(displayName + '...', 9);
+    }
+
+    if (supplier.isWinner && displayName.length < (supplierName + ' - AWARDED').length && !displayName.endsWith('...')) {
+      const suffix = ' - AWARDED';
+      displayName = displayName.substring(0, displayName.length - suffix.length) + '...' + suffix;
+    } else if (!supplier.isWinner && displayName.length < supplierName.length) {
+      displayName = displayName + '...';
+    }
+
     const supplierNameWidth = boldFont.widthOfTextAtSize(displayName, 9);
     const centerX = supplierX + (supplierColWidth - supplierNameWidth) / 2;
 
@@ -611,7 +661,22 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
           value = supplier.depositoryBank;
           break;
       }
-      drawText(value, supplierX + 10, yPosition, 7, false);
+
+      // Truncate text if it's too long for the column
+      const maxTextWidth = supplierColWidth - 20;
+      let displayValue = value;
+      let textWidth = font.widthOfTextAtSize(displayValue, 7);
+
+      while (textWidth > maxTextWidth && displayValue.length > 3) {
+        displayValue = displayValue.substring(0, displayValue.length - 1);
+        textWidth = font.widthOfTextAtSize(displayValue + '...', 7);
+      }
+
+      if (displayValue.length < value.length) {
+        displayValue = displayValue + '...';
+      }
+
+      drawText(displayValue, supplierX + 10, yPosition, 7, false);
       supplierX += supplierColWidth;
     });
   });
@@ -852,13 +917,17 @@ export async function generateAndUploadCanvassRFP(
         year: 'numeric'
       }),
       requestFor: canvass.pr?.purpose || '',
-      items: (canvass.items || []).map((item: any) => ({
-        description: item.description || '',
-        quantity: item.quantity || 0,
-        unit: item.unit || ''
-      })),
+      items: (canvass.items || []).map((item: any, itemIndex: number) => {
+        // Use the first supplier's quantity as the canonical quantity if PR items don't have it
+        const firstSupplierQty = canvass.suppliers?.[0]?.quantity;
+        return {
+          description: item.description || '',
+          quantity: item.quantity || firstSupplierQty || 0,
+          unit: item.unit || ''
+        };
+      }),
       suppliers: (canvass.suppliers || []).map((supplier: any, supplierIndex: number) => {
-        const quotations = (canvass.items || []).map(() => ({
+        const quotations = (canvass.items || []).map((item: any) => ({
           unitPrice: parseFloat(supplier.unit_price || 0),
           amount: parseFloat(supplier.quoted_amount || 0)
         }));
