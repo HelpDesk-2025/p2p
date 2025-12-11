@@ -382,12 +382,13 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
       });
     }
 
-    // Draw supplier name centered in the column
+    // Draw supplier name centered in the column with "AWARDED" label
     const supplierName = supplier.name || 'N/A';
-    const supplierNameWidth = boldFont.widthOfTextAtSize(supplierName, 9);
+    const displayName = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
+    const supplierNameWidth = boldFont.widthOfTextAtSize(displayName, 9);
     const centerX = supplierX + (supplierColWidth - supplierNameWidth) / 2;
 
-    page.drawText(supplierName, {
+    page.drawText(displayName, {
       x: centerX,
       y: yPosition,
       size: 9,
@@ -419,8 +420,13 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         color: rgb(0.8, 1, 0.8),
       });
     }
-    drawText('UP', supplierX + 10, yPosition, 8, true);
-    drawText('Amount', supplierX + 50, yPosition, 8, true);
+    const upWidth = boldFont.widthOfTextAtSize('UP', 8);
+    const amountWidth = boldFont.widthOfTextAtSize('Amount', 8);
+    const leftColX = supplierX + (supplierColWidth * 0.25) - (upWidth / 2);
+    const rightColX = supplierX + (supplierColWidth * 0.75) - (amountWidth / 2);
+
+    drawText('UP', leftColX, yPosition, 8, true);
+    drawText('Amount', rightColX, yPosition, 8, true);
     supplierX += supplierColWidth;
   });
   yPosition -= 12;
@@ -449,8 +455,16 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
       const quotation = supplier.quotations[index];
       if (quotation) {
-        drawText(quotation.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 }), supplierX + 10, yPosition, 8, false);
-        drawText(quotation.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }), supplierX + 50, yPosition, 8, false);
+        const upText = quotation.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        const amountText = quotation.amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        const upTextWidth = font.widthOfTextAtSize(upText, 8);
+        const amountTextWidth = font.widthOfTextAtSize(amountText, 8);
+
+        const leftColX = supplierX + (supplierColWidth * 0.25) - (upTextWidth / 2);
+        const rightColX = supplierX + (supplierColWidth * 0.75) - (amountTextWidth / 2);
+
+        drawText(upText, leftColX, yPosition, 8, false);
+        drawText(amountText, rightColX, yPosition, 8, false);
       }
       supplierX += supplierColWidth;
     });
@@ -527,7 +541,12 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
           value = supplier.netPayable.toLocaleString('en-US', { minimumFractionDigits: 2 });
           break;
       }
-      drawText(value, supplierX + 50, yPosition, 8, rowLabel === 'Net Payable' ? true : false);
+
+      const valueFont = rowLabel === 'Net Payable' ? boldFont : font;
+      const valueWidth = valueFont.widthOfTextAtSize(value, 8);
+      const valueCenterX = supplierX + (supplierColWidth - valueWidth) / 2;
+
+      drawText(value, valueCenterX, yPosition, 8, rowLabel === 'Net Payable' ? true : false);
       supplierX += supplierColWidth;
     });
   });
@@ -554,6 +573,17 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     supplierX = tableLeft + 200;
     data.suppliers.forEach((supplier) => {
+      // Highlight winning vendor info cells
+      if (supplier.isWinner) {
+        page.drawRectangle({
+          x: supplierX,
+          y: yPosition - 3,
+          width: supplierColWidth,
+          height: 12,
+          color: rgb(0.95, 1, 0.95),
+        });
+      }
+
       let value = '';
       switch (label) {
         case 'Registered Name:':
@@ -586,39 +616,25 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
     });
   });
 
-  // Add new page for signatories if needed
-  const signPage = pdfDoc.addPage([792, 612]);
-  let signY = signPage.getSize().height - 80;
-
-  const drawSignText = (text: string, x: number, y: number, size = 10, isBold = false) => {
-    if (!text || text.trim() === '') return;
-    signPage.drawText(text, {
-      x,
-      y,
-      size,
-      font: isBold ? boldFont : font,
-      color: rgb(0, 0, 0),
-    });
-  };
-
-  // Approvals section
+  // Approvals section on the same page
+  yPosition -= 20;
   const totalApprovals = data.approvals.length;
   const leftMargin = 100;
 
   if (totalApprovals === 1) {
     const approval = data.approvals[0];
-    drawSignText('APPROVED BY:', leftMargin, signY, 10, true);
-    signY -= 10;
+    drawText('APPROVED BY:', leftMargin, yPosition, 9, true);
+    yPosition -= 10;
 
     if (approval.approver_esig) {
       try {
         const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
         const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
         const esigImage = await pdfDoc.embedPng(esigBytes);
-        const esigDims = esigImage.scale(0.5);
-        signPage.drawImage(esigImage, {
+        const esigDims = esigImage.scale(0.3);
+        page.drawImage(esigImage, {
           x: leftMargin + 20,
-          y: signY - esigDims.height,
+          y: yPosition - esigDims.height,
           width: esigDims.width,
           height: esigDims.height,
         });
@@ -626,17 +642,17 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         console.error('Error embedding approver signature:', error);
       }
     }
-    signY -= 50;
+    yPosition -= 35;
 
-    drawSignText(approval.approver_name, leftMargin, signY, 10, false);
-    signY -= 15;
-    drawSignText(approval.approval_date, leftMargin, signY, 10, false);
+    drawText(approval.approver_name, leftMargin, yPosition, 9, false);
+    yPosition -= 12;
+    drawText(approval.approval_date, leftMargin, yPosition, 9, false);
   } else if (totalApprovals >= 2) {
     const recommendingApprovers = data.approvals.slice(0, -1);
     const finalApprover = data.approvals[data.approvals.length - 1];
 
-    let leftY = signY;
-    drawSignText('RECOMMENDING APPROVAL:', leftMargin, leftY, 10, true);
+    let leftY = yPosition;
+    drawText('RECOMMENDING APPROVAL:', leftMargin, leftY, 9, true);
     leftY -= 10;
 
     for (const approval of recommendingApprovers) {
@@ -645,8 +661,8 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
           const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
           const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
           const esigImage = await pdfDoc.embedPng(esigBytes);
-          const esigDims = esigImage.scale(0.5);
-          signPage.drawImage(esigImage, {
+          const esigDims = esigImage.scale(0.3);
+          page.drawImage(esigImage, {
             x: leftMargin + 20,
             y: leftY - esigDims.height,
             width: esigDims.width,
@@ -656,17 +672,17 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
           console.error('Error embedding recommending approver signature:', error);
         }
       }
-      leftY -= 50;
+      leftY -= 35;
 
-      drawSignText(approval.approver_name, leftMargin, leftY, 10, false);
-      leftY -= 15;
-      drawSignText(approval.approval_date, leftMargin, leftY, 10, false);
-      leftY -= 30;
+      drawText(approval.approver_name, leftMargin, leftY, 9, false);
+      leftY -= 12;
+      drawText(approval.approval_date, leftMargin, leftY, 9, false);
+      leftY -= 20;
     }
 
-    const rightMargin = signPage.getSize().width / 2 + 50;
-    let rightY = signY;
-    drawSignText('APPROVED BY:', rightMargin, rightY, 10, true);
+    const rightMargin = width / 2 + 50;
+    let rightY = yPosition;
+    drawText('APPROVED BY:', rightMargin, rightY, 9, true);
     rightY -= 10;
 
     if (finalApprover.approver_esig) {
@@ -674,8 +690,8 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         const esigData = finalApprover.approver_esig.split(',')[1] || finalApprover.approver_esig;
         const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
         const esigImage = await pdfDoc.embedPng(esigBytes);
-        const esigDims = esigImage.scale(0.5);
-        signPage.drawImage(esigImage, {
+        const esigDims = esigImage.scale(0.3);
+        page.drawImage(esigImage, {
           x: rightMargin + 20,
           y: rightY - esigDims.height,
           width: esigDims.width,
@@ -685,11 +701,11 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         console.error('Error embedding final approver signature:', error);
       }
     }
-    rightY -= 50;
+    rightY -= 35;
 
-    drawSignText(finalApprover.approver_name, rightMargin, rightY, 10, false);
-    rightY -= 15;
-    drawSignText(finalApprover.approval_date, rightMargin, rightY, 10, false);
+    drawText(finalApprover.approver_name, rightMargin, rightY, 9, false);
+    rightY -= 12;
+    drawText(finalApprover.approval_date, rightMargin, rightY, 9, false);
   }
 
   return await pdfDoc.save();
