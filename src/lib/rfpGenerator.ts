@@ -409,41 +409,45 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     // Draw supplier name centered in the column with "AWARDED" label
     const supplierName = supplier.name || 'N/A';
-    let displayName = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
+    const displayText = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
 
-    // Truncate supplier name if too long
+    // Wrap text if too long
     const maxNameWidth = supplierColWidth - 10;
-    let nameWidth = boldFont.widthOfTextAtSize(displayName, 9);
+    const nameLines: string[] = [];
+    const words = displayText.split(' ');
+    let currentLine = '';
 
-    while (nameWidth > maxNameWidth && displayName.length > 3) {
-      if (supplier.isWinner) {
-        // For winner, trim the supplier name part
-        const suffix = ' - AWARDED';
-        const nameOnly = displayName.substring(0, displayName.length - suffix.length);
-        const trimmedName = nameOnly.substring(0, nameOnly.length - 1);
-        displayName = trimmedName + suffix;
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = boldFont.widthOfTextAtSize(testLine, 9);
+
+      if (testWidth > maxNameWidth && currentLine) {
+        nameLines.push(currentLine);
+        currentLine = word;
       } else {
-        displayName = displayName.substring(0, displayName.length - 1);
+        currentLine = testLine;
       }
-      nameWidth = boldFont.widthOfTextAtSize(displayName + '...', 9);
     }
 
-    if (supplier.isWinner && displayName.length < (supplierName + ' - AWARDED').length && !displayName.endsWith('...')) {
-      const suffix = ' - AWARDED';
-      displayName = displayName.substring(0, displayName.length - suffix.length) + '...' + suffix;
-    } else if (!supplier.isWinner && displayName.length < supplierName.length) {
-      displayName = displayName + '...';
+    if (currentLine) {
+      nameLines.push(currentLine);
     }
 
-    const supplierNameWidth = boldFont.widthOfTextAtSize(displayName, 9);
-    const centerX = supplierX + (supplierColWidth - supplierNameWidth) / 2;
+    // Draw each line centered
+    let lineY = yPosition;
+    nameLines.forEach((line) => {
+      const lineWidth = boldFont.widthOfTextAtSize(line, 9);
+      const centerX = supplierX + (supplierColWidth - lineWidth) / 2;
 
-    page.drawText(displayName, {
-      x: centerX,
-      y: yPosition,
-      size: 9,
-      font: boldFont,
-      color: rgb(0, 0, 0),
+      page.drawText(line, {
+        x: centerX,
+        y: lineY,
+        size: 9,
+        font: boldFont,
+        color: rgb(0, 0, 0),
+      });
+
+      lineY -= 10;
     });
 
     supplierX += supplierColWidth;
@@ -618,18 +622,59 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   ];
 
   supplierInfoRows.forEach((label) => {
-    yPosition -= 10;
-    drawText(label, tableLeft + 5, yPosition, 8, true);
+    const startY = yPosition - 10;
+    drawText(label, tableLeft + 5, startY, 8, true);
 
+    supplierX = tableLeft + 200;
+    let maxLines = 1;
+
+    // First pass: determine max number of lines needed for this row
+    data.suppliers.forEach((supplier) => {
+      let value = '';
+      switch (label) {
+        case 'Registered Name:':
+          value = supplier.registeredName;
+          break;
+        case 'Complete Address:':
+          value = supplier.address;
+          break;
+        case 'TIN:':
+          value = supplier.tin;
+          break;
+        case 'Contact Person:':
+          value = supplier.contactPerson;
+          break;
+        case 'Contact No.:':
+          value = supplier.contactNo;
+          break;
+        case 'Email:':
+          value = supplier.email;
+          break;
+        case 'Bank Account:':
+          value = supplier.bankAccount;
+          break;
+        case 'Depository Bank':
+          value = supplier.depositoryBank;
+          break;
+      }
+
+      const maxTextWidth = supplierColWidth - 20;
+      const lines = wrapText(value, maxTextWidth, 7);
+      maxLines = Math.max(maxLines, lines.length);
+    });
+
+    const rowHeight = maxLines * 9 + 3;
+
+    // Second pass: draw the values with wrapping
     supplierX = tableLeft + 200;
     data.suppliers.forEach((supplier) => {
       // Highlight winning vendor info cells
       if (supplier.isWinner) {
         page.drawRectangle({
           x: supplierX,
-          y: yPosition - 3,
+          y: startY - rowHeight + 3,
           width: supplierColWidth,
-          height: 12,
+          height: rowHeight,
           color: rgb(0.95, 1, 0.95),
         });
       }
@@ -662,23 +707,19 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
           break;
       }
 
-      // Truncate text if it's too long for the column
       const maxTextWidth = supplierColWidth - 20;
-      let displayValue = value;
-      let textWidth = font.widthOfTextAtSize(displayValue, 7);
+      const lines = wrapText(value, maxTextWidth, 7);
 
-      while (textWidth > maxTextWidth && displayValue.length > 3) {
-        displayValue = displayValue.substring(0, displayValue.length - 1);
-        textWidth = font.widthOfTextAtSize(displayValue + '...', 7);
-      }
+      let lineY = startY;
+      lines.forEach((line) => {
+        drawText(line, supplierX + 10, lineY, 7, false);
+        lineY -= 9;
+      });
 
-      if (displayValue.length < value.length) {
-        displayValue = displayValue + '...';
-      }
-
-      drawText(displayValue, supplierX + 10, yPosition, 7, false);
       supplierX += supplierColWidth;
     });
+
+    yPosition = startY - rowHeight;
   });
 
   // Approvals section on the same page
