@@ -371,18 +371,30 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   drawText('Supplier Name', tableLeft + 5, yPosition, 9, true);
   let supplierX = tableLeft + 200;
   data.suppliers.forEach((supplier) => {
-    // Highlight winning vendor
+    // Highlight winning vendor background
     if (supplier.isWinner) {
       page.drawRectangle({
         x: supplierX,
-        y: yPosition - 5,
+        y: yPosition - 8,
         width: supplierColWidth,
-        height: 20,
+        height: 22,
         color: rgb(0.8, 1, 0.8),
       });
     }
-    const supplierNameWidth = boldFont.widthOfTextAtSize(supplier.name, 9);
-    drawText(supplier.name, supplierX + (supplierColWidth - supplierNameWidth) / 2, yPosition, 9, true);
+
+    // Draw supplier name centered in the column
+    const supplierName = supplier.name || 'N/A';
+    const supplierNameWidth = boldFont.widthOfTextAtSize(supplierName, 9);
+    const centerX = supplierX + (supplierColWidth - supplierNameWidth) / 2;
+
+    page.drawText(supplierName, {
+      x: centerX,
+      y: yPosition,
+      size: 9,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+
     supplierX += supplierColWidth;
   });
   yPosition -= 15;
@@ -396,7 +408,17 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   drawText('Unit', tableLeft + 150, yPosition, 8, true);
 
   supplierX = tableLeft + 200;
-  data.suppliers.forEach(() => {
+  data.suppliers.forEach((supplier) => {
+    // Highlight winning vendor column headers
+    if (supplier.isWinner) {
+      page.drawRectangle({
+        x: supplierX,
+        y: yPosition - 5,
+        width: supplierColWidth,
+        height: 15,
+        color: rgb(0.8, 1, 0.8),
+      });
+    }
     drawText('UP', supplierX + 10, yPosition, 8, true);
     drawText('Amount', supplierX + 50, yPosition, 8, true);
     supplierX += supplierColWidth;
@@ -414,6 +436,17 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     supplierX = tableLeft + 200;
     data.suppliers.forEach((supplier) => {
+      // Highlight winning vendor data cells
+      if (supplier.isWinner) {
+        page.drawRectangle({
+          x: supplierX,
+          y: yPosition - 5,
+          width: supplierColWidth,
+          height: 15,
+          color: rgb(0.9, 1, 0.9),
+        });
+      }
+
       const quotation = supplier.quotations[index];
       if (quotation) {
         drawText(quotation.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 }), supplierX + 10, yPosition, 8, false);
@@ -447,6 +480,17 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     supplierX = tableLeft + 200;
     data.suppliers.forEach((supplier) => {
+      // Highlight winning vendor data cells
+      if (supplier.isWinner) {
+        page.drawRectangle({
+          x: supplierX,
+          y: yPosition - 5,
+          width: supplierColWidth,
+          height: 15,
+          color: rgb(0.9, 1, 0.9),
+        });
+      }
+
       let value = '';
       switch (rowLabel) {
         case 'Invoice Availability':
