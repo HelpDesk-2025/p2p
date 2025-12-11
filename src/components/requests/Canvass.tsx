@@ -167,9 +167,9 @@ export function Canvass() {
     items: [{ description: '', quantity: 1, unit: 'pcs' }],
   });
 
-  const createEmptyQuotation = (): QuotationForm => ({
+  const createEmptyQuotation = (items?: QuotationItem[]): QuotationForm => ({
     vendor_name: '',
-    items: [{ description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 }],
+    items: items || [{ description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 }],
     quoted_amount: 0,
     invoice_availability: false,
     delivery: false,
@@ -197,6 +197,32 @@ export function Canvass() {
     other_information: '',
     quotation_file: null,
   });
+
+  const createQuotationsFromPRItems = (prItems: any[]): QuotationForm[] => {
+    const validItems = prItems.filter((item: any) => item.total_price > 0);
+
+    if (validItems.length === 0) {
+      return [
+        createEmptyQuotation(),
+        createEmptyQuotation(),
+        createEmptyQuotation(),
+      ];
+    }
+
+    const templateItems: QuotationItem[] = validItems.map((item: any) => ({
+      description: item.item_description || item.description || '',
+      quantity: item.quantity || 1,
+      uom: item.unit || 'pcs',
+      unit_price: 0,
+      amount: 0,
+    }));
+
+    return [
+      createEmptyQuotation([...templateItems]),
+      createEmptyQuotation([...templateItems]),
+      createEmptyQuotation([...templateItems]),
+    ];
+  };
 
   const [quotations, setQuotations] = useState<QuotationForm[]>([
     createEmptyQuotation(),
@@ -703,11 +729,7 @@ export function Canvass() {
     setShowPRSelection(false);
     setShowForm(true);
     generateDocumentNo();
-    setQuotations([
-      createEmptyQuotation(),
-      createEmptyQuotation(),
-      createEmptyQuotation(),
-    ]);
+    setQuotations(createQuotationsFromPRItems(pr.items || []));
     setSelectedCompanyId('');
     setVendors([]);
   };
@@ -997,24 +1019,26 @@ export function Canvass() {
                         <div className="border-t pt-4 mt-4">
                           <div className="flex items-center justify-between mb-2">
                             <label className="block text-sm font-medium text-slate-700">Items</label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].items.push({
-                                  description: '',
-                                  quantity: 1,
-                                  uom: '',
-                                  unit_price: 0,
-                                  amount: 0,
-                                });
-                                setQuotations(newQuotations);
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
-                            >
-                              <Plus size={14} />
-                              Add Item
-                            </button>
+                            {!selectedPR && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newQuotations = [...quotations];
+                                  newQuotations[idx].items.push({
+                                    description: '',
+                                    quantity: 1,
+                                    uom: '',
+                                    unit_price: 0,
+                                    amount: 0,
+                                  });
+                                  setQuotations(newQuotations);
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+                              >
+                                <Plus size={14} />
+                                Add Item
+                              </button>
+                            )}
                           </div>
 
                           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -1041,7 +1065,8 @@ export function Canvass() {
                                           newQuotations[idx].items[itemIdx].description = e.target.value;
                                           setQuotations(newQuotations);
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        readOnly={!!selectedPR}
+                                        className={`w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none ${selectedPR ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
                                         placeholder="Item description"
                                       />
                                     </td>
@@ -1059,7 +1084,8 @@ export function Canvass() {
                                           newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                           setQuotations(newQuotations);
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        readOnly={!!selectedPR}
+                                        className={`w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none ${selectedPR ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
                                       />
                                     </td>
                                     <td className="px-2 py-2">
@@ -1071,7 +1097,8 @@ export function Canvass() {
                                           newQuotations[idx].items[itemIdx].uom = e.target.value;
                                           setQuotations(newQuotations);
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        readOnly={!!selectedPR}
+                                        className={`w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none ${selectedPR ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : ''}`}
                                         placeholder="pcs"
                                       />
                                     </td>
@@ -1097,7 +1124,7 @@ export function Canvass() {
                                       ₱{item.amount.toFixed(2)}
                                     </td>
                                     <td className="px-2 py-2">
-                                      {quotation.items.length > 1 && (
+                                      {!selectedPR && quotation.items.length > 1 && (
                                         <button
                                           type="button"
                                           onClick={() => {
