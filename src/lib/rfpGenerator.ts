@@ -886,7 +886,7 @@ export async function generateAndUploadCanvassRFP(
 
     const winningVendorIndex = canvass.recommended_quotation_index || 0;
     const winningVendorData = canvass.suppliers?.[winningVendorIndex];
-    const winningVendor = winningVendorData?.name || '';
+    const winningVendor = winningVendorData?.vendor_name || winningVendorData?.name || '';
     console.log('Winning vendor:', winningVendor);
 
     // Calculate net payable for the winning vendor
