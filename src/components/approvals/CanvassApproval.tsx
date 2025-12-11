@@ -22,6 +22,7 @@ interface CanvassReq {
   pr_id?: string;
   recommended_quotation_index?: number | null;
   recommendation_remarks?: string | null;
+  rfp_pdf_path?: string | null;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -650,6 +651,69 @@ export function CanvassApproval() {
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <label className="text-sm font-semibold text-slate-700 mb-2 block">Recommendation Remarks</label>
                   <p className="text-sm text-slate-900">{selectedRequest.recommendation_remarks}</p>
+                </div>
+              )}
+
+              {selectedRequest.status === 'approved' && selectedRequest.rfp_pdf_path && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Canvass Sheet & RFP Document</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { data, error } = await supabase.storage
+                            .from('attachments')
+                            .createSignedUrl(selectedRequest.rfp_pdf_path!, 60);
+                          if (error) {
+                            console.error('Error creating signed URL:', error);
+                            alert('Error loading document: ' + error.message);
+                            return;
+                          }
+                          if (data?.signedUrl) {
+                            window.open(data.signedUrl, '_blank');
+                          }
+                        } catch (error) {
+                          console.error('Error viewing document:', error);
+                          alert('Error viewing document');
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Eye size={16} />
+                      View Document
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { data, error } = await supabase.storage
+                            .from('attachments')
+                            .download(selectedRequest.rfp_pdf_path!);
+                          if (error) {
+                            console.error('Error downloading document:', error);
+                            alert('Error downloading document: ' + error.message);
+                            return;
+                          }
+                          if (data) {
+                            const url = URL.createObjectURL(data);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${selectedRequest.canvass_number}_document.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }
+                        } catch (error) {
+                          console.error('Error downloading document:', error);
+                          alert('Error downloading document');
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      <FileText size={16} />
+                      Download Document
+                    </button>
+                  </div>
                 </div>
               )}
 
