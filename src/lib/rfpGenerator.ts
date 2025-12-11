@@ -293,6 +293,8 @@ interface CanvassSheetData {
     email: string;
     bankAccount: string;
     depositoryBank: string;
+    isWinner: boolean;
+    quotationFilePath: string | null;
   }>;
   approvals: ApprovalRecord[];
 }
@@ -365,10 +367,20 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   drawLine(tableLeft, yPosition, tableRight, yPosition);
   yPosition -= 15;
 
-  // Supplier headers
+  // Supplier headers with highlighting for winner
   drawText('Supplier Name', tableLeft + 5, yPosition, 9, true);
   let supplierX = tableLeft + 200;
   data.suppliers.forEach((supplier) => {
+    // Highlight winning vendor
+    if (supplier.isWinner) {
+      page.drawRectangle({
+        x: supplierX,
+        y: yPosition - 5,
+        width: supplierColWidth,
+        height: 20,
+        color: rgb(0.8, 1, 0.8),
+      });
+    }
     const supplierNameWidth = boldFont.widthOfTextAtSize(supplier.name, 9);
     drawText(supplier.name, supplierX + (supplierColWidth - supplierNameWidth) / 2, yPosition, 9, true);
     supplierX += supplierColWidth;
@@ -776,43 +788,43 @@ export async function generateAndUploadCanvassRFP(
         quantity: item.quantity || 0,
         unit: item.unit || ''
       })),
-      suppliers: (canvass.suppliers || []).map((supplier: any) => {
-        const quotations = (canvass.items || []).map((item: any) => {
-          const supplierQuote = supplier.items?.find((si: any) => si.description === item.description);
-          return {
-            unitPrice: parseFloat(supplierQuote?.unitPrice || 0),
-            amount: parseFloat(supplierQuote?.amount || 0)
-          };
-        });
+      suppliers: (canvass.suppliers || []).map((supplier: any, supplierIndex: number) => {
+        const quotations = (canvass.items || []).map(() => ({
+          unitPrice: parseFloat(supplier.unit_price || 0),
+          amount: parseFloat(supplier.quoted_amount || 0)
+        }));
 
-        const total = supplier.total || 0;
-        const netOfVat = total / 1.12;
-        const vat12 = total - netOfVat;
-        const ewt = netOfVat * 0.02;
-        const netPayable = total - ewt;
+        const total = parseFloat(supplier.total || supplier.purchase_price || 0);
+        const netOfVat = parseFloat(supplier.net_of_vat || (total / 1.12));
+        const vat12 = parseFloat(supplier.vat_12 || (total - netOfVat));
+        const ewt = parseFloat(supplier.ewt || (netOfVat * 0.02));
+        const netPayable = parseFloat(supplier.net_payable || (total - ewt));
+        const isWinner = supplierIndex === (canvass.recommended_quotation_index || 0);
 
         return {
-          name: supplier.name || '',
+          name: supplier.vendor_name || supplier.name || '',
           quotations,
-          invoiceAvailability: supplier.invoiceAvailability || 'Yes',
-          delivery: supplier.delivery || 'Yes',
-          installation: supplier.installation || '',
-          deliveryFee: 0,
-          total: parseFloat(total),
-          discountPrice: 0,
-          purchasePrice: parseFloat(total),
+          invoiceAvailability: supplier.invoice_availability ? 'Yes' : 'No',
+          delivery: supplier.delivery ? 'Yes' : 'No',
+          installation: supplier.installation ? 'Yes' : 'No',
+          deliveryFee: parseFloat(supplier.delivery_fee || 0),
+          total,
+          discountPrice: parseFloat(supplier.discounted_price || 0),
+          purchasePrice: parseFloat(supplier.purchase_price || total),
           netOfVat,
           vat12,
           ewt,
           netPayable,
-          registeredName: supplier.name || '',
-          address: supplier.address || '',
+          registeredName: supplier.registered_name || supplier.vendor_name || '',
+          address: supplier.complete_address || supplier.address || '',
           tin: supplier.tin || '',
-          contactPerson: supplier.contactPerson || '',
-          contactNo: supplier.contactNo || '',
-          email: supplier.email || '',
-          bankAccount: supplier.bankAccount || '',
-          depositoryBank: supplier.depositoryBank || ''
+          contactPerson: supplier.contact_person || '',
+          contactNo: supplier.contact_no || '',
+          email: supplier.email_address || supplier.email || '',
+          bankAccount: supplier.bank_account_no || '',
+          depositoryBank: supplier.depository_bank || '',
+          isWinner,
+          quotationFilePath: supplier.quotation_file_path || null
         };
       }),
       approvals: (approvals || []).map((a: any) => {
@@ -838,11 +850,37 @@ export async function generateAndUploadCanvassRFP(
     const canvassSheetBytes = await generateCanvassSheet(canvassSheetData);
     console.log('Canvass Sheet PDF generated, size:', canvassSheetBytes.length);
 
-    // Merge Canvass Sheet and RFP
-    console.log('Merging Canvass Sheet and RFP PDFs');
-    const mergedPdfBytes = await mergeRFPWithAttachments(canvassSheetBytes, [
+    // Get winning vendor's quotation file
+    const winningSupplier = canvassSheetData.suppliers.find(s => s.isWinner);
+    const attachmentsToMerge: Array<{ data: Uint8Array; type: string }> = [
       { data: rfpBytes, type: 'application/pdf' }
-    ]);
+    ];
+
+    if (winningSupplier?.quotationFilePath) {
+      try {
+        console.log('Downloading winning vendor quotation:', winningSupplier.quotationFilePath);
+        const { data: quotationFile, error: downloadError } = await supabase.storage
+          .from('attachments')
+          .download(winningSupplier.quotationFilePath);
+
+        if (!downloadError && quotationFile) {
+          const quotationBytes = new Uint8Array(await quotationFile.arrayBuffer());
+          attachmentsToMerge.push({
+            data: quotationBytes,
+            type: quotationFile.type
+          });
+          console.log('Winning vendor quotation added to merge');
+        } else {
+          console.warn('Could not download winning vendor quotation:', downloadError);
+        }
+      } catch (error) {
+        console.error('Error downloading winning vendor quotation:', error);
+      }
+    }
+
+    // Merge Canvass Sheet, RFP, and winning vendor quotation
+    console.log('Merging Canvass Sheet, RFP, and attachments');
+    const mergedPdfBytes = await mergeRFPWithAttachments(canvassSheetBytes, attachmentsToMerge);
     console.log('PDFs merged, size:', mergedPdfBytes.length);
 
     const fileName = `rfp_${canvassNumber}_${Date.now()}.pdf`;
