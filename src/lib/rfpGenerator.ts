@@ -1,5 +1,6 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { supabase } from './supabase';
+import { mergeRFPWithAttachments } from './pdfMerger';
 
 interface PaymentModeLine {
   label: string;
@@ -256,6 +257,388 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   return pdfBytes;
 }
 
+interface CanvassSheetData {
+  companyName: string;
+  companyAddress: string;
+  vatTin: string;
+  date: string;
+  requestFor: string;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit: string;
+  }>;
+  suppliers: Array<{
+    name: string;
+    quotations: Array<{
+      unitPrice: number;
+      amount: number;
+    }>;
+    invoiceAvailability: string;
+    delivery: string;
+    installation: string;
+    deliveryFee: number;
+    total: number;
+    discountPrice: number;
+    purchasePrice: number;
+    netOfVat: number;
+    vat12: number;
+    ewt: number;
+    netPayable: number;
+    registeredName: string;
+    address: string;
+    tin: string;
+    contactPerson: string;
+    contactNo: string;
+    email: string;
+    bankAccount: string;
+    depositoryBank: string;
+  }>;
+  approvals: ApprovalRecord[];
+}
+
+async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([792, 612]); // Landscape orientation
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const { width, height } = page.getSize();
+  let yPosition = height - 50;
+
+  const drawText = (text: string, x: number, y: number, size = 9, isBold = false) => {
+    if (!text || text.trim() === '') return;
+    page.drawText(text, {
+      x,
+      y,
+      size,
+      font: isBold ? boldFont : font,
+      color: rgb(0, 0, 0),
+    });
+  };
+
+  const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
+    page.drawLine({
+      start: { x: x1, y: y1 },
+      end: { x: x2, y: y2 },
+      thickness: 0.5,
+      color: rgb(0, 0, 0),
+    });
+  };
+
+  // Company Name (centered)
+  const companyNameWidth = boldFont.widthOfTextAtSize(data.companyName, 14);
+  drawText(data.companyName, (width - companyNameWidth) / 2, yPosition, 14, true);
+  yPosition -= 15;
+
+  // Company Address (centered)
+  const addressWidth = font.widthOfTextAtSize(data.companyAddress, 9);
+  drawText(data.companyAddress, (width - addressWidth) / 2, yPosition, 9, false);
+  yPosition -= 12;
+
+  // VAT TIN (centered)
+  const vatTinWidth = font.widthOfTextAtSize(data.vatTin, 9);
+  drawText(data.vatTin, (width - vatTinWidth) / 2, yPosition, 9, false);
+  yPosition -= 20;
+
+  // Title (centered)
+  const titleWidth = boldFont.widthOfTextAtSize('CANVASS SUMMARY', 16);
+  drawText('CANVASS SUMMARY', (width - titleWidth) / 2, yPosition, 16, true);
+
+  // Date (right aligned)
+  const dateText = `Date: ${data.date}`;
+  const dateWidth = font.widthOfTextAtSize(dateText, 9);
+  drawText(dateText, width - dateWidth - 40, yPosition, 9, false);
+  yPosition -= 25;
+
+  // Request For
+  drawText(`Request for: ${data.requestFor}`, 40, yPosition, 9, true);
+  yPosition -= 20;
+
+  // Table headers
+  const tableStartY = yPosition;
+  const tableLeft = 40;
+  const tableRight = width - 40;
+  const supplierColWidth = (tableRight - tableLeft - 200) / data.suppliers.length;
+
+  // Draw table structure
+  drawLine(tableLeft, yPosition, tableRight, yPosition);
+  yPosition -= 15;
+
+  // Supplier headers
+  drawText('Supplier Name', tableLeft + 5, yPosition, 9, true);
+  let supplierX = tableLeft + 200;
+  data.suppliers.forEach((supplier) => {
+    const supplierNameWidth = boldFont.widthOfTextAtSize(supplier.name, 9);
+    drawText(supplier.name, supplierX + (supplierColWidth - supplierNameWidth) / 2, yPosition, 9, true);
+    supplierX += supplierColWidth;
+  });
+  yPosition -= 15;
+  drawLine(tableLeft, yPosition, tableRight, yPosition);
+
+  // Column headers
+  yPosition -= 12;
+  drawText('No', tableLeft + 5, yPosition, 8, true);
+  drawText('Details', tableLeft + 25, yPosition, 8, true);
+  drawText('Qty.', tableLeft + 120, yPosition, 8, true);
+  drawText('Unit', tableLeft + 150, yPosition, 8, true);
+
+  supplierX = tableLeft + 200;
+  data.suppliers.forEach(() => {
+    drawText('UP', supplierX + 10, yPosition, 8, true);
+    drawText('Amount', supplierX + 50, yPosition, 8, true);
+    supplierX += supplierColWidth;
+  });
+  yPosition -= 12;
+  drawLine(tableLeft, yPosition, tableRight, yPosition);
+
+  // Items
+  data.items.forEach((item, index) => {
+    yPosition -= 12;
+    drawText(`${index + 1}`, tableLeft + 5, yPosition, 8, false);
+    drawText(item.description, tableLeft + 25, yPosition, 8, false);
+    drawText(item.quantity.toString(), tableLeft + 120, yPosition, 8, false);
+    drawText(item.unit, tableLeft + 150, yPosition, 8, false);
+
+    supplierX = tableLeft + 200;
+    data.suppliers.forEach((supplier) => {
+      const quotation = supplier.quotations[index];
+      if (quotation) {
+        drawText(quotation.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 }), supplierX + 10, yPosition, 8, false);
+        drawText(quotation.amount.toLocaleString('en-US', { minimumFractionDigits: 2 }), supplierX + 50, yPosition, 8, false);
+      }
+      supplierX += supplierColWidth;
+    });
+  });
+
+  yPosition -= 12;
+  drawLine(tableLeft, yPosition, tableRight, yPosition);
+
+  // Additional rows
+  const additionalRows = [
+    'Invoice Availability',
+    'Delivery',
+    'Installation',
+    'Delivery Fee',
+    'Total',
+    'Discount Price',
+    'Purchase Price',
+    'Net of Vat',
+    'Vat 12%',
+    'EWT',
+    'Net Payable'
+  ];
+
+  additionalRows.forEach((rowLabel) => {
+    yPosition -= 12;
+    drawText(rowLabel, tableLeft + 25, yPosition, 8, rowLabel === 'Net Payable' ? true : false);
+
+    supplierX = tableLeft + 200;
+    data.suppliers.forEach((supplier) => {
+      let value = '';
+      switch (rowLabel) {
+        case 'Invoice Availability':
+          value = supplier.invoiceAvailability;
+          break;
+        case 'Delivery':
+          value = supplier.delivery;
+          break;
+        case 'Installation':
+          value = supplier.installation;
+          break;
+        case 'Delivery Fee':
+          value = supplier.deliveryFee > 0 ? supplier.deliveryFee.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-';
+          break;
+        case 'Total':
+          value = supplier.total.toLocaleString('en-US', { minimumFractionDigits: 2 });
+          break;
+        case 'Discount Price':
+          value = supplier.discountPrice > 0 ? supplier.discountPrice.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-';
+          break;
+        case 'Purchase Price':
+          value = supplier.purchasePrice.toLocaleString('en-US', { minimumFractionDigits: 2 });
+          break;
+        case 'Net of Vat':
+          value = supplier.netOfVat.toLocaleString('en-US', { minimumFractionDigits: 2 });
+          break;
+        case 'Vat 12%':
+          value = supplier.vat12.toLocaleString('en-US', { minimumFractionDigits: 2 });
+          break;
+        case 'EWT':
+          value = `(${supplier.ewt.toLocaleString('en-US', { minimumFractionDigits: 2 })})`;
+          break;
+        case 'Net Payable':
+          value = supplier.netPayable.toLocaleString('en-US', { minimumFractionDigits: 2 });
+          break;
+      }
+      drawText(value, supplierX + 50, yPosition, 8, rowLabel === 'Net Payable' ? true : false);
+      supplierX += supplierColWidth;
+    });
+  });
+
+  yPosition -= 12;
+  drawLine(tableLeft, yPosition, tableRight, yPosition);
+
+  // Supplier information
+  yPosition -= 15;
+  const supplierInfoRows = [
+    'Registered Name:',
+    'Complete Address:',
+    'TIN:',
+    'Contact Person:',
+    'Contact No.:',
+    'Email:',
+    'Bank Account:',
+    'Depository Bank'
+  ];
+
+  supplierInfoRows.forEach((label) => {
+    yPosition -= 10;
+    drawText(label, tableLeft + 5, yPosition, 8, true);
+
+    supplierX = tableLeft + 200;
+    data.suppliers.forEach((supplier) => {
+      let value = '';
+      switch (label) {
+        case 'Registered Name:':
+          value = supplier.registeredName;
+          break;
+        case 'Complete Address:':
+          value = supplier.address;
+          break;
+        case 'TIN:':
+          value = supplier.tin;
+          break;
+        case 'Contact Person:':
+          value = supplier.contactPerson;
+          break;
+        case 'Contact No.:':
+          value = supplier.contactNo;
+          break;
+        case 'Email:':
+          value = supplier.email;
+          break;
+        case 'Bank Account:':
+          value = supplier.bankAccount;
+          break;
+        case 'Depository Bank':
+          value = supplier.depositoryBank;
+          break;
+      }
+      drawText(value, supplierX + 10, yPosition, 7, false);
+      supplierX += supplierColWidth;
+    });
+  });
+
+  // Add new page for signatories if needed
+  const signPage = pdfDoc.addPage([792, 612]);
+  let signY = signPage.getSize().height - 80;
+
+  const drawSignText = (text: string, x: number, y: number, size = 10, isBold = false) => {
+    if (!text || text.trim() === '') return;
+    signPage.drawText(text, {
+      x,
+      y,
+      size,
+      font: isBold ? boldFont : font,
+      color: rgb(0, 0, 0),
+    });
+  };
+
+  // Approvals section
+  const totalApprovals = data.approvals.length;
+  const leftMargin = 100;
+
+  if (totalApprovals === 1) {
+    const approval = data.approvals[0];
+    drawSignText('APPROVED BY:', leftMargin, signY, 10, true);
+    signY -= 10;
+
+    if (approval.approver_esig) {
+      try {
+        const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
+        const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
+        const esigImage = await pdfDoc.embedPng(esigBytes);
+        const esigDims = esigImage.scale(0.5);
+        signPage.drawImage(esigImage, {
+          x: leftMargin + 20,
+          y: signY - esigDims.height,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding approver signature:', error);
+      }
+    }
+    signY -= 50;
+
+    drawSignText(approval.approver_name, leftMargin, signY, 10, false);
+    signY -= 15;
+    drawSignText(approval.approval_date, leftMargin, signY, 10, false);
+  } else if (totalApprovals >= 2) {
+    const recommendingApprovers = data.approvals.slice(0, -1);
+    const finalApprover = data.approvals[data.approvals.length - 1];
+
+    let leftY = signY;
+    drawSignText('RECOMMENDING APPROVAL:', leftMargin, leftY, 10, true);
+    leftY -= 10;
+
+    for (const approval of recommendingApprovers) {
+      if (approval.approver_esig) {
+        try {
+          const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
+          const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
+          const esigImage = await pdfDoc.embedPng(esigBytes);
+          const esigDims = esigImage.scale(0.5);
+          signPage.drawImage(esigImage, {
+            x: leftMargin + 20,
+            y: leftY - esigDims.height,
+            width: esigDims.width,
+            height: esigDims.height,
+          });
+        } catch (error) {
+          console.error('Error embedding recommending approver signature:', error);
+        }
+      }
+      leftY -= 50;
+
+      drawSignText(approval.approver_name, leftMargin, leftY, 10, false);
+      leftY -= 15;
+      drawSignText(approval.approval_date, leftMargin, leftY, 10, false);
+      leftY -= 30;
+    }
+
+    const rightMargin = signPage.getSize().width / 2 + 50;
+    let rightY = signY;
+    drawSignText('APPROVED BY:', rightMargin, rightY, 10, true);
+    rightY -= 10;
+
+    if (finalApprover.approver_esig) {
+      try {
+        const esigData = finalApprover.approver_esig.split(',')[1] || finalApprover.approver_esig;
+        const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
+        const esigImage = await pdfDoc.embedPng(esigBytes);
+        const esigDims = esigImage.scale(0.5);
+        signPage.drawImage(esigImage, {
+          x: rightMargin + 20,
+          y: rightY - esigDims.height,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding final approver signature:', error);
+      }
+    }
+    rightY -= 50;
+
+    drawSignText(finalApprover.approver_name, rightMargin, rightY, 10, false);
+    rightY -= 15;
+    drawSignText(finalApprover.approval_date, rightMargin, rightY, 10, false);
+  }
+
+  return await pdfDoc.save();
+}
+
 export async function regenerateRFP(
   requestType: 'petty_cash' | 'reimbursement' | 'purchase_requisition',
   requestId: string,
@@ -373,17 +756,102 @@ export async function generateAndUploadCanvassRFP(
       })
     };
 
-    console.log('Generating PDF with data:', rfpData);
-    const pdfBytes = await generateRFP(rfpData);
-    console.log('PDF generated, size:', pdfBytes.length);
+    console.log('Generating RFP PDF with data:', rfpData);
+    const rfpBytes = await generateRFP(rfpData);
+    console.log('RFP PDF generated, size:', rfpBytes.length);
+
+    // Prepare Canvass Sheet data
+    const canvassSheetData: CanvassSheetData = {
+      companyName: canvass.requester?.company?.name || 'Company Name',
+      companyAddress: 'No. 5 Executive Hills Brgy. Dolores, Taytay, Rizal',
+      vatTin: 'VAT REG TIN : 000-245-972-000',
+      date: new Date(canvass.request_date).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }),
+      requestFor: canvass.pr?.purpose || '',
+      items: (canvass.items || []).map((item: any) => ({
+        description: item.description || '',
+        quantity: item.quantity || 0,
+        unit: item.unit || ''
+      })),
+      suppliers: (canvass.suppliers || []).map((supplier: any) => {
+        const quotations = (canvass.items || []).map((item: any) => {
+          const supplierQuote = supplier.items?.find((si: any) => si.description === item.description);
+          return {
+            unitPrice: parseFloat(supplierQuote?.unitPrice || 0),
+            amount: parseFloat(supplierQuote?.amount || 0)
+          };
+        });
+
+        const total = supplier.total || 0;
+        const netOfVat = total / 1.12;
+        const vat12 = total - netOfVat;
+        const ewt = netOfVat * 0.02;
+        const netPayable = total - ewt;
+
+        return {
+          name: supplier.name || '',
+          quotations,
+          invoiceAvailability: supplier.invoiceAvailability || 'Yes',
+          delivery: supplier.delivery || 'Yes',
+          installation: supplier.installation || '',
+          deliveryFee: 0,
+          total: parseFloat(total),
+          discountPrice: 0,
+          purchasePrice: parseFloat(total),
+          netOfVat,
+          vat12,
+          ewt,
+          netPayable,
+          registeredName: supplier.name || '',
+          address: supplier.address || '',
+          tin: supplier.tin || '',
+          contactPerson: supplier.contactPerson || '',
+          contactNo: supplier.contactNo || '',
+          email: supplier.email || '',
+          bankAccount: supplier.bankAccount || '',
+          depositoryBank: supplier.depositoryBank || ''
+        };
+      }),
+      approvals: (approvals || []).map((a: any) => {
+        const approvalDate = new Date(a.approval_date);
+        return {
+          approver_name: a.approver?.full_name || '',
+          approver_esig: a.approver?.e_sig || null,
+          approval_date: approvalDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }) + ' ' + approvalDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
+          sequence: a.sequence
+        };
+      })
+    };
+
+    console.log('Generating Canvass Sheet PDF');
+    const canvassSheetBytes = await generateCanvassSheet(canvassSheetData);
+    console.log('Canvass Sheet PDF generated, size:', canvassSheetBytes.length);
+
+    // Merge Canvass Sheet and RFP
+    console.log('Merging Canvass Sheet and RFP PDFs');
+    const mergedPdfBytes = await mergeRFPWithAttachments(canvassSheetBytes, [
+      { data: rfpBytes, type: 'application/pdf' }
+    ]);
+    console.log('PDFs merged, size:', mergedPdfBytes.length);
 
     const fileName = `rfp_${canvassNumber}_${Date.now()}.pdf`;
     const filePath = `rfp/${fileName}`;
 
-    console.log('Uploading PDF to:', filePath);
+    console.log('Uploading merged PDF to:', filePath);
     const { error: uploadError } = await supabase.storage
       .from('attachments')
-      .upload(filePath, pdfBytes, {
+      .upload(filePath, mergedPdfBytes, {
         contentType: 'application/pdf',
         upsert: true
       });
