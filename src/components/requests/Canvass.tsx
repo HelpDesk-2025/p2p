@@ -82,11 +82,17 @@ interface PurchaseRequisition {
   company_id: string;
 }
 
+interface QuotationItem {
+  description: string;
+  quantity: number;
+  uom: string;
+  unit_price: number;
+  amount: number;
+}
+
 interface QuotationForm {
   vendor_name: string;
-  quantity: number;
-  unit_name: string;
-  unit_price: number;
+  items: QuotationItem[];
   quoted_amount: number;
   invoice_availability: boolean;
   delivery: boolean;
@@ -163,9 +169,7 @@ export function Canvass() {
 
   const createEmptyQuotation = (): QuotationForm => ({
     vendor_name: '',
-    quantity: 0,
-    unit_name: '',
-    unit_price: 0,
+    items: [{ description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 }],
     quoted_amount: 0,
     invoice_availability: false,
     delivery: false,
@@ -296,7 +300,11 @@ export function Canvass() {
   const calculateQuotationValues = (quotation: QuotationForm): QuotationForm => {
     const updated = { ...quotation };
 
-    updated.quoted_amount = Math.round(updated.quantity * updated.unit_price * 100) / 100;
+    // Calculate quoted_amount from all items
+    updated.quoted_amount = Math.round(
+      updated.items.reduce((sum, item) => sum + (item.amount || 0), 0) * 100
+    ) / 100;
+
     updated.total = Math.round((updated.quoted_amount + updated.delivery_fee) * 100) / 100;
     updated.purchase_price = Math.round((updated.total - updated.discounted_price) * 100) / 100;
 
@@ -925,7 +933,7 @@ export function Canvass() {
                     <span className="text-sm">Loading vendors...</span>
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-6">
                   {quotations.map((quotation, idx) => (
                     <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
                       <h4 className="font-semibold text-slate-900 text-base text-center border-b pb-2">Quotation {idx + 1}</h4>
@@ -984,62 +992,146 @@ export function Canvass() {
                             </div>
                           )}
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
-                          <input
-                            type="number"
-                            value={quotation.quantity || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].quantity = Number(e.target.value);
-                              newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Unit Name/Symbol</label>
-                          <input
-                            type="text"
-                            value={quotation.unit_name}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].unit_name = e.target.value;
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
+
+                        {/* Itemization Table */}
+                        <div className="border-t pt-4 mt-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-slate-700">Items</label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newQuotations = [...quotations];
+                                newQuotations[idx].items.push({
+                                  description: '',
+                                  quantity: 1,
+                                  uom: '',
+                                  unit_price: 0,
+                                  amount: 0,
+                                });
+                                setQuotations(newQuotations);
+                              }}
+                              className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
+                            >
+                              <Plus size={14} />
+                              Add Item
+                            </button>
+                          </div>
+
+                          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-slate-100">
+                                <tr>
+                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
+                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700 w-20">Qty</th>
+                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700 w-20">UOM</th>
+                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700 w-28">Unit Price</th>
+                                  <th className="px-2 py-2 text-right text-xs font-semibold text-slate-700 w-28">Amount</th>
+                                  <th className="px-2 py-2 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                {quotation.items.map((item, itemIdx) => (
+                                  <tr key={itemIdx}>
+                                    <td className="px-2 py-2">
+                                      <input
+                                        type="text"
+                                        value={item.description}
+                                        onChange={(e) => {
+                                          const newQuotations = [...quotations];
+                                          newQuotations[idx].items[itemIdx].description = e.target.value;
+                                          setQuotations(newQuotations);
+                                        }}
+                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        placeholder="Item description"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => {
+                                          const newQuotations = [...quotations];
+                                          newQuotations[idx].items[itemIdx].quantity = Number(e.target.value);
+                                          newQuotations[idx].items[itemIdx].amount = Math.round(
+                                            newQuotations[idx].items[itemIdx].quantity *
+                                            newQuotations[idx].items[itemIdx].unit_price * 100
+                                          ) / 100;
+                                          newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                          setQuotations(newQuotations);
+                                        }}
+                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <input
+                                        type="text"
+                                        value={item.uom}
+                                        onChange={(e) => {
+                                          const newQuotations = [...quotations];
+                                          newQuotations[idx].items[itemIdx].uom = e.target.value;
+                                          setQuotations(newQuotations);
+                                        }}
+                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        placeholder="pcs"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        value={item.unit_price}
+                                        onChange={(e) => {
+                                          const newQuotations = [...quotations];
+                                          newQuotations[idx].items[itemIdx].unit_price = Number(e.target.value);
+                                          newQuotations[idx].items[itemIdx].amount = Math.round(
+                                            newQuotations[idx].items[itemIdx].quantity *
+                                            newQuotations[idx].items[itemIdx].unit_price * 100
+                                          ) / 100;
+                                          newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                          setQuotations(newQuotations);
+                                        }}
+                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                      />
+                                    </td>
+                                    <td className="px-2 py-2 text-right font-semibold text-slate-900">
+                                      ₱{item.amount.toFixed(2)}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      {quotation.items.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newQuotations = [...quotations];
+                                            newQuotations[idx].items.splice(itemIdx, 1);
+                                            newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                            setQuotations(newQuotations);
+                                          }}
+                                          className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot className="bg-slate-50 border-t-2 border-slate-300">
+                                <tr>
+                                  <td colSpan={4} className="px-2 py-2 text-right font-bold text-slate-900">
+                                    Total:
+                                  </td>
+                                  <td className="px-2 py-2 text-right font-bold text-blue-600">
+                                    ₱{quotation.quoted_amount.toFixed(2)}
+                                  </td>
+                                  <td></td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
                         </div>
                       </div>
 
                       <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Unit Price</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={quotation.unit_price || ''}
-                            onChange={(e) => {
-                              const newQuotations = [...quotations];
-                              newQuotations[idx].unit_price = Number(e.target.value);
-                              newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
-                              setQuotations(newQuotations);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Quoted Amount</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={quotation.quoted_amount || ''}
-                            readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
-                          />
-                        </div>
-
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <input
@@ -1426,8 +1518,8 @@ export function Canvass() {
                               <div className="font-semibold text-slate-900">Quotation {idx + 1}: {quotation.vendor_name}</div>
                               <div className="text-sm text-slate-600 mt-1">
                                 Net Payable: ₱{quotation.net_payable.toFixed(2)} |
-                                Unit Price: ₱{quotation.unit_price.toFixed(2)} |
-                                Quantity: {quotation.quantity} {quotation.unit_name}
+                                Quoted Amount: ₱{quotation.quoted_amount.toFixed(2)} |
+                                Items: {quotation.items.length}
                               </div>
                             </label>
                           </div>
@@ -1691,16 +1783,46 @@ export function Canvass() {
                               <p className="text-slate-900 text-xs">{supplier.complete_address || 'N/A'}</p>
                             </div>
                           </div>
+
+                          {/* Items Table */}
+                          {supplier.items && supplier.items.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-slate-200">
+                              <label className="text-xs font-semibold text-slate-600 mb-2 block">Items</label>
+                              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                                <table className="w-full text-xs">
+                                  <thead className="bg-slate-50">
+                                    <tr>
+                                      <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-slate-700">Qty</th>
+                                      <th className="px-2 py-2 text-center text-xs font-semibold text-slate-700">UOM</th>
+                                      <th className="px-2 py-2 text-right text-xs font-semibold text-slate-700">Unit Price</th>
+                                      <th className="px-2 py-2 text-right text-xs font-semibold text-slate-700">Amount</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {supplier.items.map((item: any, itemIdx: number) => (
+                                      <tr key={itemIdx}>
+                                        <td className="px-2 py-2">{item.description}</td>
+                                        <td className="px-2 py-2 text-center">{item.quantity}</td>
+                                        <td className="px-2 py-2 text-center">{item.uom}</td>
+                                        <td className="px-2 py-2 text-right">₱{item.unit_price?.toFixed(2)}</td>
+                                        <td className="px-2 py-2 text-right font-semibold">₱{item.amount?.toFixed(2)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot className="bg-slate-50 border-t-2 border-slate-300">
+                                    <tr>
+                                      <td colSpan={4} className="px-2 py-2 text-right font-bold text-slate-900">Total:</td>
+                                      <td className="px-2 py-2 text-right font-bold text-blue-600">₱{supplier.quoted_amount?.toFixed(2) || '0.00'}</td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="mt-3 pt-3 border-t border-slate-200">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                              <div>
-                                <label className="text-xs font-semibold text-slate-600">Quantity</label>
-                                <p className="text-slate-900">{supplier.quantity}</p>
-                              </div>
-                              <div>
-                                <label className="text-xs font-semibold text-slate-600">Unit Price</label>
-                                <p className="text-slate-900">₱{supplier.unit_price?.toLocaleString()}</p>
-                              </div>
                               <div>
                                 <label className="text-xs font-semibold text-slate-600">Quoted Amount</label>
                                 <p className="text-slate-900">₱{supplier.quoted_amount?.toLocaleString()}</p>
