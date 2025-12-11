@@ -678,14 +678,16 @@ export function CanvassApproval() {
                   {approving ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
                   {approving ? 'Approving...' : 'Approve'}
                 </button>
-                <button
-                  onClick={() => handleAction('rejected')}
-                  disabled={loading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
-                >
-                  {rejecting ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
-                  {rejecting ? 'Rejecting...' : 'Reject'}
-                </button>
+                {selectedRequest.current_approval_level === approvalFlows.length - 1 && (
+                  <button
+                    onClick={() => handleAction('rejected')}
+                    disabled={loading || !canApprove()}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  >
+                    {rejecting ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
+                    {rejecting ? 'Rejecting...' : 'Reject'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
