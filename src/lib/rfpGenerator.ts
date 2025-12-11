@@ -764,8 +764,17 @@ export async function generateAndUploadCanvassRFP(
 
     console.log('Canvass data fetched:', canvass);
 
-    const winningVendor = canvass.suppliers?.[canvass.recommended_quotation_index || 0]?.name || '';
+    const winningVendorIndex = canvass.recommended_quotation_index || 0;
+    const winningVendorData = canvass.suppliers?.[winningVendorIndex];
+    const winningVendor = winningVendorData?.name || '';
     console.log('Winning vendor:', winningVendor);
+
+    // Calculate net payable for the winning vendor
+    const winningTotal = parseFloat(winningVendorData?.total || winningVendorData?.purchase_price || 0);
+    const winningNetOfVat = parseFloat(winningVendorData?.net_of_vat || (winningTotal / 1.12));
+    const winningEwt = parseFloat(winningVendorData?.ewt || (winningNetOfVat * 0.02));
+    const winningNetPayable = parseFloat(winningVendorData?.net_payable || (winningTotal - winningEwt));
+    console.log('Winning vendor net payable:', winningNetPayable);
 
     const { data: approvals, error: approvalsError } = await supabase
       .from('approval_ledger')
@@ -803,7 +812,7 @@ export async function generateAndUploadCanvassRFP(
             day: '2-digit'
           })
         : '',
-      amount: parseFloat(canvass.total_amount) || 0,
+      amount: winningNetPayable,
       budgeted: canvass.pr?.is_budgeted !== false,
       paymentMode: '',
       paymentModeLines: [],
