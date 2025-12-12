@@ -1151,6 +1151,18 @@ export function Canvass() {
                               </tfoot>
                             </table>
                           </div>
+
+                          {/* Add Item Button */}
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              onClick={() => setQuotations(addItemToAllQuotations(quotations))}
+                              className="w-full px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition flex items-center justify-center gap-2 font-medium"
+                            >
+                              <Plus size={16} />
+                              Add Item
+                            </button>
+                          </div>
                         </div>
                       </div>
 
