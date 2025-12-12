@@ -167,9 +167,9 @@ export function Canvass() {
     items: [{ description: '', quantity: 1, unit: 'pcs' }],
   });
 
-  const createEmptyQuotation = (): QuotationForm => ({
+  const createEmptyQuotation = (items?: QuotationItem[]): QuotationForm => ({
     vendor_name: '',
-    items: [{ description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 }],
+    items: items || [{ description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 }],
     quoted_amount: 0,
     invoice_availability: false,
     delivery: false,
@@ -197,6 +197,43 @@ export function Canvass() {
     other_information: '',
     quotation_file: null,
   });
+
+  // Helper function to add an item row to all quotations
+  const addItemToAllQuotations = (quots: QuotationForm[]): QuotationForm[] => {
+    return quots.map(quotation => ({
+      ...quotation,
+      items: [...quotation.items, { description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 }]
+    }));
+  };
+
+  // Helper function to remove an item row from all quotations
+  const removeItemFromAllQuotations = (quots: QuotationForm[], itemIndex: number): QuotationForm[] => {
+    return quots.map(quotation => {
+      const newItems = [...quotation.items];
+      newItems.splice(itemIndex, 1);
+      return calculateQuotationValues({
+        ...quotation,
+        items: newItems
+      });
+    });
+  };
+
+  // Helper function to update shared item fields (description, uom) across all quotations
+  const updateSharedItemField = (
+    quots: QuotationForm[],
+    itemIndex: number,
+    field: 'description' | 'uom',
+    value: string
+  ): QuotationForm[] => {
+    return quots.map(quotation => {
+      const newItems = [...quotation.items];
+      newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
+      return {
+        ...quotation,
+        items: newItems
+      };
+    });
+  };
 
   const [quotations, setQuotations] = useState<QuotationForm[]>([
     createEmptyQuotation(),
@@ -926,7 +963,19 @@ export function Canvass() {
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Quotations (atleast 1)</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900">Quotations (atleast 1)</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuotations(addItemToAllQuotations(quotations));
+                    }}
+                    className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Plus size={16} />
+                    Add Item Row to All Quotations
+                  </button>
+                </div>
                 {loadingVendors && (
                   <div className="flex items-center gap-2 mb-4 text-blue-600">
                     <Loader2 size={16} className="animate-spin" />
@@ -995,27 +1044,7 @@ export function Canvass() {
 
                         {/* Itemization Table */}
                         <div className="border-t pt-4 mt-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-medium text-slate-700">Items</label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newQuotations = [...quotations];
-                                newQuotations[idx].items.push({
-                                  description: '',
-                                  quantity: 1,
-                                  uom: '',
-                                  unit_price: 0,
-                                  amount: 0,
-                                });
-                                setQuotations(newQuotations);
-                              }}
-                              className="flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
-                            >
-                              <Plus size={14} />
-                              Add Item
-                            </button>
-                          </div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Items</label>
 
                           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
@@ -1037,9 +1066,7 @@ export function Canvass() {
                                         type="text"
                                         value={item.description}
                                         onChange={(e) => {
-                                          const newQuotations = [...quotations];
-                                          newQuotations[idx].items[itemIdx].description = e.target.value;
-                                          setQuotations(newQuotations);
+                                          setQuotations(updateSharedItemField(quotations, itemIdx, 'description', e.target.value));
                                         }}
                                         className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                         placeholder="Item description"
@@ -1067,9 +1094,7 @@ export function Canvass() {
                                         type="text"
                                         value={item.uom}
                                         onChange={(e) => {
-                                          const newQuotations = [...quotations];
-                                          newQuotations[idx].items[itemIdx].uom = e.target.value;
-                                          setQuotations(newQuotations);
+                                          setQuotations(updateSharedItemField(quotations, itemIdx, 'uom', e.target.value));
                                         }}
                                         className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                         placeholder="pcs"
@@ -1101,12 +1126,10 @@ export function Canvass() {
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            const newQuotations = [...quotations];
-                                            newQuotations[idx].items.splice(itemIdx, 1);
-                                            newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
-                                            setQuotations(newQuotations);
+                                            setQuotations(removeItemFromAllQuotations(quotations, itemIdx));
                                           }}
                                           className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                                          title="Remove this item row from all quotations"
                                         >
                                           <X size={14} />
                                         </button>
