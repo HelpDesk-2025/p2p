@@ -2014,18 +2014,18 @@ export function Canvass() {
               {viewingRequest.status === 'approved' && !viewingRequest.rfp_pdf_path && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Canvass Sheet & RFP Document</label>
-                  <p className="text-sm text-amber-800 mb-3">The RFP document was not generated during approval. Click below to generate it now.</p>
+                  <p className="text-sm text-amber-800 mb-3">The CVS and RFP document was not generated during approval. Click below to generate it now.</p>
                   <button
                     onClick={async () => {
                       try {
                         setLoading(true);
                         await generateAndUploadCanvassRFP(viewingRequest.id, viewingRequest.canvass_number);
-                        alert('RFP document generated successfully!');
+                        alert('CVS and RFP document generated successfully!');
                         loadRequests();
                         setShowViewModal(false);
                       } catch (error: any) {
-                        console.error('Error generating RFP:', error);
-                        alert('Error generating RFP: ' + error.message);
+                        console.error('Error generating CVS and RFP:', error);
+                        alert('Error generating CVS and RFP: ' + error.message);
                       } finally {
                         setLoading(false);
                       }
@@ -2034,7 +2034,7 @@ export function Canvass() {
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     {loading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-                    {loading ? 'Generating...' : 'Generate RFP Document'}
+                    {loading ? 'Generating...' : 'Generate CVS and RFP'}
                   </button>
                 </div>
               )}

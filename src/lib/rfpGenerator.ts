@@ -39,10 +39,22 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   const { width, height } = page.getSize();
   let yPosition = height - 80;
 
+  // Helper function to sanitize text for PDF encoding
+  const sanitizeText = (text: string): string => {
+    if (!text) return '';
+    return text
+      .replace(/\r\n/g, ' ')
+      .replace(/\r/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  };
+
   // Helper function to draw text
   const drawText = (text: string, x: number, y: number, size = 10, isBold = false) => {
     if (!text || text.trim() === '') return; // Skip empty text
-    page.drawText(text, {
+    const sanitized = sanitizeText(text);
+    if (!sanitized || sanitized.trim() === '') return;
+    page.drawText(sanitized, {
       x,
       y,
       size,
@@ -52,7 +64,8 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   };
 
   // Company Name (centered)
-  const companyNameWidth = boldFont.widthOfTextAtSize(data.companyName, 16);
+  const sanitizedCompanyName = sanitizeText(data.companyName);
+  const companyNameWidth = boldFont.widthOfTextAtSize(sanitizedCompanyName, 16);
   drawText(data.companyName, (width - companyNameWidth) / 2, yPosition, 16, true);
   yPosition -= 30;
 
@@ -308,9 +321,21 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   const { width, height } = page.getSize();
   let yPosition = height - 50;
 
+  // Helper function to sanitize text for PDF encoding
+  const sanitizeText = (text: string): string => {
+    if (!text) return '';
+    return text
+      .replace(/\r\n/g, ' ')
+      .replace(/\r/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  };
+
   const drawText = (text: string, x: number, y: number, size = 9, isBold = false) => {
     if (!text || text.trim() === '') return;
-    page.drawText(text, {
+    const sanitized = sanitizeText(text);
+    if (!sanitized || sanitized.trim() === '') return;
+    page.drawText(sanitized, {
       x,
       y,
       size,
@@ -330,7 +355,8 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
   const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
     if (!text) return [''];
-    const words = text.split(' ');
+    const sanitized = sanitizeText(text);
+    const words = sanitized.split(' ');
     const lines: string[] = [];
     let currentLine = '';
 
@@ -354,17 +380,20 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   };
 
   // Company Name (centered)
-  const companyNameWidth = boldFont.widthOfTextAtSize(data.companyName, 14);
+  const sanitizedCompanyName = sanitizeText(data.companyName);
+  const companyNameWidth = boldFont.widthOfTextAtSize(sanitizedCompanyName, 14);
   drawText(data.companyName, (width - companyNameWidth) / 2, yPosition, 14, true);
   yPosition -= 15;
 
   // Company Address (centered)
-  const addressWidth = font.widthOfTextAtSize(data.companyAddress, 9);
+  const sanitizedAddress = sanitizeText(data.companyAddress);
+  const addressWidth = font.widthOfTextAtSize(sanitizedAddress, 9);
   drawText(data.companyAddress, (width - addressWidth) / 2, yPosition, 9, false);
   yPosition -= 12;
 
   // VAT TIN (centered)
-  const vatTinWidth = font.widthOfTextAtSize(data.vatTin, 9);
+  const sanitizedVatTin = sanitizeText(data.vatTin);
+  const vatTinWidth = font.widthOfTextAtSize(sanitizedVatTin, 9);
   drawText(data.vatTin, (width - vatTinWidth) / 2, yPosition, 9, false);
   yPosition -= 20;
 
