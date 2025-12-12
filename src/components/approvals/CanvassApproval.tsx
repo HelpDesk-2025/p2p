@@ -760,30 +760,6 @@ export function CanvassApproval() {
                               )}
                             </div>
                           </div>
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <label className="text-xs font-semibold text-slate-600">Vendor</label>
-                              <p className="text-slate-900 text-sm">{supplier.vendor_name}</p>
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-slate-600">Registered Name</label>
-                              <p className="text-slate-900 text-sm">{supplier.registered_name || 'N/A'}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-xs font-semibold text-slate-600">Contact Person</label>
-                                <p className="text-slate-900 text-sm">{supplier.contact_person || 'N/A'}</p>
-                              </div>
-                              <div>
-                                <label className="text-xs font-semibold text-slate-600">Contact Number</label>
-                                <p className="text-slate-900 text-sm">{supplier.contact_no || 'N/A'}</p>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-slate-600">Address</label>
-                              <p className="text-slate-900 text-xs">{supplier.complete_address || 'N/A'}</p>
-                            </div>
-                          </div>
 
                           {/* Items Table */}
                           {supplier.items && supplier.items.length > 0 && (
@@ -823,6 +799,7 @@ export function CanvassApproval() {
                           )}
 
                           <div className="mt-3 pt-3 border-t border-slate-200">
+                            <label className="text-xs font-semibold text-slate-600 mb-2 block">Amounts</label>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <label className="text-xs font-semibold text-slate-600">Quoted Amount</label>
@@ -866,39 +843,66 @@ export function CanvassApproval() {
                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Withholding Tax</span>
                               )}
                               {supplier.is_service && (
-                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Service</span>
+                                <span className="px-2 py-1 bg-slate-100 text-slate-800 text-xs rounded">Service</span>
                               )}
                               {supplier.is_item && (
-                                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">Item</span>
+                                <span className="px-2 py-1 bg-slate-100 text-slate-800 text-xs rounded">Item</span>
                               )}
                             </div>
-                            {(supplier.quotation_file_path || (supplier as any).quotation_file_path) && (
-                              <div className="mt-3 pt-3 border-t border-slate-200">
-                                <button
-                                  onClick={async () => {
-                                    console.log('Supplier data:', supplier);
-                                    const filePath = supplier.quotation_file_path || (supplier as any).quotation_file_path;
-                                    console.log('File path:', filePath);
-                                    const { data, error } = await supabase.storage
-                                      .from('attachments')
-                                      .createSignedUrl(filePath, 60);
-                                    if (error) {
-                                      console.error('Error creating signed URL:', error);
-                                      alert('Error loading file: ' + error.message);
-                                      return;
-                                    }
-                                    if (data?.signedUrl) {
-                                      window.open(data.signedUrl, '_blank');
-                                    }
-                                  }}
-                                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-                                >
-                                  <FileText size={16} />
-                                  View Quotation File
-                                </button>
-                              </div>
-                            )}
                           </div>
+
+                          <div className="mt-3 pt-3 border-t border-slate-200 space-y-2 text-sm">
+                            <label className="text-xs font-semibold text-slate-600 block">Vendor Details</label>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Vendor</label>
+                              <p className="text-slate-900 text-sm">{supplier.vendor_name}</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Registered Name</label>
+                              <p className="text-slate-900 text-sm">{supplier.registered_name || 'N/A'}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Contact Person</label>
+                                <p className="text-slate-900 text-sm">{supplier.contact_person || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Contact Number</label>
+                                <p className="text-slate-900 text-sm">{supplier.contact_no || 'N/A'}</p>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Address</label>
+                              <p className="text-slate-900 text-xs">{supplier.complete_address || 'N/A'}</p>
+                            </div>
+                          </div>
+
+                          {(supplier.quotation_file_path || (supplier as any).quotation_file_path) && (
+                            <div className="mt-3 pt-3 border-t border-slate-200">
+                              <button
+                                onClick={async () => {
+                                  console.log('Supplier data:', supplier);
+                                  const filePath = supplier.quotation_file_path || (supplier as any).quotation_file_path;
+                                  console.log('File path:', filePath);
+                                  const { data, error } = await supabase.storage
+                                    .from('attachments')
+                                    .createSignedUrl(filePath, 60);
+                                  if (error) {
+                                    console.error('Error creating signed URL:', error);
+                                    alert('Error loading file: ' + error.message);
+                                    return;
+                                  }
+                                  if (data?.signedUrl) {
+                                    window.open(data.signedUrl, '_blank');
+                                  }
+                                }}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                              >
+                                <FileText size={16} />
+                                View Quotation File
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
