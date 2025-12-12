@@ -488,12 +488,12 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         color: rgb(0.8, 1, 0.8),
       });
     }
-    const upWidth = boldFont.widthOfTextAtSize('UP', 8);
+    const upWidth = boldFont.widthOfTextAtSize('Unit Price', 8);
     const amountWidth = boldFont.widthOfTextAtSize('Amount', 8);
     const leftColX = supplierX + (supplierColWidth * 0.25) - (upWidth / 2);
     const rightColX = supplierX + (supplierColWidth * 0.75) - (amountWidth / 2);
 
-    drawText('UP', leftColX, yPosition, 8, true);
+    drawText('Unit Price', leftColX, yPosition, 8, true);
     drawText('Amount', rightColX, yPosition, 8, true);
     supplierX += supplierColWidth;
   });
@@ -502,11 +502,28 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
   // Items
   data.items.forEach((item, index) => {
-    yPosition -= 12;
-    drawText(`${index + 1}`, tableLeft + 5, yPosition, 8, false);
-    drawText(item.description, tableLeft + 20, yPosition, 8, false);
-    drawText(item.quantity.toString(), tableLeft + 70, yPosition, 8, false);
-    drawText(item.unit, tableLeft + 95, yPosition, 8, false);
+    const itemRowStartY = yPosition;
+
+    // Wrap description text
+    const maxDescriptionWidth = 45; // Width available for description
+    const descriptionLines = wrapText(item.description, maxDescriptionWidth, 8);
+    const rowHeight = Math.max(12, descriptionLines.length * 10);
+
+    yPosition -= rowHeight;
+
+    // Draw item data at vertical center of row
+    const textY = yPosition + (rowHeight / 2) - 3;
+    drawText(`${index + 1}`, tableLeft + 5, textY, 8, false);
+
+    // Draw wrapped description lines
+    let descY = textY + ((descriptionLines.length - 1) * 5);
+    descriptionLines.forEach((line) => {
+      drawText(line, tableLeft + 20, descY, 8, false);
+      descY -= 10;
+    });
+
+    drawText(item.quantity.toString(), tableLeft + 70, textY, 8, false);
+    drawText(item.unit, tableLeft + 95, textY, 8, false);
 
     supplierX = tableLeft + firstColWidth;
     data.suppliers.forEach((supplier) => {
@@ -514,9 +531,9 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
       if (supplier.isWinner) {
         page.drawRectangle({
           x: supplierX,
-          y: yPosition - 5,
+          y: yPosition,
           width: supplierColWidth,
-          height: 15,
+          height: rowHeight,
           color: rgb(0.9, 1, 0.9),
         });
       }
@@ -531,8 +548,8 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
         const leftColX = supplierX + (supplierColWidth * 0.25) - (upTextWidth / 2);
         const rightColX = supplierX + (supplierColWidth * 0.75) - (amountTextWidth / 2);
 
-        drawText(upText, leftColX, yPosition, 8, false);
-        drawText(amountText, rightColX, yPosition, 8, false);
+        drawText(upText, leftColX, textY, 8, false);
+        drawText(amountText, rightColX, textY, 8, false);
       }
       supplierX += supplierColWidth;
     });
