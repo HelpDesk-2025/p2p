@@ -44,6 +44,19 @@ interface PurchaseRequisition {
   is_budgeted: boolean;
 }
 
+interface ApproverRecommendation {
+  id: string;
+  approver_id: string;
+  approver_level: string;
+  recommended_quotation_index: number;
+  recommendation_remarks: string | null;
+  created_at: string;
+  user_profiles?: {
+    full_name: string;
+    role: string;
+  };
+}
+
 export function CanvassApproval() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<CanvassReq[]>([]);
@@ -57,6 +70,9 @@ export function CanvassApproval() {
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [selectedPR, setSelectedPR] = useState<PurchaseRequisition | null>(null);
   const [selectedVendorIndex, setSelectedVendorIndex] = useState<number | null>(null);
+  const [myRecommendedVendorIndex, setMyRecommendedVendorIndex] = useState<number | null>(null);
+  const [myRecommendationRemarks, setMyRecommendationRemarks] = useState<string>('');
+  const [previousRecommendations, setPreviousRecommendations] = useState<ApproverRecommendation[]>([]);
 
   useEffect(() => {
     loadRequests();
@@ -132,6 +148,9 @@ export function CanvassApproval() {
     setComments('');
     setSelectedPR(null);
     setSelectedVendorIndex(request.recommended_quotation_index ?? 0);
+    setMyRecommendedVendorIndex(null);
+    setMyRecommendationRemarks('');
+    setPreviousRecommendations([]);
 
     // Fetch PR details if pr_id exists
     if (request.pr_id) {
@@ -150,6 +169,35 @@ export function CanvassApproval() {
       } catch (error) {
         console.error('Error loading PR details:', error);
       }
+    }
+
+    // Load previous recommendations
+    try {
+      const { data: recommendationsData, error: recommendationsError } = await supabase
+        .from('canvass_approver_recommendations')
+        .select(`
+          *,
+          user_profiles:approver_id (full_name, role)
+        `)
+        .eq('canvass_request_id', request.id)
+        .order('created_at', { ascending: true });
+
+      if (recommendationsError) {
+        console.error('Error fetching recommendations:', recommendationsError);
+      } else if (recommendationsData) {
+        setPreviousRecommendations(recommendationsData as ApproverRecommendation[]);
+
+        // Check if current user already made a recommendation
+        const myExistingRecommendation = recommendationsData.find(
+          (rec: any) => rec.approver_id === profile?.id
+        );
+        if (myExistingRecommendation) {
+          setMyRecommendedVendorIndex(myExistingRecommendation.recommended_quotation_index);
+          setMyRecommendationRemarks(myExistingRecommendation.recommendation_remarks || '');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading recommendations:', error);
     }
 
     if (profile?.company_id) {
@@ -213,6 +261,12 @@ export function CanvassApproval() {
 
     const isLastApprovalLevel = selectedRequest.current_approval_level === approvalFlows.length - 1;
 
+    // Validate vendor selection for non-final approvers making recommendations
+    if (action === 'approved' && !isLastApprovalLevel && myRecommendedVendorIndex === null) {
+      alert('Please select your recommended vendor before approving.');
+      return;
+    }
+
     // Validate vendor selection for final approval
     if (action === 'approved' && isLastApprovalLevel && selectedVendorIndex === null) {
       alert('Please select the winning vendor before approving.');
@@ -222,6 +276,11 @@ export function CanvassApproval() {
     // Confirmation dialog
     const actionText = action === 'approved' ? 'approve' : 'reject';
     let confirmMessage = `Are you sure you want to ${actionText} this Canvass (${selectedRequest.canvass_number})?`;
+
+    if (action === 'approved' && !isLastApprovalLevel && myRecommendedVendorIndex !== null) {
+      const recommendedVendor = selectedRequest.suppliers[myRecommendedVendorIndex]?.vendor_name || 'Unknown';
+      confirmMessage += `\n\nYour Recommended Vendor: ${recommendedVendor}`;
+    }
 
     if (action === 'approved' && isLastApprovalLevel && selectedVendorIndex !== null) {
       const winningVendor = selectedRequest.suppliers[selectedVendorIndex]?.vendor_name || 'Unknown';
@@ -260,6 +319,25 @@ export function CanvassApproval() {
         .eq('id', selectedRequest.id);
 
       if (updateError) throw updateError;
+
+      // Save approver recommendation (for approved non-final levels)
+      if (action === 'approved' && !isLastApproval && myRecommendedVendorIndex !== null) {
+        const { error: recommendationError } = await supabase
+          .from('canvass_approver_recommendations')
+          .upsert({
+            canvass_request_id: selectedRequest.id,
+            approver_id: profile.id,
+            approver_level: currentApproverStep?.approver_type || 'Approver',
+            recommended_quotation_index: myRecommendedVendorIndex,
+            recommendation_remarks: myRecommendationRemarks || null,
+          }, {
+            onConflict: 'canvass_request_id,approver_id'
+          });
+
+        if (recommendationError) {
+          console.error('Error saving recommendation:', recommendationError);
+        }
+      }
 
       await createApprovalLedgerEntry(
         'Canvass',
@@ -534,9 +612,94 @@ export function CanvassApproval() {
                 </div>
               )}
 
+              {/* Previous Recommendations Section */}
+              {previousRecommendations.length > 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <h4 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <CheckCircle size={18} className="text-blue-600" />
+                    Previous Approver Recommendations
+                  </h4>
+                  <div className="space-y-3">
+                    {previousRecommendations.map((rec, idx) => {
+                      const recommendedVendor = selectedRequest?.suppliers[rec.recommended_quotation_index];
+                      return (
+                        <div key={rec.id} className="bg-white border border-slate-200 rounded-lg p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="text-sm font-bold text-slate-900">
+                                {rec.user_profiles?.full_name || 'Unknown Approver'}
+                              </p>
+                              <p className="text-xs text-slate-600">{rec.approver_level}</p>
+                            </div>
+                            <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                              Quotation {rec.recommended_quotation_index + 1}
+                            </span>
+                          </div>
+                          <div className="text-sm text-slate-700">
+                            <p className="font-semibold">Recommended Vendor:</p>
+                            <p className="text-slate-900">{recommendedVendor?.vendor_name || 'Unknown Vendor'}</p>
+                            <p className="text-xs text-slate-600 mt-1">
+                              Net Payable: ₱{recommendedVendor?.net_payable?.toLocaleString() || '0'}
+                            </p>
+                          </div>
+                          {rec.recommendation_remarks && (
+                            <div className="mt-2 pt-2 border-t border-slate-200">
+                              <p className="text-xs font-semibold text-slate-600">Remarks:</p>
+                              <p className="text-xs text-slate-700">{rec.recommendation_remarks}</p>
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-500 mt-2">
+                            {new Date(rec.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {selectedRequest.suppliers && selectedRequest.suppliers.length > 0 && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Quotations Summary</label>
+                  {/* Non-final approvers: select recommended vendor */}
+                  {selectedRequest.current_approval_level < approvalFlows.length - 1 && canApprove() && (
+                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm font-semibold text-slate-900 mb-3">
+                        Select your recommended vendor before approving:
+                      </p>
+                      <div className="space-y-2">
+                        {selectedRequest.suppliers.map((supplier: any, index: number) => {
+                          if (!supplier.vendor_name || supplier.vendor_name.trim() === '') return null;
+                          return (
+                            <label key={index} className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-amber-400 transition">
+                              <input
+                                type="radio"
+                                name="my-recommended-vendor"
+                                checked={myRecommendedVendorIndex === index}
+                                onChange={() => setMyRecommendedVendorIndex(index)}
+                                className="w-4 h-4 text-amber-600"
+                              />
+                              <div className="flex-1">
+                                <p className="font-semibold text-slate-900">Quotation {index + 1} - {supplier.vendor_name}</p>
+                                <p className="text-sm text-slate-600">Net Payable: ₱{supplier.net_payable?.toLocaleString() || '0'}</p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3">
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Recommendation Remarks (Optional)</label>
+                        <textarea
+                          value={myRecommendationRemarks}
+                          onChange={(e) => setMyRecommendationRemarks(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+                          placeholder="Why do you recommend this vendor?"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Final approver: select winning vendor */}
                   {selectedRequest.current_approval_level === approvalFlows.length - 1 && canApprove() && (
                     <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-sm font-semibold text-slate-900 mb-2">
