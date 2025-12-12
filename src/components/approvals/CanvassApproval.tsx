@@ -993,34 +993,6 @@ export function CanvassApproval() {
                 </div>
               )}
 
-              {selectedRequest.status === 'approved' && !selectedRequest.rfp_pdf_path && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Canvass Sheet & RFP Document</label>
-                  <p className="text-sm text-amber-800 mb-3">The RFP document was not generated during approval. Click below to generate it now.</p>
-                  <button
-                    onClick={async () => {
-                      try {
-                        setLoading(true);
-                        await generateAndUploadCanvassRFP(selectedRequest.id, selectedRequest.canvass_number);
-                        alert('RFP document generated successfully!');
-                        loadRequests();
-                        setShowModal(false);
-                      } catch (error: any) {
-                        console.error('Error generating RFP:', error);
-                        alert('Error generating RFP: ' + error.message);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    {loading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-                    {loading ? 'Generating...' : 'Generate RFP Document'}
-                  </button>
-                </div>
-              )}
-
               <ApprovalProgressTracker
                 requestType="Canvass"
                 requestId={selectedRequest.id}
