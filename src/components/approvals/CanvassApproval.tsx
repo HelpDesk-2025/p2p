@@ -707,7 +707,7 @@ export function CanvassApproval() {
                       </p>
                     </div>
                   )}
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {selectedRequest.suppliers.map((supplier: any, index: number) => {
                       if (!supplier.vendor_name || supplier.vendor_name.trim() === '') return null;
                       const isRecommended = selectedRequest.recommended_quotation_index === index;
@@ -718,7 +718,7 @@ export function CanvassApproval() {
                       return (
                         <div
                           key={index}
-                          className={`border rounded-lg p-4 ${
+                          className={`border rounded-lg p-4 flex flex-col ${
                             isSelected && showSelector
                               ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-600'
                               : isRecommended
@@ -731,18 +731,23 @@ export function CanvassApproval() {
                             }
                           }}
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <h5 className="font-bold text-slate-900 flex items-center gap-2">
-                              {showSelector && (
-                                <input
-                                  type="radio"
-                                  checked={isSelected}
-                                  onChange={() => setSelectedVendorIndex(index)}
-                                  className="w-5 h-5 text-blue-600"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              )}
-                              Quotation {index + 1}
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-bold text-slate-900 flex items-center gap-2">
+                                {showSelector && (
+                                  <input
+                                    type="radio"
+                                    checked={isSelected}
+                                    onChange={() => setSelectedVendorIndex(index)}
+                                    className="w-5 h-5 text-blue-600"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                )}
+                                Quotation {index + 1}
+                              </h5>
+                              <span className="text-lg font-bold text-blue-600">₱{supplier.net_payable?.toLocaleString() || '0'}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
                               {isRecommended && !showSelector && (
                                 <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">Recommended</span>
                               )}
@@ -752,27 +757,28 @@ export function CanvassApproval() {
                               {isSelected && showSelector && (
                                 <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">Selected to Win</span>
                               )}
-                            </h5>
-                            <span className="text-lg font-bold text-blue-600">₱{supplier.net_payable?.toLocaleString() || '0'}</span>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="space-y-2 text-sm">
                             <div>
                               <label className="text-xs font-semibold text-slate-600">Vendor</label>
-                              <p className="text-slate-900">{supplier.vendor_name}</p>
+                              <p className="text-slate-900 text-sm">{supplier.vendor_name}</p>
                             </div>
                             <div>
                               <label className="text-xs font-semibold text-slate-600">Registered Name</label>
-                              <p className="text-slate-900">{supplier.registered_name || 'N/A'}</p>
+                              <p className="text-slate-900 text-sm">{supplier.registered_name || 'N/A'}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Contact Person</label>
+                                <p className="text-slate-900 text-sm">{supplier.contact_person || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600">Contact Number</label>
+                                <p className="text-slate-900 text-sm">{supplier.contact_no || 'N/A'}</p>
+                              </div>
                             </div>
                             <div>
-                              <label className="text-xs font-semibold text-slate-600">Contact Person</label>
-                              <p className="text-slate-900">{supplier.contact_person || 'N/A'}</p>
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-slate-600">Contact Number</label>
-                              <p className="text-slate-900">{supplier.contact_no || 'N/A'}</p>
-                            </div>
-                            <div className="col-span-2">
                               <label className="text-xs font-semibold text-slate-600">Address</label>
                               <p className="text-slate-900 text-xs">{supplier.complete_address || 'N/A'}</p>
                             </div>
@@ -780,9 +786,9 @@ export function CanvassApproval() {
 
                           {/* Items Table */}
                           {supplier.items && supplier.items.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-slate-200">
+                            <div className="mt-3 pt-3 border-t border-slate-200 flex-1 flex flex-col min-h-0">
                               <label className="text-xs font-semibold text-slate-600 mb-2 block">Items</label>
-                              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                              <div className="bg-white border border-slate-200 rounded-lg overflow-auto max-h-64">
                                 <table className="w-full text-xs">
                                   <thead className="bg-slate-50">
                                     <tr>
@@ -816,7 +822,7 @@ export function CanvassApproval() {
                           )}
 
                           <div className="mt-3 pt-3 border-t border-slate-200">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <label className="text-xs font-semibold text-slate-600">Quoted Amount</label>
                                 <p className="text-slate-900">₱{supplier.quoted_amount?.toLocaleString()}</p>
