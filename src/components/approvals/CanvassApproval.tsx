@@ -182,9 +182,14 @@ export function CanvassApproval() {
         .eq('canvass_request_id', request.id)
         .order('created_at', { ascending: true });
 
+      console.log('Fetching recommendations for canvass:', request.canvass_number);
+      console.log('Recommendations data:', recommendationsData);
+      console.log('Recommendations error:', recommendationsError);
+
       if (recommendationsError) {
         console.error('Error fetching recommendations:', recommendationsError);
       } else if (recommendationsData) {
+        console.log('Setting previousRecommendations with', recommendationsData.length, 'items');
         setPreviousRecommendations(recommendationsData as ApproverRecommendation[]);
 
         // Check if current user already made a recommendation
@@ -720,6 +725,12 @@ export function CanvassApproval() {
                       const approversWhoRecommended = previousRecommendations.filter(
                         rec => rec.recommended_quotation_index === index
                       );
+
+                      console.log(`Quotation ${index + 1}:`, {
+                        previousRecommendations,
+                        approversWhoRecommended,
+                        index
+                      });
 
                       return (
                         <div
