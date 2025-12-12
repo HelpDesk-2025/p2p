@@ -791,7 +791,7 @@ export function CanvassApproval() {
                                   <tbody className="divide-y divide-slate-100">
                                     {supplier.items.map((item: any, itemIdx: number) => (
                                       <tr key={itemIdx}>
-                                        <td className="px-2 py-2">{item.description}</td>
+                                        <td className="px-2 py-2 break-words whitespace-normal">{item.description}</td>
                                         <td className="px-2 py-2 text-center">{item.quantity}</td>
                                         <td className="px-2 py-2 text-center">{item.uom}</td>
                                         <td className="px-2 py-2 text-right">₱{item.unit_price?.toFixed(2)}</td>
