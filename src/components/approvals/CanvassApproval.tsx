@@ -716,6 +716,11 @@ export function CanvassApproval() {
                       const isLastApprovalLevel = selectedRequest.current_approval_level === approvalFlows.length - 1;
                       const showSelector = isLastApprovalLevel && canApprove();
 
+                      // Find all approvers who recommended this quotation
+                      const approversWhoRecommended = previousRecommendations.filter(
+                        rec => rec.recommended_quotation_index === index
+                      );
+
                       return (
                         <div
                           key={index}
@@ -724,7 +729,9 @@ export function CanvassApproval() {
                               ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-600'
                               : isRecommended
                                 ? 'border-green-500 bg-green-50'
-                                : 'border-slate-200 bg-white'
+                                : approversWhoRecommended.length > 0
+                                  ? 'border-amber-500 bg-amber-50'
+                                  : 'border-slate-200 bg-white'
                           } ${showSelector ? 'cursor-pointer hover:border-blue-400 transition' : ''}`}
                           onClick={() => {
                             if (showSelector) {
@@ -755,6 +762,11 @@ export function CanvassApproval() {
                               {isRecommended && showSelector && (
                                 <span className="px-2 py-1 bg-green-600 text-white text-xs rounded-full">Initially Recommended</span>
                               )}
+                              {approversWhoRecommended.map((rec) => (
+                                <span key={rec.id} className="px-2 py-1 bg-amber-600 text-white text-xs rounded-full">
+                                  Recommended by {rec.user_profiles?.full_name || rec.approver_level}
+                                </span>
+                              ))}
                               {isSelected && showSelector && (
                                 <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">Selected to Win</span>
                               )}
