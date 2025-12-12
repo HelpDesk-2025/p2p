@@ -514,7 +514,7 @@ export function CanvassApproval() {
 
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-[95vw] w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Review Canvass Request</h3>
@@ -707,7 +707,8 @@ export function CanvassApproval() {
                       </p>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="overflow-x-auto pb-2">
+                    <div className="flex gap-4 min-w-max">
                     {selectedRequest.suppliers.map((supplier: any, index: number) => {
                       if (!supplier.vendor_name || supplier.vendor_name.trim() === '') return null;
                       const isRecommended = selectedRequest.recommended_quotation_index === index;
@@ -718,7 +719,7 @@ export function CanvassApproval() {
                       return (
                         <div
                           key={index}
-                          className={`border rounded-lg p-4 flex flex-col ${
+                          className={`border rounded-lg p-4 flex flex-col w-[400px] flex-shrink-0 ${
                             isSelected && showSelector
                               ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-600'
                               : isRecommended
@@ -901,6 +902,7 @@ export function CanvassApproval() {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 </div>
               )}
