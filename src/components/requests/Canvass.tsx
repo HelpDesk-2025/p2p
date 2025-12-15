@@ -390,6 +390,12 @@ export function Canvass() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    // Validate company selection
+    if (!selectedCompanyId) {
+      alert('Please select a company.');
+      return;
+    }
+
     // Validate quotations for pending submissions
     if (status === 'pending') {
       const filledQuotations = quotations.filter(q => q.vendor_name && q.vendor_name.trim() !== '');
@@ -480,6 +486,7 @@ export function Canvass() {
         const { data, error } = await supabase
           .from('canvass_requests')
           .update({
+            company_id: selectedCompanyId,
             required_date: formData.required_date,
             items: formData.items,
             status,
@@ -500,7 +507,7 @@ export function Canvass() {
           .insert({
             canvass_number: formData.document_no,
             requester_id: profile?.id,
-            company_id: profile?.company_id,
+            company_id: selectedCompanyId,
             pr_id: selectedPR?.id || null,
             department: selectedPR?.department || profile?.department || '',
             request_date: new Date().toISOString().split('T')[0],

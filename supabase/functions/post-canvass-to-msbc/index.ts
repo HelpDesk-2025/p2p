@@ -42,10 +42,8 @@ Deno.serve(async (req: Request) => {
       .from('canvass_requests')
       .select(`
         *,
-        requester:user_profiles!requester_id(
-          full_name,
-          company:companies(id, name, api_id)
-        ),
+        requester:user_profiles!requester_id(full_name),
+        company:companies!company_id(id, name, api_id),
         pr:purchase_requisitions!pr_id(purpose, required_date)
       `)
       .eq('id', canvassId)
@@ -74,9 +72,9 @@ Deno.serve(async (req: Request) => {
       .update({ msbc_posting_status: 'Pending' })
       .eq('id', canvassId);
 
-    const companyAPIID = canvass.requester?.company?.api_id;
+    const companyAPIID = canvass.company?.api_id;
     if (!companyAPIID) {
-      throw new Error('Company API ID not found');
+      throw new Error('Company API ID not found. Please ensure the canvass request has a company with a valid API ID configured.');
     }
 
     const winningVendorIndex = canvass.recommended_quotation_index ?? 0;
