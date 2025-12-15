@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import * as https from 'node:https';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,55 @@ const corsHeaders = {
 const MSBC_USERNAME = 'SJGIPA';
 const MSBC_PASSWORD = 'Superteams2025';
 const MSBC_BASE_URL = 'https://st-joseph-group.com:7048/BC140/api/beta';
+
+// Helper function to make HTTP/1.1 requests using node:https
+function makeHttp11Request(
+  url: string,
+  options: {
+    method: string;
+    headers: Record<string, string>;
+    body?: Uint8Array;
+  }
+): Promise<{ ok: boolean; status: number; text: () => Promise<string> }> {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const requestOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || 443,
+      path: urlObj.pathname + urlObj.search,
+      method: options.method,
+      headers: options.headers,
+      rejectUnauthorized: false, // For self-signed certs if needed
+    };
+
+    const req = https.request(requestOptions, (res) => {
+      const chunks: Buffer[] = [];
+
+      res.on('data', (chunk) => {
+        chunks.push(Buffer.from(chunk));
+      });
+
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf-8');
+        resolve({
+          ok: res.statusCode! >= 200 && res.statusCode! < 300,
+          status: res.statusCode!,
+          text: async () => body,
+        });
+      });
+    });
+
+    req.on('error', (error) => {
+      reject(error);
+    });
+
+    if (options.body) {
+      req.write(options.body);
+    }
+
+    req.end();
+  });
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -221,15 +271,16 @@ Deno.serve(async (req: Request) => {
     let attachmentUploadWarning = '';
 
     try {
-      console.log('📤 STEP 5: Uploading attachment content...');
-      const step5Response = await fetch(
+      console.log('📤 STEP 5: Uploading attachment content using HTTP/1.1...');
+      const step5Response = await makeHttp11Request(
         `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${invoiceID},id=${attachmentID})/content`,
         {
           method: 'PATCH',
           headers: {
-            ...headers,
+            'Authorization': `Basic ${basicAuth}`,
             'If-Match': etag,
             'Content-Type': 'application/octet-stream',
+            'Content-Length': rfpBytes.length.toString(),
           },
           body: rfpBytes,
         }
@@ -238,9 +289,9 @@ Deno.serve(async (req: Request) => {
       if (!step5Response.ok) {
         const errorText = await step5Response.text();
         console.warn('⚠️ STEP 5 failed but continuing:', errorText);
-        attachmentUploadWarning = `Attachment upload warning: ${errorText}`;
+        attachmentUploadWarning = `Attachment upload warning (HTTP ${step5Response.status}): ${errorText}`;
       } else {
-        console.log('✅ STEP 5: Attachment content uploaded successfully');
+        console.log('✅ STEP 5: Attachment content uploaded successfully via HTTP/1.1');
       }
     } catch (step5Error) {
       console.warn('⚠️ STEP 5 failed with exception but continuing:', step5Error);

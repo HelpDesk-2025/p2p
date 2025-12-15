@@ -727,7 +727,7 @@ export function Canvass() {
       const postResponse = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ requestId: request.id }),
+        body: JSON.stringify({ canvass_id: request.id }),
       });
 
       if (!postResponse.ok) {
