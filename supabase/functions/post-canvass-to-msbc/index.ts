@@ -75,7 +75,10 @@ Deno.serve(async (req: Request) => {
 
     await supabaseClient
       .from('canvass_requests')
-      .update({ msbc_posting_status: 'Pending' })
+      .update({
+        msbc_posting_status: 'Pending',
+        msbc_sync_status: 'syncing'
+      })
       .eq('id', canvassId);
 
     const companyAPIID = canvass.company?.api_id;
@@ -261,6 +264,9 @@ Deno.serve(async (req: Request) => {
         msbc_posting_date: new Date().toISOString(),
         msbc_invoice_id: invoiceID,
         msbc_error_message: attachmentUploadWarning || null,
+        msbc_sync_status: 'synced',
+        msbc_sync_date: new Date().toISOString(),
+        msbc_sync_error: null,
       })
       .eq('id', canvassId);
 
@@ -292,6 +298,8 @@ Deno.serve(async (req: Request) => {
           .update({
             msbc_posting_status: 'Failed',
             msbc_error_message: error instanceof Error ? error.message : String(error),
+            msbc_sync_status: 'failed',
+            msbc_sync_error: error instanceof Error ? error.message : String(error),
           })
           .eq('id', canvassId);
       } catch (dbError) {
