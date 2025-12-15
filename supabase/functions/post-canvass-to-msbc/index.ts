@@ -1,0 +1,327 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { PDFDocument } from 'npm:pdf-lib@1.17.1';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+};
+
+const MSBC_USERNAME = 'SJGIPA';
+const MSBC_PASSWORD = 'Superteams2025';
+const MSBC_BASE_URL = 'https://st-joseph-group.com:7048/BC140/api/beta';
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  let requestId: string | null = null;
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    const body = await req.json();
+    requestId = body.requestId;
+
+    if (!requestId) {
+      return new Response(
+        JSON.stringify({ error: 'Request ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('🚀 Starting MSBC posting for Canvass:', requestId);
+
+    const { data: canvass, error: canvassError } = await supabaseClient
+      .from('canvass_requests')
+      .select(`
+        *,
+        requester:user_profiles!requester_id(
+          full_name,
+          company:companies(id, name, api_id)
+        ),
+        pr:purchase_requisitions!pr_id(purpose, required_date)
+      `)
+      .eq('id', requestId)
+      .single();
+
+    if (canvassError || !canvass) {
+      throw new Error(`Failed to fetch canvass: ${canvassError?.message}`);
+    }
+
+    console.log('📄 Canvass Data:', {
+      canvass_number: canvass.canvass_number,
+      status: canvass.status,
+    });
+
+    await supabaseClient
+      .from('canvass_requests')
+      .update({ msbc_posting_status: 'Pending' })
+      .eq('id', requestId);
+
+    const companyAPIID = canvass.requester?.company?.api_id;
+    if (!companyAPIID) {
+      throw new Error('Company API ID not found');
+    }
+
+    const winningVendorIndex = canvass.recommended_quotation_index || 0;
+    const winningVendorData = canvass.suppliers?.[winningVendorIndex];
+    
+    if (!winningVendorData) {
+      throw new Error('Winning vendor not found in canvass');
+    }
+
+    const winningVendor = winningVendorData.vendor_name || winningVendorData.name || '';
+    const vendorNumber = winningVendorData.vendor_number || winningVendorData.payee_number || '';
+    
+    const winningTotal = parseFloat(winningVendorData.total || winningVendorData.purchase_price || 0);
+    const winningNetOfVat = parseFloat(winningVendorData.net_of_vat || (winningTotal / 1.12));
+    const winningEwt = parseFloat(winningVendorData.ewt || (winningNetOfVat * 0.02));
+    const winningNetPayable = parseFloat(winningVendorData.net_payable || (winningTotal - winningEwt));
+
+    const documentNumber = canvass.canvass_number;
+    const batchNumber = documentNumber.replace(/0+/g, '');
+    const purchaseAmount = winningNetPayable;
+    const dateNeeded = canvass.pr?.required_date
+      ? new Date(canvass.pr.required_date).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    const description = (canvass.pr?.purpose || '').substring(0, 70);
+    const purpose = (canvass.pr?.purpose || '').substring(0, 200);
+
+    console.log('📊 Variables:', {
+      companyAPIID,
+      documentNumber,
+      batchNumber,
+      purchaseAmount,
+      dateNeeded,
+      winningVendor,
+      vendorNumber,
+      description,
+      purpose,
+    });
+
+    if (!canvass.rfp_pdf_path) {
+      throw new Error('CVS and RFP PDF not found');
+    }
+
+    console.log('📥 Downloading CVS and RFP PDF from:', canvass.rfp_pdf_path);
+    const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
+      .from('attachments')
+      .download(canvass.rfp_pdf_path);
+
+    if (rfpDownloadError || !rfpData) {
+      throw new Error(`Failed to download CVS and RFP: ${rfpDownloadError?.message}`);
+    }
+
+    const rfpBytes = new Uint8Array(await rfpData.arrayBuffer());
+    console.log('✅ CVS and RFP downloaded, size:', rfpBytes.length);
+
+    console.log('🔄 Using RFP as merged PDF...');
+    const mergedPdfBytes = rfpBytes;
+    const attachmentFileName = `CVS_RFP_${documentNumber}.pdf`;
+    console.log('✅ PDF ready, filename:', attachmentFileName);
+
+    const mergedFilePath = `merged/${attachmentFileName}`;
+    const { error: uploadError } = await supabaseClient.storage
+      .from('attachments')
+      .upload(mergedFilePath, mergedPdfBytes, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn('⚠️ Failed to upload merged PDF:', uploadError);
+    } else {
+      await supabaseClient
+        .from('canvass_requests')
+        .update({ merged_rfp_attachment_path: mergedFilePath })
+        .eq('id', requestId);
+    }
+
+    const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
+    const headers = {
+      'Authorization': `Basic ${basicAuth}`,
+      'Content-Type': 'application/json',
+    };
+
+    console.log('📤 STEP 1: Creating journal batch...');
+    const step1Response = await fetch(
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          TemplateName: 'PURCHASESB',
+          code: batchNumber,
+          displayName: `${dateNeeded} - ${description}`,
+        }),
+      }
+    );
+
+    if (!step1Response.ok) {
+      const errorText = await step1Response.text();
+      throw new Error(`STEP 1 failed (${step1Response.status}): ${errorText}`);
+    }
+
+    const firstPostBody = await step1Response.json();
+    const parentID = firstPostBody.id;
+    console.log('✅ STEP 1: Journal batch created, ID:', parentID);
+
+    console.log('📤 STEP 4: Creating journal line...');
+    const step4Response = await fetch(
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases(${parentID})/journalLinesPurch`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          TemplateName: 'PURCHASESB',
+          AccountType: 'Vendor',
+          accountNumber: vendorNumber,
+          postingDate: dateNeeded,
+          externalDocumentNumber: documentNumber,
+          amount: purchaseAmount,
+          comment: purpose,
+        }),
+      }
+    );
+
+    if (!step4Response.ok) {
+      const errorText = await step4Response.text();
+      throw new Error(`STEP 4 failed (${step4Response.status}): ${errorText}`);
+    }
+
+    const secondPostBody = await step4Response.json();
+    const parentLineID = secondPostBody.id;
+    console.log('✅ STEP 4: Journal line created, ID:', parentLineID);
+
+    console.log('📤 STEP 7: Creating attachment record...');
+    const step7Response = await fetch(
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          parentId: parentLineID,
+          fileName: attachmentFileName,
+        }),
+      }
+    );
+
+    if (!step7Response.ok) {
+      const errorText = await step7Response.text();
+      throw new Error(`STEP 7 failed (${step7Response.status}): ${errorText}`);
+    }
+
+    const thirdPostBody = await step7Response.json();
+    const attachmentID = thirdPostBody.id;
+    console.log('✅ STEP 7: Attachment record created, ID:', attachmentID);
+
+    console.log('📤 STEP 10: Getting attachment etag...');
+    const step10Response = await fetch(
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})`,
+      { method: 'GET', headers }
+    );
+
+    if (!step10Response.ok) {
+      const errorText = await step10Response.text();
+      throw new Error(`STEP 10 failed (${step10Response.status}): ${errorText}`);
+    }
+
+    const firstGetBody = await step10Response.json();
+    const etag = firstGetBody['@odata.etag'];
+    console.log('✅ STEP 10: Got etag:', etag);
+
+    let attachmentUploadWarning = '';
+
+    try {
+      console.log('📤 STEP 13: Uploading attachment content...');
+      const step13Response = await fetch(
+        `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})/content`,
+        {
+          method: 'PATCH',
+          headers: {
+            ...headers,
+            'If-Match': etag,
+            'Content-Type': 'application/octet-stream',
+          },
+          body: mergedPdfBytes,
+        }
+      );
+
+      if (!step13Response.ok) {
+        const errorText = await step13Response.text();
+        console.warn('⚠️ STEP 13 failed but continuing:', errorText);
+        attachmentUploadWarning = `Attachment upload warning: ${errorText}`;
+      } else {
+        console.log('✅ STEP 13: Attachment content uploaded successfully');
+      }
+    } catch (step13Error) {
+      console.warn('⚠️ STEP 13 failed with exception but continuing:', step13Error);
+      attachmentUploadWarning = `Attachment upload warning: ${step13Error instanceof Error ? step13Error.message : String(step13Error)}`;
+    }
+
+    await supabaseClient
+      .from('canvass_requests')
+      .update({
+        msbc_posting_status: 'Success',
+        msbc_posting_date: new Date().toISOString(),
+        msbc_journal_batch_id: parentID,
+        msbc_error_message: attachmentUploadWarning || null,
+      })
+      .eq('id', requestId);
+
+    console.log('🎉 MSBC posting completed successfully!');
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Canvass posted to MSBC successfully',
+        journalBatchId: parentID,
+        warning: attachmentUploadWarning || undefined,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    console.error('❌ Error posting to MSBC:', error);
+
+    if (requestId) {
+      try {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        );
+
+        await supabaseClient
+          .from('canvass_requests')
+          .update({
+            msbc_posting_status: 'Failed',
+            msbc_error_message: error instanceof Error ? error.message : String(error),
+          })
+          .eq('id', requestId);
+      } catch (dbError) {
+        console.error('❌ Failed to update error status in DB:', dbError);
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'Failed to post to MSBC',
+        message: error instanceof Error ? error.message : String(error),
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+});

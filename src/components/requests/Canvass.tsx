@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Edit, Loader2 } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Edit, Loader2, Download, RefreshCw } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
@@ -62,6 +62,10 @@ interface CanvassReq {
   recommended_quotation_index?: number | null;
   recommendation_remarks?: string | null;
   rfp_pdf_path?: string | null;
+  msbc_posting_status?: string;
+  msbc_posting_date?: string;
+  msbc_journal_batch_id?: string;
+  msbc_error_message?: string;
 }
 
 interface PurchaseRequisition {
@@ -672,6 +676,75 @@ export function Canvass() {
     } finally {
       setLoading(false);
       setSubmitting(false);
+    }
+  };
+
+  const downloadRFP = async (rfpPath: string, canvassNumber: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(rfpPath);
+
+      if (error) throw error;
+      if (!data) throw new Error('No data returned');
+
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CVS_RFP_${canvassNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading CVS and RFP:', error);
+      alert('Failed to download CVS and RFP');
+    }
+  };
+
+  const handleRepostToMSBC = async (request: CanvassReq) => {
+    if (!confirm('Are you sure you want to repost this canvass to MSBC?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Starting MSBC posting for canvass:', request.canvass_number);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-canvass-to-msbc`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const postResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ requestId: request.id }),
+      });
+
+      if (!postResponse.ok) {
+        const errorData = await postResponse.json();
+        throw new Error(errorData.message || 'Failed to post to MSBC');
+      }
+
+      const postResult = await postResponse.json();
+      console.log('MSBC posting successful:', postResult);
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+
+      let message = 'Canvass posted to MSBC successfully!';
+      if (postResult.warning) {
+        message += `\n\nNote: ${postResult.warning}`;
+      }
+
+      alert(message);
+      await loadRequests();
+    } catch (error) {
+      console.error('Error posting to MSBC:', error);
+      alert('Failed to post to MSBC: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2059,6 +2132,25 @@ export function Canvass() {
                     >
                       {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
+                    </button>
+                  </>
+                )}
+                {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
+                  <>
+                    <button
+                      onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.canvass_number)}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Download size={18} />
+                      Download CVS & RFP
+                    </button>
+                    <button
+                      onClick={() => handleRepostToMSBC(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Repost to MSBC
                     </button>
                   </>
                 )}
