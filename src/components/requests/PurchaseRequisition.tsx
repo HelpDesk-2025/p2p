@@ -1652,14 +1652,16 @@ export function PurchaseRequisition() {
                       <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                       Regenerate RFP
                     </button>
-                    <button
-                      onClick={() => handleRepostToMSBC(viewingRequest)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Send size={18} />
-                      Repost to MSBC
-                    </button>
+                    {profile?.role === 'admin' && (
+                      <button
+                        onClick={() => handleRepostToMSBC(viewingRequest)}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Send size={18} />
+                        Repost to MSBC
+                      </button>
+                    )}
                   </>
                 )}
               </div>
