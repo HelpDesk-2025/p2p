@@ -308,9 +308,13 @@ export function CanvassApproval() {
         current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
       };
 
-      // If final approval, update the winning vendor index
+      // If final approval, update the winning vendor index and vendor number
       if (action === 'approved' && isLastApproval && selectedVendorIndex !== null) {
         updateData.recommended_quotation_index = selectedVendorIndex;
+        const winningVendor = selectedRequest.suppliers[selectedVendorIndex];
+        if (winningVendor?.vendor_number) {
+          updateData.winning_vendor_number = winningVendor.vendor_number;
+        }
       }
 
       const { error: updateError } = await supabase
@@ -392,6 +396,38 @@ export function CanvassApproval() {
           console.log('RFP generated successfully for canvass:', selectedRequest.canvass_number);
         } catch (rfpError: any) {
           console.error('Error generating RFP:', rfpError);
+        }
+
+        // Automatically post to MSBC if vendor number is available
+        if (selectedVendorIndex !== null) {
+          const winningVendor = selectedRequest.suppliers[selectedVendorIndex];
+          if (winningVendor?.vendor_number) {
+            try {
+              const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-canvass-to-msbc`;
+              const headers = {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              };
+
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  canvass_id: selectedRequest.id
+                })
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to post to MSBC');
+              }
+
+              const result = await response.json();
+              console.log('Successfully posted to MSBC:', result);
+            } catch (msbcError: any) {
+              console.error('Error posting to MSBC:', msbcError);
+            }
+          }
         }
 
         await sendApprovalEmail(

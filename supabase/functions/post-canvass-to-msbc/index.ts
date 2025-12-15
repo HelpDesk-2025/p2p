@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { PDFDocument } from 'npm:pdf-lib@1.17.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +18,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  let requestId: string | null = null;
+  let canvassId: string | null = null;
 
   try {
     const supabaseClient = createClient(
@@ -28,16 +27,16 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json();
-    requestId = body.requestId;
+    canvassId = body.canvass_id;
 
-    if (!requestId) {
+    if (!canvassId) {
       return new Response(
-        JSON.stringify({ error: 'Request ID is required' }),
+        JSON.stringify({ error: 'canvass_id is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('🚀 Starting MSBC posting for Canvass:', requestId);
+    console.log('🚀 Starting MSBC posting for Canvass:', canvassId);
 
     const { data: canvass, error: canvassError } = await supabaseClient
       .from('canvass_requests')
@@ -49,61 +48,56 @@ Deno.serve(async (req: Request) => {
         ),
         pr:purchase_requisitions!pr_id(purpose, required_date)
       `)
-      .eq('id', requestId)
-      .single();
+      .eq('id', canvassId)
+      .maybeSingle();
 
     if (canvassError || !canvass) {
       throw new Error(`Failed to fetch canvass: ${canvassError?.message}`);
     }
 
+    if (canvass.status !== 'approved') {
+      throw new Error('Canvass must be approved before posting to MSBC');
+    }
+
+    if (!canvass.winning_vendor_number) {
+      throw new Error('Winning vendor number not found. Please ensure a winning vendor was selected during approval.');
+    }
+
     console.log('📄 Canvass Data:', {
       canvass_number: canvass.canvass_number,
       status: canvass.status,
+      winning_vendor_number: canvass.winning_vendor_number,
     });
 
     await supabaseClient
       .from('canvass_requests')
       .update({ msbc_posting_status: 'Pending' })
-      .eq('id', requestId);
+      .eq('id', canvassId);
 
     const companyAPIID = canvass.requester?.company?.api_id;
     if (!companyAPIID) {
       throw new Error('Company API ID not found');
     }
 
-    const winningVendorIndex = canvass.recommended_quotation_index || 0;
+    const winningVendorIndex = canvass.recommended_quotation_index ?? 0;
     const winningVendorData = canvass.suppliers?.[winningVendorIndex];
-    
+
     if (!winningVendorData) {
-      throw new Error('Winning vendor not found in canvass');
+      throw new Error('Winning vendor data not found in canvass');
     }
 
-    const winningVendor = winningVendorData.vendor_name || winningVendorData.name || '';
-    const vendorNumber = winningVendorData.vendor_number || winningVendorData.payee_number || '';
-    
-    const winningTotal = parseFloat(winningVendorData.total || winningVendorData.purchase_price || 0);
-    const winningNetOfVat = parseFloat(winningVendorData.net_of_vat || (winningTotal / 1.12));
-    const winningEwt = parseFloat(winningVendorData.ewt || (winningNetOfVat * 0.02));
-    const winningNetPayable = parseFloat(winningVendorData.net_payable || (winningTotal - winningEwt));
-
+    const vendorNumber = canvass.winning_vendor_number;
     const documentNumber = canvass.canvass_number;
-    const batchNumber = documentNumber.replace(/0+/g, '');
-    const purchaseAmount = winningNetPayable;
     const dateNeeded = canvass.pr?.required_date
       ? new Date(canvass.pr.required_date).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0];
-    const description = (canvass.pr?.purpose || '').substring(0, 70);
-    const purpose = (canvass.pr?.purpose || '').substring(0, 200);
+    const purpose = (canvass.pr?.purpose || 'Canvass Request').substring(0, 200);
 
-    console.log('📊 Variables:', {
+    console.log('📊 Invoice Variables:', {
       companyAPIID,
-      documentNumber,
-      batchNumber,
-      purchaseAmount,
-      dateNeeded,
-      winningVendor,
       vendorNumber,
-      description,
+      documentNumber,
+      dateNeeded,
       purpose,
     });
 
@@ -123,27 +117,8 @@ Deno.serve(async (req: Request) => {
     const rfpBytes = new Uint8Array(await rfpData.arrayBuffer());
     console.log('✅ CVS and RFP downloaded, size:', rfpBytes.length);
 
-    console.log('🔄 Using RFP as merged PDF...');
-    const mergedPdfBytes = rfpBytes;
     const attachmentFileName = `CVS_RFP_${documentNumber}.pdf`;
     console.log('✅ PDF ready, filename:', attachmentFileName);
-
-    const mergedFilePath = `merged/${attachmentFileName}`;
-    const { error: uploadError } = await supabaseClient.storage
-      .from('attachments')
-      .upload(mergedFilePath, mergedPdfBytes, {
-        contentType: 'application/pdf',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.warn('⚠️ Failed to upload merged PDF:', uploadError);
-    } else {
-      await supabaseClient
-        .from('canvass_requests')
-        .update({ merged_rfp_attachment_path: mergedFilePath })
-        .eq('id', requestId);
-    }
 
     const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
     const headers = {
@@ -151,16 +126,17 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     };
 
-    console.log('📤 STEP 1: Creating journal batch...');
+    console.log('📤 STEP 1: Creating purchase invoice...');
     const step1Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases`,
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/purchaseInvoices`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          TemplateName: 'PURCHASESB',
-          code: batchNumber,
-          displayName: `${dateNeeded} - ${description}`,
+          vendorNumber: vendorNumber,
+          invoiceDate: dateNeeded,
+          dueDate: dateNeeded,
+          vendorInvoiceNumber: documentNumber,
         }),
       }
     );
@@ -170,26 +146,69 @@ Deno.serve(async (req: Request) => {
       throw new Error(`STEP 1 failed (${step1Response.status}): ${errorText}`);
     }
 
-    const firstPostBody = await step1Response.json();
-    const parentID = firstPostBody.id;
-    console.log('✅ STEP 1: Journal batch created, ID:', parentID);
+    const invoiceBody = await step1Response.json();
+    const invoiceID = invoiceBody.id;
+    console.log('✅ STEP 1: Purchase invoice created, ID:', invoiceID);
 
-    console.log('📤 STEP 4: Creating journal line...');
-    const step4Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases(${parentID})/journalLinesPurch`,
+    console.log('📤 STEP 2: Adding invoice lines...');
+    const items = winningVendorData.items || [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      console.log(`  Adding line ${i + 1}/${items.length}: ${item.description}`);
+
+      const lineResponse = await fetch(
+        `${MSBC_BASE_URL}/companies(${companyAPIID})/purchaseInvoices(${invoiceID})/purchaseInvoiceLines`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            lineType: 'Item',
+            itemId: item.item_id || '',
+            description: item.description || '',
+            quantity: parseFloat(item.quantity) || 1,
+            unitCost: parseFloat(item.unit_price) || 0,
+            lineAmount: parseFloat(item.amount) || 0,
+          }),
+        }
+      );
+
+      if (!lineResponse.ok) {
+        const errorText = await lineResponse.text();
+        console.warn(`  ⚠️ Failed to add line ${i + 1}:`, errorText);
+      } else {
+        console.log(`  ✅ Line ${i + 1} added successfully`);
+      }
+    }
+
+    console.log('✅ STEP 2: All invoice lines processed');
+
+    console.log('📤 STEP 3: Creating attachment record...');
+    const step3Response = await fetch(
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          TemplateName: 'PURCHASESB',
-          AccountType: 'Vendor',
-          accountNumber: vendorNumber,
-          postingDate: dateNeeded,
-          externalDocumentNumber: documentNumber,
-          amount: purchaseAmount,
-          comment: purpose,
+          parentId: invoiceID,
+          fileName: attachmentFileName,
         }),
       }
+    );
+
+    if (!step3Response.ok) {
+      const errorText = await step3Response.text();
+      throw new Error(`STEP 3 failed (${step3Response.status}): ${errorText}`);
+    }
+
+    const attachmentBody = await step3Response.json();
+    const attachmentID = attachmentBody.id;
+    console.log('✅ STEP 3: Attachment record created, ID:', attachmentID);
+
+    console.log('📤 STEP 4: Getting attachment etag...');
+    const step4Response = await fetch(
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${invoiceID},id=${attachmentID})`,
+      { method: 'GET', headers }
     );
 
     if (!step4Response.ok) {
@@ -197,53 +216,16 @@ Deno.serve(async (req: Request) => {
       throw new Error(`STEP 4 failed (${step4Response.status}): ${errorText}`);
     }
 
-    const secondPostBody = await step4Response.json();
-    const parentLineID = secondPostBody.id;
-    console.log('✅ STEP 4: Journal line created, ID:', parentLineID);
-
-    console.log('📤 STEP 7: Creating attachment record...');
-    const step7Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          parentId: parentLineID,
-          fileName: attachmentFileName,
-        }),
-      }
-    );
-
-    if (!step7Response.ok) {
-      const errorText = await step7Response.text();
-      throw new Error(`STEP 7 failed (${step7Response.status}): ${errorText}`);
-    }
-
-    const thirdPostBody = await step7Response.json();
-    const attachmentID = thirdPostBody.id;
-    console.log('✅ STEP 7: Attachment record created, ID:', attachmentID);
-
-    console.log('📤 STEP 10: Getting attachment etag...');
-    const step10Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})`,
-      { method: 'GET', headers }
-    );
-
-    if (!step10Response.ok) {
-      const errorText = await step10Response.text();
-      throw new Error(`STEP 10 failed (${step10Response.status}): ${errorText}`);
-    }
-
-    const firstGetBody = await step10Response.json();
-    const etag = firstGetBody['@odata.etag'];
-    console.log('✅ STEP 10: Got etag:', etag);
+    const attachmentGetBody = await step4Response.json();
+    const etag = attachmentGetBody['@odata.etag'];
+    console.log('✅ STEP 4: Got etag:', etag);
 
     let attachmentUploadWarning = '';
 
     try {
-      console.log('📤 STEP 13: Uploading attachment content...');
-      const step13Response = await fetch(
-        `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})/content`,
+      console.log('📤 STEP 5: Uploading attachment content...');
+      const step5Response = await fetch(
+        `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${invoiceID},id=${attachmentID})/content`,
         {
           method: 'PATCH',
           headers: {
@@ -251,20 +233,20 @@ Deno.serve(async (req: Request) => {
             'If-Match': etag,
             'Content-Type': 'application/octet-stream',
           },
-          body: mergedPdfBytes,
+          body: rfpBytes,
         }
       );
 
-      if (!step13Response.ok) {
-        const errorText = await step13Response.text();
-        console.warn('⚠️ STEP 13 failed but continuing:', errorText);
+      if (!step5Response.ok) {
+        const errorText = await step5Response.text();
+        console.warn('⚠️ STEP 5 failed but continuing:', errorText);
         attachmentUploadWarning = `Attachment upload warning: ${errorText}`;
       } else {
-        console.log('✅ STEP 13: Attachment content uploaded successfully');
+        console.log('✅ STEP 5: Attachment content uploaded successfully');
       }
-    } catch (step13Error) {
-      console.warn('⚠️ STEP 13 failed with exception but continuing:', step13Error);
-      attachmentUploadWarning = `Attachment upload warning: ${step13Error instanceof Error ? step13Error.message : String(step13Error)}`;
+    } catch (step5Error) {
+      console.warn('⚠️ STEP 5 failed with exception but continuing:', step5Error);
+      attachmentUploadWarning = `Attachment upload warning: ${step5Error instanceof Error ? step5Error.message : String(step5Error)}`;
     }
 
     await supabaseClient
@@ -272,10 +254,10 @@ Deno.serve(async (req: Request) => {
       .update({
         msbc_posting_status: 'Success',
         msbc_posting_date: new Date().toISOString(),
-        msbc_journal_batch_id: parentID,
+        msbc_invoice_id: invoiceID,
         msbc_error_message: attachmentUploadWarning || null,
       })
-      .eq('id', requestId);
+      .eq('id', canvassId);
 
     console.log('🎉 MSBC posting completed successfully!');
 
@@ -283,7 +265,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         message: 'Canvass posted to MSBC successfully',
-        journalBatchId: parentID,
+        invoiceId: invoiceID,
         warning: attachmentUploadWarning || undefined,
       }),
       {
@@ -293,7 +275,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('❌ Error posting to MSBC:', error);
 
-    if (requestId) {
+    if (canvassId) {
       try {
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
@@ -306,7 +288,7 @@ Deno.serve(async (req: Request) => {
             msbc_posting_status: 'Failed',
             msbc_error_message: error instanceof Error ? error.message : String(error),
           })
-          .eq('id', requestId);
+          .eq('id', canvassId);
       } catch (dbError) {
         console.error('❌ Failed to update error status in DB:', dbError);
       }
