@@ -97,6 +97,7 @@ interface QuotationItem {
 
 interface QuotationForm {
   vendor_name: string;
+  vendor_number?: string;
   items: QuotationItem[];
   quoted_amount: number;
   invoice_availability: boolean;
@@ -1089,6 +1090,7 @@ export function Canvass() {
                                     onClick={() => {
                                       const newQuotations = [...quotations];
                                       newQuotations[idx].vendor_name = vendor.displayName;
+                                      newQuotations[idx].vendor_number = vendor.number;
                                       newQuotations[idx].registered_name = vendor.displayName;
                                       newQuotations[idx].complete_address = `${vendor.address.street}, ${vendor.address.city}, ${vendor.address.state} ${vendor.address.postalCode}`;
                                       newQuotations[idx].tin = vendor.taxRegistrationNumber;
