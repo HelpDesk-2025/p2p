@@ -60,7 +60,7 @@ export function ApprovalProgressTracker({
         setMsbcSyncError(data.msbc_sync_error || null);
 
         // Store purchase type for PR requests
-        if (requestType === 'purchase_requisition') {
+        if (requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') {
           setPurchaseType(data.purchase_type || null);
         }
 
@@ -406,7 +406,7 @@ export function ApprovalProgressTracker({
           </div>
 
           {/* Hide MSBC sync for Purchase Order type PRs */}
-          {!(requestType === 'purchase_requisition' && purchaseType === 'Purchase Order') && (
+          {!((requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') && purchaseType === 'Purchase Order') && (
             <div className="relative">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 z-10">
