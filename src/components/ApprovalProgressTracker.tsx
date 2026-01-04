@@ -31,6 +31,7 @@ export function ApprovalProgressTracker({
   const [msbcSyncStatus, setMsbcSyncStatus] = useState('pending');
   const [msbcSyncDate, setMsbcSyncDate] = useState<string | null>(null);
   const [msbcSyncError, setMsbcSyncError] = useState<string | null>(null);
+  const [purchaseType, setPurchaseType] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -57,6 +58,11 @@ export function ApprovalProgressTracker({
         setMsbcSyncStatus(data.msbc_sync_status || 'pending');
         setMsbcSyncDate(data.msbc_sync_date || null);
         setMsbcSyncError(data.msbc_sync_error || null);
+
+        // Store purchase type for PR requests
+        if (requestType === 'purchase_requisition') {
+          setPurchaseType(data.purchase_type || null);
+        }
 
         // Get company_id from user profile if not in request
         let companyId = data.company_id;
@@ -399,83 +405,86 @@ export function ApprovalProgressTracker({
             <span className="font-semibold">Request Fully Approved</span>
           </div>
 
-          <div className="relative">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 z-10">
-                <div
-                  className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
-                    msbcSyncStatus === 'synced' ? 'bg-green-50 border-green-600' :
-                    msbcSyncStatus === 'syncing' ? 'bg-blue-50 border-blue-600' :
-                    msbcSyncStatus === 'failed' ? 'bg-red-50 border-red-600' :
-                    'bg-gray-50 border-gray-300'
-                  }`}
-                >
-                  {msbcSyncStatus === 'synced' ? (
-                    <CheckCircle className="text-green-600" size={24} />
-                  ) : msbcSyncStatus === 'syncing' ? (
-                    <Send className="text-blue-600 animate-pulse" size={24} />
-                  ) : msbcSyncStatus === 'failed' ? (
-                    <XCircle className="text-red-600" size={24} />
-                  ) : (
-                    <Clock className="text-gray-400" size={24} />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-slate-900">
-                    Sending Request to MSBC
-                  </span>
-                  {msbcSyncStatus === 'pending' && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
-                      Pending
-                    </span>
-                  )}
-                  {msbcSyncStatus === 'syncing' && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                      Syncing...
-                    </span>
-                  )}
-                  {msbcSyncStatus === 'synced' && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                      Sent Successfully
-                    </span>
-                  )}
-                  {msbcSyncStatus === 'failed' && (
-                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
-                      Failed
-                    </span>
-                  )}
-                </div>
-
-                {msbcSyncStatus === 'synced' && msbcSyncDate && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Sent to MSBC on {new Date(msbcSyncDate).toLocaleString()}
-                  </p>
-                )}
-
-                {msbcSyncStatus === 'failed' && msbcSyncError && (
-                  <div className="mt-2 p-3 bg-red-50 rounded border border-red-200">
-                    <p className="text-sm text-red-700 font-semibold">Error:</p>
-                    <p className="text-sm text-red-600 mt-1">{msbcSyncError}</p>
+          {/* Hide MSBC sync for Purchase Order type PRs */}
+          {!(requestType === 'purchase_requisition' && purchaseType === 'Purchase Order') && (
+            <div className="relative">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 z-10">
+                  <div
+                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
+                      msbcSyncStatus === 'synced' ? 'bg-green-50 border-green-600' :
+                      msbcSyncStatus === 'syncing' ? 'bg-blue-50 border-blue-600' :
+                      msbcSyncStatus === 'failed' ? 'bg-red-50 border-red-600' :
+                      'bg-gray-50 border-gray-300'
+                    }`}
+                  >
+                    {msbcSyncStatus === 'synced' ? (
+                      <CheckCircle className="text-green-600" size={24} />
+                    ) : msbcSyncStatus === 'syncing' ? (
+                      <Send className="text-blue-600 animate-pulse" size={24} />
+                    ) : msbcSyncStatus === 'failed' ? (
+                      <XCircle className="text-red-600" size={24} />
+                    ) : (
+                      <Clock className="text-gray-400" size={24} />
+                    )}
                   </div>
-                )}
+                </div>
 
-                {msbcSyncStatus === 'pending' && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Waiting to send to MSBC...
-                  </p>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-slate-900">
+                      Sending Request to MSBC
+                    </span>
+                    {msbcSyncStatus === 'pending' && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
+                        Pending
+                      </span>
+                    )}
+                    {msbcSyncStatus === 'syncing' && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                        Syncing...
+                      </span>
+                    )}
+                    {msbcSyncStatus === 'synced' && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                        Sent Successfully
+                      </span>
+                    )}
+                    {msbcSyncStatus === 'failed' && (
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                        Failed
+                      </span>
+                    )}
+                  </div>
 
-                {msbcSyncStatus === 'syncing' && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Sending request to MSBC...
-                  </p>
-                )}
+                  {msbcSyncStatus === 'synced' && msbcSyncDate && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Sent to MSBC on {new Date(msbcSyncDate).toLocaleString()}
+                    </p>
+                  )}
+
+                  {msbcSyncStatus === 'failed' && msbcSyncError && (
+                    <div className="mt-2 p-3 bg-red-50 rounded border border-red-200">
+                      <p className="text-sm text-red-700 font-semibold">Error:</p>
+                      <p className="text-sm text-red-600 mt-1">{msbcSyncError}</p>
+                    </div>
+                  )}
+
+                  {msbcSyncStatus === 'pending' && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      Waiting to send to MSBC...
+                    </p>
+                  )}
+
+                  {msbcSyncStatus === 'syncing' && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      Sending request to MSBC...
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
