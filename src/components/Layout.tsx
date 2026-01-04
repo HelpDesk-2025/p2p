@@ -324,8 +324,8 @@ function NavItem({ item, active, onClick }: { item: MenuItem; active: boolean; o
           : 'text-slate-700 hover:bg-slate-100'
       }`}
     >
-      <Icon size={20} />
-      {item.label}
+      <Icon size={20} className="flex-shrink-0" />
+      <span className="text-left truncate">{item.label}</span>
     </button>
   );
 }
