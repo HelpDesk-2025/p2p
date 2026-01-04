@@ -5,6 +5,7 @@ import {
   FileText,
   Search,
   Wallet,
+  Banknote,
   Receipt,
   CheckSquare,
   ClipboardCheck,
@@ -28,10 +29,12 @@ export type ViewType =
   | 'pr-request'
   | 'canvass-request'
   | 'petty-cash-request'
+  | 'cash-advance-request'
   | 'reimbursement-request'
   | 'pr-approval'
   | 'canvass-approval'
   | 'petty-cash-approval'
+  | 'cash-advance-approval'
   | 'reimbursement-approval'
   | 'sme-approval'
   | 'procurement-checking'
@@ -63,6 +66,7 @@ const menuItems: MenuItem[] = [
   },
   { id: 'canvass-request', label: 'Canvass', icon: Search, group: 'requests' },
   { id: 'petty-cash-request', label: 'Petty Cash', icon: Wallet, group: 'requests' },
+  { id: 'cash-advance-request', label: 'Cash Advance', icon: Banknote, group: 'requests' },
   {
     id: 'reimbursement-request',
     label: 'Reimbursement',
@@ -86,6 +90,13 @@ const menuItems: MenuItem[] = [
   {
     id: 'petty-cash-approval',
     label: 'Petty Cash Approval',
+    icon: CheckSquare,
+    roles: ['approver', 'admin'],
+    group: 'approvals',
+  },
+  {
+    id: 'cash-advance-approval',
+    label: 'Cash Advance Approval',
     icon: CheckSquare,
     roles: ['approver', 'admin'],
     group: 'approvals',
