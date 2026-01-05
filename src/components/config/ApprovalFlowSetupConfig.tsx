@@ -402,6 +402,7 @@ export function ApprovalFlowSetupConfig() {
                   <option value="Purchase Requisition">Purchase Requisition</option>
                   <option value="Canvass">Canvass</option>
                   <option value="Petty Cash">Petty Cash</option>
+                  <option value="Cash Advance">Cash Advance</option>
                   <option value="Reimbursement">Reimbursement</option>
                 </select>
               </div>
