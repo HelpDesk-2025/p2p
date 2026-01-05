@@ -147,7 +147,25 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   let cashAdvY = yPos - 30;
   const centerX = width / 2;
   const titleWidth = boldFont.widthOfTextAtSize('Cash Advance', 11);
-  drawText('Cash Advance', centerX - titleWidth / 2, cashAdvY, 11, true);
+
+  // Draw black background rectangle for title
+  page.drawRectangle({
+    x: centerX - titleWidth / 2 - 10,
+    y: cashAdvY - 5,
+    width: titleWidth + 20,
+    height: 18,
+    color: rgb(0, 0, 0),
+  });
+
+  // Draw white text on black background
+  page.drawText('Cash Advance', {
+    x: centerX - titleWidth / 2,
+    y: cashAdvY,
+    size: 11,
+    font: boldFont,
+    color: rgb(1, 1, 1),
+  });
+
   cashAdvY -= 30;
 
   // Left side: Agreement text
@@ -224,6 +242,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 30;
   if (lastApprover) {
     drawText(lastApprover.approver_name, rightColX, accountingY, 9, false);
+    accountingY -= 15;
+    drawText(new Date(lastApprover.approval_date).toLocaleDateString(), rightColX, accountingY, 8, false);
   }
   accountingY -= 15;
   drawText('Accounting', rightColX, accountingY, 9, true);
