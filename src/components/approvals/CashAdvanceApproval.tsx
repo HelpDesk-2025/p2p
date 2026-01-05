@@ -13,6 +13,7 @@ interface CashAdvanceReq {
   request_date: string;
   purpose: string;
   amount: number;
+  budgeted: boolean;
   payment_mode_id?: string;
   status: string;
   current_approval_level: number;
@@ -76,7 +77,7 @@ export function CashAdvanceApproval() {
           profile.company_id,
           req.department || req.user_profiles?.department || profile.department || '',
           'Cash Advance',
-          false,
+          req.budgeted,
           req.amount
         );
 
@@ -119,7 +120,7 @@ export function CashAdvanceApproval() {
         profile.company_id,
         request.department || request.user_profiles?.department || profile.department || '',
         'Cash Advance',
-        false,
+        request.budgeted,
         request.amount
       );
       setApprovalFlows(flows);
@@ -454,6 +455,14 @@ export function CashAdvanceApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
                   <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Budgeted</label>
+                  <p className="text-slate-900">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${selectedRequest.budgeted ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {selectedRequest.budgeted ? 'Budgeted' : 'Non-Budgeted'}
+                    </span>
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>

@@ -78,8 +78,8 @@ export async function getApprovalFlow(
     const presidentMinAmount = company?.president_min_amount || 0;
     let workflowType: number;
 
-    // For Purchase Requisition and Canvass, check budget setup
-    if (requestType === 'Purchase Requisition' || requestType === 'Canvass') {
+    // For Purchase Requisition, Canvass, and Cash Advance, check budget setup
+    if (requestType === 'Purchase Requisition' || requestType === 'Canvass' || requestType === 'Cash Advance') {
       if (!isBudgeted) {
         workflowType = WORKFLOW_TYPES.UNBUDGETED;
         console.log('📊 Budget Setup: UNBUDGETED - Workflow Type 1');
@@ -91,7 +91,7 @@ export async function getApprovalFlow(
         console.log(`📊 Budget Setup: BUDGETED ≥ ₱${presidentMinAmount.toLocaleString()} - Workflow Type 3`);
       }
     } else {
-      // For other request types, use unbudgeted workflow
+      // For other request types (Petty Cash, Reimbursement), use unbudgeted workflow
       workflowType = WORKFLOW_TYPES.UNBUDGETED;
       console.log('📊 Non-budget request type - Using Workflow Type 1');
     }
