@@ -78,11 +78,13 @@ export function ApprovalProgressTracker({
         // Load approval flows for this request
         if (companyId) {
           const { getApprovalFlow } = await import('../lib/approvalFlow');
+          // Handle both column names: is_budgeted (PR, Canvass) and budgeted (Petty Cash, Reimbursement, Cash Advance)
+          const isBudgeted = data.is_budgeted !== undefined ? data.is_budgeted : (data.budgeted || false);
           const flows = await getApprovalFlow(
             companyId,
             data.department || '',
             requestType,
-            data.is_budgeted || false,
+            isBudgeted,
             data.total_amount || data.amount || 0
           );
           setApprovalFlows(flows || []);
