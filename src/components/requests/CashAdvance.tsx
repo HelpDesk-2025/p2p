@@ -12,6 +12,7 @@ interface CashAdvanceReq {
   request_date: string;
   purpose: string;
   amount: number;
+  budgeted: boolean;
   status: string;
   rfp_pdf_path?: string;
   attachments_pdf_path?: string;
@@ -796,6 +797,14 @@ export function CashAdvance() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
                   <p className="text-slate-900 font-bold">₱{viewingRequest.amount.toFixed(2)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Budget Status</label>
+                  <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
+                    viewingRequest.budgeted ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {viewingRequest.budgeted ? 'Budgeted' : 'Non-budgeted'}
+                  </span>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
