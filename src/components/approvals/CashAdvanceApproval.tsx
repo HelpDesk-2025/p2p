@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, Loader2, Download } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2 } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -18,7 +18,11 @@ interface CashAdvanceReq {
   status: string;
   current_approval_level: number;
   attachments_pdf_path?: string;
-  attachments?: any[];
+  attachment_metadata?: Array<{
+    name: string;
+    type: string;
+    size: number;
+  }>;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -38,8 +42,6 @@ export function CashAdvanceApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
-  const [showPdfPreview, setShowPdfPreview] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -159,53 +161,6 @@ export function CashAdvanceApproval() {
     }
 
     return false;
-  };
-
-  const downloadAttachments = async (pdfPath: string, caNumber: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .download(pdfPath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `CA_${caNumber}_Attachments.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading attachments:', error);
-      alert('Failed to download attachments');
-    }
-  };
-
-  const previewAttachments = async (pdfPath: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .download(pdfPath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      setPdfPreviewUrl(url);
-      setShowPdfPreview(true);
-    } catch (error) {
-      console.error('Error loading PDF preview:', error);
-      alert('Failed to load PDF preview');
-    }
-  };
-
-  const closePdfPreview = () => {
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-    }
-    setPdfPreviewUrl(null);
-    setShowPdfPreview(false);
   };
 
   const handleAction = async (action: 'approved' | 'rejected') => {
@@ -475,25 +430,20 @@ export function CashAdvanceApproval() {
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
 
-              {selectedRequest.attachments_pdf_path && (
+              {selectedRequest.attachment_metadata && selectedRequest.attachment_metadata.length > 0 && (
                 <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => previewAttachments(selectedRequest.attachments_pdf_path!)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                      <Eye size={18} />
-                      Preview Attachments
-                    </button>
-                    <button
-                      onClick={() => downloadAttachments(selectedRequest.attachments_pdf_path!, selectedRequest.ca_number)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
-                    >
-                      <Download size={18} />
-                      Download
-                    </button>
-                  </div>
+                  <ul className="space-y-2">
+                    {selectedRequest.attachment_metadata.map((file, index) => (
+                      <li key={index} className="flex items-center gap-2 text-slate-700">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                        <span className="font-medium">{file.name}</span>
+                        <span className="text-xs text-slate-500">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
@@ -539,37 +489,6 @@ export function CashAdvanceApproval() {
                   {rejecting ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPdfPreview && pdfPreviewUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900">Attachments Preview</h3>
-              <button
-                onClick={closePdfPreview}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={pdfPreviewUrl}
-                className="w-full h-full"
-                title="PDF Preview"
-              />
-            </div>
-            <div className="p-4 border-t border-slate-200 flex justify-end">
-              <button
-                onClick={closePdfPreview}
-                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

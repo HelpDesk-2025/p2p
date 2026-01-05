@@ -175,6 +175,7 @@ export function CashAdvance() {
     try {
       let insertedRequest;
       let attachmentsPdfPath: string | null = null;
+      let attachmentMetadata: any[] = [];
 
       const budgetedValue = formData.budgeted === 'Budgeted';
 
@@ -193,6 +194,12 @@ export function CashAdvance() {
 
           if (uploadError) throw uploadError;
           attachmentsPdfPath = filePath;
+
+          attachmentMetadata = attachments.map(file => ({
+            name: file.name,
+            type: file.type,
+            size: file.size
+          }));
         } catch (error: any) {
           console.error('Error processing attachments:', error);
           alert('Error processing attachments: ' + error.message);
@@ -213,6 +220,7 @@ export function CashAdvance() {
 
         if (attachmentsPdfPath) {
           updateData.attachments_pdf_path = attachmentsPdfPath;
+          updateData.attachment_metadata = attachmentMetadata;
         }
 
         const { data, error } = await supabase
@@ -243,6 +251,7 @@ export function CashAdvance() {
 
         if (attachmentsPdfPath) {
           insertData.attachments_pdf_path = attachmentsPdfPath;
+          insertData.attachment_metadata = attachmentMetadata;
         }
 
         const { data, error } = await supabase
