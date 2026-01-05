@@ -271,7 +271,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   drawText('Recommended By', recByX, approvalY, 10, true);
   drawText('Approved By', app1X, approvalY, 10, true);
 
-  approvalY -= 35;
+  approvalY -= 50;
 
   // Draw first approver (Recommended By)
   if (firstApprover) {
@@ -281,7 +281,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: recByX + 15,
-          y: approvalY + 5,
+          y: approvalY - 10,
           width: esigDims.width,
           height: esigDims.height,
         });
@@ -290,8 +290,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(firstApprover.approver_name, recByX, approvalY - 15, 9, false);
-    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), recByX, approvalY - 30, 8, false);
+    drawText(firstApprover.approver_name, recByX, approvalY - 30, 9, false);
+    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), recByX, approvalY - 45, 8, false);
   }
 
   // Draw middle approvers (Approved By section - max 2)
@@ -303,7 +303,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: app1X + 15,
-          y: approvalY + 5,
+          y: approvalY - 10,
           width: esigDims.width,
           height: esigDims.height,
         });
@@ -312,8 +312,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(approver1.approver_name, app1X, approvalY - 15, 9, false);
-    drawText(new Date(approver1.approval_date).toLocaleDateString(), app1X, approvalY - 30, 8, false);
+    drawText(approver1.approver_name, app1X, approvalY - 30, 9, false);
+    drawText(new Date(approver1.approval_date).toLocaleDateString(), app1X, approvalY - 45, 8, false);
   }
 
   if (middleApprovers.length > 1) {
@@ -324,7 +324,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: app2X + 15,
-          y: approvalY + 5,
+          y: approvalY - 10,
           width: esigDims.width,
           height: esigDims.height,
         });
@@ -333,8 +333,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(approver2.approver_name, app2X, approvalY - 15, 9, false);
-    drawText(new Date(approver2.approval_date).toLocaleDateString(), app2X, approvalY - 30, 8, false);
+    drawText(approver2.approver_name, app2X, approvalY - 30, 9, false);
+    drawText(new Date(approver2.approval_date).toLocaleDateString(), app2X, approvalY - 45, 8, false);
   }
 
   const pdfBytes = await pdfDoc.save();
