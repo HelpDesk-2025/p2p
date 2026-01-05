@@ -18,7 +18,7 @@ export interface ApprovalFlowSetup {
   id: string;
   name: string;
   company_id: string;
-  department: string | null;
+  department_id: string | null;
   request_type: string;
   is_active: boolean;
 }
