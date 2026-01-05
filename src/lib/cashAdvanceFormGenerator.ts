@@ -206,6 +206,9 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   drawText('Payee', leftColX, cashAdvY, 9, true);
 
   // Right side: Accounting Department info
+  // Get last approver for date
+  const lastApprover = data.approvals[data.approvals.length - 1];
+
   let accountingY = yPos - 50;
   drawText('To be filled out by Accounting Department:', rightColX, accountingY, 9, true);
   accountingY -= 25;
@@ -215,7 +218,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 18;
 
   drawText('Date', rightColX, accountingY, 9, true);
-  drawText(data.outstandingAslDate, rightColX + 100, accountingY, 9, false);
+  const approvalDate = lastApprover ? new Date(lastApprover.approval_date).toLocaleDateString() : data.outstandingAslDate;
+  drawText(approvalDate, rightColX + 100, accountingY, 9, false);
   accountingY -= 18;
 
   drawText('Remarks', rightColX, accountingY, 9, true);
@@ -223,7 +227,6 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 35;
 
   // Accounting signature (last approver)
-  const lastApprover = data.approvals[data.approvals.length - 1];
   if (lastApprover && lastApprover.approver_esig) {
     try {
       const esigImage = await pdfDoc.embedPng(lastApprover.approver_esig);
@@ -242,8 +245,6 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 30;
   if (lastApprover) {
     drawText(lastApprover.approver_name, rightColX, accountingY, 9, false);
-    accountingY -= 15;
-    drawText(new Date(lastApprover.approval_date).toLocaleDateString(), rightColX, accountingY, 8, false);
   }
   accountingY -= 15;
   drawText('Accounting', rightColX, accountingY, 9, true);
