@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, Loader2, Download } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -16,6 +16,7 @@ interface CashAdvanceReq {
   payment_mode_id?: string;
   status: string;
   current_approval_level: number;
+  attachments_pdf_path?: string;
   attachments?: any[];
   user_profiles?: {
     full_name: string;
@@ -155,6 +156,28 @@ export function CashAdvanceApproval() {
     }
 
     return false;
+  };
+
+  const downloadAttachments = async (pdfPath: string, caNumber: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CA_${caNumber}_Attachments.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachments:', error);
+      alert('Failed to download attachments');
+    }
   };
 
   const handleAction = async (action: 'approved' | 'rejected') => {
@@ -415,6 +438,19 @@ export function CashAdvanceApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.attachments_pdf_path && (
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Attachments</label>
+                  <button
+                    onClick={() => downloadAttachments(selectedRequest.attachments_pdf_path!, selectedRequest.ca_number)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Download size={18} />
+                    Download Attachments
+                  </button>
+                </div>
+              )}
 
               <ApprovalProgressTracker
                 requestType="Cash Advance"

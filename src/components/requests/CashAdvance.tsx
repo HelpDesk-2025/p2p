@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2 } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2, Upload, Trash2 } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 
 interface CashAdvanceReq {
   id: string;
@@ -13,6 +14,7 @@ interface CashAdvanceReq {
   amount: number;
   status: string;
   rfp_pdf_path?: string;
+  attachments_pdf_path?: string;
 }
 
 export function CashAdvance() {
@@ -30,6 +32,8 @@ export function CashAdvance() {
   const [viewingRequest, setViewingRequest] = useState<CashAdvanceReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CashAdvanceReq | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -115,6 +119,32 @@ export function CashAdvance() {
     vendor.number?.toLowerCase().includes(vendorSearchTerm.toLowerCase())
   );
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const validFiles: File[] = [];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (allowedTypes.includes(file.type)) {
+        validFiles.push(file);
+      } else {
+        alert(`File ${file.name} is not a valid format. Only images (JPG, PNG) and PDF files are allowed.`);
+      }
+    }
+
+    setAttachments(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleEditDraft = (request: CashAdvanceReq) => {
     setEditingRequest(request);
     const reqData = request as any;
@@ -142,21 +172,50 @@ export function CashAdvance() {
     setLoading(true);
     try {
       let insertedRequest;
+      let attachmentsPdfPath: string | null = null;
 
       const budgetedValue = formData.budgeted === 'Budgeted';
 
+      if (attachments.length > 0) {
+        try {
+          const mergedPdfBlob = await mergeFilesToPDFBlob(attachments);
+          const fileName = `CA_${formData.document_no}_attachments_${Date.now()}.pdf`;
+          const filePath = `cash_advance/${formData.document_no}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, mergedPdfBlob, {
+              contentType: 'application/pdf',
+              upsert: true,
+            });
+
+          if (uploadError) throw uploadError;
+          attachmentsPdfPath = filePath;
+        } catch (error: any) {
+          console.error('Error processing attachments:', error);
+          alert('Error processing attachments: ' + error.message);
+          throw error;
+        }
+      }
+
       if (editingRequest) {
+        const updateData: any = {
+          payee: formData.payee,
+          payee_number: formData.payee_number,
+          purpose: formData.purpose,
+          amount: formData.amount,
+          date_needed: formData.date_needed || null,
+          budgeted: budgetedValue,
+          status,
+        };
+
+        if (attachmentsPdfPath) {
+          updateData.attachments_pdf_path = attachmentsPdfPath;
+        }
+
         const { data, error } = await supabase
           .from('cash_advance_requests')
-          .update({
-            payee: formData.payee,
-            payee_number: formData.payee_number,
-            purpose: formData.purpose,
-            amount: formData.amount,
-            date_needed: formData.date_needed || null,
-            budgeted: budgetedValue,
-            status,
-          })
+          .update(updateData)
           .eq('id', editingRequest.id)
           .select()
           .single();
@@ -164,23 +223,29 @@ export function CashAdvance() {
         if (error) throw error;
         insertedRequest = data;
       } else {
+        const insertData: any = {
+          ca_number: formData.document_no,
+          requester_id: profile?.id,
+          company_id: profile?.company_id,
+          department: profile?.department || '',
+          request_date: new Date().toISOString().split('T')[0],
+          payee: formData.payee,
+          payee_number: formData.payee_number,
+          purpose: formData.purpose,
+          amount: formData.amount,
+          date_needed: formData.date_needed || null,
+          budgeted: budgetedValue,
+          status,
+          current_approval_level: 0,
+        };
+
+        if (attachmentsPdfPath) {
+          insertData.attachments_pdf_path = attachmentsPdfPath;
+        }
+
         const { data, error } = await supabase
           .from('cash_advance_requests')
-          .insert({
-            ca_number: formData.document_no,
-            requester_id: profile?.id,
-            company_id: profile?.company_id,
-            department: profile?.department || '',
-            request_date: new Date().toISOString().split('T')[0],
-            payee: formData.payee,
-            payee_number: formData.payee_number,
-            purpose: formData.purpose,
-            amount: formData.amount,
-            date_needed: formData.date_needed || null,
-            budgeted: budgetedValue,
-            status,
-            current_approval_level: 0,
-          })
+          .insert(insertData)
           .select()
           .single();
 
@@ -238,6 +303,7 @@ export function CashAdvance() {
       setShowForm(false);
       setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted' });
       setVendorSearchTerm('');
+      setAttachments([]);
       setEditingRequest(null);
       loadRequests();
       if (!editingRequest) {
@@ -483,6 +549,66 @@ export function CashAdvance() {
             </select>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Attachments (Images & PDFs)
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,application/pdf"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                >
+                  <Upload size={18} />
+                  Upload Files
+                </button>
+                <span className="text-sm text-slate-500">
+                  JPG, PNG, or PDF files
+                </span>
+              </div>
+
+              {attachments.length > 0 && (
+                <div className="border border-slate-200 rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    {attachments.length} file(s) selected
+                  </p>
+                  {attachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText size={16} className="text-slate-400 flex-shrink-0" />
+                        <span className="text-sm text-slate-700 truncate">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-slate-500 flex-shrink-0">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition flex-shrink-0"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button
               onClick={() => handleSubmit('draft')}
@@ -665,6 +791,15 @@ export function CashAdvance() {
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
+                )}
+                {viewingRequest.attachments_pdf_path && (
+                  <button
+                    onClick={() => downloadRFP(viewingRequest.attachments_pdf_path!, viewingRequest.ca_number)}
+                    className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  >
+                    <Download size={18} />
+                    Download Attachments
+                  </button>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
                   <button
