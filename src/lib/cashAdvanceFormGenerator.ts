@@ -135,7 +135,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     drawText(currentLine, leftColX, purposeY, 10, false);
   }
 
-  yPos -= sectionHeight;
+  yPos -= sectionHeight + 10;
 
   // Cash Advance section
   const cashAdvanceHeight = 220;
@@ -144,7 +144,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   const midX = width / 2;
   drawLine(midX, yPos - cashAdvanceHeight, midX, yPos);
 
-  let cashAdvY = yPos - 25;
+  let cashAdvY = yPos - 30;
   const centerX = width / 2;
   const titleWidth = boldFont.widthOfTextAtSize('Cash Advance', 11);
   drawText('Cash Advance', centerX - titleWidth / 2, cashAdvY, 11, true);
