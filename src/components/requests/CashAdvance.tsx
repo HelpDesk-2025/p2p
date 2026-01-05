@@ -10,6 +10,8 @@ interface CashAdvanceReq {
   id: string;
   ca_number: string;
   request_date: string;
+  payee?: string;
+  payee_number?: string;
   purpose: string;
   amount: number;
   budgeted: boolean;
@@ -794,6 +796,13 @@ export function CashAdvance() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Payee/Vendor</label>
+                  <p className="text-slate-900">{viewingRequest.payee || 'N/A'}</p>
+                  {viewingRequest.payee_number && (
+                    <p className="text-xs text-slate-500">Vendor No: {viewingRequest.payee_number}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
