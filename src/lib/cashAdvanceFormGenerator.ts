@@ -188,7 +188,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   if (data.payeeEsig) {
     try {
       const esigImage = await pdfDoc.embedPng(data.payeeEsig);
-      const esigDims = esigImage.scale(0.15);
+      const esigDims = esigImage.scale(0.25);
       page.drawImage(esigImage, {
         x: leftColX + 20,
         y: cashAdvY,
@@ -230,7 +230,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   if (lastApprover && lastApprover.approver_esig) {
     try {
       const esigImage = await pdfDoc.embedPng(lastApprover.approver_esig);
-      const esigDims = esigImage.scale(0.15);
+      const esigDims = esigImage.scale(0.25);
       page.drawImage(esigImage, {
         x: rightColX + 20,
         y: accountingY,
@@ -278,7 +278,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     if (firstApprover.approver_esig) {
       try {
         const esigImage = await pdfDoc.embedPng(firstApprover.approver_esig);
-        const esigDims = esigImage.scale(0.15);
+        const esigDims = esigImage.scale(0.25);
         page.drawImage(esigImage, {
           x: recByX + 15,
           y: approvalY + 5,
@@ -300,7 +300,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     if (approver1.approver_esig) {
       try {
         const esigImage = await pdfDoc.embedPng(approver1.approver_esig);
-        const esigDims = esigImage.scale(0.15);
+        const esigDims = esigImage.scale(0.25);
         page.drawImage(esigImage, {
           x: app1X + 15,
           y: approvalY + 5,
@@ -321,7 +321,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     if (approver2.approver_esig) {
       try {
         const esigImage = await pdfDoc.embedPng(approver2.approver_esig);
-        const esigDims = esigImage.scale(0.15);
+        const esigDims = esigImage.scale(0.25);
         page.drawImage(esigImage, {
           x: app2X + 15,
           y: approvalY + 5,
