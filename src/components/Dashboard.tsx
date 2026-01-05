@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Banknote,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -18,12 +19,14 @@ interface DashboardStats {
     canvass: number;
     pettyCash: number;
     reimbursement: number;
+    cashAdvance: number;
   };
   pendingApprovals: {
     pr: number;
     canvass: number;
     pettyCash: number;
     reimbursement: number;
+    cashAdvance: number;
   };
   statusCounts: {
     pending: number;
@@ -35,8 +38,8 @@ interface DashboardStats {
 export function Dashboard() {
   const { profile } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
-    myRequests: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0 },
-    pendingApprovals: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0 },
+    myRequests: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 },
+    pendingApprovals: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 },
     statusCounts: { pending: 0, approved: 0, rejected: 0 },
   });
   const [loading, setLoading] = useState(true);
@@ -49,7 +52,7 @@ export function Dashboard() {
     if (!profile?.id) return;
 
     try {
-      const [prData, canvassData, pcData, reimbData] = await Promise.all([
+      const [prData, canvassData, pcData, reimbData, cashAdvData] = await Promise.all([
         supabase
           .from('purchase_requisitions')
           .select('status', { count: 'exact' })
@@ -66,6 +69,10 @@ export function Dashboard() {
           .from('reimbursement_requests')
           .select('status', { count: 'exact' })
           .eq('requester_id', profile.id),
+        supabase
+          .from('cash_advance_requests')
+          .select('status', { count: 'exact' })
+          .eq('requester_id', profile.id),
       ]);
 
       const myRequests = {
@@ -73,11 +80,12 @@ export function Dashboard() {
         canvass: canvassData.count || 0,
         pettyCash: pcData.count || 0,
         reimbursement: reimbData.count || 0,
+        cashAdvance: cashAdvData.count || 0,
       };
 
-      let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0 };
+      let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 };
       if (profile.role === 'approver' || profile.role === 'admin') {
-        const [prPending, canvassPending, pcPending, reimbPending] = await Promise.all([
+        const [prPending, canvassPending, pcPending, reimbPending, cashAdvPending] = await Promise.all([
           supabase
             .from('purchase_requisitions')
             .select('id', { count: 'exact' })
@@ -94,6 +102,10 @@ export function Dashboard() {
             .from('reimbursement_requests')
             .select('id', { count: 'exact' })
             .eq('status', 'pending'),
+          supabase
+            .from('cash_advance_requests')
+            .select('id', { count: 'exact' })
+            .eq('status', 'pending'),
         ]);
 
         pendingApprovals = {
@@ -101,6 +113,7 @@ export function Dashboard() {
           canvass: canvassPending.count || 0,
           pettyCash: pcPending.count || 0,
           reimbursement: reimbPending.count || 0,
+          cashAdvance: cashAdvPending.count || 0,
         };
       }
 
@@ -108,7 +121,7 @@ export function Dashboard() {
       let approved = 0;
       let rejected = 0;
 
-      [prData, canvassData, pcData, reimbData].forEach((result) => {
+      [prData, canvassData, pcData, reimbData, cashAdvData].forEach((result) => {
         result.data?.forEach((item: any) => {
           if (item.status === 'pending') pending++;
           else if (item.status === 'approved') approved++;
@@ -180,6 +193,11 @@ export function Dashboard() {
               count={stats.myRequests.pettyCash}
             />
             <RequestTypeCard
+              icon={Banknote}
+              label="Cash Advance"
+              count={stats.myRequests.cashAdvance}
+            />
+            <RequestTypeCard
               icon={Receipt}
               label="Reimbursement"
               count={stats.myRequests.reimbursement}
@@ -210,6 +228,12 @@ export function Dashboard() {
                 label="Petty Cash"
                 count={stats.pendingApprovals.pettyCash}
                 alert={stats.pendingApprovals.pettyCash > 0}
+              />
+              <RequestTypeCard
+                icon={Banknote}
+                label="Cash Advance"
+                count={stats.pendingApprovals.cashAdvance}
+                alert={stats.pendingApprovals.cashAdvance > 0}
               />
               <RequestTypeCard
                 icon={Receipt}
