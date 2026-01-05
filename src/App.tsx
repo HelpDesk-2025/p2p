@@ -6,10 +6,12 @@ import { Dashboard } from './components/Dashboard';
 import { PurchaseRequisition } from './components/requests/PurchaseRequisition';
 import { PettyCash } from './components/requests/PettyCash';
 import { Canvass } from './components/requests/Canvass';
+import { CashAdvance } from './components/requests/CashAdvance';
 import { Reimbursement } from './components/requests/Reimbursement';
 import { PRApproval } from './components/approvals/PRApproval';
 import { CanvassApproval } from './components/approvals/CanvassApproval';
 import { PettyCashApproval } from './components/approvals/PettyCashApproval';
+import { CashAdvanceApproval } from './components/approvals/CashAdvanceApproval';
 import { ReimbursementApproval } from './components/approvals/ReimbursementApproval';
 import { SmeApproval } from './components/approvals/SmeApproval';
 import { ConfigManager } from './components/config/ConfigManager';
@@ -42,6 +44,8 @@ function AppContent() {
         return <Canvass />;
       case 'petty-cash-request':
         return <PettyCash />;
+      case 'cash-advance-request':
+        return <CashAdvance />;
       case 'reimbursement-request':
         return <Reimbursement />;
       case 'pr-approval':
@@ -50,6 +54,8 @@ function AppContent() {
         return <CanvassApproval />;
       case 'petty-cash-approval':
         return <PettyCashApproval />;
+      case 'cash-advance-approval':
+        return <CashAdvanceApproval />;
       case 'reimbursement-approval':
         return <ReimbursementApproval />;
       case 'sme-approval':
