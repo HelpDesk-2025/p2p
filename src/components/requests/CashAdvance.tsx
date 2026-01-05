@@ -934,7 +934,7 @@ export function CashAdvance() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
-                  <p className="text-slate-900 font-bold">₱{viewingRequest.amount.toFixed(2)}</p>
+                  <p className="text-slate-900 font-bold">₱{viewingRequest.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>

@@ -508,7 +508,7 @@ export function CashAdvanceApproval() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-semibold text-slate-900">
-                      ₱{request.amount.toLocaleString()}
+                      ₱{request.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -566,7 +566,7 @@ export function CashAdvanceApproval() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
-                  <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString()}</p>
+                  <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budgeted</label>
