@@ -273,9 +273,10 @@ export function CashAdvanceApproval() {
 
         const { data: ledgerData } = await supabase
           .from('approval_ledger')
-          .select('approver_name, approver_id, approval_date, sequence')
+          .select('approver_name, approver_id, approval_date, sequence, action')
           .eq('request_id', selectedRequest.id)
           .eq('request_type', 'Cash Advance')
+          .neq('action', 'Submitted')
           .order('sequence', { ascending: true });
 
         const approvalRecords = await Promise.all(
