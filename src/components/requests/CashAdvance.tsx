@@ -563,8 +563,8 @@ export function CashAdvance() {
                   <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
                     {req.purpose}
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                    ${req.amount.toFixed(2)}
+                  <td className="px-6 py-4 text-sm font-medium text-slate-900 text-right">
+                    ₱{req.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
