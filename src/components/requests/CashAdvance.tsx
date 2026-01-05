@@ -5,11 +5,6 @@ import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2 } from 'luc
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
-interface PaymentMode {
-  id: string;
-  mode_name: string;
-}
-
 interface CashAdvanceReq {
   id: string;
   ca_number: string;
@@ -23,7 +18,6 @@ interface CashAdvanceReq {
 export function CashAdvance() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<CashAdvanceReq[]>([]);
-  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [vendorSearchTerm, setVendorSearchTerm] = useState('');
@@ -44,12 +38,10 @@ export function CashAdvance() {
     amount: 0,
     date_needed: '',
     budgeted: 'Budgeted',
-    payment_mode_id: '',
   });
 
   useEffect(() => {
     loadRequests();
-    loadPaymentModes();
     loadVendors();
   }, []);
 
@@ -83,11 +75,6 @@ export function CashAdvance() {
       .eq('requester_id', profile?.id)
       .order('created_at', { ascending: false });
     setRequests(data || []);
-  };
-
-  const loadPaymentModes = async () => {
-    const { data } = await supabase.from('payment_modes').select('*').eq('is_active', true);
-    setPaymentModes(data || []);
   };
 
   const loadVendors = async () => {
@@ -139,7 +126,6 @@ export function CashAdvance() {
       amount: request.amount,
       date_needed: reqData.date_needed || '',
       budgeted: reqData.budgeted ? 'Budgeted' : 'Non-budgeted',
-      payment_mode_id: reqData.payment_mode_id || '',
     });
     setVendorSearchTerm(reqData.payee || '');
     setShowViewModal(false);
@@ -169,7 +155,6 @@ export function CashAdvance() {
             amount: formData.amount,
             date_needed: formData.date_needed || null,
             budgeted: budgetedValue,
-            payment_mode_id: formData.payment_mode_id || null,
             status,
           })
           .eq('id', editingRequest.id)
@@ -193,7 +178,6 @@ export function CashAdvance() {
             amount: formData.amount,
             date_needed: formData.date_needed || null,
             budgeted: budgetedValue,
-            payment_mode_id: formData.payment_mode_id || null,
             status,
             current_approval_level: 0,
           })
@@ -252,7 +236,7 @@ export function CashAdvance() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted' });
       setVendorSearchTerm('');
       setEditingRequest(null);
       loadRequests();
@@ -496,22 +480,6 @@ export function CashAdvance() {
             >
               <option value="Budgeted">Budgeted</option>
               <option value="Non-budgeted">Non-budgeted</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
-            <select
-              value={formData.payment_mode_id}
-              onChange={(e) => setFormData({ ...formData, payment_mode_id: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="">Select payment mode</option>
-              {paymentModes.map((mode) => (
-                <option key={mode.id} value={mode.id}>
-                  {mode.mode_name}
-                </option>
-              ))}
             </select>
           </div>
 
