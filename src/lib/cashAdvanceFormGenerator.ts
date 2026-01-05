@@ -200,7 +200,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
   }
 
-  cashAdvY -= 30;
+  cashAdvY -= 15;
   drawText(data.payee, leftColX, cashAdvY, 9, false);
   cashAdvY -= 15;
   drawText('Payee', leftColX, cashAdvY, 9, true);
@@ -242,7 +242,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
   }
 
-  accountingY -= 30;
+  accountingY -= 15;
   if (lastApprover) {
     drawText(lastApprover.approver_name, rightColX, accountingY, 9, false);
   }
@@ -290,8 +290,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(firstApprover.approver_name, recByX, approvalY - 25, 9, false);
-    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), recByX, approvalY - 40, 8, false);
+    drawText(firstApprover.approver_name, recByX, approvalY - 15, 9, false);
+    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), recByX, approvalY - 30, 8, false);
   }
 
   // Draw middle approvers (Approved By section - max 2)
@@ -312,8 +312,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(approver1.approver_name, app1X, approvalY - 25, 9, false);
-    drawText(new Date(approver1.approval_date).toLocaleDateString(), app1X, approvalY - 40, 8, false);
+    drawText(approver1.approver_name, app1X, approvalY - 15, 9, false);
+    drawText(new Date(approver1.approval_date).toLocaleDateString(), app1X, approvalY - 30, 8, false);
   }
 
   if (middleApprovers.length > 1) {
@@ -333,8 +333,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(approver2.approver_name, app2X, approvalY - 25, 9, false);
-    drawText(new Date(approver2.approval_date).toLocaleDateString(), app2X, approvalY - 40, 8, false);
+    drawText(approver2.approver_name, app2X, approvalY - 15, 9, false);
+    drawText(new Date(approver2.approval_date).toLocaleDateString(), app2X, approvalY - 30, 8, false);
   }
 
   const pdfBytes = await pdfDoc.save();
