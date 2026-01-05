@@ -95,14 +95,14 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   drawText('Requested By', leftColX, detailY, 10, true);
   drawText(data.requestedBy, leftColX + valueOffset, detailY, 10, false);
   drawText('Date', rightColX, detailY, 10, true);
-  drawText(data.requestDate, rightColX + 50, detailY, 10, false);
+  drawText(data.requestDate, rightColX + 85, detailY, 10, false);
   detailY -= 20;
 
   drawText('Amount', leftColX, detailY, 10, true);
   drawText(data.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     leftColX + valueOffset, detailY, 10, false);
   drawText('Company', rightColX, detailY, 10, true);
-  drawText(data.company, rightColX + 50, detailY, 10, false);
+  drawText(data.company, rightColX + 85, detailY, 10, false);
   detailY -= 20;
 
   drawText('', leftColX, detailY, 10, true);
