@@ -202,7 +202,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
 
   cashAdvY -= 15;
   drawText(data.payee, leftColX, cashAdvY, 9, false);
-  cashAdvY -= 15;
+  cashAdvY -= 25;
   drawText('Payee', leftColX, cashAdvY, 9, true);
 
   // Right side: Accounting Department info
@@ -246,7 +246,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   if (lastApprover) {
     drawText(lastApprover.approver_name, rightColX, accountingY, 9, false);
   }
-  accountingY -= 15;
+  accountingY -= 25;
   drawText('Accounting', rightColX, accountingY, 9, true);
 
   yPos -= cashAdvanceHeight;
