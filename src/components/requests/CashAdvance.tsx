@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2, Upload, Trash2 } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2, Upload, Trash2, RefreshCw } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -10,15 +10,20 @@ interface CashAdvanceReq {
   id: string;
   ca_number: string;
   request_date: string;
+  requester_id: string;
   payee?: string;
   payee_number?: string;
   purpose: string;
   amount: number;
   budgeted: boolean;
   status: string;
+  department?: string;
   rfp_pdf_path?: string;
   attachments_pdf_path?: string;
   approved_ca_pdf_path?: string;
+  outstanding_asl?: string;
+  outstanding_asl_date?: string;
+  remarks?: string;
   attachment_metadata?: Array<{
     name: string;
     type: string;
@@ -45,6 +50,7 @@ export function CashAdvance() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -475,6 +481,128 @@ export function CashAdvance() {
     setShowPdfPreview(false);
   };
 
+  const regenerateApprovedForm = async (request: CashAdvanceReq) => {
+    if (!profile?.company_id) {
+      alert('Company information not found');
+      return;
+    }
+
+    setRegenerating(true);
+    try {
+      const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', profile.company_id)
+        .single();
+
+      const { data: requestorData } = await supabase
+        .from('user_profiles')
+        .select('full_name, e_sig, department')
+        .eq('id', request.requester_id)
+        .single();
+
+      const { data: payeeData } = await supabase
+        .from('user_profiles')
+        .select('e_sig')
+        .eq('full_name', request.payee)
+        .maybeSingle();
+
+      const { data: ledgerData } = await supabase
+        .from('approval_ledger')
+        .select('approver_name, approver_id, approval_date, sequence, action')
+        .eq('request_id', request.id)
+        .eq('request_type', 'Cash Advance')
+        .neq('action', 'Submitted')
+        .order('sequence', { ascending: true });
+
+      const approvalRecords = await Promise.all(
+        (ledgerData || []).map(async (entry) => {
+          if (!entry.approver_id) {
+            return {
+              approver_name: entry.approver_name,
+              approver_esig: null,
+              approval_date: entry.approval_date,
+              sequence: entry.sequence
+            };
+          }
+
+          const { data: approverData } = await supabase
+            .from('user_profiles')
+            .select('e_sig')
+            .eq('id', entry.approver_id)
+            .maybeSingle();
+
+          return {
+            approver_name: entry.approver_name,
+            approver_esig: approverData?.e_sig || null,
+            approval_date: entry.approval_date,
+            sequence: entry.sequence
+          };
+        })
+      );
+
+      const pdfBytes = await generateCashAdvanceForm({
+        caNumber: request.ca_number,
+        requestedBy: requestorData?.full_name || 'Unknown',
+        requestDate: new Date(request.request_date).toLocaleDateString(),
+        amount: request.amount,
+        company: companyData?.name || 'N/A',
+        department: request.department || requestorData?.department || 'N/A',
+        purpose: request.purpose,
+        payee: request.payee || 'Unknown',
+        payeeEsig: payeeData?.e_sig || null,
+        outstandingAsl: request.outstanding_asl || '',
+        outstandingAslDate: request.outstanding_asl_date ? new Date(request.outstanding_asl_date).toLocaleDateString() : '',
+        remarks: request.remarks || '',
+        approvals: approvalRecords
+      });
+
+      const fileName = `CA_${request.ca_number}_Approved_${Date.now()}.pdf`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(fileName, pdfBytes, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Update the database with the new PDF path
+      const { error: updateError } = await supabase
+        .from('cash_advance_requests')
+        .update({ approved_ca_pdf_path: uploadData.path })
+        .eq('id', request.id);
+
+      if (updateError) throw updateError;
+
+      alert('Approved form regenerated successfully!');
+
+      // Reload requests to show updated data
+      await loadRequests();
+
+      // Update viewing request if modal is open
+      if (viewingRequest?.id === request.id) {
+        const { data: updatedRequest } = await supabase
+          .from('cash_advance_requests')
+          .select('*')
+          .eq('id', request.id)
+          .single();
+
+        if (updatedRequest) {
+          setViewingRequest(updatedRequest);
+        }
+      }
+    } catch (error) {
+      console.error('Error regenerating approved form:', error);
+      alert('Failed to regenerate approved form. Please try again.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -866,6 +994,14 @@ export function CashAdvance() {
                     >
                       <Download size={18} />
                       Download Form
+                    </button>
+                    <button
+                      onClick={() => regenerateApprovedForm(viewingRequest)}
+                      disabled={regenerating}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {regenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                      {regenerating ? 'Regenerating...' : 'Regenerate'}
                     </button>
                   </div>
                 </div>
