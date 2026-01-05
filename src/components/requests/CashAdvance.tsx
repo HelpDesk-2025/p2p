@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2 } from 'lucide-react';
@@ -24,6 +24,11 @@ export function CashAdvance() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<CashAdvanceReq[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const vendorDropdownRef = useRef<HTMLDivElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -34,16 +39,29 @@ export function CashAdvance() {
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
+    payee_number: '',
     purpose: '',
     amount: 0,
     date_needed: '',
-    budgeted: true,
+    budgeted: 'Budgeted',
     payment_mode_id: '',
   });
 
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
+    loadVendors();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
+        setShowVendorDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const generateDocumentNo = async () => {
@@ -72,17 +90,58 @@ export function CashAdvance() {
     setPaymentModes(data || []);
   };
 
+  const loadVendors = async () => {
+    setLoadingVendors(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No session found');
+        return;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch vendors');
+      }
+
+      const data = await response.json();
+      const sortedVendors = (data.value || []).sort((a: any, b: any) =>
+        (a.displayName || '').localeCompare(b.displayName || '')
+      );
+      setVendors(sortedVendors);
+    } catch (error) {
+      console.error('Error loading vendors:', error);
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  const filteredVendors = vendors.filter((vendor) =>
+    vendor.displayName?.toLowerCase().includes(vendorSearchTerm.toLowerCase()) ||
+    vendor.number?.toLowerCase().includes(vendorSearchTerm.toLowerCase())
+  );
+
   const handleEditDraft = (request: CashAdvanceReq) => {
     setEditingRequest(request);
+    const reqData = request as any;
     setFormData({
       document_no: request.ca_number,
-      payee: (request as any).payee || '',
+      payee: reqData.payee || '',
+      payee_number: reqData.payee_number || '',
       purpose: request.purpose,
       amount: request.amount,
-      date_needed: (request as any).date_needed || '',
-      budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
-      payment_mode_id: (request as any).payment_mode_id || '',
+      date_needed: reqData.date_needed || '',
+      budgeted: reqData.budgeted ? 'Budgeted' : 'Non-budgeted',
+      payment_mode_id: reqData.payment_mode_id || '',
     });
+    setVendorSearchTerm(reqData.payee || '');
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -98,15 +157,18 @@ export function CashAdvance() {
     try {
       let insertedRequest;
 
+      const budgetedValue = formData.budgeted === 'Budgeted';
+
       if (editingRequest) {
         const { data, error } = await supabase
           .from('cash_advance_requests')
           .update({
             payee: formData.payee,
+            payee_number: formData.payee_number,
             purpose: formData.purpose,
             amount: formData.amount,
             date_needed: formData.date_needed || null,
-            budgeted: formData.budgeted,
+            budgeted: budgetedValue,
             payment_mode_id: formData.payment_mode_id || null,
             status,
           })
@@ -126,10 +188,11 @@ export function CashAdvance() {
             department: profile?.department || '',
             request_date: new Date().toISOString().split('T')[0],
             payee: formData.payee,
+            payee_number: formData.payee_number,
             purpose: formData.purpose,
             amount: formData.amount,
             date_needed: formData.date_needed || null,
-            budgeted: formData.budgeted,
+            budgeted: budgetedValue,
             payment_mode_id: formData.payment_mode_id || null,
             status,
             current_approval_level: 0,
@@ -146,7 +209,7 @@ export function CashAdvance() {
           profile.company_id,
           profile.department || '',
           'Cash Advance',
-          formData.budgeted,
+          budgetedValue,
           formData.amount
         );
 
@@ -189,7 +252,8 @@ export function CashAdvance() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '' });
+      setVendorSearchTerm('');
       setEditingRequest(null);
       loadRequests();
       if (!editingRequest) {
@@ -327,23 +391,67 @@ export function CashAdvance() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-              <FileText size={18} className="text-slate-400" />
-              <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <FileText size={18} className="text-slate-400" />
+                <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <span className="font-semibold text-slate-900">{profile?.department || 'N/A'}</span>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
+          <div className="relative" ref={vendorDropdownRef}>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Payee/Vendor <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
-              value={formData.payee}
-              onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              value={vendorSearchTerm || formData.payee}
+              onChange={(e) => {
+                setVendorSearchTerm(e.target.value);
+                setShowVendorDropdown(true);
+                if (!e.target.value) {
+                  setFormData({ ...formData, payee: '', payee_number: '' });
+                }
+              }}
+              onFocus={() => setShowVendorDropdown(true)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder={loadingVendors ? 'Loading vendors...' : 'Search vendors...'}
+              disabled={loadingVendors}
               required
             />
+            {showVendorDropdown && !loadingVendors && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredVendors.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-slate-500">
+                    No vendors found
+                  </div>
+                ) : (
+                  filteredVendors.map((vendor) => (
+                    <div
+                      key={vendor.number}
+                      onClick={() => {
+                        setFormData({ ...formData, payee: vendor.displayName, payee_number: vendor.number });
+                        setVendorSearchTerm(vendor.displayName);
+                        setShowVendorDropdown(false);
+                      }}
+                      className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                    >
+                      <div className="font-medium text-slate-900">{vendor.displayName}</div>
+                      <div className="text-xs text-slate-500">{vendor.number}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -379,15 +487,16 @@ export function CashAdvance() {
           </div>
 
           <div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.budgeted}
-                onChange={(e) => setFormData({ ...formData, budgeted: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-slate-700">Budgeted</span>
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Budget Status</label>
+            <select
+              value={formData.budgeted}
+              onChange={(e) => setFormData({ ...formData, budgeted: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
+            >
+              <option value="Budgeted">Budgeted</option>
+              <option value="Non-budgeted">Non-budgeted</option>
+            </select>
           </div>
 
           <div>
