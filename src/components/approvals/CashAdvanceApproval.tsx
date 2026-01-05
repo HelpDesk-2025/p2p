@@ -37,6 +37,8 @@ export function CashAdvanceApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -178,6 +180,31 @@ export function CashAdvanceApproval() {
       console.error('Error downloading attachments:', error);
       alert('Failed to download attachments');
     }
+  };
+
+  const previewAttachments = async (pdfPath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      setPdfPreviewUrl(url);
+      setShowPdfPreview(true);
+    } catch (error) {
+      console.error('Error loading PDF preview:', error);
+      alert('Failed to load PDF preview');
+    }
+  };
+
+  const closePdfPreview = () => {
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+    }
+    setPdfPreviewUrl(null);
+    setShowPdfPreview(false);
   };
 
   const handleAction = async (action: 'approved' | 'rejected') => {
@@ -441,14 +468,23 @@ export function CashAdvanceApproval() {
 
               {selectedRequest.attachments_pdf_path && (
                 <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
-                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Attachments</label>
-                  <button
-                    onClick={() => downloadAttachments(selectedRequest.attachments_pdf_path!, selectedRequest.ca_number)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  >
-                    <Download size={18} />
-                    Download Attachments
-                  </button>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => previewAttachments(selectedRequest.attachments_pdf_path!)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Eye size={18} />
+                      Preview Attachments
+                    </button>
+                    <button
+                      onClick={() => downloadAttachments(selectedRequest.attachments_pdf_path!, selectedRequest.ca_number)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
+                    >
+                      <Download size={18} />
+                      Download
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -494,6 +530,37 @@ export function CashAdvanceApproval() {
                   {rejecting ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPdfPreview && pdfPreviewUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">Attachments Preview</h3>
+              <button
+                onClick={closePdfPreview}
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={pdfPreviewUrl}
+                className="w-full h-full"
+                title="PDF Preview"
+              />
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={closePdfPreview}
+                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
