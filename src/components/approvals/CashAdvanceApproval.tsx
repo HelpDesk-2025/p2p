@@ -11,6 +11,8 @@ interface CashAdvanceReq {
   requester_id: string;
   department?: string;
   request_date: string;
+  payee?: string;
+  payee_number?: string;
   purpose: string;
   amount: number;
   budgeted: boolean;
@@ -266,7 +268,7 @@ export function CashAdvanceApproval() {
         const { data: payeeData } = await supabase
           .from('user_profiles')
           .select('e_sig')
-          .eq('full_name', selectedRequest.user_profiles?.full_name)
+          .eq('full_name', selectedRequest.payee)
           .maybeSingle();
 
         const { data: ledgerData } = await supabase
@@ -317,7 +319,7 @@ export function CashAdvanceApproval() {
           company: companyData?.name || 'N/A',
           department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
           purpose: selectedRequest.purpose,
-          payee: selectedRequest.user_profiles?.full_name || 'Unknown',
+          payee: selectedRequest.payee || 'Unknown',
           payeeEsig: payeeData?.e_sig || null,
           outstandingAsl: outstandingAsl,
           outstandingAslDate: new Date().toLocaleDateString(),
