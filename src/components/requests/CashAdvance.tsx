@@ -15,6 +15,11 @@ interface CashAdvanceReq {
   status: string;
   rfp_pdf_path?: string;
   attachments_pdf_path?: string;
+  attachment_metadata?: Array<{
+    name: string;
+    type: string;
+    size: number;
+  }>;
 }
 
 export function CashAdvance() {
@@ -804,6 +809,23 @@ export function CashAdvance() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
+
+              {viewingRequest.attachment_metadata && viewingRequest.attachment_metadata.length > 0 && (
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
+                  <ul className="space-y-2">
+                    {viewingRequest.attachment_metadata.map((file, index) => (
+                      <li key={index} className="flex items-center gap-2 text-slate-700">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                        <span className="font-medium">{file.name}</span>
+                        <span className="text-xs text-slate-500">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
@@ -825,24 +847,6 @@ export function CashAdvance() {
                     >
                       {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
-                    </button>
-                  </>
-                )}
-                {viewingRequest.attachments_pdf_path && (
-                  <>
-                    <button
-                      onClick={() => previewAttachments(viewingRequest.attachments_pdf_path!)}
-                      className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                    >
-                      <Eye size={18} />
-                      Preview Attachments
-                    </button>
-                    <button
-                      onClick={() => downloadRFP(viewingRequest.attachments_pdf_path!, viewingRequest.ca_number)}
-                      className="flex items-center gap-2 px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition"
-                    >
-                      <Download size={18} />
-                      Download Attachments
                     </button>
                   </>
                 )}
