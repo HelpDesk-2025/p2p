@@ -138,17 +138,17 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   yPos -= sectionHeight;
 
   // Cash Advance section
-  const cashAdvanceHeight = 200;
+  const cashAdvanceHeight = 220;
   drawBox(margin, yPos - cashAdvanceHeight, width - 2 * margin, cashAdvanceHeight);
 
   const midX = width / 2;
   drawLine(midX, yPos - cashAdvanceHeight, midX, yPos);
 
-  let cashAdvY = yPos - 20;
+  let cashAdvY = yPos - 25;
   const centerX = width / 2;
   const titleWidth = boldFont.widthOfTextAtSize('Cash Advance', 11);
   drawText('Cash Advance', centerX - titleWidth / 2, cashAdvY, 11, true);
-  cashAdvY -= 25;
+  cashAdvY -= 30;
 
   // Left side: Agreement text
   const agreementText = [
@@ -161,10 +161,10 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
 
   for (const line of agreementText) {
     drawText(line, leftColX, cashAdvY, 9, false);
-    cashAdvY -= 12;
+    cashAdvY -= 13;
   }
 
-  cashAdvY -= 30;
+  cashAdvY -= 25;
 
   // Payee section
   if (data.payeeEsig) {
@@ -173,7 +173,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       const esigDims = esigImage.scale(0.15);
       page.drawImage(esigImage, {
         x: leftColX + 20,
-        y: cashAdvY - 5,
+        y: cashAdvY,
         width: esigDims.width,
         height: esigDims.height,
       });
@@ -182,27 +182,27 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
   }
 
-  cashAdvY -= 25;
+  cashAdvY -= 30;
   drawText(data.payee, leftColX, cashAdvY, 9, false);
   cashAdvY -= 15;
   drawText('Payee', leftColX, cashAdvY, 9, true);
 
   // Right side: Accounting Department info
-  let accountingY = yPos - 45;
+  let accountingY = yPos - 50;
   drawText('To be filled out by Accounting Department:', rightColX, accountingY, 9, true);
-  accountingY -= 20;
+  accountingY -= 25;
 
   drawText('Outstanding ASL', rightColX, accountingY, 9, true);
   drawText(data.outstandingAsl || 'None', rightColX + 100, accountingY, 9, false);
-  accountingY -= 15;
+  accountingY -= 18;
 
   drawText('Date', rightColX, accountingY, 9, true);
   drawText(data.outstandingAslDate, rightColX + 100, accountingY, 9, false);
-  accountingY -= 15;
+  accountingY -= 18;
 
   drawText('Remarks', rightColX, accountingY, 9, true);
   drawText(data.remarks || 'OK', rightColX + 100, accountingY, 9, false);
-  accountingY -= 40;
+  accountingY -= 35;
 
   // Accounting signature (last approver)
   const lastApprover = data.approvals[data.approvals.length - 1];
@@ -212,7 +212,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       const esigDims = esigImage.scale(0.15);
       page.drawImage(esigImage, {
         x: rightColX + 20,
-        y: accountingY - 5,
+        y: accountingY,
         width: esigDims.width,
         height: esigDims.height,
       });
@@ -221,7 +221,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
   }
 
-  accountingY -= 25;
+  accountingY -= 30;
   if (lastApprover) {
     drawText(lastApprover.approver_name, rightColX, accountingY, 9, false);
   }
@@ -231,30 +231,36 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   yPos -= cashAdvanceHeight;
 
   // Approval section
-  const approvalHeight = 200;
+  const approvalHeight = 150;
   drawBox(margin, yPos - approvalHeight, width - 2 * margin, approvalHeight);
 
   let approvalY = yPos - 20;
 
-  // Recommended By (first approver)
-  drawText('Recommended By', leftColX, approvalY, 10, true);
+  // Define column positions
+  const recByX = leftColX;
+  const app1X = width / 3 + 20;
+  const app2X = (2 * width) / 3 + 10;
 
-  // Approved By (middle approvers)
-  const approvedByX = width / 2 - 50;
-  drawText('Approved By', approvedByX, approvalY, 10, true);
+  // Get approvers (excluding the last one who is Accounting)
+  const approvalApprovers = data.approvals.slice(0, -1);
+  const firstApprover = approvalApprovers[0];
+  const middleApprovers = approvalApprovers.slice(1);
 
-  approvalY -= 30;
+  // Draw headers
+  drawText('Recommended By', recByX, approvalY, 10, true);
+  drawText('Approved By', app1X, approvalY, 10, true);
+
+  approvalY -= 35;
 
   // Draw first approver (Recommended By)
-  if (data.approvals.length > 0) {
-    const firstApprover = data.approvals[0];
+  if (firstApprover) {
     if (firstApprover.approver_esig) {
       try {
         const esigImage = await pdfDoc.embedPng(firstApprover.approver_esig);
         const esigDims = esigImage.scale(0.15);
         page.drawImage(esigImage, {
-          x: leftColX + 20,
-          y: approvalY,
+          x: recByX + 15,
+          y: approvalY + 5,
           width: esigDims.width,
           height: esigDims.height,
         });
@@ -263,68 +269,51 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
       }
     }
 
-    drawText(firstApprover.approver_name, leftColX, approvalY - 30, 9, false);
-    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), leftColX, approvalY - 45, 9, false);
+    drawText(firstApprover.approver_name, recByX, approvalY - 25, 9, false);
+    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), recByX, approvalY - 40, 8, false);
   }
 
-  // Draw middle approvers (Approved By section)
-  const middleApprovers = data.approvals.slice(1, -1);
-  let approvedByY = approvalY;
-
-  for (let i = 0; i < middleApprovers.length; i++) {
-    const approver = middleApprovers[i];
-    const approverX = i % 2 === 0 ? approvedByX : width - margin - 120;
-    const currentY = approvedByY - Math.floor(i / 2) * 80;
-
-    if (approver.approver_esig) {
+  // Draw middle approvers (Approved By section - max 2)
+  if (middleApprovers.length > 0) {
+    const approver1 = middleApprovers[0];
+    if (approver1.approver_esig) {
       try {
-        const esigImage = await pdfDoc.embedPng(approver.approver_esig);
+        const esigImage = await pdfDoc.embedPng(approver1.approver_esig);
         const esigDims = esigImage.scale(0.15);
         page.drawImage(esigImage, {
-          x: approverX + 10,
-          y: currentY,
+          x: app1X + 15,
+          y: approvalY + 5,
           width: esigDims.width,
           height: esigDims.height,
         });
       } catch (error) {
-        console.error('Error embedding middle approver e-signature:', error);
+        console.error('Error embedding approved by 1 e-signature:', error);
       }
     }
 
-    drawText(approver.approver_name, approverX, currentY - 30, 9, false);
-    drawText(new Date(approver.approval_date).toLocaleDateString(), approverX, currentY - 45, 9, false);
+    drawText(approver1.approver_name, app1X, approvalY - 25, 9, false);
+    drawText(new Date(approver1.approval_date).toLocaleDateString(), app1X, approvalY - 40, 8, false);
   }
 
-  // Additional "Approved By" label if needed
-  if (middleApprovers.length > 0) {
-    approvalY -= 80;
-    drawText('Approved By', leftColX, approvalY, 10, true);
-
-    approvalY -= 30;
-
-    // Draw rest of middle approvers in this section
-    for (let i = 2; i < middleApprovers.length; i++) {
-      const approver = middleApprovers[i];
-
-      if (approver.approver_esig) {
-        try {
-          const esigImage = await pdfDoc.embedPng(approver.approver_esig);
-          const esigDims = esigImage.scale(0.15);
-          page.drawImage(esigImage, {
-            x: leftColX + 20,
-            y: approvalY,
-            width: esigDims.width,
-            height: esigDims.height,
-          });
-        } catch (error) {
-          console.error('Error embedding additional approver e-signature:', error);
-        }
+  if (middleApprovers.length > 1) {
+    const approver2 = middleApprovers[1];
+    if (approver2.approver_esig) {
+      try {
+        const esigImage = await pdfDoc.embedPng(approver2.approver_esig);
+        const esigDims = esigImage.scale(0.15);
+        page.drawImage(esigImage, {
+          x: app2X + 15,
+          y: approvalY + 5,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding approved by 2 e-signature:', error);
       }
-
-      drawText(approver.approver_name, leftColX, approvalY - 30, 9, false);
-      drawText(new Date(approver.approval_date).toLocaleDateString(), leftColX, approvalY - 45, 9, false);
-      approvalY -= 70;
     }
+
+    drawText(approver2.approver_name, app2X, approvalY - 25, 9, false);
+    drawText(new Date(approver2.approval_date).toLocaleDateString(), app2X, approvalY - 40, 8, false);
   }
 
   const pdfBytes = await pdfDoc.save();
