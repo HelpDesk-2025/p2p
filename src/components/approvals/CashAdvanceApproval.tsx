@@ -44,6 +44,8 @@ export function CashAdvanceApproval() {
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [outstandingAsl, setOutstandingAsl] = useState('None');
+  const [remarks, setRemarks] = useState('OK');
 
   useEffect(() => {
     loadRequests();
@@ -244,12 +246,115 @@ export function CashAdvanceApproval() {
       const isLastApproval = nextLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
+      let approvedCaPdfPath: string | null = null;
+
+      if (action === 'approved' && isLastApproval) {
+        const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', profile.company_id)
+          .single();
+
+        const { data: requestorData } = await supabase
+          .from('user_profiles')
+          .select('full_name, e_sig')
+          .eq('id', selectedRequest.requester_id)
+          .single();
+
+        const { data: payeeData } = await supabase
+          .from('user_profiles')
+          .select('e_sig')
+          .eq('full_name', selectedRequest.user_profiles?.full_name)
+          .maybeSingle();
+
+        const { data: ledgerData } = await supabase
+          .from('approval_ledger')
+          .select('approver_name, approver_id, approval_date, sequence')
+          .eq('request_id', selectedRequest.id)
+          .eq('request_type', 'Cash Advance')
+          .order('sequence', { ascending: true });
+
+        const approvalRecords = await Promise.all(
+          (ledgerData || []).map(async (entry) => {
+            if (!entry.approver_id) {
+              return {
+                approver_name: entry.approver_name,
+                approver_esig: null,
+                approval_date: entry.approval_date,
+                sequence: entry.sequence
+              };
+            }
+
+            const { data: approverData } = await supabase
+              .from('user_profiles')
+              .select('e_sig')
+              .eq('id', entry.approver_id)
+              .maybeSingle();
+
+            return {
+              approver_name: entry.approver_name,
+              approver_esig: approverData?.e_sig || null,
+              approval_date: entry.approval_date,
+              sequence: entry.sequence
+            };
+          })
+        );
+
+        approvalRecords.push({
+          approver_name: profile.full_name || 'Unknown',
+          approver_esig: profile.e_sig || null,
+          approval_date: new Date().toISOString(),
+          sequence: nextLevel
+        });
+
+        const pdfBytes = await generateCashAdvanceForm({
+          caNumber: selectedRequest.ca_number,
+          requestedBy: requestorData?.full_name || 'Unknown',
+          requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
+          amount: selectedRequest.amount,
+          company: companyData?.name || 'N/A',
+          department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+          purpose: selectedRequest.purpose,
+          payee: selectedRequest.user_profiles?.full_name || 'Unknown',
+          payeeEsig: payeeData?.e_sig || null,
+          outstandingAsl: outstandingAsl,
+          outstandingAslDate: new Date().toLocaleDateString(),
+          remarks: remarks,
+          approvals: approvalRecords
+        });
+
+        const fileName = `CA_${selectedRequest.ca_number}_Approved_${Date.now()}.pdf`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(fileName, pdfBytes, {
+            contentType: 'application/pdf',
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+
+        approvedCaPdfPath = uploadData.path;
+      }
+
+      const updateData: any = {
+        status: newStatus,
+        current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
+      };
+
+      if (action === 'approved' && isLastApproval) {
+        updateData.outstanding_asl = outstandingAsl;
+        updateData.remarks = remarks;
+        if (approvedCaPdfPath) {
+          updateData.approved_ca_pdf_path = approvedCaPdfPath;
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('cash_advance_requests')
-        .update({
-          status: newStatus,
-          current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
-        })
+        .update(updateData)
         .eq('id', selectedRequest.id);
 
       if (updateError) throw updateError;
@@ -505,6 +610,38 @@ export function CashAdvanceApproval() {
                 requestType="Cash Advance"
                 requestId={selectedRequest.id}
               />
+
+              {selectedRequest.current_approval_level + 1 === approvalFlows.length && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
+                  <h4 className="font-semibold text-slate-900">Accounting Department Information</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Outstanding ASL
+                      </label>
+                      <input
+                        type="text"
+                        value={outstandingAsl}
+                        onChange={(e) => setOutstandingAsl(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Enter outstanding ASL or 'None'"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Remarks
+                      </label>
+                      <input
+                        type="text"
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Enter remarks"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Comments</label>

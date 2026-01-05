@@ -16,6 +16,7 @@ interface CashAdvanceReq {
   status: string;
   rfp_pdf_path?: string;
   attachments_pdf_path?: string;
+  approved_ca_pdf_path?: string;
   attachment_metadata?: Array<{
     name: string;
     type: string;
@@ -818,6 +819,48 @@ export function CashAdvance() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
+
+              {viewingRequest.approved_ca_pdf_path && (
+                <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Approved Cash Advance Form</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => previewAttachments(viewingRequest.approved_ca_pdf_path!)}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      <Eye size={18} />
+                      Preview Form
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { data, error } = await supabase.storage
+                            .from('attachments')
+                            .download(viewingRequest.approved_ca_pdf_path!);
+
+                          if (error) throw error;
+
+                          const url = URL.createObjectURL(data);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${viewingRequest.ca_number}_Approved_Form.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        } catch (error) {
+                          console.error('Error downloading approved form:', error);
+                          alert('Failed to download approved form');
+                        }
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition"
+                    >
+                      <Download size={18} />
+                      Download Form
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {viewingRequest.attachment_metadata && viewingRequest.attachment_metadata.length > 0 && (
                 <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
