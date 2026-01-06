@@ -504,6 +504,30 @@ export function CashAdvanceApproval() {
           profile.full_name || 'Unknown',
           comments
         );
+
+        try {
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-ca-to-msbc`;
+          const headers = {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          };
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ requestId: selectedRequest.id }),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            console.error('Failed to post to MSBC:', result);
+          } else {
+            console.log('Successfully posted to MSBC:', result);
+          }
+        } catch (msbcError) {
+          console.error('Error posting to MSBC:', msbcError);
+        }
       } else if (action === 'rejected') {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',

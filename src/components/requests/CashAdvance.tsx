@@ -37,6 +37,10 @@ interface CashAdvanceReq {
     type: string;
     size: number;
   }>;
+  msbc_sync_status?: string;
+  msbc_sync_date?: string;
+  msbc_sync_error?: string;
+  msbc_journal_id?: string;
 }
 
 export function CashAdvance() {
@@ -59,6 +63,7 @@ export function CashAdvance() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [postingToMsbc, setPostingToMsbc] = useState(false);
   const [paymentModes, setPaymentModes] = useState<any[]>([]);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -747,6 +752,58 @@ export function CashAdvance() {
     }
   };
 
+  const postToMsbc = async (request: CashAdvanceReq) => {
+    if (!request.approved_ca_pdf_path) {
+      alert('No approved form found. Please ensure the request is fully approved.');
+      return;
+    }
+
+    const confirmPost = confirm(`Post Cash Advance ${request.ca_number} to MSBC?`);
+    if (!confirmPost) return;
+
+    setPostingToMsbc(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-ca-to-msbc`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ requestId: request.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to post to MSBC');
+      }
+
+      alert(`Successfully posted to MSBC!\n\nJournal ID: ${result.journalId}${result.warning ? '\n\nWarning: ' + result.warning : ''}`);
+
+      await loadRequests();
+
+      if (viewingRequest?.id === request.id) {
+        const { data: updatedRequest } = await supabase
+          .from('cash_advance_requests')
+          .select('*')
+          .eq('id', request.id)
+          .single();
+
+        if (updatedRequest) {
+          setViewingRequest(updatedRequest);
+        }
+      }
+    } catch (error) {
+      console.error('Error posting to MSBC:', error);
+      alert(`Failed to post to MSBC: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setPostingToMsbc(false);
+    }
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -1226,6 +1283,61 @@ export function CashAdvance() {
                       {regenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
                       {regenerating ? 'Regenerating...' : 'Regenerate'}
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {viewingRequest.status === 'approved' && (
+                <div className={`border rounded-lg p-4 ${
+                  viewingRequest.msbc_sync_status === 'synced' ? 'border-green-200 bg-green-50' :
+                  viewingRequest.msbc_sync_status === 'failed' ? 'border-red-200 bg-red-50' :
+                  viewingRequest.msbc_sync_status === 'syncing' ? 'border-yellow-200 bg-yellow-50' :
+                  'border-slate-200 bg-slate-50'
+                }`}>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">MSBC Sync Status</label>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">
+                          Status: <span className={`font-bold ${
+                            viewingRequest.msbc_sync_status === 'synced' ? 'text-green-700' :
+                            viewingRequest.msbc_sync_status === 'failed' ? 'text-red-700' :
+                            viewingRequest.msbc_sync_status === 'syncing' ? 'text-yellow-700' :
+                            'text-slate-700'
+                          }`}>
+                            {viewingRequest.msbc_sync_status === 'synced' ? 'Successfully Posted' :
+                             viewingRequest.msbc_sync_status === 'failed' ? 'Failed' :
+                             viewingRequest.msbc_sync_status === 'syncing' ? 'Posting...' :
+                             'Pending'}
+                          </span>
+                        </p>
+                        {viewingRequest.msbc_sync_date && (
+                          <p className="text-xs text-slate-600 mt-1">
+                            {new Date(viewingRequest.msbc_sync_date).toLocaleString()}
+                          </p>
+                        )}
+                        {viewingRequest.msbc_journal_id && (
+                          <p className="text-xs text-slate-600 mt-1">
+                            Journal ID: {viewingRequest.msbc_journal_id}
+                          </p>
+                        )}
+                        {viewingRequest.msbc_sync_error && (
+                          <p className="text-xs text-red-600 mt-2">
+                            Error: {viewingRequest.msbc_sync_error}
+                          </p>
+                        )}
+                      </div>
+                      {(viewingRequest.msbc_sync_status === 'pending' || viewingRequest.msbc_sync_status === 'failed') && (
+                        <button
+                          onClick={() => postToMsbc(viewingRequest)}
+                          disabled={postingToMsbc}
+                          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {postingToMsbc ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                          {postingToMsbc ? 'Posting...' : viewingRequest.msbc_sync_status === 'failed' ? 'Retry Post' : 'Post to MSBC'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
