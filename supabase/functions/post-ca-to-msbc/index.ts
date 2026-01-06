@@ -159,8 +159,9 @@ Deno.serve(async (req: Request) => {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          batchNumber: batchNumber,
-          description: purpose,
+          TemplateName: 'PAYMENTSB',
+          code: batchNumber,
+          displayName: `${dateNeeded} - ${purpose}`,
         }),
       }
     );
