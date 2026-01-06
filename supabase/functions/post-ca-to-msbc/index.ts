@@ -202,19 +202,27 @@ Deno.serve(async (req: Request) => {
     let attachmentUploadWarning = '';
 
     try {
-      console.log('📤 STEP 13: Uploading attachment content...');
+      console.log('📤 STEP 13: Uploading attachment content with HTTP/1.1...');
+      
+      const http1Client = Deno.createHttpClient({
+        alpnProtocols: ['http/1.1'],
+      });
+
       const step13Response = await fetch(
         `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})/content`,
         {
           method: 'PATCH',
           headers: {
-            ...headers,
+            'Authorization': `Basic ${basicAuth}`,
             'If-Match': etag,
             'Content-Type': 'application/octet-stream',
           },
           body: pdfBytes,
+          client: http1Client,
         }
       );
+
+      http1Client.close();
 
       if (!step13Response.ok) {
         const errorText = await step13Response.text();
