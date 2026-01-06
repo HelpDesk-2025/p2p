@@ -6,6 +6,12 @@ import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getAppro
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 
+interface PaymentModeLine {
+  name: string;
+  value: string;
+  is_required?: boolean;
+}
+
 interface CashAdvanceReq {
   id: string;
   ca_number: string;
@@ -24,6 +30,8 @@ interface CashAdvanceReq {
   outstanding_asl?: string;
   outstanding_asl_date?: string;
   remarks?: string;
+  payment_mode_id?: string;
+  payment_mode_lines?: PaymentModeLine[];
   attachment_metadata?: Array<{
     name: string;
     type: string;
@@ -51,6 +59,8 @@ export function CashAdvance() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [paymentModes, setPaymentModes] = useState<any[]>([]);
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -59,11 +69,14 @@ export function CashAdvance() {
     amount: 0,
     date_needed: '',
     budgeted: 'Budgeted',
+    payment_mode_id: '',
+    payment_mode_lines: [] as PaymentModeLine[],
   });
 
   useEffect(() => {
     loadRequests();
     loadVendors();
+    loadPaymentModes();
   }, []);
 
   useEffect(() => {
@@ -136,6 +149,46 @@ export function CashAdvance() {
     vendor.number?.toLowerCase().includes(vendorSearchTerm.toLowerCase())
   );
 
+  const loadPaymentModes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_modes')
+        .select('*')
+        .eq('is_active', true)
+        .order('mode_name', { ascending: true });
+
+      if (error) throw error;
+      setPaymentModes(data || []);
+    } catch (error) {
+      console.error('Error loading payment modes:', error);
+    }
+  };
+
+  const handlePaymentModeChange = (modeId: string) => {
+    const mode = paymentModes.find(m => m.id === modeId);
+    setSelectedPaymentMode(mode);
+
+    const lines = mode?.line_names
+      ? (mode.line_names as Array<{name: string, is_required: boolean}>).map((lineItem) => ({
+          name: lineItem.name,
+          value: '',
+          is_required: lineItem.is_required
+        }))
+      : [];
+
+    setFormData({
+      ...formData,
+      payment_mode_id: modeId,
+      payment_mode_lines: lines
+    });
+  };
+
+  const updatePaymentModeLine = (index: number, value: string) => {
+    const newLines = [...formData.payment_mode_lines];
+    newLines[index].value = value;
+    setFormData({ ...formData, payment_mode_lines: newLines });
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -173,6 +226,8 @@ export function CashAdvance() {
       amount: request.amount,
       date_needed: reqData.date_needed || '',
       budgeted: reqData.budgeted ? 'Budgeted' : 'Non-budgeted',
+      payment_mode_id: request.payment_mode_id || '',
+      payment_mode_lines: request.payment_mode_lines || [],
     });
     setVendorSearchTerm(reqData.payee || '');
     setShowViewModal(false);
@@ -231,6 +286,8 @@ export function CashAdvance() {
           date_needed: formData.date_needed || null,
           budgeted: budgetedValue,
           status,
+          payment_mode_id: formData.payment_mode_id || null,
+          payment_mode_lines: formData.payment_mode_lines,
         };
 
         if (attachmentsPdfPath) {
@@ -262,6 +319,8 @@ export function CashAdvance() {
           budgeted: budgetedValue,
           status,
           current_approval_level: 0,
+          payment_mode_id: formData.payment_mode_id || null,
+          payment_mode_lines: formData.payment_mode_lines,
         };
 
         if (attachmentsPdfPath) {
@@ -327,10 +386,11 @@ export function CashAdvance() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted' });
+      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '', payment_mode_lines: [] });
       setVendorSearchTerm('');
       setAttachments([]);
       setEditingRequest(null);
+      setSelectedPaymentMode(null);
       loadRequests();
       if (!editingRequest) {
         generateDocumentNo();
@@ -723,6 +783,62 @@ export function CashAdvance() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Payment Mode
+            </label>
+            <select
+              value={formData.payment_mode_id}
+              onChange={(e) => handlePaymentModeChange(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="">Select a payment mode</option>
+              {paymentModes.map((mode) => (
+                <option key={mode.id} value={mode.id}>
+                  {mode.mode_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {formData.payment_mode_lines.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">Payment Mode Details</h3>
+                <span className="text-xs text-slate-500">
+                  {selectedPaymentMode?.mode_name}
+                </span>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="divide-y divide-slate-200">
+                  {formData.payment_mode_lines.map((line, index) => (
+                    <div key={index} className="p-4 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <label className="block text-sm font-semibold text-slate-900">
+                            {line.name}
+                            {line.is_required && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+                          <input
+                            type="text"
+                            value={line.value}
+                            onChange={(e) => updatePaymentModeLine(index, e.target.value)}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            placeholder={`Enter ${line.name.toLowerCase()}`}
+                            required={line.is_required}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Attachments (Images & PDFs)
             </label>
@@ -956,6 +1072,29 @@ export function CashAdvance() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
+
+              {viewingRequest.payment_mode_lines && viewingRequest.payment_mode_lines.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Payment Mode Details</label>
+                  <div className="space-y-3">
+                    {viewingRequest.payment_mode_lines.map((line: any, index: number) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-slate-900">{line.name}</span>
+                              {line.is_required && (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Required</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-slate-700 mt-1">{line.value || <span className="text-slate-400 italic">Not provided</span>}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {viewingRequest.approved_ca_pdf_path && (
                 <div className="border border-green-200 bg-green-50 rounded-lg p-4">
