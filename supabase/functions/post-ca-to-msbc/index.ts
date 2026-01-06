@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const documentNumber = ca.ca_number;
-    const batchNumber = documentNumber.replace(/0+/g, '');
+    const batchNumber = documentNumber.replace(/^(CA)0+/, '$1');
     const purchaseAmount = parseFloat(ca.amount || 0);
     const dateNeeded = ca.date_needed
       ? new Date(ca.date_needed).toISOString().split('T')[0]
