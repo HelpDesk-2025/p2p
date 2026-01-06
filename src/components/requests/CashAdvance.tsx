@@ -569,6 +569,8 @@ export function CashAdvance() {
     setRegenerating(true);
     try {
       const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+      const { generateRFP } = await import('../../lib/rfpGenerator');
+      const { mergePDFBytes } = await import('../../lib/pdfMerger');
 
       const { data: companyData } = await supabase
         .from('companies')
@@ -622,7 +624,8 @@ export function CashAdvance() {
         })
       );
 
-      const pdfBytes = await generateCashAdvanceForm({
+      // Generate Approved Cash Advance Form
+      const approvedCaFormBytes = await generateCashAdvanceForm({
         caNumber: request.ca_number,
         requestedBy: requestorData?.full_name || 'Unknown',
         requestDate: new Date(request.request_date).toLocaleDateString(),
@@ -638,10 +641,72 @@ export function CashAdvance() {
         approvals: approvalRecords
       });
 
-      const fileName = `CA_${request.ca_number}_Approved_${Date.now()}.pdf`;
+      // Get payment mode information
+      let paymentModeName = '';
+      const paymentModeLines: Array<{ label: string; value: string }> = [];
+
+      if (request.payment_mode_id) {
+        const { data: paymentModeData } = await supabase
+          .from('payment_modes')
+          .select('mode_name')
+          .eq('id', request.payment_mode_id)
+          .maybeSingle();
+
+        paymentModeName = paymentModeData?.mode_name || '';
+
+        if (request.payment_mode_lines) {
+          request.payment_mode_lines.forEach((line) => {
+            paymentModeLines.push({
+              label: line.name,
+              value: line.value
+            });
+          });
+        }
+      }
+
+      // Generate RFP Form
+      const rfpBytes = await generateRFP({
+        companyName: companyData?.name || 'N/A',
+        requestType: 'Cash Advance',
+        dateOfRequest: new Date(request.request_date).toLocaleDateString(),
+        payee: request.payee || 'Unknown',
+        purpose: request.purpose,
+        dateNeeded: request.date_needed ? new Date(request.date_needed).toLocaleDateString() : 'N/A',
+        amount: request.amount,
+        budgeted: request.budgeted,
+        paymentMode: paymentModeName,
+        paymentModeLines: paymentModeLines,
+        requestorName: requestorData?.full_name || 'Unknown',
+        requestorEsig: requestorData?.e_sig || null,
+        approvals: approvalRecords
+      });
+
+      // Prepare PDFs to merge: Approved CA Form + RFP + Attachments
+      const pdfsToMerge: Uint8Array[] = [approvedCaFormBytes, rfpBytes];
+
+      // Add attachments PDF if it exists
+      if (request.attachments_pdf_path) {
+        try {
+          const { data: attachmentData, error: attachmentError } = await supabase.storage
+            .from('attachments')
+            .download(request.attachments_pdf_path);
+
+          if (!attachmentError && attachmentData) {
+            const attachmentBytes = new Uint8Array(await attachmentData.arrayBuffer());
+            pdfsToMerge.push(attachmentBytes);
+          }
+        } catch (error) {
+          console.error('Error downloading attachments:', error);
+        }
+      }
+
+      // Merge all PDFs into one complete document
+      const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
+
+      const fileName = `CA_${request.ca_number}_Complete_${Date.now()}.pdf`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('attachments')
-        .upload(fileName, pdfBytes, {
+        .upload(fileName, mergedPdfBytes, {
           contentType: 'application/pdf',
           cacheControl: '3600',
           upsert: false
@@ -657,7 +722,7 @@ export function CashAdvance() {
 
       if (updateError) throw updateError;
 
-      alert('Approved form regenerated successfully!');
+      alert('Complete document regenerated successfully!');
 
       // Reload requests to show updated data
       await loadRequests();
@@ -675,8 +740,8 @@ export function CashAdvance() {
         }
       }
     } catch (error) {
-      console.error('Error regenerating approved form:', error);
-      alert('Failed to regenerate approved form. Please try again.');
+      console.error('Error regenerating complete document:', error);
+      alert('Failed to regenerate complete document. Please try again.');
     } finally {
       setRegenerating(false);
     }
