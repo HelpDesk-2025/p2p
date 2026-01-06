@@ -152,16 +152,15 @@ Deno.serve(async (req: Request) => {
       'Content-Type': 'application/json',
     };
 
-    console.log('📤 STEP 1: Creating journal payment batch...');
+    console.log('📤 STEP 1: Creating journal batch...');
     const step1Response = await fetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPayments`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          TemplateName: 'PAYMENTSB',
-          code: batchNumber,
-          displayName: `${dateNeeded} - ${purpose}`,
+          batchNumber: batchNumber,
+          description: purpose,
         }),
       }
     );
@@ -171,9 +170,9 @@ Deno.serve(async (req: Request) => {
       throw new Error(`STEP 1 failed (${step1Response.status}): ${errorText}`);
     }
 
-    const firstPostBody = await step1Response.json();
-    const parentID = firstPostBody.id;
-    console.log('✅ STEP 1: Journal payment batch created, ID:', parentID);
+    const parentJournal = await step1Response.json();
+    const parentID = parentJournal.id;
+    console.log('✅ STEP 1: Journal batch created, ID:', parentID);
 
     console.log('📤 STEP 4: Creating journal line...');
     const step4Response = await fetch(
@@ -189,6 +188,7 @@ Deno.serve(async (req: Request) => {
           externalDocumentNumber: documentNumber,
           amount: purchaseAmount,
           comment: purpose,
+          CVPostingGroup: 'ASL',
         }),
       }
     );
@@ -220,24 +220,10 @@ Deno.serve(async (req: Request) => {
       throw new Error(`STEP 7 failed (${step7Response.status}): ${errorText}`);
     }
 
-    const thirdPostBody = await step7Response.json();
-    const attachmentID = thirdPostBody.id;
-    console.log('✅ STEP 7: Attachment record created, ID:', attachmentID);
-
-    console.log('📤 STEP 10: Getting attachment etag...');
-    const step10Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})`,
-      { method: 'GET', headers }
-    );
-
-    if (!step10Response.ok) {
-      const errorText = await step10Response.text();
-      throw new Error(`STEP 10 failed (${step10Response.status}): ${errorText}`);
-    }
-
-    const firstGetBody = await step10Response.json();
-    const etag = firstGetBody['@odata.etag'];
-    console.log('✅ STEP 10: Got etag:', etag);
+    const attachmentRecord = await step7Response.json();
+    const attachmentID = attachmentRecord.id;
+    const etag = step7Response.headers.get('ETag') || '*';
+    console.log('✅ STEP 7: Attachment record created, ID:', attachmentID, 'ETag:', etag);
 
     let attachmentUploadWarning = '';
 
@@ -293,9 +279,12 @@ Deno.serve(async (req: Request) => {
         success: true,
         message: 'Cash Advance posted to MSBC successfully',
         journalId: parentID,
-        warning: attachmentUploadWarning || undefined,
+        journalLineId: parentLineID,
+        attachmentId: attachmentID,
+        warning: attachmentUploadWarning || null,
       }),
       {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
@@ -303,29 +292,23 @@ Deno.serve(async (req: Request) => {
     console.error('❌ Error posting to MSBC:', error);
 
     if (requestId) {
-      try {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-        );
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      );
 
-        await supabaseClient
-          .from('cash_advance_requests')
-          .update({
-            msbc_sync_status: 'failed',
-            msbc_sync_error: error instanceof Error ? error.message : String(error),
-          })
-          .eq('id', requestId);
-      } catch (dbError) {
-        console.error('❌ Failed to update error status in DB:', dbError);
-      }
+      await supabaseClient
+        .from('cash_advance_requests')
+        .update({
+          msbc_sync_status: 'failed',
+          msbc_sync_error: error instanceof Error ? error.message : String(error),
+        })
+        .eq('id', requestId);
     }
 
     return new Response(
       JSON.stringify({
-        success: false,
-        error: 'Failed to post to MSBC',
-        message: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       }),
       {
         status: 500,
