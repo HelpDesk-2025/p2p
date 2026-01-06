@@ -346,7 +346,7 @@ export function PettyCash() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">To / Recipient</label>
             <input
               type="text"
               value={formData.payee}
@@ -357,23 +357,13 @@ export function PettyCash() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Purpose / Particulars</label>
             <textarea
               value={formData.purpose}
               onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
               rows={3}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date Needed</label>
-            <input
-              type="date"
-              value={formData.date_needed}
-              onChange={(e) => setFormData({ ...formData, date_needed: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
@@ -386,34 +376,6 @@ export function PettyCash() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.budgeted}
-                onChange={(e) => setFormData({ ...formData, budgeted: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-slate-700">Budgeted</span>
-            </label>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
-            <select
-              value={formData.payment_mode_id}
-              onChange={(e) => setFormData({ ...formData, payment_mode_id: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="">Select payment mode</option>
-              {paymentModes.map((mode) => (
-                <option key={mode.id} value={mode.id}>
-                  {mode.mode_name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
@@ -572,7 +534,7 @@ export function PettyCash() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">Purpose</label>
+                <label className="text-sm font-semibold text-slate-700">Purpose / Particulars</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
             </div>
