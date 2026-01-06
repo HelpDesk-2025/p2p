@@ -198,3 +198,19 @@ export async function mergeRFPWithAttachments(
 
   return await mergedPdf.save();
 }
+
+export async function mergePDFBytes(pdfByteArrays: Uint8Array[]): Promise<Uint8Array> {
+  const mergedPdf = await PDFDocument.create();
+
+  for (const pdfBytes of pdfByteArrays) {
+    try {
+      const pdf = await PDFDocument.load(pdfBytes);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+      copiedPages.forEach((page) => mergedPdf.addPage(page));
+    } catch (error) {
+      console.error('Error loading PDF:', error);
+    }
+  }
+
+  return await mergedPdf.save();
+}

@@ -5,6 +5,12 @@ import { CheckCircle, XCircle, X, Loader2, Eye, Download } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
+interface PaymentModeLine {
+  name: string;
+  value: string;
+  is_required?: boolean;
+}
+
 interface CashAdvanceReq {
   id: string;
   ca_number: string;
@@ -16,7 +22,9 @@ interface CashAdvanceReq {
   purpose: string;
   amount: number;
   budgeted: boolean;
+  date_needed?: string;
   payment_mode_id?: string;
+  payment_mode_lines?: PaymentModeLine[];
   status: string;
   current_approval_level: number;
   attachments_pdf_path?: string;
@@ -252,6 +260,8 @@ export function CashAdvanceApproval() {
 
       if (action === 'approved' && isLastApproval) {
         const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+        const { generateRFP } = await import('../../lib/rfpGenerator');
+        const { mergePDFBytes } = await import('../../lib/pdfMerger');
 
         const { data: companyData } = await supabase
           .from('companies')
@@ -312,7 +322,7 @@ export function CashAdvanceApproval() {
           sequence: nextLevel
         });
 
-        const pdfBytes = await generateCashAdvanceForm({
+        const approvedCaFormBytes = await generateCashAdvanceForm({
           caNumber: selectedRequest.ca_number,
           requestedBy: requestorData?.full_name || 'Unknown',
           requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
@@ -328,10 +338,67 @@ export function CashAdvanceApproval() {
           approvals: approvalRecords
         });
 
-        const fileName = `CA_${selectedRequest.ca_number}_Approved_${Date.now()}.pdf`;
+        let paymentModeName = '';
+        const paymentModeLines: Array<{ label: string; value: string }> = [];
+
+        if (selectedRequest.payment_mode_id) {
+          const { data: paymentModeData } = await supabase
+            .from('payment_modes')
+            .select('mode_name')
+            .eq('id', selectedRequest.payment_mode_id)
+            .maybeSingle();
+
+          paymentModeName = paymentModeData?.mode_name || '';
+
+          if (selectedRequest.payment_mode_lines) {
+            selectedRequest.payment_mode_lines.forEach((line) => {
+              paymentModeLines.push({
+                label: line.name,
+                value: line.value
+              });
+            });
+          }
+        }
+
+        const rfpBytes = await generateRFP({
+          companyName: companyData?.name || 'N/A',
+          requestType: 'Cash Advance',
+          dateOfRequest: new Date(selectedRequest.request_date).toLocaleDateString(),
+          payee: selectedRequest.payee || 'Unknown',
+          purpose: selectedRequest.purpose,
+          dateNeeded: selectedRequest.date_needed ? new Date(selectedRequest.date_needed).toLocaleDateString() : 'N/A',
+          amount: selectedRequest.amount,
+          budgeted: selectedRequest.budgeted,
+          paymentMode: paymentModeName,
+          paymentModeLines: paymentModeLines,
+          requestorName: requestorData?.full_name || 'Unknown',
+          requestorEsig: requestorData?.e_sig || null,
+          approvals: approvalRecords
+        });
+
+        const pdfsToMerge: Uint8Array[] = [approvedCaFormBytes, rfpBytes];
+
+        if (selectedRequest.attachments_pdf_path) {
+          try {
+            const { data: attachmentData, error: attachmentError } = await supabase.storage
+              .from('attachments')
+              .download(selectedRequest.attachments_pdf_path);
+
+            if (!attachmentError && attachmentData) {
+              const attachmentBytes = new Uint8Array(await attachmentData.arrayBuffer());
+              pdfsToMerge.push(attachmentBytes);
+            }
+          } catch (error) {
+            console.error('Error downloading attachments:', error);
+          }
+        }
+
+        const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
+
+        const fileName = `CA_${selectedRequest.ca_number}_Complete_${Date.now()}.pdf`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('attachments')
-          .upload(fileName, pdfBytes, {
+          .upload(fileName, mergedPdfBytes, {
             contentType: 'application/pdf',
             cacheControl: '3600',
             upsert: false
@@ -586,6 +653,29 @@ export function CashAdvanceApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.payment_mode_lines && selectedRequest.payment_mode_lines.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Payment Mode Details</label>
+                  <div className="space-y-3">
+                    {selectedRequest.payment_mode_lines.map((line: any, index: number) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-slate-900">{line.name}</span>
+                              {line.is_required && (
+                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Required</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-slate-700 mt-1">{line.value || <span className="text-slate-400 italic">Not provided</span>}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {selectedRequest.attachments_pdf_path && (
                 <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
