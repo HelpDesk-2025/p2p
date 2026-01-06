@@ -389,7 +389,7 @@ export function CashAdvanceApproval() {
           approvals: approvalRecords
         });
 
-        const pdfsToMerge: Uint8Array[] = [approvedCaFormBytes, rfpBytes];
+        const pdfsToMerge: Uint8Array[] = [rfpBytes, approvedCaFormBytes];
 
         if (selectedRequest.attachments_pdf_path) {
           try {

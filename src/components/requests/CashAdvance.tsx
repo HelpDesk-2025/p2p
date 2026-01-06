@@ -686,8 +686,8 @@ export function CashAdvance() {
         approvals: approvalRecords
       });
 
-      // Prepare PDFs to merge: Approved CA Form + RFP + Attachments
-      const pdfsToMerge: Uint8Array[] = [approvedCaFormBytes, rfpBytes];
+      // Prepare PDFs to merge: RFP + Approved CA Form + Attachments
+      const pdfsToMerge: Uint8Array[] = [rfpBytes, approvedCaFormBytes];
 
       // Add attachments PDF if it exists
       if (request.attachments_pdf_path) {
