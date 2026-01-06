@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { PDFDocument } from 'npm:pdf-lib@1.17.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,22 +90,61 @@ Deno.serve(async (req: Request) => {
       purpose,
     });
 
+    console.log('🔄 Merging PDFs: RFP Form, Approved CA Form, and Attachments...');
+    const mergedPdf = await PDFDocument.create();
+
+    if (ca.rfp_pdf_path) {
+      console.log('📥 Downloading RFP Form from:', ca.rfp_pdf_path);
+      const { data: rfpData, error: rfpError } = await supabaseClient.storage
+        .from('attachments')
+        .download(ca.rfp_pdf_path);
+
+      if (!rfpError && rfpData) {
+        const rfpBytes = new Uint8Array(await rfpData.arrayBuffer());
+        const rfpPdf = await PDFDocument.load(rfpBytes);
+        const rfpPages = await mergedPdf.copyPages(rfpPdf, rfpPdf.getPageIndices());
+        rfpPages.forEach((page) => mergedPdf.addPage(page));
+        console.log('✅ RFP Form added, pages:', rfpPages.length);
+      }
+    }
+
     if (!ca.approved_ca_pdf_path) {
       throw new Error('Approved Cash Advance PDF not found');
     }
 
-    console.log('📥 Downloading Approved CA PDF from:', ca.approved_ca_pdf_path);
-    const { data: pdfData, error: pdfDownloadError } = await supabaseClient.storage
+    console.log('📥 Downloading Approved CA Form from:', ca.approved_ca_pdf_path);
+    const { data: approvedData, error: approvedError } = await supabaseClient.storage
       .from('attachments')
       .download(ca.approved_ca_pdf_path);
 
-    if (pdfDownloadError || !pdfData) {
-      throw new Error(`Failed to download PDF: ${pdfDownloadError?.message}`);
+    if (approvedError || !approvedData) {
+      throw new Error(`Failed to download Approved CA Form: ${approvedError?.message}`);
     }
 
-    const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
-    const attachmentFileName = `${documentNumber}_Approved_Form.pdf`;
-    console.log('✅ PDF downloaded, size:', pdfBytes.length);
+    const approvedBytes = new Uint8Array(await approvedData.arrayBuffer());
+    const approvedPdf = await PDFDocument.load(approvedBytes);
+    const approvedPages = await mergedPdf.copyPages(approvedPdf, approvedPdf.getPageIndices());
+    approvedPages.forEach((page) => mergedPdf.addPage(page));
+    console.log('✅ Approved CA Form added, pages:', approvedPages.length);
+
+    if (ca.attachments_pdf_path) {
+      console.log('📥 Downloading Attachments from:', ca.attachments_pdf_path);
+      const { data: attachData, error: attachError } = await supabaseClient.storage
+        .from('attachments')
+        .download(ca.attachments_pdf_path);
+
+      if (!attachError && attachData) {
+        const attachBytes = new Uint8Array(await attachData.arrayBuffer());
+        const attachPdf = await PDFDocument.load(attachBytes);
+        const attachPages = await mergedPdf.copyPages(attachPdf, attachPdf.getPageIndices());
+        attachPages.forEach((page) => mergedPdf.addPage(page));
+        console.log('✅ Attachments added, pages:', attachPages.length);
+      }
+    }
+
+    const pdfBytes = await mergedPdf.save();
+    const attachmentFileName = `${documentNumber}_Complete_Package.pdf`;
+    console.log('✅ All PDFs merged, total size:', pdfBytes.length);
 
     const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
     const headers = {
