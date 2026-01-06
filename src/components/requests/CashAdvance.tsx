@@ -193,19 +193,30 @@ export function CashAdvance() {
     const files = e.target.files;
     if (!files) return;
 
+    console.log('=== File Selection ===');
+    console.log(`Files selected: ${files.length}`);
+
     const validFiles: File[] = [];
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      console.log(`Checking file: ${file.name}, type: ${file.type}, size: ${file.size}`);
       if (allowedTypes.includes(file.type)) {
+        console.log(`  ✓ Valid file added`);
         validFiles.push(file);
       } else {
+        console.log(`  ✗ Invalid file type rejected`);
         alert(`File ${file.name} is not a valid format. Only images (JPG, PNG) and PDF files are allowed.`);
       }
     }
 
-    setAttachments(prev => [...prev, ...validFiles]);
+    console.log(`Valid files to add: ${validFiles.length}`);
+    setAttachments(prev => {
+      const newAttachments = [...prev, ...validFiles];
+      console.log(`Total attachments after adding: ${newAttachments.length}`);
+      return newAttachments;
+    });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -251,7 +262,15 @@ export function CashAdvance() {
 
       if (attachments.length > 0) {
         try {
+          console.log('=== Starting PDF merge ===');
+          console.log(`Total attachments to merge: ${attachments.length}`);
+          attachments.forEach((file, index) => {
+            console.log(`  [${index}] ${file.name} - ${file.type} - ${file.size} bytes`);
+          });
+
           const mergedPdfBlob = await mergeFilesToPDFBlob(attachments);
+          console.log('=== PDF merge completed ===');
+
           const fileName = `CA_${formData.document_no}_attachments_${Date.now()}.pdf`;
           const filePath = `cash_advance/${formData.document_no}/${fileName}`;
 
