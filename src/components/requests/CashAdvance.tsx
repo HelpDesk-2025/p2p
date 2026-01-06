@@ -781,7 +781,7 @@ export function CashAdvance() {
         throw new Error(result.message || 'Failed to post to MSBC');
       }
 
-      alert(`Successfully posted to MSBC!\n\nJournal ID: ${result.journalId}${result.warning ? '\n\nWarning: ' + result.warning : ''}`);
+      alert(`Successfully posted to MSBC!\n\nJournal ID: ${result.journalId}`);
 
       await loadRequests();
 
@@ -1321,7 +1321,7 @@ export function CashAdvance() {
                             Journal ID: {viewingRequest.msbc_journal_id}
                           </p>
                         )}
-                        {viewingRequest.msbc_sync_error && (
+                        {viewingRequest.msbc_sync_status === 'failed' && viewingRequest.msbc_sync_error && (
                           <p className="text-xs text-red-600 mt-2">
                             Error: {viewingRequest.msbc_sync_error}
                           </p>

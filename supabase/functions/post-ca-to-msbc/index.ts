@@ -269,7 +269,7 @@ Deno.serve(async (req: Request) => {
         msbc_sync_status: 'synced',
         msbc_sync_date: new Date().toISOString(),
         msbc_journal_id: parentID,
-        msbc_sync_error: attachmentUploadWarning || null,
+        msbc_sync_error: null,
       })
       .eq('id', requestId);
 
