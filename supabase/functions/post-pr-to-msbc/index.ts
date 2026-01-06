@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const documentNumber = pr.document_no;
-    const batchNumber = documentNumber.replace(/0+/g, '');
+    const batchNumber = documentNumber.replace(/^(PR)0+/, '$1');
     const purchaseAmount = parseFloat(pr.amount_net_vat || 0);
     const dateNeeded = pr.date_required
       ? new Date(pr.date_required).toISOString().split('T')[0]
