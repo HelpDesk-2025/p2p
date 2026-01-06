@@ -56,6 +56,7 @@ export function CashAdvanceApproval() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [outstandingAsl, setOutstandingAsl] = useState('None');
   const [remarks, setRemarks] = useState('OK');
+  const [paymentModeName, setPaymentModeName] = useState<string | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -130,6 +131,18 @@ export function CashAdvanceApproval() {
     setSelectedRequest(request);
     setShowModal(true);
     setComments('');
+
+    if (request.payment_mode_id) {
+      const { data: paymentModeData } = await supabase
+        .from('payment_modes')
+        .select('mode_name')
+        .eq('id', request.payment_mode_id)
+        .maybeSingle();
+
+      setPaymentModeName(paymentModeData?.mode_name || null);
+    } else {
+      setPaymentModeName(null);
+    }
 
     if (profile?.company_id) {
       const flows = await getApprovalFlow(
@@ -632,6 +645,10 @@ export function CashAdvanceApproval() {
                   <p className="text-slate-900">{selectedRequest.user_profiles?.full_name}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Payee</label>
+                  <p className="text-slate-900">{selectedRequest.payee || 'N/A'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
                   <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
@@ -647,12 +664,25 @@ export function CashAdvanceApproval() {
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
                 </div>
+                {selectedRequest.date_needed && (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Date Needed</label>
+                    <p className="text-slate-900">{new Date(selectedRequest.date_needed).toLocaleDateString()}</p>
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {paymentModeName && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Payment Mode</label>
+                  <p className="text-slate-900 font-semibold">{paymentModeName}</p>
+                </div>
+              )}
 
               {selectedRequest.payment_mode_lines && selectedRequest.payment_mode_lines.length > 0 && (
                 <div>
