@@ -388,7 +388,7 @@ export function NumberSeriesConfig() {
         )}
       </div>
 
-      {profile?.role === 'admin' && companies.length > 1 && (
+      {profile?.role === 'admin' && companies.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
           <div className="flex items-center gap-3">
             <Building2 size={20} className="text-slate-400" />
@@ -397,7 +397,6 @@ export function NumberSeriesConfig() {
               value={selectedCompanyId}
               onChange={(e) => setSelectedCompanyId(e.target.value)}
               className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              disabled={profile?.company_id !== undefined}
             >
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>
