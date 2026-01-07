@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
@@ -466,6 +466,88 @@ export function PettyCash() {
     }
   };
 
+  const handleRegenerateApprovedPettyCash = async (request: PettyCashReq) => {
+    if (!confirm('Are you sure you want to regenerate the approved petty cash form? This will replace the existing document.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (!profile?.company_id) {
+        throw new Error('Company information not found');
+      }
+
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('approval_ledger')
+        .select(`
+          approver_name,
+          approval_date,
+          sequence,
+          approver_id,
+          user_profiles!approval_ledger_approver_id_fkey (
+            e_sig
+          )
+        `)
+        .eq('request_type', 'Petty Cash')
+        .eq('request_id', request.id)
+        .eq('action', 'Approved')
+        .order('sequence', { ascending: true });
+
+      if (ledgerError) throw ledgerError;
+
+      if (!ledgerData || ledgerData.length === 0) {
+        throw new Error('No approval records found');
+      }
+
+      const firstApprover = ledgerData[0];
+
+      const pdfBytes = await generatePettyCashForm({
+        pcNumber: request.pc_number,
+        recipient: request.payee || profile.full_name || 'Unknown',
+        requestDate: new Date(request.request_date).toLocaleDateString(),
+        particulars: request.purpose,
+        amount: request.amount,
+        approvedByName: firstApprover.approver_name,
+        approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+        approvedByDate: new Date(firstApprover.approval_date).toLocaleDateString(),
+        receivedByName: profile.full_name || 'Unknown',
+        receivedByEsig: profile.e_sig || null,
+        receivedByDate: new Date(request.received_at || new Date()).toLocaleDateString(),
+      });
+
+      const pdfFileName = `approved_petty_cash_${request.pc_number}_${Date.now()}.pdf`;
+      const pdfPath = `petty_cash/${profile.company_id}/${pdfFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(pdfPath, pdfBytes, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from('petty_cash_requests')
+        .update({
+          approved_petty_cash_pdf_path: pdfPath,
+        })
+        .eq('id', request.id);
+
+      if (updateError) throw updateError;
+
+      alert('Approved petty cash form regenerated successfully!');
+      await loadRequests();
+      setShowViewModal(false);
+      setViewingRequest(null);
+    } catch (error: any) {
+      console.error('Error regenerating approved petty cash:', error);
+      alert('Failed to regenerate approved petty cash form: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -754,6 +836,14 @@ export function PettyCash() {
                     >
                       <Download size={18} />
                       Download Approved Form
+                    </button>
+                    <button
+                      onClick={() => handleRegenerateApprovedPettyCash(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                      {loading ? 'Regenerating...' : 'Regenerate Document'}
                     </button>
                   </>
                 )}

@@ -91,7 +91,8 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
 
   const particularText = 'Particulars';
   const particularWidth = boldFont.widthOfTextAtSize(particularText, 11);
-  drawText(particularText, midX - particularWidth / 2, yPos - 20, 11, true);
+  const leftColumnCenter = (margin + midX) / 2;
+  drawText(particularText, leftColumnCenter - particularWidth / 2, yPos - 20, 11, true);
 
   const amountText = 'Amount';
   const amountWidth = boldFont.widthOfTextAtSize(amountText, 11);
