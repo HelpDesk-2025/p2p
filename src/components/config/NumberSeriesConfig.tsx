@@ -108,6 +108,16 @@ export function NumberSeriesConfig() {
       return;
     }
 
+    if (!profile?.role || profile.role !== 'admin') {
+      alert('Only admin users can manage number series');
+      return;
+    }
+
+    if (profile.company_id !== selectedCompanyId) {
+      alert('You can only manage number series for your own company');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -340,16 +350,18 @@ export function NumberSeriesConfig() {
             Configure auto-incrementing number formats for documents
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={18} />
-          Add Series
-        </button>
+        {profile?.role === 'admin' && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus size={18} />
+            Add Series
+          </button>
+        )}
       </div>
 
-      {companies.length > 1 && (
+      {profile?.role === 'admin' && companies.length > 1 && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
           <div className="flex items-center gap-3">
             <Building2 size={20} className="text-slate-400" />
@@ -358,6 +370,7 @@ export function NumberSeriesConfig() {
               value={selectedCompanyId}
               onChange={(e) => setSelectedCompanyId(e.target.value)}
               className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              disabled={profile?.company_id !== undefined}
             >
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>
@@ -366,6 +379,14 @@ export function NumberSeriesConfig() {
               ))}
             </select>
           </div>
+        </div>
+      )}
+
+      {profile?.role !== 'admin' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm text-amber-800">
+            Only admin users can manage number series configuration.
+          </p>
         </div>
       )}
 
