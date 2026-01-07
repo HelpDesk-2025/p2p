@@ -21,6 +21,14 @@ interface Company {
   name: string;
 }
 
+const SERIES_NAME_OPTIONS = [
+  'Purchase Requisition',
+  'Canvass',
+  'Petty Cash',
+  'Reimbursement',
+  'Cash Advance',
+];
+
 export function NumberSeriesConfig() {
   const { profile } = useAuth();
   const [series, setSeries] = useState<NumberSeries[]>([]);
@@ -217,6 +225,15 @@ export function NumberSeriesConfig() {
     setShowForm(false);
   };
 
+  const getAvailableSeriesNames = () => {
+    if (editingId) {
+      return SERIES_NAME_OPTIONS;
+    }
+    return SERIES_NAME_OPTIONS.filter(
+      (name) => !series.some((s) => s.series_name === name)
+    );
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -237,15 +254,23 @@ export function NumberSeriesConfig() {
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Series Name
             </label>
-            <input
-              type="text"
+            <select
               value={formData.series_name}
               onChange={(e) => setFormData({ ...formData, series_name: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="e.g., Purchase Requisition"
               required
               disabled={editingId !== null}
-            />
+            >
+              <option value="">Select a series name...</option>
+              {getAvailableSeriesNames().map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            {!editingId && getAvailableSeriesNames().length === 0 && (
+              <p className="text-xs text-amber-600 mt-1">All series names have been configured for this company</p>
+            )}
             {editingId && (
               <p className="text-xs text-slate-500 mt-1">Series name cannot be changed after creation</p>
             )}
@@ -353,7 +378,9 @@ export function NumberSeriesConfig() {
         {profile?.role === 'admin' && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            disabled={series.length >= SERIES_NAME_OPTIONS.length}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            title={series.length >= SERIES_NAME_OPTIONS.length ? 'All series have been configured' : 'Add new series'}
           >
             <Plus size={18} />
             Add Series
