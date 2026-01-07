@@ -41,6 +41,15 @@ export function PettyCash() {
     payment_mode_id: '',
   });
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
@@ -391,10 +400,10 @@ export function PettyCash() {
             <button
               onClick={() => handleSubmit('pending')}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send size={18} />
-              Submit
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {submitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </div>
@@ -431,7 +440,7 @@ export function PettyCash() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 Purpose
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
                 Amount
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
@@ -459,8 +468,8 @@ export function PettyCash() {
                   <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
                     {req.purpose}
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">
-                    ${req.amount.toFixed(2)}
+                  <td className="px-6 py-4 text-sm font-medium text-slate-900 text-right font-mono">
+                    {formatCurrency(req.amount)}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
@@ -524,7 +533,7 @@ export function PettyCash() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
-                  <p className="text-slate-900 font-bold">₱{viewingRequest.amount.toFixed(2)}</p>
+                  <p className="text-slate-900 font-bold">{formatCurrency(viewingRequest.amount)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
