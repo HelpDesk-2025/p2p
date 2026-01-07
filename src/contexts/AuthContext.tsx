@@ -62,8 +62,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+
+    // Check if user profile is active
+    if (data.user) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('is_active')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!profileData?.is_active) {
+        await supabase.auth.signOut();
+        throw new Error('Your account is pending approval. Please contact an administrator.');
+      }
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string, department: string, companyId: string) => {
@@ -87,6 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     if (profileError) throw profileError;
+
+    // Sign out immediately since new accounts are inactive by default
+    await supabase.auth.signOut();
   };
 
   const resetPassword = async (email: string) => {

@@ -110,7 +110,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     approver_type: '',
     sequence: '',
     days_of_approval: '',
-    e_sig: ''
+    e_sig: '',
+    is_active: false
   });
   const [originalESig, setOriginalESig] = useState<string>('');
   const [companies, setCompanies] = useState<any[]>([]);
@@ -173,7 +174,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       approver_type: user.approver_type || '',
       sequence: user.sequence?.toString() || '',
       days_of_approval: user.days_of_approval?.toString() || '',
-      e_sig: user.e_sig || ''
+      e_sig: user.e_sig || '',
+      is_active: user.is_active ?? false
     };
     console.log('Setting form data:', formDataToSet);
     setOriginalESig(user.e_sig || '');
@@ -209,6 +211,16 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
       if (authError) throw authError;
 
+      // Update the user profile with is_active status
+      if (authData.user) {
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({ is_active: formData.is_active })
+          .eq('id', authData.user.id);
+
+        if (updateError) throw updateError;
+      }
+
       alert('User created successfully!');
       setShowForm(false);
       setFormData({
@@ -221,7 +233,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         approver_type: '',
         sequence: '',
         days_of_approval: '',
-        e_sig: ''
+        e_sig: '',
+        is_active: false
       });
       reload();
     } catch (error: any) {
@@ -273,7 +286,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: formData.department || null,
         role: formData.role,
         approver_type: formData.approver_type || null,
-        e_sig: formData.e_sig || null
+        e_sig: formData.e_sig || null,
+        is_active: formData.is_active
       };
 
       console.log('Updating user:', editingId, updateData);
@@ -305,7 +319,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         approver_type: '',
         sequence: '',
         days_of_approval: '',
-        e_sig: ''
+        e_sig: '',
+        is_active: false
       });
       reload();
     } catch (error: any) {
@@ -328,7 +343,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       approver_type: '',
       sequence: '',
       days_of_approval: '',
-      e_sig: ''
+      e_sig: '',
+      is_active: false
     });
   };
 
@@ -467,6 +483,29 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                 <option value="President">President</option>
                 <option value="Requestor">Requestor</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Account Status</label>
+              <div className="flex items-center gap-3 mt-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  <span className={`ml-3 text-sm font-semibold ${formData.is_active ? 'text-green-700' : 'text-slate-600'}`}>
+                    {formData.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </label>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {formData.is_active
+                  ? 'User can sign in and access the system'
+                  : 'User account is disabled and cannot sign in'}
+              </p>
             </div>
 
             <div className="col-span-2 space-y-3">

@@ -91,6 +91,13 @@ export function LoginForm() {
           throw new Error('Please select a department');
         }
         await signUp(email, password, fullName, department, selectedCompanyId);
+        setSuccess('Account created successfully! Your account is pending approval. An administrator will activate your account soon.');
+        setIsSignUp(false);
+        setEmail('');
+        setPassword('');
+        setFullName('');
+        setSelectedCompanyId('');
+        setDepartment('');
       } else {
         await signIn(email, password);
       }
