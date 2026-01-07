@@ -327,7 +327,7 @@ export function PettyCash() {
           sequence,
           approver_id,
           user_profiles!approval_ledger_approver_id_fkey (
-            esignature
+            e_sig
           )
         `)
         .eq('request_type', 'Petty Cash')
@@ -351,10 +351,10 @@ export function PettyCash() {
         particulars: request.purpose,
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
-        approvedByEsig: firstApprover.user_profiles?.esignature || null,
+        approvedByEsig: firstApprover.user_profiles?.e_sig || null,
         approvedByDate: new Date(firstApprover.approval_date).toLocaleDateString(),
         receivedByName: profile.full_name || 'Unknown',
-        receivedByEsig: profile.esignature || null,
+        receivedByEsig: profile.e_sig || null,
         receivedByDate: new Date().toLocaleDateString(),
       });
 
