@@ -790,7 +790,7 @@ export function PettyCash() {
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 {viewingRequest.status === 'draft' && (
                   <>
                     <button
