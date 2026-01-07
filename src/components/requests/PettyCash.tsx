@@ -678,10 +678,14 @@ export function PettyCash() {
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">To / Receipient</label>
+                  <p className="text-slate-900">{viewingRequest.payee || 'N/A'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
                   <p className="text-slate-900 font-bold">{formatCurrency(viewingRequest.amount)}</p>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
                     {viewingRequest.status}
