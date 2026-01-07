@@ -182,28 +182,27 @@ export function PettyCash() {
             0
           );
 
-          for (const approvalFlow of approvalFlows) {
-            const approverInfo = await getApproverEmail(
-              approvalFlow,
-              profile.company_id,
-              profile.department || ''
-            );
+          const firstApprover = approvalFlows[0];
+          const approverInfo = await getApproverEmail(
+            firstApprover,
+            profile.company_id,
+            profile.department || ''
+          );
 
-            if (approverInfo) {
-              await sendApprovalEmail(
-                approverInfo.email,
-                approverInfo.name,
-                'Petty Cash',
-                formData.document_no,
-                profile.full_name || 'Unknown',
-                profile.department || '',
-                formData.amount,
-                'Submitted',
-                undefined,
-                undefined,
-                approvalFlow.approver_type
-              );
-            }
+          if (approverInfo) {
+            await sendApprovalEmail(
+              approverInfo.email,
+              approverInfo.name,
+              'Petty Cash',
+              formData.document_no,
+              profile.full_name || 'Unknown',
+              profile.department || '',
+              formData.amount,
+              'Submitted',
+              undefined,
+              undefined,
+              firstApprover.approver_type
+            );
           }
         }
       }
