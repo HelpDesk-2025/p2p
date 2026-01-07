@@ -272,6 +272,7 @@ export function PurchaseRequisition() {
   const generateDocumentNo = async () => {
     if (!profile?.company_id) {
       console.error('Company ID not available');
+      alert('Unable to generate document number: Company information not available');
       return;
     }
 
@@ -282,8 +283,9 @@ export function PurchaseRequisition() {
       });
       if (error) throw error;
       setFormData(prev => ({ ...prev, document_no: data }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating document number:', error);
+      alert('Error generating document number: ' + error.message);
     }
   };
 
@@ -875,9 +877,23 @@ export function PurchaseRequisition() {
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Document No.
               </label>
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-                <FileText size={18} className="text-slate-400" />
-                <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                  <FileText size={18} className="text-slate-400" />
+                  <span className="font-mono font-semibold text-slate-900">
+                    {formData.document_no || 'Generating...'}
+                  </span>
+                </div>
+                {!editingRequest && (
+                  <button
+                    type="button"
+                    onClick={generateDocumentNo}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    title="Regenerate document number"
+                  >
+                    <RefreshCw size={18} />
+                  </button>
+                )}
               </div>
             </div>
             <div>
@@ -1330,15 +1346,18 @@ export function PurchaseRequisition() {
     );
   }
 
+  const handleNewRequest = () => {
+    resetForm();
+    setShowForm(true);
+    generateDocumentNo();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
         <button
-          onClick={() => {
-            setShowForm(true);
-            generateDocumentNo();
-          }}
+          onClick={handleNewRequest}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
           <Plus size={20} />
