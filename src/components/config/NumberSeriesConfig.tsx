@@ -18,7 +18,7 @@ interface NumberSeries {
 
 interface Company {
   id: string;
-  company_name: string;
+  name: string;
 }
 
 export function NumberSeriesConfig() {
@@ -55,8 +55,8 @@ export function NumberSeriesConfig() {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, company_name')
-        .order('company_name', { ascending: true });
+        .select('id, name')
+        .order('name', { ascending: true });
 
       if (error) throw error;
       setCompanies(data || []);
@@ -361,7 +361,7 @@ export function NumberSeriesConfig() {
             >
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>
-                  {company.company_name}
+                  {company.name}
                 </option>
               ))}
             </select>
