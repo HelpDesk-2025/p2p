@@ -407,8 +407,9 @@ export function ApprovalProgressTracker({
             <span className="font-semibold">Request Fully Approved</span>
           </div>
 
-          {/* Hide MSBC sync for Purchase Order type PRs */}
-          {!((requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') && purchaseType === 'Purchase Order') && (
+          {/* Hide MSBC sync for Purchase Order type PRs and Petty Cash */}
+          {!((requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') && purchaseType === 'Purchase Order') &&
+           !(requestType === 'Petty Cash' || requestType === 'petty_cash') && (
             <div className="relative">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 z-10">
