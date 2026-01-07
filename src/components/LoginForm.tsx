@@ -1,25 +1,81 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, UserPlus } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { LogIn, UserPlus, Mail } from 'lucide-react';
+
+interface Company {
+  id: string;
+  name: string;
+  departments: string[];
+}
 
 export function LoginForm() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [department, setDepartment] = useState('');
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isSignUp) {
+      loadCompanies();
+    }
+  }, [isSignUp]);
+
+  useEffect(() => {
+    if (selectedCompanyId) {
+      const company = companies.find(c => c.id === selectedCompanyId);
+      if (company) {
+        setDepartments(company.departments || []);
+        setDepartment('');
+      }
+    }
+  }, [selectedCompanyId, companies]);
+
+  const loadCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name, departments')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setCompanies(data || []);
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        await signUp(email, password, fullName, department);
+      if (isForgotPassword) {
+        await resetPassword(email);
+        setSuccess('Password reset email sent! Check your inbox.');
+        setTimeout(() => {
+          setIsForgotPassword(false);
+          setSuccess('');
+        }, 3000);
+      } else if (isSignUp) {
+        if (!selectedCompanyId) {
+          throw new Error('Please select a company');
+        }
+        if (!department) {
+          throw new Error('Please select a department');
+        }
+        await signUp(email, password, fullName, department, selectedCompanyId);
       } else {
         await signIn(email, password);
       }
@@ -36,7 +92,7 @@ export function LoginForm() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Procure to Pay</h1>
           <p className="text-slate-600">
-            {isSignUp ? 'Create your account' : 'Sign in to continue'}
+            {isForgotPassword ? 'Reset your password' : isSignUp ? 'Create your account' : 'Sign in to continue'}
           </p>
         </div>
 
@@ -45,7 +101,7 @@ export function LoginForm() {
             <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Full Name
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -55,17 +111,44 @@ export function LoginForm() {
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Department
+                  Company <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => setSelectedCompanyId(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                >
+                  <option value="">Select a company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Department <span className="text-red-500">*</span>
+                </label>
+                <select
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                />
+                  disabled={!selectedCompanyId}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">Select a department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
               </div>
             </>
           )}
@@ -83,22 +166,30 @@ export function LoginForm() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-            />
-          </div>
+          {!isForgotPassword && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              />
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+              {success}
             </div>
           )}
 
@@ -109,6 +200,11 @@ export function LoginForm() {
           >
             {loading ? (
               'Loading...'
+            ) : isForgotPassword ? (
+              <>
+                <Mail size={20} />
+                Send Reset Link
+              </>
             ) : isSignUp ? (
               <>
                 <UserPlus size={20} />
@@ -123,15 +219,35 @@ export function LoginForm() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 space-y-2 text-center">
+          {!isForgotPassword && !isSignUp && (
+            <button
+              onClick={() => {
+                setIsForgotPassword(true);
+                setError('');
+                setSuccess('');
+              }}
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium block w-full"
+            >
+              Forgot password?
+            </button>
+          )}
+
           <button
             onClick={() => {
-              setIsSignUp(!isSignUp);
+              if (isForgotPassword) {
+                setIsForgotPassword(false);
+              } else {
+                setIsSignUp(!isSignUp);
+              }
               setError('');
+              setSuccess('');
             }}
             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
           >
-            {isSignUp
+            {isForgotPassword
+              ? 'Back to sign in'
+              : isSignUp
               ? 'Already have an account? Sign in'
               : "Don't have an account? Sign up"}
           </button>
