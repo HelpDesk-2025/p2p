@@ -121,11 +121,6 @@ export function NumberSeriesConfig() {
       return;
     }
 
-    if (profile.company_id !== selectedCompanyId) {
-      alert('You can only manage number series for your own company');
-      return;
-    }
-
     setLoading(true);
 
     try {
