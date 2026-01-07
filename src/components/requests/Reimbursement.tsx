@@ -67,12 +67,26 @@ export function Reimbursement() {
   };
 
   const loadRequests = async () => {
-    const { data } = await supabase
+    if (!profile?.company_id && profile?.role !== 'admin') return;
+
+    let query = supabase
       .from('reimbursement_requests')
-      .select('*')
-      .eq('requester_id', profile?.id)
+      .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id)')
       .order('created_at', { ascending: false });
-    setRequests(data || []);
+
+    // Only filter by requester_id if user is not an admin
+    if (profile?.role !== 'admin') {
+      query = query.eq('requester_id', profile?.id);
+    }
+
+    const { data } = await query;
+
+    // For admin users, filter in-memory to show all requests
+    const filteredRequests = profile.role === 'admin'
+      ? data
+      : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
+
+    setRequests(filteredRequests || []);
   };
 
   const loadPaymentModes = async () => {

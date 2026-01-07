@@ -62,7 +62,7 @@ export function ProcurementChecking() {
   }, [profile]);
 
   const loadRequests = async () => {
-    if (!profile?.company_id) return;
+    if (!profile?.company_id && profile?.role !== 'admin') return;
 
     const { data } = await supabase
       .from('purchase_requisitions')
@@ -81,22 +81,28 @@ export function ProcurementChecking() {
       return;
     }
 
-    const companyFilteredRequests = data.filter(req =>
-      req.user_profiles?.company_id === profile.company_id
-    );
+    // Admin users can see all requests, others only see their company's requests
+    const filteredRequests = profile?.role === 'admin'
+      ? data
+      : data.filter(req => req.user_profiles?.company_id === profile.company_id);
 
-    setRequests(companyFilteredRequests);
+    setRequests(filteredRequests);
   };
 
   const loadUsers = async () => {
-    if (!profile?.company_id) return;
+    if (!profile?.company_id && profile?.role !== 'admin') return;
 
-    const { data } = await supabase
+    let query = supabase
       .from('user_profiles')
       .select('id, full_name, email, company, department, company_id')
-      .eq('company_id', profile.company_id)
-      .eq('is_active', true)
-      .order('full_name');
+      .eq('is_active', true);
+
+    // Non-admin users only see users from their company
+    if (profile?.role !== 'admin' && profile?.company_id) {
+      query = query.eq('company_id', profile.company_id);
+    }
+
+    const { data } = await query.order('full_name');
 
     if (data) {
       setUsers(data);

@@ -43,7 +43,7 @@ export function ReimbursementApproval() {
   }, [profile]);
 
   const loadRequests = async () => {
-    if (!profile?.company_id) return;
+    if (!profile?.company_id && profile?.role !== 'admin') return;
 
     const { data } = await supabase
       .from('reimbursement_requests')
@@ -59,9 +59,9 @@ export function ReimbursementApproval() {
       return;
     }
 
-    const companyFilteredRequests = data.filter(req =>
-      req.user_profiles?.company_id === profile.company_id
-    );
+    const companyFilteredRequests = profile.role === 'admin'
+      ? data
+      : data.filter(req => req.user_profiles?.company_id === profile.company_id);
 
     if (profile.role === 'admin') {
       setRequests(companyFilteredRequests);

@@ -133,20 +133,35 @@ export function PurchaseRequisition() {
 
   const loadRequests = async () => {
     try {
-      const { data, error } = await supabase
+      if (!profile?.company_id && profile?.role !== 'admin') return;
+
+      let query = supabase
         .from('purchase_requisitions')
         .select(`
           *,
           pr_checklists (
             pr_type,
             item_name
-          )
+          ),
+          user_profiles!purchase_requisitions_requester_id_fkey(company_id)
         `)
-        .eq('requester_id', profile?.id)
         .order('created_at', { ascending: false });
 
+      // Only filter by requester_id if user is not an admin
+      if (profile?.role !== 'admin') {
+        query = query.eq('requester_id', profile?.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setRequests(data || []);
+
+      // For admin users, filter in-memory to show all requests
+      const filteredRequests = profile.role === 'admin'
+        ? data
+        : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
+
+      setRequests(filteredRequests || []);
     } catch (error) {
       console.error('Error loading requests:', error);
     }

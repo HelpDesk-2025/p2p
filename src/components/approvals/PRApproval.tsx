@@ -73,7 +73,7 @@ export function PRApproval() {
   }, [profile]);
 
   const loadRequests = async () => {
-    if (!profile?.company_id) return;
+    if (!profile?.company_id && profile?.role !== 'admin') return;
 
     const { data } = await supabase
       .from('purchase_requisitions')
@@ -91,9 +91,10 @@ export function PRApproval() {
       return;
     }
 
-    const companyFilteredRequests = data.filter(req =>
-      req.user_profiles?.company_id === profile.company_id
-    );
+    // Admin users can see all requests, others only see their company's requests
+    const companyFilteredRequests = profile.role === 'admin'
+      ? data
+      : data.filter(req => req.user_profiles?.company_id === profile.company_id);
 
     if (profile.role === 'admin') {
       setRequests(companyFilteredRequests);
