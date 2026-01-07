@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Trash2, Edit2, X, Hash } from 'lucide-react';
 
 interface NumberSeries {
@@ -10,11 +11,13 @@ interface NumberSeries {
   number_length: number;
   format_example: string;
   is_active: boolean;
+  company_id: string;
   created_at: string;
   updated_at: string;
 }
 
 export function NumberSeriesConfig() {
+  const { profile } = useAuth();
   const [series, setSeries] = useState<NumberSeries[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -28,19 +31,24 @@ export function NumberSeriesConfig() {
   });
 
   useEffect(() => {
-    loadSeries();
-  }, []);
+    if (profile?.company_id) {
+      loadSeries();
+    }
+  }, [profile?.company_id]);
 
   useEffect(() => {
     updateFormatExample();
   }, [formData.prefix, formData.next_number, formData.number_length]);
 
   const loadSeries = async () => {
+    if (!profile?.company_id) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('number_series')
         .select('*')
+        .eq('company_id', profile.company_id)
         .order('series_name', { ascending: true });
 
       if (error) throw error;
@@ -60,6 +68,12 @@ export function NumberSeriesConfig() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!profile?.company_id) {
+      alert('Company information not available');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -87,6 +101,7 @@ export function NumberSeriesConfig() {
           number_length: formData.number_length,
           format_example,
           is_active: formData.is_active,
+          company_id: profile.company_id,
         });
 
         if (error) throw error;

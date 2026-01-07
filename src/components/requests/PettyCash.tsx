@@ -61,9 +61,15 @@ export function PettyCash() {
   }, []);
 
   const generateDocumentNo = async () => {
+    if (!profile?.company_id) {
+      console.error('Company ID not available');
+      return;
+    }
+
     try {
       const { data, error } = await supabase.rpc('get_next_number', {
-        p_series_name: 'Petty Cash'
+        p_series_name: 'Petty Cash',
+        p_company_id: profile.company_id
       });
       if (error) throw error;
       setFormData(prev => ({ ...prev, document_no: data }));
