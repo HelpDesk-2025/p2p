@@ -828,14 +828,14 @@ export function PettyCash() {
                       className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                     >
                       <Eye size={18} />
-                      Preview Approved Form
+                      Preview Form
                     </button>
                     <button
                       onClick={() => downloadApprovedPettyCash(viewingRequest.approved_petty_cash_pdf_path!, viewingRequest.pc_number)}
                       className="flex items-center gap-2 px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
                     >
                       <Download size={18} />
-                      Download Approved Form
+                      Download Form
                     </button>
                     <button
                       onClick={() => handleRegenerateApprovedPettyCash(viewingRequest)}
