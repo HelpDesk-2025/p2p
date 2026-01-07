@@ -154,12 +154,12 @@ Deno.serve(async (req: Request) => {
 
     console.log('📤 STEP 1: Creating journal batch...');
     const step1Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPayments`,
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          TemplateName: 'PAYMENTSB',
+          TemplateName: 'PURCHASESB',
           code: batchNumber,
           displayName: `${dateNeeded} - ${purpose}`,
         }),
@@ -177,12 +177,12 @@ Deno.serve(async (req: Request) => {
 
     console.log('📤 STEP 4: Creating journal line...');
     const step4Response = await fetch(
-      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPayments(${parentID})/journalLinesPayments`,
+      `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases(${parentID})/journalLinesPurch`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          TemplateName: 'PAYMENTSB',
+          TemplateName: 'PURCHASESB',
           AccountType: 'Vendor',
           accountNumber: vendorNumber,
           postingDate: dateNeeded,
