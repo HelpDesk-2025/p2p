@@ -321,11 +321,19 @@ export function PettyCash() {
       // Get approval ledger entries to find first approver
       const { data: ledgerData, error: ledgerError } = await supabase
         .from('approval_ledger')
-        .select('approver_name, approver_esig, action_date, approval_level')
+        .select(`
+          approver_name,
+          approval_date,
+          sequence,
+          approver_id,
+          user_profiles!approval_ledger_approver_id_fkey (
+            esignature
+          )
+        `)
         .eq('request_type', 'Petty Cash')
         .eq('request_id', request.id)
         .eq('action', 'Approved')
-        .order('approval_level', { ascending: true });
+        .order('sequence', { ascending: true });
 
       if (ledgerError) throw ledgerError;
 
@@ -343,8 +351,8 @@ export function PettyCash() {
         particulars: request.purpose,
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
-        approvedByEsig: firstApprover.approver_esig,
-        approvedByDate: new Date(firstApprover.action_date).toLocaleDateString(),
+        approvedByEsig: firstApprover.user_profiles?.esignature || null,
+        approvedByDate: new Date(firstApprover.approval_date).toLocaleDateString(),
         receivedByName: profile.full_name || 'Unknown',
         receivedByEsig: profile.esignature || null,
         receivedByDate: new Date().toLocaleDateString(),
