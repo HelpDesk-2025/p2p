@@ -53,15 +53,15 @@ export function LoginForm() {
   const loadDepartments = async (companyId: string) => {
     try {
       const { data, error } = await supabase
-        .from('approval_flow_setups')
-        .select('department_id')
+        .from('departments')
+        .select('name')
         .eq('company_id', companyId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('name', { ascending: true });
 
       if (error) throw error;
 
-      const uniqueDepts = Array.from(new Set(data?.map(d => d.department_id) || []));
-      setDepartments(uniqueDepts);
+      setDepartments(data?.map(d => d.name) || []);
       setDepartment('');
     } catch (error) {
       console.error('Error loading departments:', error);
