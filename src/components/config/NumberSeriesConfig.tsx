@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Trash2, Edit2, X, Hash } from 'lucide-react';
+import { Plus, Save, Trash2, Edit2, X, Hash, Building2 } from 'lucide-react';
 
 interface NumberSeries {
   id: string;
@@ -16,9 +16,16 @@ interface NumberSeries {
   updated_at: string;
 }
 
+interface Company {
+  id: string;
+  company_name: string;
+}
+
 export function NumberSeriesConfig() {
   const { profile } = useAuth();
   const [series, setSeries] = useState<NumberSeries[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,24 +38,48 @@ export function NumberSeriesConfig() {
   });
 
   useEffect(() => {
-    if (profile?.company_id) {
+    loadCompanies();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCompanyId) {
       loadSeries();
     }
-  }, [profile?.company_id]);
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     updateFormatExample();
   }, [formData.prefix, formData.next_number, formData.number_length]);
 
+  const loadCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, company_name')
+        .order('company_name', { ascending: true });
+
+      if (error) throw error;
+      setCompanies(data || []);
+
+      if (profile?.company_id && data && data.length > 0) {
+        setSelectedCompanyId(profile.company_id);
+      } else if (data && data.length > 0) {
+        setSelectedCompanyId(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
+
   const loadSeries = async () => {
-    if (!profile?.company_id) return;
+    if (!selectedCompanyId) return;
 
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('number_series')
         .select('*')
-        .eq('company_id', profile.company_id)
+        .eq('company_id', selectedCompanyId)
         .order('series_name', { ascending: true });
 
       if (error) throw error;
@@ -69,7 +100,7 @@ export function NumberSeriesConfig() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!profile?.company_id) {
+    if (!selectedCompanyId) {
       alert('Company information not available');
       return;
     }
@@ -101,7 +132,7 @@ export function NumberSeriesConfig() {
           number_length: formData.number_length,
           format_example,
           is_active: formData.is_active,
-          company_id: profile.company_id,
+          company_id: selectedCompanyId,
         });
 
         if (error) throw error;
@@ -314,6 +345,26 @@ export function NumberSeriesConfig() {
           Add Series
         </button>
       </div>
+
+      {companies.length > 1 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <div className="flex items-center gap-3">
+            <Building2 size={20} className="text-slate-400" />
+            <label className="text-sm font-medium text-slate-700">Company:</label>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.company_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {loading ? (
