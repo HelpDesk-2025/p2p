@@ -14,6 +14,7 @@ interface PettyCashReq {
   purpose: string;
   amount: number;
   payment_mode_id?: string;
+  payee?: string;
   status: string;
   current_approval_level: number;
   attachments?: any[];
@@ -404,12 +405,16 @@ export function PettyCashApproval() {
                   <p className="text-slate-900">{selectedRequest.user_profiles?.full_name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Amount</label>
-                  <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString()}</p>
-                </div>
-                <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">To / Receipient</label>
+                  <p className="text-slate-900">{selectedRequest.payee || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Amount</label>
+                  <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString()}</p>
                 </div>
               </div>
 
