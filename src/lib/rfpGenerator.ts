@@ -69,12 +69,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   drawText(data.companyName, (width - companyNameWidth) / 2, yPosition, 16, true);
   yPosition -= 30;
 
-  // Request Type (centered)
-  const locationText = data.requestType === 'Petty Cash' ? 'Taytay Rizal' : 'Taytay Rizal';
-  const locationWidth = font.widthOfTextAtSize(locationText, 10);
-  drawText(locationText, (width - locationWidth) / 2, yPosition, 10, false);
-  yPosition -= 15;
-
+  // REQUEST FOR PAYMENT title (centered)
   const rfpTitleWidth = boldFont.widthOfTextAtSize('REQUEST FOR PAYMENT', 12);
   drawText('REQUEST FOR PAYMENT', (width - rfpTitleWidth) / 2, yPosition, 12, true);
   yPosition -= 30;
@@ -385,17 +380,23 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   drawText(data.companyName, (width - companyNameWidth) / 2, yPosition, 14, true);
   yPosition -= 15;
 
-  // Company Address (centered)
-  const sanitizedAddress = sanitizeText(data.companyAddress);
-  const addressWidth = font.widthOfTextAtSize(sanitizedAddress, 9);
-  drawText(data.companyAddress, (width - addressWidth) / 2, yPosition, 9, false);
-  yPosition -= 12;
+  // Company Address (centered) - only if provided
+  if (data.companyAddress && data.companyAddress.trim()) {
+    const sanitizedAddress = sanitizeText(data.companyAddress);
+    const addressWidth = font.widthOfTextAtSize(sanitizedAddress, 9);
+    drawText(data.companyAddress, (width - addressWidth) / 2, yPosition, 9, false);
+    yPosition -= 12;
+  }
 
-  // VAT TIN (centered)
-  const sanitizedVatTin = sanitizeText(data.vatTin);
-  const vatTinWidth = font.widthOfTextAtSize(sanitizedVatTin, 9);
-  drawText(data.vatTin, (width - vatTinWidth) / 2, yPosition, 9, false);
-  yPosition -= 20;
+  // VAT TIN (centered) - only if provided
+  if (data.vatTin && data.vatTin.trim()) {
+    const sanitizedVatTin = sanitizeText(data.vatTin);
+    const vatTinWidth = font.widthOfTextAtSize(sanitizedVatTin, 9);
+    drawText(data.vatTin, (width - vatTinWidth) / 2, yPosition, 9, false);
+    yPosition -= 12;
+  }
+
+  yPosition -= 8;
 
   // Title (centered)
   const titleWidth = boldFont.widthOfTextAtSize('CANVASS SUMMARY', 16);
@@ -1010,8 +1011,8 @@ export async function generateAndUploadCanvassRFP(
     // Prepare Canvass Sheet data
     const canvassSheetData: CanvassSheetData = {
       companyName: canvass.requester?.company?.name || 'Company Name',
-      companyAddress: 'No. 5 Executive Hills Brgy. Dolores, Taytay, Rizal',
-      vatTin: 'VAT REG TIN : 000-245-972-000',
+      companyAddress: '',
+      vatTin: '',
       date: new Date(canvass.request_date).toLocaleDateString('en-US', {
         month: '2-digit',
         day: '2-digit',
