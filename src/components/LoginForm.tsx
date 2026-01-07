@@ -6,7 +6,6 @@ import { LogIn, UserPlus, Mail } from 'lucide-react';
 interface Company {
   id: string;
   name: string;
-  departments: string[];
 }
 
 export function LoginForm() {
@@ -32,25 +31,41 @@ export function LoginForm() {
 
   useEffect(() => {
     if (selectedCompanyId) {
-      const company = companies.find(c => c.id === selectedCompanyId);
-      if (company) {
-        setDepartments(company.departments || []);
-        setDepartment('');
-      }
+      loadDepartments(selectedCompanyId);
     }
-  }, [selectedCompanyId, companies]);
+  }, [selectedCompanyId]);
 
   const loadCompanies = async () => {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name, departments')
+        .select('id, name')
+        .eq('is_active', true)
         .order('name', { ascending: true });
 
       if (error) throw error;
       setCompanies(data || []);
     } catch (error) {
       console.error('Error loading companies:', error);
+    }
+  };
+
+  const loadDepartments = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('approval_flow_setups')
+        .select('department_id')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const uniqueDepts = Array.from(new Set(data?.map(d => d.department_id) || []));
+      setDepartments(uniqueDepts);
+      setDepartment('');
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      setDepartments([]);
     }
   };
 
