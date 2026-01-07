@@ -65,9 +65,12 @@ export function NumberSeriesConfig() {
         setSelectedCompanyId(profile.company_id);
       } else if (data && data.length > 0) {
         setSelectedCompanyId(data[0].id);
+      } else {
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error loading companies:', error);
+      setLoading(false);
     }
   };
 
