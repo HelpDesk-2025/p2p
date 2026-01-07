@@ -78,8 +78,8 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   const midX = margin + boxWidth / 2;
   drawLine(midX, yPos, midX, yPos - 30);
 
-  drawText('To / Receipient:', margin + 10, yPos - 20, 11, false);
-  drawText(data.recipient, margin + 110, yPos - 20, 11, false);
+  drawText('To:', margin + 10, yPos - 20, 11, false);
+  drawText(data.recipient, margin + 40, yPos - 20, 11, false);
   drawText('Date', midX + 10, yPos - 20, 11, false);
   drawText(data.requestDate, midX + 50, yPos - 20, 11, false);
 
