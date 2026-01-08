@@ -12,8 +12,12 @@ export function LoginForm() {
   const { signIn, signUp, resetPassword } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [otpStep, setOtpStep] = useState<'email' | 'otp' | 'password'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [department, setDepartment] = useState('');
@@ -77,12 +81,74 @@ export function LoginForm() {
 
     try {
       if (isForgotPassword) {
-        await resetPassword(email);
-        setSuccess('Password reset email sent! Check your inbox.');
-        setTimeout(() => {
-          setIsForgotPassword(false);
-          setSuccess('');
-        }, 3000);
+        if (otpStep === 'email') {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset-otp`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({ email }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to send OTP');
+          }
+
+          setSuccess('OTP sent to your email! Please check your inbox.');
+          setOtpStep('otp');
+        } else if (otpStep === 'otp') {
+          if (otpCode.length !== 6) {
+            throw new Error('Please enter a valid 6-digit OTP');
+          }
+          setSuccess('OTP verified! Please enter your new password.');
+          setOtpStep('password');
+        } else if (otpStep === 'password') {
+          if (newPassword.length < 6) {
+            throw new Error('Password must be at least 6 characters long');
+          }
+          if (newPassword !== confirmPassword) {
+            throw new Error('Passwords do not match');
+          }
+
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-otp-and-reset-password`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                email,
+                otpCode,
+                newPassword,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to reset password');
+          }
+
+          setSuccess('Password reset successfully! You can now sign in with your new password.');
+          setTimeout(() => {
+            setIsForgotPassword(false);
+            setOtpStep('email');
+            setEmail('');
+            setOtpCode('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setSuccess('');
+          }, 3000);
+        }
       } else if (isSignUp) {
         if (!selectedCompanyId) {
           throw new Error('Please select a company');
@@ -114,12 +180,89 @@ export function LoginForm() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Procure to Pay</h1>
           <p className="text-slate-600">
-            {isForgotPassword ? 'Reset your password' : isSignUp ? 'Create your account' : 'Sign in to continue'}
+            {isForgotPassword
+              ? otpStep === 'email'
+                ? 'Enter your email to receive OTP'
+                : otpStep === 'otp'
+                  ? 'Enter the OTP sent to your email'
+                  : 'Set your new password'
+              : isSignUp
+                ? 'Create your account'
+                : 'Sign in to continue'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp && (
+          {isForgotPassword && otpStep === 'email' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                placeholder="your@email.com"
+              />
+            </div>
+          )}
+
+          {isForgotPassword && otpStep === 'otp' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                OTP Code
+              </label>
+              <input
+                type="text"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                maxLength={6}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center text-2xl tracking-widest font-mono"
+                placeholder="000000"
+              />
+              <p className="text-sm text-slate-500 mt-2 text-center">
+                Enter the 6-digit code sent to {email}
+              </p>
+            </div>
+          )}
+
+          {isForgotPassword && otpStep === 'password' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </>
+          )}
+
+          {!isForgotPassword && isSignUp && (
             <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -175,32 +318,34 @@ export function LoginForm() {
             </>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-            />
-          </div>
-
           {!isForgotPassword && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                />
+              </div>
+            </>
           )}
 
           {error && (
@@ -223,10 +368,16 @@ export function LoginForm() {
             {loading ? (
               'Loading...'
             ) : isForgotPassword ? (
-              <>
-                <Mail size={20} />
-                Send Reset Link
-              </>
+              otpStep === 'email' ? (
+                <>
+                  <Mail size={20} />
+                  Send OTP
+                </>
+              ) : otpStep === 'otp' ? (
+                'Verify OTP'
+              ) : (
+                'Reset Password'
+              )
             ) : isSignUp ? (
               <>
                 <UserPlus size={20} />
@@ -259,6 +410,10 @@ export function LoginForm() {
             onClick={() => {
               if (isForgotPassword) {
                 setIsForgotPassword(false);
+                setOtpStep('email');
+                setOtpCode('');
+                setNewPassword('');
+                setConfirmPassword('');
               } else {
                 setIsSignUp(!isSignUp);
               }
