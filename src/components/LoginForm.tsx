@@ -156,7 +156,9 @@ export function LoginForm() {
         if (!department) {
           throw new Error('Please select a department');
         }
-        await signUp(email, password, fullName, department, selectedCompanyId);
+        const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+        const companyName = selectedCompany?.name || '';
+        await signUp(email, password, fullName, department, selectedCompanyId, companyName);
         setSuccess('Account created successfully! Your account is pending approval. An administrator will activate your account soon.');
         setIsSignUp(false);
         setEmail('');
