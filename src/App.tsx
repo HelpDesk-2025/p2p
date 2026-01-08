@@ -41,7 +41,7 @@ function AppContent() {
     );
   }
 
-  if (isResetPassword) {
+  if (isResetPassword && user) {
     return <ResetPassword />;
   }
 

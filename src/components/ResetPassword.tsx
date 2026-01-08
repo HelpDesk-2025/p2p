@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { KeyRound, CheckCircle } from 'lucide-react';
 
 export function ResetPassword() {
-  const { updatePassword } = useAuth();
+  const { updatePassword, signOut } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,7 +30,9 @@ export function ResetPassword() {
     try {
       await updatePassword(password);
       setSuccess(true);
-      setTimeout(() => {
+      setTimeout(async () => {
+        await signOut();
+        window.location.hash = '';
         window.location.href = '/';
       }, 2000);
     } catch (err: any) {
@@ -51,7 +53,7 @@ export function ResetPassword() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Password Reset Successful</h1>
           <p className="text-slate-600 mb-4">
-            Your password has been successfully reset. You will be redirected to the login page.
+            Your password has been successfully reset. Redirecting to login page...
           </p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>
