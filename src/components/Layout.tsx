@@ -16,6 +16,7 @@ import {
   ChevronDown,
   BookOpen,
   UserCheck,
+  KeyRound,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -46,7 +47,10 @@ export type ViewType =
   | 'config-holidays'
   | 'config-companies'
   | 'config-approval-flows'
-  | 'config-vendors-items';
+  | 'config-number-series'
+  | 'config-smtp'
+  | 'config-vendors-items'
+  | 'change-password';
 
 interface MenuItem {
   id: ViewType;
@@ -127,6 +131,12 @@ const menuItems: MenuItem[] = [
     icon: BookOpen,
     roles: ['approver', 'admin'],
     group: 'procurement',
+  },
+  {
+    id: 'change-password',
+    label: 'Change Password',
+    icon: KeyRound,
+    group: 'profile',
   },
 ];
 

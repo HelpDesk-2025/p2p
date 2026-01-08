@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
+import { ResetPassword } from './components/ResetPassword';
+import { ChangePassword } from './components/ChangePassword';
 import { Layout, ViewType } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { PurchaseRequisition } from './components/requests/PurchaseRequisition';
@@ -21,6 +23,15 @@ import { ProcurementChecking } from './components/ProcurementChecking';
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const [isResetPassword, setIsResetPassword] = useState(false);
+
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    if (type === 'recovery') {
+      setIsResetPassword(true);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -28,6 +39,10 @@ function AppContent() {
         <div className="text-slate-600">Loading...</div>
       </div>
     );
+  }
+
+  if (isResetPassword) {
+    return <ResetPassword />;
   }
 
   if (!user) {
@@ -82,6 +97,8 @@ function AppContent() {
         return <ConfigManager type="vendors-items" />;
       case 'config-smtp':
         return <ConfigManager type="smtp" />;
+      case 'change-password':
+        return <ChangePassword />;
       default:
         return (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
