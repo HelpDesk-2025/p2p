@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2 } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
@@ -103,7 +103,6 @@ export function PRApproval() {
 
     const requestsForCurrentUser = await Promise.all(
       companyFilteredRequests.map(async (req) => {
-        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
         const rawFlows = await getApprovalFlow(
           profile.company_id,
           req.department,
@@ -154,7 +153,6 @@ export function PRApproval() {
     setComments('');
 
     if (profile?.company_id) {
-      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
       const rawFlows = await getApprovalFlow(
         profile.company_id,
         request.department,
