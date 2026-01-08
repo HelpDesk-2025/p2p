@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2 } from 'lucide-react';
-import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
 interface PaymentMode {
@@ -175,12 +175,20 @@ export function Reimbursement() {
       }
 
       if (status === 'pending' && insertedRequest && profile?.company_id) {
-        const approvalFlows = await getApprovalFlow(
+        const rawApprovalFlows = await getApprovalFlow(
           profile.company_id,
           profile.department || '',
           'Reimbursement',
           false,
           formData.amount
+        );
+
+        // Filter out requester from approval flows
+        const approvalFlows = await filterApprovalFlowsForRequester(
+          rawApprovalFlows,
+          profile.id,
+          profile.department || '',
+          profile.company_id
         );
 
         if (approvalFlows.length > 0) {
@@ -249,7 +257,7 @@ export function Reimbursement() {
         throw new Error('Company information not found');
       }
 
-      const approvalFlows = await getApprovalFlow(
+      const rawApprovalFlows = await getApprovalFlow(
         profile.company_id,
         profile.department || '',
         'Reimbursement',
@@ -257,8 +265,20 @@ export function Reimbursement() {
         request.amount
       );
 
-      if (!approvalFlows || approvalFlows.length === 0) {
+      if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
+      }
+
+      // Filter out requester from approval flows
+      const approvalFlows = await filterApprovalFlowsForRequester(
+        rawApprovalFlows,
+        profile.id,
+        profile.department || '',
+        profile.company_id
+      );
+
+      if (!approvalFlows || approvalFlows.length === 0) {
+        throw new Error('No additional approvers required for this request.');
       }
 
       const { error: updateError } = await supabase

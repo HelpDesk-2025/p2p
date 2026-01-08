@@ -190,6 +190,56 @@ export async function getApprovalFlow(
   }
 }
 
+export async function filterApprovalFlowsForRequester(
+  approvalFlows: ApprovalFlow[],
+  requesterId: string,
+  requesterDepartment: string,
+  companyId: string
+): Promise<ApprovalFlow[]> {
+  try {
+    console.log('🔍 Filtering approval flows for requester:', requesterId);
+
+    const { data: requesterProfile, error: requesterError } = await supabase
+      .from('user_profiles')
+      .select('role, department')
+      .eq('id', requesterId)
+      .single();
+
+    if (requesterError) {
+      console.error('Error fetching requester profile:', requesterError);
+      return approvalFlows;
+    }
+
+    const filteredFlows = approvalFlows.filter((flow) => {
+      if (flow.user_id === requesterId) {
+        console.log(`⏭️ Skipping approval step ${flow.sequence} (${flow.approver_type}) - Requester is the approver`);
+        return false;
+      }
+
+      if (flow.approver_type === 'Department Head' &&
+          requesterProfile.role === 'approver' &&
+          requesterProfile.department === requesterDepartment) {
+        console.log(`⏭️ Skipping approval step ${flow.sequence} (Department Head) - Requester is the department head`);
+        return false;
+      }
+
+      return true;
+    });
+
+    const resequencedFlows = filteredFlows.map((flow, index) => ({
+      ...flow,
+      sequence: index + 1
+    }));
+
+    console.log(`✅ Filtered approval flows: ${approvalFlows.length} → ${resequencedFlows.length} steps`);
+
+    return resequencedFlows;
+  } catch (error) {
+    console.error('Error filtering approval flows:', error);
+    return approvalFlows;
+  }
+}
+
 export async function getNextApprover(
   approvalFlows: ApprovalFlow[],
   currentLevel: number

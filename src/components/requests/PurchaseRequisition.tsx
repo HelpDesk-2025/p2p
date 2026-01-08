@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2 } from 'lucide-react';
-import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
@@ -578,7 +578,7 @@ export function PurchaseRequisition() {
 
         try {
           // STRICT: Get approval flow based on company, department, request type, and budget setup
-          const approvalFlows = await getApprovalFlow(
+          const rawApprovalFlows = await getApprovalFlow(
             profile.company_id,
             formData.department,
             'Purchase Requisition',
@@ -586,8 +586,20 @@ export function PurchaseRequisition() {
             total
           );
 
-          if (!approvalFlows || approvalFlows.length === 0) {
+          if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
             throw new Error('No approval flow configured for this request. Please contact administrator.');
+          }
+
+          // Filter out requester from approval flows
+          const approvalFlows = await filterApprovalFlowsForRequester(
+            rawApprovalFlows,
+            profile.id,
+            formData.department,
+            profile.company_id
+          );
+
+          if (!approvalFlows || approvalFlows.length === 0) {
+            throw new Error('No additional approvers required for this request.');
           }
 
           console.log('✅ Approval flows found:', approvalFlows.length, 'steps');
@@ -790,7 +802,7 @@ export function PurchaseRequisition() {
         throw new Error('Company information not found');
       }
 
-      const approvalFlows = await getApprovalFlow(
+      const rawApprovalFlows = await getApprovalFlow(
         profile.company_id,
         request.department,
         'Purchase Requisition',
@@ -798,8 +810,20 @@ export function PurchaseRequisition() {
         request.total_amount
       );
 
-      if (!approvalFlows || approvalFlows.length === 0) {
+      if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
+      }
+
+      // Filter out requester from approval flows
+      const approvalFlows = await filterApprovalFlowsForRequester(
+        rawApprovalFlows,
+        profile.id,
+        request.department,
+        profile.company_id
+      );
+
+      if (!approvalFlows || approvalFlows.length === 0) {
+        throw new Error('No additional approvers required for this request.');
       }
 
       const { error: updateError } = await supabase

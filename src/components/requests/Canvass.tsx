@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Edit, Loader2, Download, RefreshCw } from 'lucide-react';
-import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
@@ -568,12 +568,20 @@ export function Canvass() {
 
       if (status === 'pending' && insertedRequest && profile?.company_id) {
         const department = selectedPR?.department || profile?.department || '';
-        const approvalFlows = await getApprovalFlow(
+        const rawApprovalFlows = await getApprovalFlow(
           profile.company_id,
           department,
           'Canvass',
           false,
           totalAmount
+        );
+
+        // Filter out requester from approval flows
+        const approvalFlows = await filterApprovalFlowsForRequester(
+          rawApprovalFlows,
+          profile.id,
+          department,
+          profile.company_id
         );
 
         if (approvalFlows.length > 0) {
@@ -648,7 +656,7 @@ export function Canvass() {
         throw new Error('Company information not found');
       }
 
-      const approvalFlows = await getApprovalFlow(
+      const rawApprovalFlows = await getApprovalFlow(
         profile.company_id,
         profile.department || '',
         'Canvass',
@@ -656,8 +664,20 @@ export function Canvass() {
         request.total_amount
       );
 
-      if (!approvalFlows || approvalFlows.length === 0) {
+      if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
+      }
+
+      // Filter out requester from approval flows
+      const approvalFlows = await filterApprovalFlowsForRequester(
+        rawApprovalFlows,
+        profile.id,
+        profile.department || '',
+        profile.company_id
+      );
+
+      if (!approvalFlows || approvalFlows.length === 0) {
+        throw new Error('No additional approvers required for this request.');
       }
 
       const { error: updateError } = await supabase
