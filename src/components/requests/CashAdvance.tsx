@@ -1061,15 +1061,11 @@ export function CashAdvance() {
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button
-              onClick={() => handleSubmit('draft')}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {savingDraft ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {savingDraft ? 'Saving...' : 'Save as Draft'}
-            </button>
-            <button
-              onClick={() => handleSubmit('pending')}
+              onClick={() => {
+                if (confirm('Are you sure you want to submit this cash advance request for approval?')) {
+                  handleSubmit('pending');
+                }
+              }}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
