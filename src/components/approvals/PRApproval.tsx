@@ -103,8 +103,6 @@ export function PRApproval() {
 
     const requestsForCurrentUser = await Promise.all(
       companyFilteredRequests.map(async (req) => {
-        console.log('🔍 Processing request:', req.pr_number, 'Current Level:', req.current_approval_level);
-
         const rawFlows = await getApprovalFlow(
           profile.company_id,
           req.department,
@@ -112,8 +110,6 @@ export function PRApproval() {
           req.is_budgeted,
           req.total_amount
         );
-
-        console.log('📋 Raw flows for', req.pr_number, ':', rawFlows.length);
 
         // Filter out the requester from approval flows
         const flows = await filterApprovalFlowsForRequester(
@@ -123,23 +119,14 @@ export function PRApproval() {
           profile.company_id
         );
 
-        console.log('📋 Filtered flows for', req.pr_number, ':', flows.length);
-        console.log('📋 Flows:', flows.map(f => ({ seq: f.sequence, type: f.approver_type, user_id: f.user_id })));
-
         const currentStep = await getNextApprover(flows, req.current_approval_level);
 
-        console.log('👤 Current step for', req.pr_number, ':', currentStep);
-
-        if (!currentStep) {
-          console.log('❌ No current step found for', req.pr_number);
-          return null;
-        }
+        if (!currentStep) return null;
 
         let isCurrentApprover = false;
 
         if (currentStep.user_id) {
           isCurrentApprover = currentStep.user_id === profile.id;
-          console.log('👤 Checking user_id:', currentStep.user_id, '===', profile.id, '→', isCurrentApprover);
         } else {
           const approverType = currentStep.approver_type;
 
@@ -150,10 +137,8 @@ export function PRApproval() {
           } else if (approverType === 'President') {
             isCurrentApprover = profile.role === 'approver';
           }
-          console.log('👤 Checking approver type:', approverType, '→', isCurrentApprover);
         }
 
-        console.log('✅ Is current approver for', req.pr_number, ':', isCurrentApprover);
         return isCurrentApprover ? req : null;
       })
     );

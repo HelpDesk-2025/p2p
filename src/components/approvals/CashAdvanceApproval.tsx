@@ -288,8 +288,40 @@ export function CashAdvanceApproval() {
       const isLastApproval = nextLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
+      // Update request status first
+      const updateData: any = {
+        status: newStatus,
+        current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
+      };
+
+      if (action === 'approved' && isLastApproval) {
+        updateData.outstanding_asl = outstandingAsl;
+        updateData.remarks = remarks;
+      }
+
+      const { error: updateError } = await supabase
+        .from('cash_advance_requests')
+        .update(updateData)
+        .eq('id', selectedRequest.id);
+
+      if (updateError) throw updateError;
+
+      // Create approval ledger entry BEFORE generating RFP
+      await createApprovalLedgerEntry(
+        'Cash Advance',
+        selectedRequest.id,
+        selectedRequest.ca_number,
+        profile.id,
+        profile.full_name || 'Unknown',
+        currentApproverStep?.approver_type || 'Approver',
+        action === 'approved' ? 'Approved' : 'Rejected',
+        comments,
+        selectedRequest.current_approval_level + 1
+      );
+
       let approvedCaPdfPath: string | null = null;
 
+      // Now generate RFP with complete ledger data (AFTER ledger entry is saved)
       if (action === 'approved' && isLastApproval) {
         const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
         const { generateRFP } = await import('../../lib/rfpGenerator');
@@ -347,12 +379,7 @@ export function CashAdvanceApproval() {
           })
         );
 
-        approvalRecords.push({
-          approver_name: profile.full_name || 'Unknown',
-          approver_esig: profile.e_sig || null,
-          approval_date: new Date().toISOString(),
-          sequence: nextLevel
-        });
+        // No need to manually push current approver - it's already in the ledger from above
 
         const approvedCaFormBytes = await generateCashAdvanceForm({
           caNumber: selectedRequest.ca_number,
@@ -439,39 +466,15 @@ export function CashAdvanceApproval() {
         if (uploadError) throw uploadError;
 
         approvedCaPdfPath = uploadData.path;
+
+        // Update the request with the generated PDF path
+        const { error: pdfUpdateError } = await supabase
+          .from('cash_advance_requests')
+          .update({ approved_ca_pdf_path: approvedCaPdfPath })
+          .eq('id', selectedRequest.id);
+
+        if (pdfUpdateError) throw pdfUpdateError;
       }
-
-      const updateData: any = {
-        status: newStatus,
-        current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
-      };
-
-      if (action === 'approved' && isLastApproval) {
-        updateData.outstanding_asl = outstandingAsl;
-        updateData.remarks = remarks;
-        if (approvedCaPdfPath) {
-          updateData.approved_ca_pdf_path = approvedCaPdfPath;
-        }
-      }
-
-      const { error: updateError } = await supabase
-        .from('cash_advance_requests')
-        .update(updateData)
-        .eq('id', selectedRequest.id);
-
-      if (updateError) throw updateError;
-
-      await createApprovalLedgerEntry(
-        'Cash Advance',
-        selectedRequest.id,
-        selectedRequest.ca_number,
-        profile.id,
-        profile.full_name || 'Unknown',
-        currentApproverStep?.approver_type || 'Approver',
-        action === 'approved' ? 'Approved' : 'Rejected',
-        comments,
-        selectedRequest.current_approval_level + 1
-      );
 
       const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A';
 
