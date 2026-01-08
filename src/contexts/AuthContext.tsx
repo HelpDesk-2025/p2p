@@ -53,6 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (error) throw error;
+
+      // Check if profile is inactive and sign out if so
+      if (data && !data.is_active) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       setProfile(data);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -86,23 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+          department: department,
+          company_id: companyId,
+          role: 'standard'
+        }
+      }
     });
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('No user returned from signup');
-
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .insert({
-        id: authData.user.id,
-        email,
-        full_name: fullName,
-        role: 'standard',
-        department,
-        company_id: companyId,
-      });
-
-    if (profileError) throw profileError;
 
     // Sign out immediately since new accounts are inactive by default
     await supabase.auth.signOut();
