@@ -346,8 +346,8 @@ export function PRApproval() {
         if (isLastApproval && selectedRequest.purchase_type !== 'Purchase Order') {
           try {
             console.log('🎯 Final approval - generating RFP for Non-PO request with all approval records');
-            // Small delay to ensure database transaction is fully committed
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Delay to ensure database transaction is fully committed including foreign key joins
+            await new Promise(resolve => setTimeout(resolve, 1000));
             await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
             console.log('✅ RFP generated successfully for', selectedRequest.document_no);
 

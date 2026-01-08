@@ -345,8 +345,8 @@ export function CashAdvanceApproval() {
           .eq('full_name', selectedRequest.payee)
           .maybeSingle();
 
-        // Small delay to ensure database transaction is fully committed
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Delay to ensure database transaction is fully committed including foreign key joins
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         const { data: ledgerData } = await supabase
           .from('approval_ledger')
