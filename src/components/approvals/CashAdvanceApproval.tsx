@@ -90,12 +90,21 @@ export function CashAdvanceApproval() {
 
     const requestsForCurrentUser = await Promise.all(
       companyFilteredRequests.map(async (req) => {
-        const flows = await getApprovalFlow(
+        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+        const rawFlows = await getApprovalFlow(
           profile.company_id,
           req.department || req.user_profiles?.department || profile.department || '',
           'Cash Advance',
           req.budgeted,
           req.amount
+        );
+
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          rawFlows,
+          req.requester_id,
+          req.department || req.user_profiles?.department || '',
+          profile.company_id
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -145,13 +154,23 @@ export function CashAdvanceApproval() {
     }
 
     if (profile?.company_id) {
-      const flows = await getApprovalFlow(
+      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+      const rawFlows = await getApprovalFlow(
         profile.company_id,
         request.department || request.user_profiles?.department || profile.department || '',
         'Cash Advance',
         request.budgeted,
         request.amount
       );
+
+      // Filter out the requester from approval flows
+      const flows = await filterApprovalFlowsForRequester(
+        rawFlows,
+        request.requester_id,
+        request.department || request.user_profiles?.department || '',
+        profile.company_id
+      );
+
       setApprovalFlows(flows);
 
       const currentStep = await getNextApprover(flows, request.current_approval_level);

@@ -103,12 +103,21 @@ export function PRApproval() {
 
     const requestsForCurrentUser = await Promise.all(
       companyFilteredRequests.map(async (req) => {
-        const flows = await getApprovalFlow(
+        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+        const rawFlows = await getApprovalFlow(
           profile.company_id,
           req.department,
           'Purchase Requisition',
           req.is_budgeted,
           req.total_amount
+        );
+
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          rawFlows,
+          req.requester_id,
+          req.department,
+          profile.company_id
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -145,13 +154,23 @@ export function PRApproval() {
     setComments('');
 
     if (profile?.company_id) {
-      const flows = await getApprovalFlow(
+      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+      const rawFlows = await getApprovalFlow(
         profile.company_id,
         request.department,
         'Purchase Requisition',
         request.is_budgeted,
         request.total_amount
       );
+
+      // Filter out the requester from approval flows
+      const flows = await filterApprovalFlowsForRequester(
+        rawFlows,
+        request.requester_id,
+        request.department,
+        profile.company_id
+      );
+
       setApprovalFlows(flows);
 
       const currentStep = await getNextApprover(flows, request.current_approval_level);

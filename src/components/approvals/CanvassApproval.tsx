@@ -106,12 +106,21 @@ export function CanvassApproval() {
 
     const requestsForCurrentUser = await Promise.all(
       companyFilteredRequests.map(async (req) => {
-        const flows = await getApprovalFlow(
+        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+        const rawFlows = await getApprovalFlow(
           profile.company_id,
           req.department || profile.department || '',
           'Canvass',
           req.is_budgeted || false,
           req.total_amount
+        );
+
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          rawFlows,
+          req.requester_id,
+          req.department || '',
+          profile.company_id
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -201,13 +210,23 @@ export function CanvassApproval() {
     }
 
     if (profile?.company_id) {
-      const flows = await getApprovalFlow(
+      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+      const rawFlows = await getApprovalFlow(
         profile.company_id,
         request.department || profile.department || '',
         'Canvass',
         request.is_budgeted || false,
         request.total_amount
       );
+
+      // Filter out the requester from approval flows
+      const flows = await filterApprovalFlowsForRequester(
+        rawFlows,
+        request.requester_id,
+        request.department || '',
+        profile.company_id
+      );
+
       setApprovalFlows(flows);
 
       const currentStep = await getNextApprover(flows, request.current_approval_level);
