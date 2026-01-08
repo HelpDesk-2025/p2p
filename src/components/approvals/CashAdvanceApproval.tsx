@@ -348,41 +348,33 @@ export function CashAdvanceApproval() {
         // Delay to ensure database transaction is fully committed including foreign key joins
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        const { data: ledgerData } = await supabase
-          .from('approval_ledger')
-          .select('approver_name, approver_id, approval_date, sequence, action')
-          .eq('request_id', selectedRequest.id)
-          .eq('request_type', 'Cash Advance')
-          .neq('action', 'Submitted')
-          .order('sequence', { ascending: true });
+        // Use RPC function to bypass RLS and get all approval records with signatures
+        const { data: approvalRecords, error: ledgerError } = await supabase
+          .rpc('get_approval_records_with_signatures', {
+            p_request_id: selectedRequest.id,
+            p_request_type: 'Cash Advance'
+          });
 
-        const approvalRecords = await Promise.all(
-          (ledgerData || []).map(async (entry) => {
-            if (!entry.approver_id) {
-              return {
-                approver_name: entry.approver_name,
-                approver_esig: null,
-                approval_date: entry.approval_date,
-                sequence: entry.sequence
-              };
-            }
+        if (ledgerError) {
+          console.error('Error fetching approval records:', ledgerError);
+        }
 
-            const { data: approverData } = await supabase
-              .from('user_profiles')
-              .select('e_sig')
-              .eq('id', entry.approver_id)
-              .maybeSingle();
+        // Ensure we have an array to work with
+        const finalApprovalRecords = approvalRecords || [];
 
-            return {
-              approver_name: entry.approver_name,
-              approver_esig: approverData?.e_sig || null,
-              approval_date: entry.approval_date,
-              sequence: entry.sequence
-            };
-          })
+        // Manually add current approver if not found (due to transaction timing)
+        const currentApproverInLedger = finalApprovalRecords.some(
+          record => record.approver_name === profile.full_name
         );
 
-        // No need to manually push current approver - it's already in the ledger from above
+        if (!currentApproverInLedger) {
+          finalApprovalRecords.push({
+            approver_name: profile.full_name || 'Unknown',
+            approver_esig: profile.e_sig || null,
+            approval_date: new Date().toISOString(),
+            sequence: selectedRequest.current_approval_level + 1
+          });
+        }
 
         const approvedCaFormBytes = await generateCashAdvanceForm({
           caNumber: selectedRequest.ca_number,
@@ -397,7 +389,7 @@ export function CashAdvanceApproval() {
           outstandingAsl: outstandingAsl,
           outstandingAslDate: new Date().toLocaleDateString(),
           remarks: remarks,
-          approvals: approvalRecords
+          approvals: finalApprovalRecords
         });
 
         let paymentModeName = '';
@@ -435,7 +427,7 @@ export function CashAdvanceApproval() {
           paymentModeLines: paymentModeLines,
           requestorName: requestorData?.full_name || 'Unknown',
           requestorEsig: requestorData?.e_sig || null,
-          approvals: approvalRecords
+          approvals: finalApprovalRecords
         });
 
         const pdfsToMerge: Uint8Array[] = [rfpBytes, approvedCaFormBytes];
