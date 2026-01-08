@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
@@ -348,6 +348,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     });
   };
 
+  const inactiveCount = data.filter(user => !user.is_active).length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -366,6 +368,21 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           Add User
         </button>
       </div>
+
+      {inactiveCount > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <AlertCircle size={20} className="text-amber-700 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-amber-900 font-semibold">
+              {inactiveCount} {inactiveCount === 1 ? 'account' : 'accounts'} pending approval
+            </p>
+            <p className="text-amber-700 text-sm mt-1">
+              {inactiveCount === 1 ? 'This user is' : 'These users are'} waiting for admin approval to access the system.
+              Click the edit button to review and activate {inactiveCount === 1 ? 'the account' : 'their accounts'}.
+            </p>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8 mb-8 space-y-6">

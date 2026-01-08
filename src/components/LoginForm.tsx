@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Mail } from 'lucide-react';
+import { LogIn, UserPlus, Mail, AlertCircle } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -351,8 +351,26 @@ export function LoginForm() {
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
+            <div className={`border px-4 py-3 rounded-lg text-sm flex items-start gap-3 ${
+              error.includes('pending approval') || error.includes('inactive')
+                ? 'bg-amber-50 border-amber-300 text-amber-800'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}>
+              <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">
+                  {error.includes('pending approval') || error.includes('inactive')
+                    ? 'Account Pending Approval'
+                    : 'Error'}
+                </p>
+                <p className="mt-1">{error}</p>
+                {(error.includes('pending approval') || error.includes('inactive')) && (
+                  <p className="mt-2 text-xs">
+                    Your account has been created successfully but requires admin approval before you can log in.
+                    Please wait for an administrator to activate your account, or contact your system administrator for assistance.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
