@@ -347,7 +347,7 @@ export function PRApproval() {
           try {
             console.log('🎯 Final approval - generating RFP for Non-PO request with all approval records');
             // Delay to ensure database transaction is fully committed including foreign key joins
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
             console.log('✅ RFP generated successfully for', selectedRequest.document_no);
 
