@@ -354,27 +354,29 @@ export function PRApproval() {
             // MSBC posting status was already set to Success in the approval update above
             console.log('✅ MSBC posting status already set to Success');
 
-            // Call MSBC posting in background (fire and forget)
-            console.log('🚀 Posting PR to MSBC in background...');
+            // Post to MSBC and wait for completion
+            console.log('🚀 Posting PR to MSBC...');
             const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
             const headers = {
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
             };
 
-            fetch(apiUrl, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ requestId: selectedRequest.id }),
-            }).then(response => {
+            try {
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ requestId: selectedRequest.id }),
+              });
+
               if (response.ok) {
                 console.log('✅ PR posted to MSBC successfully');
               } else {
                 console.error('❌ Error posting to MSBC');
               }
-            }).catch(error => {
+            } catch (error) {
               console.error('❌ Error posting to MSBC:', error);
-            });
+            }
           } catch (rfpError) {
             console.error('❌ Error generating RFP:', rfpError);
             // Don't fail the approval if RFP generation fails
