@@ -943,24 +943,29 @@ export async function generateAndUploadCanvassRFP(
     const winningNetPayable = parseFloat(winningVendorData?.net_payable || (winningTotal - winningEwt));
     console.log('Winning vendor net payable:', winningNetPayable);
 
-    const { data: approvals, error: approvalsError } = await supabase
-      .from('approval_ledger')
-      .select(`
-        approval_date,
-        sequence,
-        approver:user_profiles!approver_id(full_name, e_sig)
-      `)
-      .eq('request_id', canvassId)
-      .eq('request_type', 'Canvass')
-      .eq('action', 'Approved')
-      .order('sequence', { ascending: true });
+    // Use RPC function to bypass RLS and get all approval records with signatures
+    const { data: approvalRecords, error: approvalsError } = await supabase
+      .rpc('get_approval_records_with_signatures', {
+        p_request_id: canvassId,
+        p_request_type: 'Canvass'
+      });
 
     if (approvalsError) {
       console.error('Error fetching approvals:', approvalsError);
       throw approvalsError;
     }
 
-    console.log('Approvals fetched:', approvals);
+    console.log('Approvals fetched:', approvalRecords);
+
+    // Transform RPC results to match expected format
+    const approvals = (approvalRecords || []).map((record: any) => ({
+      approval_date: record.approval_date,
+      sequence: record.sequence,
+      approver: {
+        full_name: record.approver_name,
+        e_sig: record.approver_esig
+      }
+    }));
 
     const rfpData: RFPData = {
       companyName: canvass.requester?.company?.name || 'Company Name',
@@ -1213,33 +1218,38 @@ export async function generateAndUploadRFP(
 
     console.log('Request data fetched:', request);
 
-    // Fetch approval records
+    // Fetch approval records using RPC function to bypass RLS
     const requestTypeName = requestType === 'purchase_requisition' ? 'Purchase Requisition' :
                            requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement';
 
-    const { data: approvals, error: approvalsError } = await supabase
-      .from('approval_ledger')
-      .select(`
-        approval_date,
-        sequence,
-        approver:user_profiles!approver_id(full_name, e_sig)
-      `)
-      .eq('request_id', requestId)
-      .eq('request_type', requestTypeName)
-      .eq('action', 'Approved')
-      .order('sequence', { ascending: true });
+    // Use RPC function to bypass RLS and get all approval records with signatures
+    const { data: approvalRecords, error: approvalsError } = await supabase
+      .rpc('get_approval_records_with_signatures', {
+        p_request_id: requestId,
+        p_request_type: requestTypeName
+      });
 
     if (approvalsError) {
       console.error('Error fetching approvals:', approvalsError);
       throw approvalsError;
     }
 
-    console.log('Approvals fetched:', approvals);
-    console.log('Number of approvals:', approvals?.length || 0);
+    console.log('Approvals fetched:', approvalRecords);
+    console.log('Number of approvals:', approvalRecords?.length || 0);
 
-    if (!approvals || approvals.length === 0) {
+    if (!approvalRecords || approvalRecords.length === 0) {
       console.warn('No approved approvals found in ledger for request:', requestId);
     }
+
+    // Transform RPC results to match expected format
+    const approvals = (approvalRecords || []).map((record: any) => ({
+      approval_date: record.approval_date,
+      sequence: record.sequence,
+      approver: {
+        full_name: record.approver_name,
+        e_sig: record.approver_esig
+      }
+    }));
 
     // Format payment mode lines
     const paymentModeLines: PaymentModeLine[] = [];
