@@ -109,7 +109,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     password: '',
     company: '',
     department: '',
-    role: 'standard',
+    role: '',
     approver_type: '',
     sequence: '',
     days_of_approval: '',
@@ -120,6 +120,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const [companies, setCompanies] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
 
   useEffect(() => {
     loadCompaniesAndDepartments();
@@ -141,13 +142,15 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
   const loadCompaniesAndDepartments = async () => {
     try {
-      const [companiesRes, departmentsRes] = await Promise.all([
+      const [companiesRes, departmentsRes, rolesRes] = await Promise.all([
         supabase.from('companies').select('*').eq('is_active', true).order('name', { ascending: true }),
-        supabase.from('departments').select('*').eq('is_active', true).order('name', { ascending: true })
+        supabase.from('departments').select('*').eq('is_active', true).order('name', { ascending: true }),
+        supabase.from('roles').select('*').eq('is_active', true).order('name', { ascending: true })
       ]);
 
       setCompanies(companiesRes.data || []);
       setAllDepartments(departmentsRes.data || []);
+      setRoles(rolesRes.data || []);
     } catch (error) {
       console.error('Error loading companies and departments:', error);
     }
@@ -483,9 +486,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
-                <option value="standard">Standard</option>
-                <option value="approver">Approver</option>
-                <option value="admin">Admin</option>
+                <option value="">Select Role</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.name}>
+                    {role.name}
+                  </option>
+                ))}
               </select>
             </div>
 
