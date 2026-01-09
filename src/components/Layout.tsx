@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { hasPermission, MODULE_PERMISSIONS } from '../lib/permissions';
 import {
   LayoutDashboard,
   FileText,
@@ -56,7 +57,7 @@ interface MenuItem {
   id: ViewType;
   label: string;
   icon: any;
-  roles?: string[];
+  permission?: string;
   group?: string;
 }
 
@@ -66,70 +67,91 @@ const menuItems: MenuItem[] = [
     id: 'pr-request',
     label: 'Purchase Requisition',
     icon: FileText,
+    permission: MODULE_PERMISSIONS.PURCHASE_REQUISITION,
     group: 'requests',
   },
-  { id: 'canvass-request', label: 'Canvass', icon: Search, group: 'requests' },
-  { id: 'petty-cash-request', label: 'Petty Cash', icon: Wallet, group: 'requests' },
-  { id: 'cash-advance-request', label: 'Cash Advance', icon: Banknote, group: 'requests' },
+  {
+    id: 'canvass-request',
+    label: 'Canvass',
+    icon: Search,
+    permission: MODULE_PERMISSIONS.CANVASS,
+    group: 'requests'
+  },
+  {
+    id: 'petty-cash-request',
+    label: 'Petty Cash',
+    icon: Wallet,
+    permission: MODULE_PERMISSIONS.PETTY_CASH,
+    group: 'requests'
+  },
+  {
+    id: 'cash-advance-request',
+    label: 'Cash Advance',
+    icon: Banknote,
+    permission: MODULE_PERMISSIONS.CASH_ADVANCE,
+    group: 'requests'
+  },
   {
     id: 'reimbursement-request',
     label: 'Reimbursement',
     icon: Receipt,
+    permission: MODULE_PERMISSIONS.REIMBURSEMENT,
     group: 'requests',
   },
   {
     id: 'pr-approval',
     label: 'PR Approval',
     icon: CheckSquare,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.PR_APPROVAL,
     group: 'approvals',
   },
   {
     id: 'canvass-approval',
     label: 'Canvass Approval',
     icon: CheckSquare,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.CANVASS_APPROVAL,
     group: 'approvals',
   },
   {
     id: 'petty-cash-approval',
     label: 'Petty Cash Approval',
     icon: CheckSquare,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.PETTY_CASH_APPROVAL,
     group: 'approvals',
   },
   {
     id: 'cash-advance-approval',
     label: 'Cash Advance Approval',
     icon: CheckSquare,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.CASH_ADVANCE_APPROVAL,
     group: 'approvals',
   },
   {
     id: 'reimbursement-approval',
     label: 'Reimbursement Approval',
     icon: CheckSquare,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.REIMBURSEMENT_APPROVAL,
     group: 'approvals',
   },
   {
     id: 'sme-approval',
     label: 'SME Approval',
     icon: UserCheck,
+    permission: MODULE_PERMISSIONS.SME_APPROVAL,
     group: 'approvals',
   },
   {
     id: 'procurement-checking',
     label: 'Procurement Checking',
     icon: ClipboardCheck,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.PROCUREMENT_CHECKING,
     group: 'procurement',
   },
   {
     id: 'approval-ledger',
     label: 'Approval Ledger',
     icon: BookOpen,
-    roles: ['approver', 'admin'],
+    permission: MODULE_PERMISSIONS.APPROVAL_LEDGER,
     group: 'procurement',
   },
   {
@@ -141,34 +163,31 @@ const menuItems: MenuItem[] = [
 ];
 
 const configItems: MenuItem[] = [
-  { id: 'config-approvers', label: 'Approvers', icon: Settings, roles: ['admin'] },
-  { id: 'config-users', label: 'Users', icon: Settings, roles: ['admin'] },
-  { id: 'config-checklists', label: 'PR Checklists', icon: Settings, roles: ['admin'] },
-  { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, roles: ['admin'] },
-  { id: 'config-holidays', label: 'Holidays', icon: Settings, roles: ['admin'] },
-  { id: 'config-companies', label: 'Companies', icon: Settings, roles: ['admin'] },
-  { id: 'config-approval-flows', label: 'Approval Flows', icon: Settings, roles: ['admin'] },
-  { id: 'config-number-series', label: 'Number Series', icon: Settings, roles: ['admin'] },
-  { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, roles: ['admin'] },
-  { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, roles: ['admin'] },
-  { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, roles: ['admin'] },
+  { id: 'config-approvers', label: 'Approvers', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-users', label: 'Users', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
+  { id: 'config-checklists', label: 'PR Checklists', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-holidays', label: 'Holidays', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-companies', label: 'Companies', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-approval-flows', label: 'Approval Flows', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-number-series', label: 'Number Series', icon: Settings, permission: MODULE_PERMISSIONS.NUMBER_SERIES },
+  { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, permission: MODULE_PERMISSIONS.SMTP },
+  { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
 ];
 
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
-  const { profile, signOut } = useAuth();
+  const { profile, permissions, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-
-  // Debug: Log profile data
-  console.log('Current profile:', profile);
 
   const handleSignOut = async () => {
     await signOut();
   };
 
   const canAccessItem = (item: MenuItem) => {
-    if (!item.roles) return true;
-    return item.roles.includes(profile?.role || '');
+    if (!item.permission) return true;
+    return hasPermission(permissions, item.permission);
   };
 
   const filteredMenuItems = menuItems.filter(canAccessItem);

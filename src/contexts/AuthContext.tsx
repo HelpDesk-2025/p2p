@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '../lib/supabase';
+import { getUserPermissions, UserPermissions } from '../lib/permissions';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  permissions: UserPermissions | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, department: string, companyId: string, companyName: string) => Promise<void>;
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await loadProfile(session.user.id);
         } else {
           setProfile(null);
+          setPermissions(null);
           setLoading(false);
         }
       })();
@@ -60,11 +64,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         setProfile(null);
         setUser(null);
+        setPermissions(null);
         setLoading(false);
         return;
       }
 
       setProfile(data);
+
+      // Load user permissions
+      const userPermissions = await getUserPermissions(userId);
+      setPermissions(userPermissions);
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -140,11 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setProfile(null);
+      setPermissions(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, profile, permissions, loading, signIn, signUp, signOut, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );
