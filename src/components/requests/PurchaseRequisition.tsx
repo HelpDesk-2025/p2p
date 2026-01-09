@@ -1704,14 +1704,16 @@ export function PurchaseRequisition() {
                       <Download size={18} />
                       Download RFP
                     </button>
-                    <button
-                      onClick={() => handleRegenerateRFP(viewingRequest)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                      Regenerate RFP
-                    </button>
+                    {profile?.role === 'admin' && (
+                      <button
+                        onClick={() => handleRegenerateRFP(viewingRequest)}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        Regenerate RFP
+                      </button>
+                    )}
                     {profile?.role === 'admin' && (
                       <button
                         onClick={() => handleRepostToMSBC(viewingRequest)}
