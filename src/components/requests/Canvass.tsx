@@ -267,15 +267,15 @@ export function Canvass() {
   }, []);
 
   const loadCompanies = async () => {
-    if (!profile?.company_id && profile?.role !== 'admin') return;
+    if (!profile?.company_id && !['admin', 'approver', 'procurement'].includes(profile?.role || '')) return;
 
     let query = supabase
       .from('companies')
       .select('id, name')
       .order('name');
 
-    // Only filter by company_id if user is not an admin
-    if (profile?.role !== 'admin') {
+    // Only filter by company_id if user is not an admin, approver, or procurement
+    if (!['admin', 'approver', 'procurement'].includes(profile?.role || '')) {
       query = query.eq('id', profile?.company_id);
     }
 
