@@ -40,15 +40,15 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
     const { data: roleData, error: roleError } = await supabase
       .from('roles')
       .select(`
-        role_name,
+        name,
         role_permissions (
           permissions (
-            permission_name,
+            name,
             module
           )
         )
       `)
-      .eq('role_name', profile.role)
+      .eq('name', profile.role)
       .maybeSingle();
 
     if (roleError || !roleData) {
@@ -58,7 +58,7 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
 
     // Extract permission names
     const permissions = roleData.role_permissions?.map((rp: any) =>
-      rp.permissions.permission_name
+      rp.permissions.name
     ) || [];
 
     return {
