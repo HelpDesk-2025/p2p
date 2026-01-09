@@ -84,7 +84,7 @@ export function Dashboard() {
       };
 
       let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 };
-      if (profile.role === 'approver' || profile.role === 'admin') {
+      if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement') {
         const [prPending, canvassPending, pcPending, reimbPending, cashAdvPending] = await Promise.all([
           supabase
             .from('purchase_requisitions')
