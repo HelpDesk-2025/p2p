@@ -28,7 +28,7 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle();
 
     if (profileError || !profile) {
