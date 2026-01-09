@@ -1311,14 +1311,16 @@ export function CashAdvance() {
                       <Download size={18} />
                       Download Form
                     </button>
-                    <button
-                      onClick={() => regenerateApprovedForm(viewingRequest)}
-                      disabled={regenerating}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {regenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                      {regenerating ? 'Regenerating...' : 'Regenerate'}
-                    </button>
+                    {profile?.role === 'admin' && (
+                      <button
+                        onClick={() => regenerateApprovedForm(viewingRequest)}
+                        disabled={regenerating}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {regenerating ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                        {regenerating ? 'Regenerating...' : 'Regenerate'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1363,7 +1365,7 @@ export function CashAdvance() {
                           </p>
                         )}
                       </div>
-                      {(viewingRequest.msbc_sync_status === 'pending' || viewingRequest.msbc_sync_status === 'failed') && (
+                      {profile?.role === 'admin' && (viewingRequest.msbc_sync_status === 'pending' || viewingRequest.msbc_sync_status === 'failed') && (
                         <button
                           onClick={() => postToMsbc(viewingRequest)}
                           disabled={postingToMsbc}
