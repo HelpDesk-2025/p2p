@@ -45,6 +45,7 @@ export function PettyCash() {
     budgeted: true,
     payment_mode_id: '',
   });
+  const [amountError, setAmountError] = useState('');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -53,6 +54,15 @@ export function PettyCash() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);
+  };
+
+  const handleAmountChange = (value: number) => {
+    if (value > 5000) {
+      setAmountError('Petty cash amount cannot exceed ₱5,000.00');
+    } else {
+      setAmountError('');
+    }
+    setFormData({ ...formData, amount: value });
   };
 
   useEffect(() => {
@@ -133,6 +143,11 @@ export function PettyCash() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    if (formData.amount > 5000) {
+      alert('Petty cash amount cannot exceed ₱5,000.00');
+      return;
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -243,6 +258,7 @@ export function PettyCash() {
       setShowForm(false);
       setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '' });
       setEditingRequest(null);
+      setAmountError('');
       loadRequests();
       if (!editingRequest) {
         generateDocumentNo();
@@ -593,7 +609,7 @@ export function PettyCash() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Petty Cash Request' : 'New Petty Cash Request'}</h2>
-          <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-4 py-2 text-slate-600">
+          <button onClick={() => { setShowForm(false); setEditingRequest(null); setAmountError(''); }} className="px-4 py-2 text-slate-600">
             Cancel
           </button>
         </div>
@@ -630,14 +646,25 @@ export function PettyCash() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Amount <span className="text-xs text-slate-500">(Maximum: ₱5,000.00)</span>
+            </label>
             <input
               type="number"
               value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              onChange={(e) => handleAmountChange(Number(e.target.value))}
+              max={5000}
+              step="0.01"
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none ${
+                amountError
+                  ? 'border-red-300 focus:ring-red-500'
+                  : 'border-slate-300 focus:ring-blue-500'
+              }`}
               required
             />
+            {amountError && (
+              <p className="mt-1 text-sm text-red-600">{amountError}</p>
+            )}
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
@@ -647,7 +674,7 @@ export function PettyCash() {
                   handleSubmit('pending');
                 }
               }}
-              disabled={loading}
+              disabled={loading || !!amountError}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
