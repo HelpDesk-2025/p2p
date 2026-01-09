@@ -187,7 +187,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {(profile?.role === 'approver' || profile?.role === 'admin') && (
+        {(profile?.role === 'approver' || profile?.role === 'admin' || profile?.role === 'procurement') && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">
               Pending Approvals
