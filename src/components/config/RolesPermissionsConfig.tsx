@@ -55,6 +55,7 @@ export function RolesPermissionsConfig() {
     'petty_cash',
     'reimbursement',
     'cash_advance',
+    'procurement',
     'configuration',
   ];
 
