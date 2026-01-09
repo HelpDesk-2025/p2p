@@ -307,7 +307,6 @@ export function CashAdvanceApproval() {
       if (action === 'approved' && isLastApproval) {
         const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
         const { generateRFP } = await import('../../lib/rfpGenerator');
-        const { mergePDFBytes } = await import('../../lib/pdfMerger');
 
         const { data: companyData } = await supabase
           .from('companies')
@@ -412,42 +411,39 @@ export function CashAdvanceApproval() {
           approvals: finalApprovalRecords
         });
 
-        const pdfsToMerge: Uint8Array[] = [rfpBytes, approvedCaFormBytes];
-
-        if (selectedRequest.attachments_pdf_path) {
-          try {
-            const { data: attachmentData, error: attachmentError } = await supabase.storage
-              .from('attachments')
-              .download(selectedRequest.attachments_pdf_path);
-
-            if (!attachmentError && attachmentData) {
-              const attachmentBytes = new Uint8Array(await attachmentData.arrayBuffer());
-              pdfsToMerge.push(attachmentBytes);
-            }
-          } catch (error) {
-            console.error('Error downloading attachments:', error);
-          }
-        }
-
-        const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
-
-        const fileName = `CA_${selectedRequest.ca_number}_Complete_${Date.now()}.pdf`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Upload RFP separately
+        const rfpFileName = `CA_${selectedRequest.ca_number}_RFP_${Date.now()}.pdf`;
+        const { data: rfpUploadData, error: rfpUploadError } = await supabase.storage
           .from('attachments')
-          .upload(fileName, mergedPdfBytes, {
+          .upload(rfpFileName, rfpBytes, {
             contentType: 'application/pdf',
             cacheControl: '3600',
             upsert: false
           });
 
-        if (uploadError) throw uploadError;
+        if (rfpUploadError) throw rfpUploadError;
+        const rfpPdfPath = rfpUploadData.path;
 
-        approvedCaPdfPath = uploadData.path;
+        // Upload Cash Advance Form separately
+        const caFormFileName = `CA_${selectedRequest.ca_number}_Form_${Date.now()}.pdf`;
+        const { data: caFormUploadData, error: caFormUploadError } = await supabase.storage
+          .from('attachments')
+          .upload(caFormFileName, approvedCaFormBytes, {
+            contentType: 'application/pdf',
+            cacheControl: '3600',
+            upsert: false
+          });
 
-        // Update the request with the generated PDF path
+        if (caFormUploadError) throw caFormUploadError;
+        approvedCaPdfPath = caFormUploadData.path;
+
+        // Update the request with both PDF paths
         const { error: pdfUpdateError } = await supabase
           .from('cash_advance_requests')
-          .update({ approved_ca_pdf_path: approvedCaPdfPath })
+          .update({
+            rfp_pdf_path: rfpPdfPath,
+            approved_ca_pdf_path: approvedCaPdfPath
+          })
           .eq('id', selectedRequest.id);
 
         if (pdfUpdateError) throw pdfUpdateError;
