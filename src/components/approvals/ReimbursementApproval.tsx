@@ -102,9 +102,9 @@ export function ReimbursementApproval() {
           if (approverType === 'Department Head' && profile.role === 'approver') {
             isCurrentApprover = requestDepartment === profile.department;
           } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-            isCurrentApprover = profile.role === 'approver';
+            isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
           } else if (approverType === 'President') {
-            isCurrentApprover = profile.role === 'approver';
+            isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
           }
         }
 
@@ -167,11 +167,11 @@ export function ReimbursementApproval() {
     }
 
     if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-      return profile.role === 'approver';
+      return profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
     }
 
     if (approverType === 'President') {
-      return profile.role === 'approver';
+      return profile.role === 'approver' || profile.role === 'admin';
     }
 
     return false;
