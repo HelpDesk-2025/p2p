@@ -348,38 +348,53 @@ export function PRApproval() {
             console.log('🎯 Final approval - generating RFP for Non-PO request with all approval records');
             // Delay to ensure database transaction is fully committed including foreign key joins
             await new Promise(resolve => setTimeout(resolve, 3000));
-            await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
-            console.log('✅ RFP generated successfully for', selectedRequest.document_no);
+            const rfpPath = await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
+            console.log('✅ RFP generated successfully for', selectedRequest.document_no, 'at path:', rfpPath);
 
-            // MSBC posting status was already set to Success in the approval update above
-            console.log('✅ MSBC posting status already set to Success');
+            // Only post to MSBC if RFP was generated successfully
+            if (rfpPath) {
+              // Post to MSBC and wait for completion
+              console.log('🚀 Posting PR to MSBC...');
+              const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
+              const headers = {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              };
 
-            // Post to MSBC and wait for completion
-            console.log('🚀 Posting PR to MSBC...');
-            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-pr-to-msbc`;
-            const headers = {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            };
+              try {
+                const response = await fetch(apiUrl, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({ requestId: selectedRequest.id }),
+                });
 
-            try {
-              const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ requestId: selectedRequest.id }),
-              });
-
-              if (response.ok) {
-                console.log('✅ PR posted to MSBC successfully');
-              } else {
-                console.error('❌ Error posting to MSBC');
+                if (response.ok) {
+                  console.log('✅ PR posted to MSBC successfully');
+                } else {
+                  const errorData = await response.json();
+                  console.error('❌ Error posting to MSBC:', errorData);
+                  throw new Error(`MSBC posting failed: ${errorData.message || 'Unknown error'}`);
+                }
+              } catch (error) {
+                console.error('❌ Error posting to MSBC:', error);
+                throw error;
               }
-            } catch (error) {
-              console.error('❌ Error posting to MSBC:', error);
+            } else {
+              console.error('❌ RFP path is empty, cannot post to MSBC');
+              throw new Error('RFP generation returned empty path');
             }
           } catch (rfpError) {
-            console.error('❌ Error generating RFP:', rfpError);
-            // Don't fail the approval if RFP generation fails
+            console.error('❌ Error in RFP generation or MSBC posting:', rfpError);
+            // Update status to show the error
+            await supabase
+              .from('purchase_requisitions')
+              .update({
+                msbc_posting_status: 'Failed',
+                msbc_error_message: rfpError instanceof Error ? rfpError.message : String(rfpError)
+              })
+              .eq('id', selectedRequest.id);
+            // Show error to user but don't fail the approval
+            alert(`Approval successful, but RFP generation or MSBC posting failed: ${rfpError instanceof Error ? rfpError.message : String(rfpError)}. You can regenerate the RFP from the admin panel.`);
           }
         } else if (isLastApproval) {
           console.log('⏭️ Skipping RFP generation for Purchase Order request:', selectedRequest.document_no);
