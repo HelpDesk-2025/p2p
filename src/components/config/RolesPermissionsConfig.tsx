@@ -53,9 +53,16 @@ export function RolesPermissionsConfig() {
     'purchase_requisition',
     'canvass',
     'petty_cash',
-    'reimbursement',
     'cash_advance',
-    'procurement',
+    'reimbursement',
+    'pr_approval',
+    'canvass_approval',
+    'petty_cash_approval',
+    'cash_advance_approval',
+    'reimbursement_approval',
+    'sme_approval',
+    'procurement_checking',
+    'approval_ledger',
     'configuration',
   ];
 
