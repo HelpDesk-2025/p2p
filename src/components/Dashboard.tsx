@@ -85,36 +85,18 @@ export function Dashboard() {
 
       let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 };
       if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement') {
-        const [prPending, canvassPending, pcPending, reimbPending, cashAdvPending] = await Promise.all([
-          supabase
-            .from('purchase_requisitions')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending'),
-          supabase
-            .from('canvass_requests')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending'),
-          supabase
-            .from('petty_cash_requests')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending'),
-          supabase
-            .from('reimbursement_requests')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending'),
-          supabase
-            .from('cash_advance_requests')
-            .select('id', { count: 'exact' })
-            .eq('status', 'pending'),
-        ]);
+        const { data: countsData } = await supabase.rpc('get_user_pending_approval_counts');
 
-        pendingApprovals = {
-          pr: prPending.count || 0,
-          canvass: canvassPending.count || 0,
-          pettyCash: pcPending.count || 0,
-          reimbursement: reimbPending.count || 0,
-          cashAdvance: cashAdvPending.count || 0,
-        };
+        if (countsData && countsData.length > 0) {
+          const counts = countsData[0];
+          pendingApprovals = {
+            pr: counts.purchase_requisition_count || 0,
+            canvass: counts.canvass_request_count || 0,
+            pettyCash: counts.petty_cash_request_count || 0,
+            reimbursement: counts.reimbursement_request_count || 0,
+            cashAdvance: counts.cash_advance_request_count || 0,
+          };
+        }
       }
 
       let pending = 0;
