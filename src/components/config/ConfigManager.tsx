@@ -4,8 +4,9 @@ import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, 
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
+import { RolesPermissionsConfig } from './RolesPermissionsConfig';
 
-type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp';
+type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions';
 
 interface ConfigManagerProps {
   type: ConfigType;
@@ -81,6 +82,8 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         return <VendorsAndItemsConfig />;
       case 'smtp':
         return <SmtpConfig />;
+      case 'roles-permissions':
+        return <RolesPermissionsConfig />;
       default:
         return <div>Select a configuration type</div>;
     }

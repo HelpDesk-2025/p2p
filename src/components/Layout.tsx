@@ -151,6 +151,7 @@ const configItems: MenuItem[] = [
   { id: 'config-number-series', label: 'Number Series', icon: Settings, roles: ['admin'] },
   { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, roles: ['admin'] },
   { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, roles: ['admin'] },
+  { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, roles: ['admin'] },
 ];
 
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
