@@ -100,27 +100,27 @@ export function hasAllPermissions(userPermissions: UserPermissions | null, permi
  */
 export const MODULE_PERMISSIONS = {
   // Request Modules
-  PURCHASE_REQUISITION: 'view_purchase_requisition',
-  CANVASS: 'view_canvass',
-  CASH_ADVANCE: 'view_cash_advance',
-  PETTY_CASH: 'view_petty_cash',
-  REIMBURSEMENT: 'view_reimbursement',
+  PURCHASE_REQUISITION: 'Purchase Requisition Request',
+  CANVASS: 'Canvass Request',
+  CASH_ADVANCE: 'Cash Advance Request',
+  PETTY_CASH: 'Petty Cash Request',
+  REIMBURSEMENT: 'Reimbursement Request',
 
   // Approval Modules
-  PR_APPROVAL: 'view_pr_approval',
-  CANVASS_APPROVAL: 'view_canvass_approval',
-  CASH_ADVANCE_APPROVAL: 'view_cash_advance_approval',
-  PETTY_CASH_APPROVAL: 'view_petty_cash_approval',
-  REIMBURSEMENT_APPROVAL: 'view_reimbursement_approval',
-  SME_APPROVAL: 'view_sme_approval',
+  PR_APPROVAL: 'Purchase Requisition Approval',
+  CANVASS_APPROVAL: 'Canvass Approval',
+  CASH_ADVANCE_APPROVAL: 'Cash Advance Approval',
+  PETTY_CASH_APPROVAL: 'Petty Cash Approval',
+  REIMBURSEMENT_APPROVAL: 'Reimbursement Approval',
+  SME_APPROVAL: 'Subject Matter Approval',
 
   // Configuration Modules
-  NUMBER_SERIES: 'view_number_series_config',
-  APPROVAL_FLOW: 'view_approval_flow_config',
-  SMTP: 'view_smtp_config',
-  ROLES_PERMISSIONS: 'view_roles_permissions_config',
+  NUMBER_SERIES: 'Configuration',
+  APPROVAL_FLOW: 'Configuration',
+  SMTP: 'Configuration',
+  ROLES_PERMISSIONS: 'Configuration',
 
   // Procurement
-  PROCUREMENT_CHECKING: 'view_procurement_checking',
-  APPROVAL_LEDGER: 'view_approval_ledger'
+  PROCUREMENT_CHECKING: 'Procurement Checking',
+  APPROVAL_LEDGER: 'Approval Ledger'
 } as const;
