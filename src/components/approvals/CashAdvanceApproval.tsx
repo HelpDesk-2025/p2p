@@ -288,25 +288,7 @@ export function CashAdvanceApproval() {
       const isLastApproval = nextLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
-      // Update request status first
-      const updateData: any = {
-        status: newStatus,
-        current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
-      };
-
-      if (action === 'approved' && isLastApproval) {
-        updateData.outstanding_asl = outstandingAsl;
-        updateData.remarks = remarks;
-      }
-
-      const { error: updateError } = await supabase
-        .from('cash_advance_requests')
-        .update(updateData)
-        .eq('id', selectedRequest.id);
-
-      if (updateError) throw updateError;
-
-      // Create approval ledger entry BEFORE generating RFP
+      // Create approval ledger entry FIRST (before PDF generation and status update)
       await createApprovalLedgerEntry(
         'Cash Advance',
         selectedRequest.id,
@@ -321,7 +303,7 @@ export function CashAdvanceApproval() {
 
       let approvedCaPdfPath: string | null = null;
 
-      // Now generate RFP with complete ledger data (AFTER ledger entry is saved)
+      // Generate PDF if this is the last approval (BEFORE updating status)
       if (action === 'approved' && isLastApproval) {
         const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
         const { generateRFP } = await import('../../lib/rfpGenerator');
@@ -470,6 +452,24 @@ export function CashAdvanceApproval() {
 
         if (pdfUpdateError) throw pdfUpdateError;
       }
+
+      // Update request status AFTER PDF generation (if applicable)
+      const updateData: any = {
+        status: newStatus,
+        current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
+      };
+
+      if (action === 'approved' && isLastApproval) {
+        updateData.outstanding_asl = outstandingAsl;
+        updateData.remarks = remarks;
+      }
+
+      const { error: updateError } = await supabase
+        .from('cash_advance_requests')
+        .update(updateData)
+        .eq('id', selectedRequest.id);
+
+      if (updateError) throw updateError;
 
       const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A';
 
