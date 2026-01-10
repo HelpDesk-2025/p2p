@@ -36,6 +36,8 @@ export function PettyCash() {
   const [viewingRequest, setViewingRequest] = useState<PettyCashReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PettyCashReq | null>(null);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -68,10 +70,18 @@ export function PettyCash() {
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
+    loadCompanies();
   }, []);
 
+  useEffect(() => {
+    if (selectedCompanyId && !formData.document_no) {
+      generateDocumentNo();
+    }
+  }, [selectedCompanyId]);
+
   const generateDocumentNo = async () => {
-    if (!profile?.company_id) {
+    const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+    if (!companyId) {
       console.error('Company ID not available');
       return;
     }
@@ -79,13 +89,36 @@ export function PettyCash() {
     try {
       const { data, error } = await supabase.rpc('get_next_number', {
         p_series_name: 'Petty Cash',
-        p_company_id: profile.company_id
+        p_company_id: companyId
       });
       if (error) throw error;
       setFormData(prev => ({ ...prev, document_no: data }));
     } catch (error) {
       console.error('Error generating document number:', error);
     }
+  };
+
+  const loadCompanies = async () => {
+    if (!profile?.company_id) return;
+
+    const { data } = await supabase
+      .from('companies')
+      .select('id, name')
+      .eq('id', profile.company_id)
+      .order('name');
+
+    setCompanies(data || []);
+    if (data && data.length > 0 && profile?.enable_multi_company_requests) {
+      setSelectedCompanyId(data[0].id);
+    }
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    setFormData(prev => ({
+      ...prev,
+      document_no: '',
+    }));
   };
 
   const loadRequests = async () => {
@@ -176,12 +209,13 @@ export function PettyCash() {
         if (error) throw error;
         insertedRequest = data;
       } else {
+        const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
         const { data, error } = await supabase
           .from('petty_cash_requests')
           .insert({
             pc_number: formData.document_no,
             requester_id: profile?.id,
-            company_id: profile?.company_id,
+            company_id: companyId,
             department: profile?.department || '',
             request_date: new Date().toISOString().split('T')[0],
             payee: formData.payee,
@@ -620,8 +654,39 @@ export function PettyCash() {
             <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
               <FileText size={18} className="text-slate-400" />
               <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+              {profile?.enable_multi_company_requests && !editingRequest && (
+                <button
+                  type="button"
+                  onClick={generateDocumentNo}
+                  className="ml-auto px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  title="Regenerate document number"
+                >
+                  <RefreshCw size={18} />
+                </button>
+              )}
             </div>
           </div>
+
+          {profile?.enable_multi_company_requests ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Company
+              </label>
+              <select
+                value={selectedCompanyId}
+                onChange={(e) => handleCompanyChange(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                required
+              >
+                <option value="">Select Company</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">To / Recipient</label>
