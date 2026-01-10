@@ -18,6 +18,9 @@ interface PettyCashReq {
   purpose: string;
   amount: number;
   status: string;
+  department?: string;
+  company_id?: string;
+  budgeted?: boolean;
   rfp_pdf_path?: string;
   payee?: string;
   received_at?: string;
@@ -37,7 +40,9 @@ export function PettyCash() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PettyCashReq | null>(null);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -99,22 +104,70 @@ export function PettyCash() {
   };
 
   const loadCompanies = async () => {
-    if (!profile?.company_id) return;
+    try {
+      if (!profile) return;
 
-    const { data } = await supabase
-      .from('companies')
-      .select('id, name')
-      .eq('id', profile.company_id)
-      .order('name');
+      if (profile.enable_multi_company_requests && profile.allowed_companies) {
+        const companyIds = profile.allowed_companies as string[];
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .in('id', companyIds)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
 
-    setCompanies(data || []);
-    if (data && data.length > 0 && profile?.enable_multi_company_requests) {
-      setSelectedCompanyId(data[0].id);
+        if (error) throw error;
+        setCompanies(data || []);
+
+        if (data && data.length > 0) {
+          const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
+          setSelectedCompanyId(defaultCompany.id);
+          loadDepartments(defaultCompany.id);
+        }
+      } else {
+        setSelectedCompanyId(profile.company_id || '');
+        if (profile.company_id) {
+          loadDepartments(profile.company_id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
+
+  const loadDepartments = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      setDepartments(data || []);
+
+      if (data && data.length > 0) {
+        const defaultDept = profile?.department && data.find(d => d.name === profile.department)
+          ? profile.department
+          : data[0].name;
+        setSelectedDepartment(defaultDept);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
     }
   };
 
   const handleCompanyChange = (companyId: string) => {
     setSelectedCompanyId(companyId);
+    setSelectedDepartment('');
+    setDepartments([]);
+
+    if (companyId) {
+      loadDepartments(companyId);
+    }
+
     setFormData(prev => ({
       ...prev,
       document_no: '',
@@ -210,13 +263,14 @@ export function PettyCash() {
         insertedRequest = data;
       } else {
         const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+        const department = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
         const { data, error } = await supabase
           .from('petty_cash_requests')
           .insert({
             pc_number: formData.document_no,
             requester_id: profile?.id,
             company_id: companyId,
-            department: profile?.department || '',
+            department: department,
             request_date: new Date().toISOString().split('T')[0],
             payee: formData.payee,
             purpose: formData.purpose,
@@ -234,10 +288,13 @@ export function PettyCash() {
         insertedRequest = data;
       }
 
-      if (status === 'pending' && insertedRequest && profile?.company_id) {
+      if (status === 'pending' && insertedRequest) {
+        const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+        const department = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
+
         const rawApprovalFlows = await getApprovalFlow(
-          profile.company_id,
-          profile.department || '',
+          companyId,
+          department,
           'Petty Cash',
           false,
           formData.amount
@@ -247,8 +304,8 @@ export function PettyCash() {
         const approvalFlows = await filterApprovalFlowsForRequester(
           rawApprovalFlows,
           profile.id,
-          profile.department || '',
-          profile.company_id
+          department,
+          companyId
         );
 
         if (approvalFlows.length > 0) {
@@ -267,8 +324,8 @@ export function PettyCash() {
           const firstApprover = approvalFlows[0];
           const approverInfo = await getApproverEmail(
             firstApprover,
-            profile.company_id,
-            profile.department || ''
+            companyId,
+            department
           );
 
           if (approverInfo) {
@@ -278,7 +335,7 @@ export function PettyCash() {
               'Petty Cash',
               formData.document_no,
               profile.full_name || 'Unknown',
-              profile.department || '',
+              department,
               formData.amount,
               'Submitted',
               undefined,
@@ -314,15 +371,18 @@ export function PettyCash() {
     setSubmitting(true);
     setLoading(true);
     try {
-      if (!profile?.company_id) {
+      const companyId = request.company_id || profile?.company_id;
+      const department = request.department || profile?.department || '';
+
+      if (!companyId) {
         throw new Error('Company information not found');
       }
 
       const rawApprovalFlows = await getApprovalFlow(
-        profile.company_id,
-        profile.department || '',
+        companyId,
+        department,
         'Petty Cash',
-        request.budgeted,
+        request.budgeted || false,
         request.amount
       );
 
@@ -334,8 +394,8 @@ export function PettyCash() {
       const approvalFlows = await filterApprovalFlowsForRequester(
         rawApprovalFlows,
         profile.id,
-        profile.department || '',
-        profile.company_id
+        department,
+        companyId
       );
 
       if (!approvalFlows || approvalFlows.length === 0) {
@@ -364,8 +424,8 @@ export function PettyCash() {
       const firstApprover = approvalFlows[0];
       const approverInfo = await getApproverEmail(
         firstApprover,
-        profile.company_id,
-        profile.department || ''
+        companyId,
+        department
       );
 
       if (approverInfo) {
@@ -375,7 +435,7 @@ export function PettyCash() {
           'Petty Cash',
           request.pc_number,
           profile.full_name || 'Unknown',
-          profile.department || '',
+          department,
           request.amount,
           'Submitted',
           undefined,
@@ -657,26 +717,66 @@ export function PettyCash() {
             </div>
           </div>
 
-          {profile?.enable_multi_company_requests ? (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Company
-              </label>
-              <select
-                value={selectedCompanyId}
-                onChange={(e) => handleCompanyChange(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                required
-              >
-                <option value="">Select Company</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {profile?.enable_multi_company_requests ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Company
+                </label>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => handleCompanyChange(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                  <span className="font-semibold text-slate-900">{profile?.company_name || 'N/A'}</span>
+                </div>
+              </div>
+            )}
+            {profile?.enable_multi_company_requests ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Department
+                </label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  required
+                  disabled={!selectedCompanyId}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.name}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+                {!selectedCompanyId && (
+                  <p className="text-xs text-amber-600 mt-1">Select a company first</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                  <span className="font-semibold text-slate-900">{profile?.department || 'N/A'}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">To / Recipient</label>
