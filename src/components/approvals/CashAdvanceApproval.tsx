@@ -15,6 +15,7 @@ interface CashAdvanceReq {
   id: string;
   ca_number: string;
   requester_id: string;
+  company_id?: string;
   department?: string;
   request_date: string;
   payee?: string;
@@ -89,13 +90,13 @@ export function CashAdvanceApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the requester's company_id to look up the correct approval flow
-        const requesterCompanyId = req.user_profiles?.company_id;
-        if (!requesterCompanyId) return null;
+        // Use the cash advance request's company_id to look up the correct approval flow
+        const caCompanyId = req.company_id || req.user_profiles?.company_id;
+        if (!caCompanyId) return null;
 
         const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
         const rawFlows = await getApprovalFlow(
-          requesterCompanyId,
+          caCompanyId,
           req.department || req.user_profiles?.department || profile.department || '',
           'Cash Advance',
           req.budgeted,
@@ -107,7 +108,7 @@ export function CashAdvanceApproval() {
           rawFlows,
           req.requester_id,
           req.department || req.user_profiles?.department || '',
-          requesterCompanyId
+          caCompanyId
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -156,10 +157,12 @@ export function CashAdvanceApproval() {
       setPaymentModeName(null);
     }
 
-    if (profile?.company_id) {
+    // Use the cash advance request's company_id to look up the correct approval flow
+    const caCompanyId = request.company_id || request.user_profiles?.company_id;
+    if (caCompanyId) {
       const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
       const rawFlows = await getApprovalFlow(
-        profile.company_id,
+        caCompanyId,
         request.department || request.user_profiles?.department || profile.department || '',
         'Cash Advance',
         request.budgeted,
@@ -171,7 +174,7 @@ export function CashAdvanceApproval() {
         rawFlows,
         request.requester_id,
         request.department || request.user_profiles?.department || '',
-        profile.company_id
+        caCompanyId
       );
 
       setApprovalFlows(flows);

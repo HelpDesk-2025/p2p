@@ -9,6 +9,7 @@ interface PettyCashReq {
   id: string;
   pc_number: string;
   requester_id: string;
+  company_id?: string;
   department?: string;
   request_date: string;
   purpose: string;
@@ -69,13 +70,13 @@ export function PettyCashApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the requester's company_id to look up the correct approval flow
-        const requesterCompanyId = req.user_profiles?.company_id;
-        if (!requesterCompanyId) return null;
+        // Use the petty cash request's company_id to look up the correct approval flow
+        const pcCompanyId = req.company_id || req.user_profiles?.company_id;
+        if (!pcCompanyId) return null;
 
         const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
         const rawFlows = await getApprovalFlow(
-          requesterCompanyId,
+          pcCompanyId,
           req.department || req.user_profiles?.department || profile.department || '',
           'Petty Cash',
           false,
@@ -87,7 +88,7 @@ export function PettyCashApproval() {
           rawFlows,
           req.requester_id,
           req.department || req.user_profiles?.department || '',
-          requesterCompanyId
+          pcCompanyId
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -124,11 +125,12 @@ export function PettyCashApproval() {
     setShowModal(true);
     setComments('');
 
-    const requesterCompanyId = request.user_profiles?.company_id;
-    if (requesterCompanyId) {
+    // Use the petty cash request's company_id to look up the correct approval flow
+    const pcCompanyId = request.company_id || request.user_profiles?.company_id;
+    if (pcCompanyId) {
       const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
       const rawFlows = await getApprovalFlow(
-        requesterCompanyId,
+        pcCompanyId,
         request.department || request.user_profiles?.department || profile.department || '',
         'Petty Cash',
         false,
@@ -140,7 +142,7 @@ export function PettyCashApproval() {
         rawFlows,
         request.requester_id,
         request.department || request.user_profiles?.department || '',
-        requesterCompanyId
+        pcCompanyId
       );
 
       setApprovalFlows(flows);

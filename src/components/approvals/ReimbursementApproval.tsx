@@ -9,6 +9,7 @@ interface ReimbursementReq {
   id: string;
   reimb_number: string;
   requester_id: string;
+  company_id?: string;
   department?: string;
   request_date: string;
   expense_date: string;
@@ -69,13 +70,13 @@ export function ReimbursementApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the requester's company_id to look up the correct approval flow
-        const requesterCompanyId = req.user_profiles?.company_id;
-        if (!requesterCompanyId) return null;
+        // Use the reimbursement request's company_id to look up the correct approval flow
+        const reimbCompanyId = req.company_id || req.user_profiles?.company_id;
+        if (!reimbCompanyId) return null;
 
         const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
         const rawFlows = await getApprovalFlow(
-          requesterCompanyId,
+          reimbCompanyId,
           req.department || req.user_profiles?.department || profile.department || '',
           'Reimbursement',
           false,
@@ -87,7 +88,7 @@ export function ReimbursementApproval() {
           rawFlows,
           req.requester_id,
           req.department || req.user_profiles?.department || '',
-          requesterCompanyId
+          reimbCompanyId
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -124,11 +125,12 @@ export function ReimbursementApproval() {
     setShowModal(true);
     setComments('');
 
-    const requesterCompanyId = request.user_profiles?.company_id;
-    if (requesterCompanyId) {
+    // Use the reimbursement request's company_id to look up the correct approval flow
+    const reimbCompanyId = request.company_id || request.user_profiles?.company_id;
+    if (reimbCompanyId) {
       const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
       const rawFlows = await getApprovalFlow(
-        requesterCompanyId,
+        reimbCompanyId,
         request.department || request.user_profiles?.department || profile.department || '',
         'Reimbursement',
         false,
@@ -140,7 +142,7 @@ export function ReimbursementApproval() {
         rawFlows,
         request.requester_id,
         request.department || request.user_profiles?.department || '',
-        requesterCompanyId
+        reimbCompanyId
       );
 
       setApprovalFlows(flows);
