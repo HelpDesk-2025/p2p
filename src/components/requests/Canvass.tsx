@@ -902,17 +902,27 @@ export function Canvass() {
     setSelectedPR(pr);
     setShowPRSelection(false);
     setShowForm(true);
-    generateDocumentNo();
-    setQuotations([
-      createEmptyQuotation(),
-      createEmptyQuotation(),
-      createEmptyQuotation(),
-    ]);
-    setSelectedCompanyId('');
-    setVendors([]);
 
-    // Fetch the company name for the selected PR
+    // Set the company ID from the PR and generate document number
     if (pr.company_id) {
+      setSelectedCompanyId(pr.company_id);
+
+      // Fetch vendors for this company
+      fetchVendors(pr.company_id);
+
+      // Generate document number using the PR's company ID directly
+      try {
+        const { data, error } = await supabase.rpc('get_next_number', {
+          p_series_name: 'Canvass',
+          p_company_id: pr.company_id
+        });
+        if (error) throw error;
+        setFormData(prev => ({ ...prev, document_no: data }));
+      } catch (error) {
+        console.error('Error generating document number:', error);
+      }
+
+      // Fetch the company name for display
       const { data: companyData } = await supabase
         .from('companies')
         .select('name')
@@ -923,6 +933,12 @@ export function Canvass() {
         setSelectedPRCompany(companyData.name);
       }
     }
+
+    setQuotations([
+      createEmptyQuotation(),
+      createEmptyQuotation(),
+      createEmptyQuotation(),
+    ]);
   };
 
   if (showPRSelection) {
@@ -1132,8 +1148,9 @@ export function Canvass() {
                       setVendors([]);
                     }
                   }}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
                   required
+                  disabled={selectedPR !== null}
                 >
                   <option value="">Select a company</option>
                   {companies.map((company) => (
@@ -1142,6 +1159,11 @@ export function Canvass() {
                     </option>
                   ))}
                 </select>
+                {selectedPR && (
+                  <p className="text-sm text-slate-500 mt-1">
+                    Company is set from the selected Purchase Requisition
+                  </p>
+                )}
               </div>
 
               <div className="border-t pt-6">
