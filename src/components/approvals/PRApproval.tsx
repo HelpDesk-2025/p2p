@@ -91,20 +91,22 @@ export function PRApproval() {
       return;
     }
 
-    // Admin users can see all requests, others only see their company's requests
-    const companyFilteredRequests = profile.role === 'admin'
-      ? data
-      : data.filter(req => req.user_profiles?.company_id === profile.company_id);
-
+    // Admin users can see all requests
     if (profile.role === 'admin') {
-      setRequests(companyFilteredRequests);
+      setRequests(data);
       return;
     }
 
+    // For non-admin users, check each request to see if they are the current approver
+    // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
-      companyFilteredRequests.map(async (req) => {
+      data.map(async (req) => {
+        // Use the requester's company_id to look up the correct approval flow
+        const requesterCompanyId = req.user_profiles?.company_id;
+        if (!requesterCompanyId) return null;
+
         const rawFlows = await getApprovalFlow(
-          profile.company_id,
+          requesterCompanyId,
           req.department,
           'Purchase Requisition',
           req.is_budgeted,
@@ -116,7 +118,7 @@ export function PRApproval() {
           rawFlows,
           req.requester_id,
           req.department,
-          profile.company_id
+          requesterCompanyId
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
