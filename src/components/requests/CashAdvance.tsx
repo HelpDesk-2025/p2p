@@ -87,10 +87,15 @@ export function CashAdvance() {
 
   useEffect(() => {
     loadRequests();
-    loadVendors();
     loadPaymentModes();
     loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (selectedCompanyId) {
+      loadVendors();
+    }
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -157,7 +162,15 @@ export function CashAdvance() {
       }
 
       const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors${companyId ? `?company_id=${companyId}` : ''}`;
+
+      if (!companyId) {
+        console.log('No company ID available, skipping vendor load');
+        setVendors([]);
+        return;
+      }
+
+      console.log('Loading vendors for company ID:', companyId);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors?company_id=${companyId}`;
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -166,16 +179,20 @@ export function CashAdvance() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch vendors');
+        const errorData = await response.json();
+        console.error('Failed to fetch vendors:', errorData);
+        throw new Error(errorData.error || 'Failed to fetch vendors');
       }
 
       const data = await response.json();
+      console.log('Loaded vendors count:', data.value?.length || 0);
       const sortedVendors = (data.value || []).sort((a: any, b: any) =>
         (a.displayName || '').localeCompare(b.displayName || '')
       );
       setVendors(sortedVendors);
     } catch (error) {
       console.error('Error loading vendors:', error);
+      setVendors([]);
     } finally {
       setLoadingVendors(false);
     }
@@ -235,6 +252,7 @@ export function CashAdvance() {
 
   const loadDepartments = async (companyId: string) => {
     try {
+      console.log('Loading departments for company ID:', companyId);
       const { data, error } = await supabase
         .from('companies')
         .select('departments')
@@ -248,11 +266,18 @@ export function CashAdvance() {
           id: dept.id,
           name: dept.name
         }));
+        console.log('Loaded departments:', deptList.length);
         setDepartments(deptList);
 
-        if (profile?.enable_multi_company_requests && deptList.length > 0) {
-          setSelectedDepartment(profile.department && deptList.find(d => d.name === profile.department) ? profile.department : deptList[0].name);
+        if (deptList.length > 0) {
+          const defaultDept = profile?.department && deptList.find(d => d.name === profile.department)
+            ? profile.department
+            : deptList[0].name;
+          console.log('Setting default department:', defaultDept);
+          setSelectedDepartment(defaultDept);
         }
+      } else {
+        console.log('No departments data found for company');
       }
     } catch (error) {
       console.error('Error loading departments:', error);
@@ -263,15 +288,18 @@ export function CashAdvance() {
     setSelectedCompanyId(companyId);
     setSelectedDepartment('');
     setDepartments([]);
-    loadDepartments(companyId);
-    loadVendors();
+    setVendors([]);
+    setVendorSearchTerm('');
+
+    if (companyId) {
+      loadDepartments(companyId);
+    }
 
     setFormData(prev => ({
       ...prev,
       payee: '',
       payee_number: '',
     }));
-    setVendorSearchTerm('');
   };
 
   const handlePaymentModeChange = (modeId: string) => {
