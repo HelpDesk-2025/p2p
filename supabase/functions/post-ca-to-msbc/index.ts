@@ -43,10 +43,8 @@ Deno.serve(async (req: Request) => {
       .from('cash_advance_requests')
       .select(`
         *,
-        requester:user_profiles!requester_id(
-          full_name,
-          company:companies(id, name, api_id)
-        )
+        requester:user_profiles!requester_id(full_name),
+        company:companies!company_id(id, name, api_id)
       `)
       .eq('id', requestId)
       .single();
@@ -66,9 +64,9 @@ Deno.serve(async (req: Request) => {
       .update({ msbc_sync_status: 'syncing' })
       .eq('id', requestId);
 
-    const companyAPIID = ca.requester?.company?.api_id;
+    const companyAPIID = ca.company?.api_id;
     if (!companyAPIID) {
-      throw new Error('Company API ID not found');
+      throw new Error('Company API ID not found. Please ensure the cash advance request has a company with a valid API ID configured.');
     }
 
     const documentNumber = ca.ca_number;
