@@ -66,6 +66,13 @@ export function CashAdvance() {
   const [postingToMsbc, setPostingToMsbc] = useState(false);
   const [paymentModes, setPaymentModes] = useState<any[]>([]);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
+
+  // Multi-company support
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -82,6 +89,7 @@ export function CashAdvance() {
     loadRequests();
     loadVendors();
     loadPaymentModes();
+    loadCompanies();
   }, []);
 
   useEffect(() => {
@@ -96,20 +104,23 @@ export function CashAdvance() {
   }, []);
 
   const generateDocumentNo = async () => {
-    if (!profile?.company_id) {
+    const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+    if (!companyId) {
       console.error('Company ID not available');
+      alert('Unable to generate document number: Company information not available');
       return;
     }
 
     try {
       const { data, error } = await supabase.rpc('get_next_number', {
         p_series_name: 'Cash Advance',
-        p_company_id: profile.company_id
+        p_company_id: companyId
       });
       if (error) throw error;
       setFormData(prev => ({ ...prev, document_no: data }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating document number:', error);
+      alert('Error generating document number: ' + error.message);
     }
   };
 
@@ -145,7 +156,7 @@ export function CashAdvance() {
         return;
       }
 
-      const companyId = profile?.company_id;
+      const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors${companyId ? `?company_id=${companyId}` : ''}`;
       const response = await fetch(apiUrl, {
         headers: {
@@ -188,6 +199,79 @@ export function CashAdvance() {
     } catch (error) {
       console.error('Error loading payment modes:', error);
     }
+  };
+
+  const loadCompanies = async () => {
+    try {
+      if (!profile) return;
+
+      if (profile.enable_multi_company_requests && profile.allowed_companies) {
+        const companyIds = profile.allowed_companies as string[];
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .in('id', companyIds)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setCompanies(data || []);
+
+        if (data && data.length > 0) {
+          const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
+          setSelectedCompanyId(defaultCompany.id);
+          loadDepartments(defaultCompany.id);
+        }
+      } else {
+        setSelectedCompanyId(profile.company_id || '');
+        if (profile.company_id) {
+          loadDepartments(profile.company_id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
+
+  const loadDepartments = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('departments')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.departments) {
+        const deptList = (data.departments as Array<{id: string, name: string}>).map(dept => ({
+          id: dept.id,
+          name: dept.name
+        }));
+        setDepartments(deptList);
+
+        if (profile?.enable_multi_company_requests && deptList.length > 0) {
+          setSelectedDepartment(profile.department && deptList.find(d => d.name === profile.department) ? profile.department : deptList[0].name);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    setSelectedDepartment('');
+    setDepartments([]);
+    loadDepartments(companyId);
+    loadVendors();
+
+    setFormData(prev => ({
+      ...prev,
+      payee: '',
+      payee_number: '',
+    }));
+    setVendorSearchTerm('');
   };
 
   const handlePaymentModeChange = (modeId: string) => {
@@ -350,11 +434,14 @@ export function CashAdvance() {
         if (error) throw error;
         insertedRequest = data;
       } else {
+        const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+        const requestDepartment = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
+
         const insertData: any = {
           ca_number: formData.document_no,
           requester_id: profile?.id,
-          company_id: profile?.company_id,
-          department: profile?.department || '',
+          company_id: requestCompanyId,
+          department: requestDepartment,
           request_date: new Date().toISOString().split('T')[0],
           payee: formData.payee,
           payee_number: formData.payee_number,
@@ -865,12 +952,57 @@ export function CashAdvance() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-                <span className="font-semibold text-slate-900">{profile?.department || 'N/A'}</span>
+            {profile?.enable_multi_company_requests ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Company
+                </label>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => handleCompanyChange(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  required
+                >
+                  <option value="">Select Company</option>
+                  {companies.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                  <span className="font-semibold text-slate-900">{profile?.department || 'N/A'}</span>
+                </div>
+              </div>
+            )}
+            {profile?.enable_multi_company_requests && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Department
+                </label>
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  required
+                  disabled={!selectedCompanyId}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.name}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+                {!selectedCompanyId && (
+                  <p className="text-xs text-amber-600 mt-1">Select a company first</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="relative" ref={vendorDropdownRef}>
