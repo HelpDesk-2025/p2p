@@ -77,17 +77,36 @@ export function Reimbursement() {
   };
 
   const loadCompanies = async () => {
-    if (!profile?.company_id) return;
+    try {
+      if (!profile) return;
 
-    const { data } = await supabase
-      .from('companies')
-      .select('id, name')
-      .eq('id', profile.company_id)
-      .order('name');
+      // Build array of accessible company IDs (primary + multi-company access)
+      const accessibleCompanyIds = [profile.company_id];
+      if (profile.multi_company_access && Array.isArray(profile.multi_company_access)) {
+        accessibleCompanyIds.push(...profile.multi_company_access);
+      }
 
-    setCompanies(data || []);
-    if (data && data.length > 0 && profile?.enable_multi_company_requests) {
-      setSelectedCompanyId(data[0].id);
+      // If user has multiple company access, show dropdown
+      if (accessibleCompanyIds.length > 1) {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .in('id', accessibleCompanyIds)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setCompanies(data || []);
+
+        if (data && data.length > 0) {
+          const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
+          setSelectedCompanyId(defaultCompany.id);
+        }
+      } else {
+        setSelectedCompanyId(profile.company_id || '');
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
     }
   };
 

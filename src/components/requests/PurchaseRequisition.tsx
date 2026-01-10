@@ -307,20 +307,25 @@ export function PurchaseRequisition() {
     try {
       if (!profile) return;
 
-      // If multi-company is enabled, load allowed companies
-      if (profile.enable_multi_company_requests && profile.allowed_companies) {
-        const companyIds = profile.allowed_companies as string[];
+      // Build array of accessible company IDs (primary + multi-company access)
+      const accessibleCompanyIds = [profile.company_id];
+      if (profile.multi_company_access && Array.isArray(profile.multi_company_access)) {
+        accessibleCompanyIds.push(...profile.multi_company_access);
+      }
+
+      // If user has multiple company access, show dropdown
+      if (accessibleCompanyIds.length > 1) {
         const { data, error } = await supabase
           .from('companies')
           .select('id, name')
-          .in('id', companyIds)
+          .in('id', accessibleCompanyIds)
           .eq('is_active', true)
           .order('name', { ascending: true });
 
         if (error) throw error;
         setCompanies(data || []);
 
-        // Set default to first company or user's primary company if in list
+        // Set default to user's primary company if in list
         if (data && data.length > 0) {
           const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
           setSelectedCompanyId(defaultCompany.id);

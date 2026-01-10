@@ -280,9 +280,16 @@ export function Canvass() {
       .select('id, name')
       .order('name');
 
-    // Only filter by company_id if user is not an admin, approver, or procurement
+    // Filter companies based on user access
     if (!['admin', 'approver', 'procurement'].includes(profile?.role || '')) {
-      query = query.eq('id', profile?.company_id);
+      // Build array of accessible company IDs (primary + multi-company access)
+      const accessibleCompanyIds = [profile.company_id];
+      if (profile.multi_company_access && Array.isArray(profile.multi_company_access)) {
+        accessibleCompanyIds.push(...profile.multi_company_access);
+      }
+
+      // Filter to only show accessible companies
+      query = query.in('id', accessibleCompanyIds);
     }
 
     const { data } = await query;
