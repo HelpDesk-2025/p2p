@@ -114,7 +114,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     sequence: '',
     days_of_approval: '',
     e_sig: '',
-    is_active: false
+    is_active: false,
+    enable_multi_company_requests: false,
+    allowed_companies: [] as string[]
   });
   const [originalESig, setOriginalESig] = useState<string>('');
   const [companies, setCompanies] = useState<any[]>([]);
@@ -181,7 +183,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       sequence: user.sequence?.toString() || '',
       days_of_approval: user.days_of_approval?.toString() || '',
       e_sig: user.e_sig || '',
-      is_active: user.is_active ?? false
+      is_active: user.is_active ?? false,
+      enable_multi_company_requests: user.enable_multi_company_requests ?? false,
+      allowed_companies: user.allowed_companies || []
     };
     console.log('Setting form data:', formDataToSet);
     setOriginalESig(user.e_sig || '');
@@ -217,11 +221,15 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
       if (authError) throw authError;
 
-      // Update the user profile with is_active status
+      // Update the user profile with additional fields
       if (authData.user) {
         const { error: updateError } = await supabase
           .from('user_profiles')
-          .update({ is_active: formData.is_active })
+          .update({
+            is_active: formData.is_active,
+            enable_multi_company_requests: formData.enable_multi_company_requests,
+            allowed_companies: formData.allowed_companies
+          })
           .eq('id', authData.user.id);
 
         if (updateError) throw updateError;
@@ -240,7 +248,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         sequence: '',
         days_of_approval: '',
         e_sig: '',
-        is_active: false
+        is_active: false,
+        enable_multi_company_requests: false,
+        allowed_companies: []
       });
       reload();
     } catch (error: any) {
@@ -293,7 +303,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         role: formData.role,
         approver_type: formData.approver_type || null,
         e_sig: formData.e_sig || null,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        enable_multi_company_requests: formData.enable_multi_company_requests,
+        allowed_companies: formData.allowed_companies
       };
 
       console.log('Updating user:', editingId, updateData);
@@ -326,7 +338,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         sequence: '',
         days_of_approval: '',
         e_sig: '',
-        is_active: false
+        is_active: false,
+        enable_multi_company_requests: false,
+        allowed_companies: []
       });
       reload();
     } catch (error: any) {
@@ -350,7 +364,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       sequence: '',
       days_of_approval: '',
       e_sig: '',
-      is_active: false
+      is_active: false,
+      enable_multi_company_requests: false,
+      allowed_companies: []
     });
   };
 
@@ -533,6 +549,69 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                   : 'User account is disabled and cannot sign in'}
               </p>
             </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Multi-Company Access</label>
+              <div className="flex items-center gap-3 mt-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.enable_multi_company_requests}
+                    onChange={(e) => setFormData({ ...formData, enable_multi_company_requests: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <span className={`ml-3 text-sm font-semibold ${formData.enable_multi_company_requests ? 'text-blue-700' : 'text-slate-600'}`}>
+                    {formData.enable_multi_company_requests ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {formData.enable_multi_company_requests
+                  ? 'User can create requests for multiple companies'
+                  : 'User is limited to their primary company only'}
+              </p>
+            </div>
+
+            {formData.enable_multi_company_requests && (
+              <div className="col-span-2 space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Allowed Companies *</label>
+                <div className="border border-slate-300 rounded-xl p-3 bg-white max-h-48 overflow-y-auto">
+                  {companies.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-2">No companies available</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {companies.map((company) => (
+                        <label key={company.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.allowed_companies.includes(company.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  allowed_companies: [...formData.allowed_companies, company.id]
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  allowed_companies: formData.allowed_companies.filter(id => id !== company.id)
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-slate-700">{company.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Select which companies this user can create requests for
+                </p>
+              </div>
+            )}
 
             <div className="col-span-2 space-y-3">
               <label className="block text-sm font-semibold text-slate-700">E-Signature</label>
