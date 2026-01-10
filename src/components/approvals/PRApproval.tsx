@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, UserPlus } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries, filterApprovalFlowsForRequester, addAdHocApprover, getAdHocApprovers } from '../../lib/approvalFlow';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2 } from 'lucide-react';
+import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
@@ -67,11 +67,6 @@ export function PRApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
-  const [showAddApproverForm, setShowAddApproverForm] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [adHocApproverType, setAdHocApproverType] = useState<string>('');
-  const [adHocApprovers, setAdHocApprovers] = useState<any[]>([]);
 
   useEffect(() => {
     loadRequests();
@@ -152,61 +147,6 @@ export function PRApproval() {
     setRequests(filteredRequests);
   };
 
-  const loadAvailableUsers = async (companyId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email, role, department')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('full_name', { ascending: true });
-
-      if (error) throw error;
-      setAvailableUsers(data || []);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
-
-  const handleAddAdHocApprover = async () => {
-    if (!selectedRequest || !selectedUserId || !adHocApproverType.trim()) {
-      alert('Please select a user and enter an approver type');
-      return;
-    }
-
-    try {
-      const selectedUser = availableUsers.find(u => u.id === selectedUserId);
-      if (!selectedUser) {
-        alert('Selected user not found');
-        return;
-      }
-
-      const nextSequence = selectedRequest.current_approval_level + 2;
-
-      await addAdHocApprover(
-        'Purchase Requisition',
-        selectedRequest.id,
-        selectedUserId,
-        selectedUser.full_name,
-        adHocApproverType,
-        nextSequence,
-        selectedRequest.user_profiles?.company_id || profile.company_id,
-        profile.id
-      );
-
-      alert(`Ad-hoc approver ${selectedUser.full_name} added successfully!`);
-
-      setSelectedUserId('');
-      setAdHocApproverType('');
-      setShowAddApproverForm(false);
-
-      const updatedAdHocApprovers = await getAdHocApprovers('Purchase Requisition', selectedRequest.id);
-      setAdHocApprovers(updatedAdHocApprovers);
-    } catch (error: any) {
-      alert('Error adding ad-hoc approver: ' + error.message);
-    }
-  };
-
   const handleViewRequest = async (request: PurchaseReq) => {
     setSelectedRequest(request);
     setShowModal(true);
@@ -231,16 +171,8 @@ export function PRApproval() {
 
       setApprovalFlows(flows);
 
-      const currentStep = await getNextApprover(flows, request.current_approval_level, 'Purchase Requisition', request.id);
+      const currentStep = await getNextApprover(flows, request.current_approval_level);
       setCurrentApproverStep(currentStep);
-
-      // Load ad-hoc approvers
-      const adHocList = await getAdHocApprovers('Purchase Requisition', request.id);
-      setAdHocApprovers(adHocList);
-
-      // Load available users for adding ad-hoc approvers
-      const companyId = request.user_profiles?.company_id || profile.company_id;
-      await loadAvailableUsers(companyId);
     }
   };
 
@@ -340,14 +272,6 @@ export function PRApproval() {
           currentLevel + 1
         );
 
-        // If current approver is an ad-hoc approver, update their status
-        if (currentApproverStep?.approval_flow_setup_id === 'ad-hoc') {
-          await supabase
-            .from('ad_hoc_approvers')
-            .update({ status: 'rejected' })
-            .eq('id', currentApproverStep.id);
-        }
-
         // Create auto-rejected entries for all remaining approvers
         await createRejectedLedgerEntries(
           'Purchase Requisition',
@@ -416,14 +340,6 @@ export function PRApproval() {
           comments,
           currentLevel + 1
         );
-
-        // If current approver is an ad-hoc approver, update their status
-        if (currentApproverStep?.approval_flow_setup_id === 'ad-hoc') {
-          await supabase
-            .from('ad_hoc_approvers')
-            .update({ status: 'approved' })
-            .eq('id', currentApproverStep.id);
-        }
 
         // Generate RFP PDF if this is the final approval (AFTER ledger entry)
         // Only generate RFP for Non-Purchase Order requests
@@ -927,86 +843,6 @@ export function PRApproval() {
                 requestType="Purchase Requisition"
                 requestId={selectedRequest.id}
               />
-
-              {adHocApprovers.length > 0 && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-purple-900 mb-3">Ad-Hoc Approvers</h4>
-                  <div className="space-y-2">
-                    {adHocApprovers.map((approver) => (
-                      <div key={approver.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-purple-100">
-                        <div className="flex items-center gap-3">
-                          <UserPlus size={16} className="text-purple-600" />
-                          <div>
-                            <p className="text-sm font-medium text-slate-900">{approver.approver_name}</p>
-                            <p className="text-xs text-slate-600">{approver.approver_type} (Step {approver.sequence})</p>
-                          </div>
-                        </div>
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                          approver.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          approver.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {approver.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {(profile?.role === 'admin' || profile?.role === 'approver' || profile?.role === 'procurement') && (
-                <div className="border border-slate-200 rounded-lg p-4">
-                  <button
-                    onClick={() => setShowAddApproverForm(!showAddApproverForm)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-                  >
-                    <UserPlus size={18} />
-                    {showAddApproverForm ? 'Cancel' : 'Add Step Approver'}
-                  </button>
-
-                  {showAddApproverForm && (
-                    <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Select User</label>
-                        <p className="text-xs text-slate-500 mb-2">Only active users are shown</p>
-                        <select
-                          value={selectedUserId}
-                          onChange={(e) => setSelectedUserId(e.target.value)}
-                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
-                        >
-                          <option value="">Choose an active user...</option>
-                          {availableUsers.length === 0 ? (
-                            <option disabled>No active users available</option>
-                          ) : (
-                            availableUsers.map((user) => (
-                              <option key={user.id} value={user.id}>
-                                {user.full_name} ({user.role} - {user.department})
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Approver Type/Label</label>
-                        <input
-                          type="text"
-                          value={adHocApproverType}
-                          onChange={(e) => setAdHocApproverType(e.target.value)}
-                          placeholder="e.g., Special Reviewer, Technical Lead, etc."
-                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
-                        />
-                      </div>
-                      <button
-                        onClick={handleAddAdHocApprover}
-                        disabled={!selectedUserId || !adHocApproverType.trim()}
-                        className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
-                      >
-                        Add Approver
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {profile?.role === 'admin' && selectedRequest.status === 'approved' && (
                 <div>

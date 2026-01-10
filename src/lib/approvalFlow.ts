@@ -242,98 +242,13 @@ export async function filterApprovalFlowsForRequester(
 
 export async function getNextApprover(
   approvalFlows: ApprovalFlow[],
-  currentLevel: number,
-  requestType?: string,
-  requestId?: string
+  currentLevel: number
 ): Promise<ApprovalFlow | null> {
-  // Check for ad-hoc approvers at the current level
-  if (requestType && requestId) {
-    const { data: adHocApprovers } = await supabase
-      .from('ad_hoc_approvers')
-      .select('*')
-      .eq('request_type', requestType)
-      .eq('request_id', requestId)
-      .eq('sequence', currentLevel + 1)
-      .eq('status', 'pending')
-      .order('sequence', { ascending: true });
-
-    if (adHocApprovers && adHocApprovers.length > 0) {
-      const adHoc = adHocApprovers[0];
-      // Convert ad-hoc approver to ApprovalFlow format
-      return {
-        id: adHoc.id,
-        company_id: adHoc.company_id,
-        department_id: null,
-        approver_type: adHoc.approver_type,
-        sequence: adHoc.sequence,
-        days_to_approve: 7,
-        is_required: true,
-        is_active: true,
-        workflow_type: 0,
-        user_id: adHoc.user_id,
-        approval_flow_setup_id: 'ad-hoc'
-      } as ApprovalFlow;
-    }
-  }
-
   if (currentLevel >= approvalFlows.length) {
     return null;
   }
 
   return approvalFlows[currentLevel];
-}
-
-export async function addAdHocApprover(
-  requestType: string,
-  requestId: string,
-  userId: string,
-  approverName: string,
-  approverType: string,
-  insertAtSequence: number,
-  companyId: string,
-  addedBy: string
-): Promise<void> {
-  try {
-    // Insert the ad-hoc approver
-    const { error } = await supabase.from('ad_hoc_approvers').insert({
-      request_type: requestType,
-      request_id: requestId,
-      user_id: userId,
-      approver_name: approverName,
-      approver_type: approverType,
-      sequence: insertAtSequence,
-      status: 'pending',
-      company_id: companyId,
-      added_by: addedBy
-    });
-
-    if (error) throw error;
-
-    console.log(`✅ Ad-hoc approver ${approverName} added at sequence ${insertAtSequence}`);
-  } catch (error) {
-    console.error('❌ Error adding ad-hoc approver:', error);
-    throw error;
-  }
-}
-
-export async function getAdHocApprovers(
-  requestType: string,
-  requestId: string
-): Promise<any[]> {
-  try {
-    const { data, error } = await supabase
-      .from('ad_hoc_approvers')
-      .select('*')
-      .eq('request_type', requestType)
-      .eq('request_id', requestId)
-      .order('sequence', { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('❌ Error fetching ad-hoc approvers:', error);
-    return [];
-  }
 }
 
 export async function createApprovalLedgerEntry(
