@@ -254,30 +254,25 @@ export function CashAdvance() {
     try {
       console.log('Loading departments for company ID:', companyId);
       const { data, error } = await supabase
-        .from('companies')
-        .select('departments')
-        .eq('id', companyId)
-        .maybeSingle();
+        .from('departments')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
 
       if (error) throw error;
 
-      if (data?.departments) {
-        const deptList = (data.departments as Array<{id: string, name: string}>).map(dept => ({
-          id: dept.id,
-          name: dept.name
-        }));
-        console.log('Loaded departments:', deptList.length);
-        setDepartments(deptList);
+      console.log('Loaded departments:', data?.length || 0);
+      setDepartments(data || []);
 
-        if (deptList.length > 0) {
-          const defaultDept = profile?.department && deptList.find(d => d.name === profile.department)
-            ? profile.department
-            : deptList[0].name;
-          console.log('Setting default department:', defaultDept);
-          setSelectedDepartment(defaultDept);
-        }
+      if (data && data.length > 0) {
+        const defaultDept = profile?.department && data.find(d => d.name === profile.department)
+          ? profile.department
+          : data[0].name;
+        console.log('Setting default department:', defaultDept);
+        setSelectedDepartment(defaultDept);
       } else {
-        console.log('No departments data found for company');
+        console.log('No departments found for company');
       }
     } catch (error) {
       console.error('Error loading departments:', error);
