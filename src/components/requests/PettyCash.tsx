@@ -654,16 +654,6 @@ export function PettyCash() {
             <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
               <FileText size={18} className="text-slate-400" />
               <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
-              {profile?.enable_multi_company_requests && !editingRequest && (
-                <button
-                  type="button"
-                  onClick={generateDocumentNo}
-                  className="ml-auto px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  title="Regenerate document number"
-                >
-                  <RefreshCw size={18} />
-                </button>
-              )}
             </div>
           </div>
 
