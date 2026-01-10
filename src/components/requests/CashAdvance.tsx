@@ -94,6 +94,9 @@ export function CashAdvance() {
   useEffect(() => {
     if (selectedCompanyId) {
       loadVendors();
+      if (!formData.document_no) {
+        generateDocumentNo();
+      }
     }
   }, [selectedCompanyId]);
 
@@ -292,6 +295,7 @@ export function CashAdvance() {
 
     setFormData(prev => ({
       ...prev,
+      document_no: '',
       payee: '',
       payee_number: '',
     }));
