@@ -88,6 +88,8 @@ export function ApprovalFlowSetupConfig() {
       let query = supabase
         .from("user_profiles")
         .select("*")
+        .eq("is_active", true)
+        .order("company", { ascending: true })
         .order("full_name", { ascending: true });
 
       if (companyName) {
@@ -116,13 +118,11 @@ export function ApprovalFlowSetupConfig() {
   };
 
   useEffect(() => {
-    if (editingSetupId && formData.company_id) {
-      const selectedCompany = companies.find(c => c.id === formData.company_id);
-      if (selectedCompany) {
-        loadUsers(selectedCompany.name);
-      }
+    if (editingSetupId) {
+      // Load ALL users from all companies for cross-company approvals
+      loadUsers();
     }
-  }, [editingSetupId, formData.company_id, companies]);
+  }, [editingSetupId]);
 
   useEffect(() => {
     if (formData.company_id) {
@@ -493,7 +493,7 @@ export function ApprovalFlowSetupConfig() {
                         <div className={`bg-white rounded-lg p-3 mb-2 border-2 ${colors.borderDark} space-y-2`}>
                           <h5 className="text-xs font-bold text-slate-900 mb-1">Add New Step</h5>
                           <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-700">Select User</label>
+                            <label className="text-xs font-semibold text-slate-700">Select User (All Companies)</label>
                             <select
                               value={newStepData.user_id}
                               onChange={(e) => setNewStepData({ ...newStepData, user_id: e.target.value })}
@@ -502,7 +502,7 @@ export function ApprovalFlowSetupConfig() {
                               <option value="">Select User</option>
                               {users.map((user) => (
                                 <option key={user.id} value={user.id}>
-                                  {user.full_name} ({user.email})
+                                  {user.full_name} - {user.company} ({user.email})
                                 </option>
                               ))}
                             </select>
@@ -543,7 +543,7 @@ export function ApprovalFlowSetupConfig() {
                         <div className={`bg-white rounded-lg p-3 mb-2 border-2 ${colors.borderDark} space-y-2`}>
                           <h5 className="text-xs font-bold text-slate-900 mb-1">Edit Step</h5>
                           <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-700">Select User</label>
+                            <label className="text-xs font-semibold text-slate-700">Select User (All Companies)</label>
                             <select
                               value={newStepData.user_id}
                               onChange={(e) => setNewStepData({ ...newStepData, user_id: e.target.value })}
@@ -552,7 +552,7 @@ export function ApprovalFlowSetupConfig() {
                               <option value="">Select User</option>
                               {users.map((user) => (
                                 <option key={user.id} value={user.id}>
-                                  {user.full_name} ({user.email})
+                                  {user.full_name} - {user.company} ({user.email})
                                 </option>
                               ))}
                             </select>
@@ -592,8 +592,9 @@ export function ApprovalFlowSetupConfig() {
 
                       <div className="space-y-1.5">
                         {workflowSteps.map((step) => {
-                          const displayName = step.approver_type === "Specific User" && step.user_id
-                            ? users.find(u => u.id === step.user_id)?.full_name || "Specific User"
+                          const approverUser = step.user_id ? users.find(u => u.id === step.user_id) : null;
+                          const displayName = approverUser
+                            ? `${approverUser.full_name} (${approverUser.company})`
                             : step.approver_type;
 
                           return (
