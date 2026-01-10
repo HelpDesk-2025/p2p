@@ -10,6 +10,7 @@ interface CanvassReq {
   id: string;
   canvass_number: string;
   requester_id: string;
+  company_id?: string;
   department: string;
   request_date: string;
   required_date: string;
@@ -105,13 +106,13 @@ export function CanvassApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the requester's company_id to look up the correct approval flow
-        const requesterCompanyId = req.user_profiles?.company_id;
-        if (!requesterCompanyId) return null;
+        // Use the canvass request's company_id to look up the correct approval flow
+        const canvassCompanyId = req.company_id || req.user_profiles?.company_id;
+        if (!canvassCompanyId) return null;
 
         const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
         const rawFlows = await getApprovalFlow(
-          requesterCompanyId,
+          canvassCompanyId,
           req.department || profile.department || '',
           'Canvass',
           req.is_budgeted || false,
@@ -123,7 +124,7 @@ export function CanvassApproval() {
           rawFlows,
           req.requester_id,
           req.department || '',
-          requesterCompanyId
+          canvassCompanyId
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);

@@ -12,6 +12,7 @@ interface PurchaseReq {
   document_no: string;
   pr_number: string;
   requester_id: string;
+  company_id?: string;
   department: string;
   request_date: string;
   required_date: string;
@@ -101,12 +102,13 @@ export function PRApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the requester's company_id to look up the correct approval flow
-        const requesterCompanyId = req.user_profiles?.company_id;
-        if (!requesterCompanyId) return null;
+        // Use the PR's company_id (not the requester's company) to look up the correct approval flow
+        // This allows requesters to create PRs for different companies they have access to
+        const prCompanyId = req.company_id || req.user_profiles?.company_id;
+        if (!prCompanyId) return null;
 
         const rawFlows = await getApprovalFlow(
-          requesterCompanyId,
+          prCompanyId,
           req.department,
           'Purchase Requisition',
           req.is_budgeted,
@@ -118,7 +120,7 @@ export function PRApproval() {
           rawFlows,
           req.requester_id,
           req.department,
-          requesterCompanyId
+          prCompanyId
         );
 
         const currentStep = await getNextApprover(flows, req.current_approval_level);
@@ -154,9 +156,11 @@ export function PRApproval() {
     setShowModal(true);
     setComments('');
 
-    if (profile?.company_id) {
+    // Use the PR's company_id to look up the correct approval flow
+    const prCompanyId = request.company_id || request.user_profiles?.company_id;
+    if (prCompanyId) {
       const rawFlows = await getApprovalFlow(
-        profile.company_id,
+        prCompanyId,
         request.department,
         'Purchase Requisition',
         request.is_budgeted,
@@ -168,7 +172,7 @@ export function PRApproval() {
         rawFlows,
         request.requester_id,
         request.department,
-        profile.company_id
+        prCompanyId
       );
 
       setApprovalFlows(flows);
