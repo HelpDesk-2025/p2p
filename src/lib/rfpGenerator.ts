@@ -917,7 +917,8 @@ export async function generateAndUploadCanvassRFP(
       .from('canvass_requests')
       .select(`
         *,
-        requester:user_profiles!requester_id(full_name, e_sig, company:companies(name)),
+        requester:user_profiles!requester_id(full_name, e_sig),
+        company:companies!company_id(name),
         pr:purchase_requisitions!pr_id(purpose, required_date, is_budgeted)
       `)
       .eq('id', canvassId)
@@ -968,7 +969,7 @@ export async function generateAndUploadCanvassRFP(
     }));
 
     const rfpData: RFPData = {
-      companyName: canvass.requester?.company?.name || 'Company Name',
+      companyName: canvass.company?.name || 'Company Name',
       requestType: 'Canvass',
       dateOfRequest: new Date(canvass.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -1015,7 +1016,7 @@ export async function generateAndUploadCanvassRFP(
 
     // Prepare Canvass Sheet data
     const canvassSheetData: CanvassSheetData = {
-      companyName: canvass.requester?.company?.name || 'Company Name',
+      companyName: canvass.company?.name || 'Company Name',
       companyAddress: '',
       vatTin: '',
       date: new Date(canvass.request_date).toLocaleDateString('en-US', {
@@ -1190,19 +1191,13 @@ export async function generateAndUploadRFP(
     const tableName = requestType === 'purchase_requisition' ? 'purchase_requisitions' :
                       requestType === 'petty_cash' ? 'petty_cash_requests' : 'reimbursement_requests';
 
-    // Different query for PR vs others (PR doesn't have company_id directly)
-    const selectQuery = requestType === 'purchase_requisition'
-      ? `
-        *,
-        requester:user_profiles!requester_id(full_name, e_sig, company:companies(name)),
-        payment_mode:payment_modes!payment_mode_id(mode_name, line_names)
-      `
-      : `
-        *,
-        requester:user_profiles!requester_id(full_name, e_sig),
-        company:companies!company_id(name),
-        payment_mode:payment_modes!payment_mode_id(mode_name, line_names)
-      `;
+    // All request types now have company_id
+    const selectQuery = `
+      *,
+      requester:user_profiles!requester_id(full_name, e_sig),
+      company:companies!company_id(name),
+      payment_mode:payment_modes!payment_mode_id(mode_name, line_names)
+    `;
 
     const { data: request, error: requestError } = await supabase
       .from(tableName)
@@ -1274,9 +1269,7 @@ export async function generateAndUploadRFP(
 
     // Prepare RFP data - handle different field names between PR and others
     const rfpData: RFPData = {
-      companyName: requestType === 'purchase_requisition'
-        ? (request.requester?.company?.name || 'Company Name')
-        : (request.company?.name || 'Company Name'),
+      companyName: request.company?.name || 'Company Name',
       requestType: requestType === 'purchase_requisition' ? 'Purchase Requisition' :
                    requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement',
       dateOfRequest: new Date(request.request_date).toLocaleDateString('en-US', {

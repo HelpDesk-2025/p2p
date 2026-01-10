@@ -721,7 +721,7 @@ export function CashAdvance() {
   };
 
   const regenerateApprovedForm = async (request: CashAdvanceReq) => {
-    if (!profile?.company_id) {
+    if (!request?.company_id) {
       alert('Company information not found');
       return;
     }
@@ -735,7 +735,7 @@ export function CashAdvance() {
       const { data: companyData } = await supabase
         .from('companies')
         .select('name')
-        .eq('id', profile.company_id)
+        .eq('id', request.company_id)
         .single();
 
       const { data: requestorData } = await supabase

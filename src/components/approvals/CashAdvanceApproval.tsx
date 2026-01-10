@@ -317,7 +317,7 @@ export function CashAdvanceApproval() {
         const { data: companyData } = await supabase
           .from('companies')
           .select('name')
-          .eq('id', profile.company_id)
+          .eq('id', selectedRequest.company_id)
           .single();
 
         const { data: requestorData } = await supabase
