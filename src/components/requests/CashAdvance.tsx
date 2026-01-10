@@ -145,7 +145,8 @@ export function CashAdvance() {
         return;
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors`;
+      const companyId = profile?.company_id;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors${companyId ? `?company_id=${companyId}` : ''}`;
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

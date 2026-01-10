@@ -197,7 +197,7 @@ export function PurchaseRequisition() {
     }
   };
 
-  const loadVendors = async () => {
+  const loadVendors = async (companyId?: string) => {
     setLoadingVendors(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -206,7 +206,10 @@ export function PurchaseRequisition() {
         return;
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors`;
+      // Use provided companyId, or selected company, or profile company
+      const targetCompanyId = companyId || (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors${targetCompanyId ? `?company_id=${targetCompanyId}` : ''}`;
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -235,7 +238,7 @@ export function PurchaseRequisition() {
     vendor.number?.toLowerCase().includes(vendorSearchTerm.toLowerCase())
   );
 
-  const loadItems = async () => {
+  const loadItems = async (companyId?: string) => {
     setLoadingItems(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -244,7 +247,10 @@ export function PurchaseRequisition() {
         return;
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-items`;
+      // Use provided companyId, or selected company, or profile company
+      const targetCompanyId = companyId || (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-items${targetCompanyId ? `?company_id=${targetCompanyId}` : ''}`;
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -353,6 +359,18 @@ export function PurchaseRequisition() {
     setSelectedDepartment('');
     setDepartments([]);
     loadDepartments(companyId);
+
+    // Reload vendors and items for the selected company
+    loadVendors(companyId);
+    loadItems(companyId);
+
+    // Clear any selected vendor and item data
+    setFormData(prev => ({
+      ...prev,
+      payee: '',
+      payee_number: '',
+    }));
+    setVendorSearchTerm('');
   };
 
   const generateDocumentNo = async () => {
