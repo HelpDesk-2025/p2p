@@ -554,6 +554,7 @@ export function Canvass() {
             suppliers: quotationsWithFiles,
             recommended_quotation_index: status === 'pending' ? recommendedQuotationIndex : null,
             recommendation_remarks: status === 'pending' ? recommendationRemarks : null,
+            is_budgeted: selectedPR?.is_budgeted || false,
           })
           .eq('id', editingRequest.id)
           .select()
@@ -579,6 +580,7 @@ export function Canvass() {
             total_amount: totalAmount,
             recommended_quotation_index: status === 'pending' ? recommendedQuotationIndex : null,
             recommendation_remarks: status === 'pending' ? recommendationRemarks : null,
+            is_budgeted: selectedPR?.is_budgeted || false,
           })
           .select()
           .single();
