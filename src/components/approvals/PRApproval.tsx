@@ -967,18 +967,23 @@ export function PRApproval() {
                   {showAddApproverForm && (
                     <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Select User</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Select User</label>
+                        <p className="text-xs text-slate-500 mb-2">Only active users are shown</p>
                         <select
                           value={selectedUserId}
                           onChange={(e) => setSelectedUserId(e.target.value)}
                           className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
                         >
-                          <option value="">Choose a user...</option>
-                          {availableUsers.map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.full_name} ({user.role} - {user.department})
-                            </option>
-                          ))}
+                          <option value="">Choose an active user...</option>
+                          {availableUsers.length === 0 ? (
+                            <option disabled>No active users available</option>
+                          ) : (
+                            availableUsers.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.full_name} ({user.role} - {user.department})
+                              </option>
+                            ))
+                          )}
                         </select>
                       </div>
                       <div>
