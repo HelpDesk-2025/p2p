@@ -255,6 +255,12 @@ export function Canvass() {
   }, []);
 
   useEffect(() => {
+    if (selectedCompanyId && !formData.document_no) {
+      generateDocumentNo();
+    }
+  }, [selectedCompanyId]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.vendor-dropdown-container')) {
@@ -296,7 +302,8 @@ export function Canvass() {
   };
 
   const generateDocumentNo = async () => {
-    if (!profile?.company_id) {
+    const companyId = selectedCompanyId || profile?.company_id;
+    if (!companyId) {
       console.error('Company ID not available');
       return;
     }
@@ -304,7 +311,7 @@ export function Canvass() {
     try {
       const { data, error } = await supabase.rpc('get_next_number', {
         p_series_name: 'Canvass',
-        p_company_id: profile.company_id
+        p_company_id: companyId
       });
       if (error) throw error;
       setFormData(prev => ({ ...prev, document_no: data }));
@@ -1075,6 +1082,7 @@ export function Canvass() {
                   value={selectedCompanyId}
                   onChange={(e) => {
                     setSelectedCompanyId(e.target.value);
+                    setFormData(prev => ({ ...prev, document_no: '' }));
                     if (e.target.value) {
                       fetchVendors(e.target.value);
                     } else {

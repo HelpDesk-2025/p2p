@@ -121,6 +121,12 @@ export function PurchaseRequisition() {
   }, [formData.purchase_type]);
 
   useEffect(() => {
+    if (selectedCompanyId && !formData.document_no) {
+      generateDocumentNo();
+    }
+  }, [selectedCompanyId]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
         setShowVendorDropdown(false);
@@ -367,6 +373,7 @@ export function PurchaseRequisition() {
     // Clear any selected vendor and item data
     setFormData(prev => ({
       ...prev,
+      document_no: '',
       payee: '',
       payee_number: '',
     }));
