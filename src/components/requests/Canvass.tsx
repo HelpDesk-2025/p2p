@@ -167,6 +167,7 @@ export function Canvass() {
   const [showVendorDropdown, setShowVendorDropdown] = useState<{ [key: number]: boolean }>({});
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedPRCompany, setSelectedPRCompany] = useState<string>('');
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -273,11 +274,12 @@ export function Canvass() {
   }, []);
 
   const loadCompanies = async () => {
-    if (!profile?.company_id && !['admin', 'approver', 'procurement'].includes(profile?.role || '')) return;
+    if (!profile?.company_id) return;
 
     let query = supabase
       .from('companies')
       .select('id, name')
+      .eq('is_active', true)
       .order('name');
 
     // Filter companies based on user access
@@ -354,6 +356,7 @@ export function Canvass() {
     setViewingRequest(request);
     setShowViewModal(true);
     setViewingPR(null);
+    setSelectedPRCompany('');
 
     // Fetch full canvass details including PR if pr_id exists
     if (request.pr_id) {
@@ -368,6 +371,19 @@ export function Canvass() {
           console.error('Error fetching PR:', prError);
         } else if (prData) {
           setViewingPR(prData as PurchaseRequisition);
+
+          // Fetch the company name for the PR
+          if (prData.company_id) {
+            const { data: companyData } = await supabase
+              .from('companies')
+              .select('name')
+              .eq('id', prData.company_id)
+              .single();
+
+            if (companyData) {
+              setSelectedPRCompany(companyData.name);
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading PR details:', error);
@@ -429,6 +445,7 @@ export function Canvass() {
     setShowViewModal(false);
     setViewingRequest(null);
     setViewingPR(null);
+    setSelectedPRCompany('');
     setShowForm(true);
   };
 
@@ -639,6 +656,7 @@ export function Canvass() {
       setShowForm(false);
       setShowPRSelection(false);
       setSelectedPR(null);
+      setSelectedPRCompany('');
       setFormData({ document_no: '', required_date: '', items: [{ description: '', quantity: 1, unit: 'pcs' }] });
       setQuotations([createEmptyQuotation(), createEmptyQuotation(), createEmptyQuotation()]);
       setRecommendedQuotationIndex(null);
@@ -892,6 +910,19 @@ export function Canvass() {
     ]);
     setSelectedCompanyId('');
     setVendors([]);
+
+    // Fetch the company name for the selected PR
+    if (pr.company_id) {
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', pr.company_id)
+        .single();
+
+      if (companyData) {
+        setSelectedPRCompany(companyData.name);
+      }
+    }
   };
 
   if (showPRSelection) {
@@ -966,6 +997,7 @@ export function Canvass() {
             onClick={() => {
               setShowForm(false);
               setSelectedPR(null);
+              setSelectedPRCompany('');
               setVendors([]);
               setQuotations([
                 createEmptyQuotation(),
@@ -987,6 +1019,10 @@ export function Canvass() {
                 <div>
                   <label className="font-semibold text-blue-700">Document No.</label>
                   <p className="text-blue-900 font-mono">{selectedPR.document_no || selectedPR.pr_number}</p>
+                </div>
+                <div>
+                  <label className="font-semibold text-blue-700">Company</label>
+                  <p className="text-blue-900">{selectedPRCompany || 'Loading...'}</p>
                 </div>
                 <div>
                   <label className="font-semibold text-blue-700">Department</label>
@@ -1867,6 +1903,10 @@ export function Canvass() {
                     <div>
                       <label className="text-xs font-semibold text-slate-600">PR Number</label>
                       <p className="text-sm text-slate-900 font-mono">{viewingPR.pr_number}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600">Company</label>
+                      <p className="text-sm text-slate-900">{selectedPRCompany || 'N/A'}</p>
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-600">Request Type</label>
