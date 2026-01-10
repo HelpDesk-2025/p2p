@@ -83,6 +83,12 @@ export function PurchaseRequisition() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PurchaseReq | null>(null);
 
+  // Multi-company support
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+
   const [formData, setFormData] = useState({
     document_no: '',
     description: '',
@@ -107,6 +113,7 @@ export function PurchaseRequisition() {
     loadPaymentModes();
     loadVendors();
     loadItems();
+    loadCompanies();
   }, []);
 
   useEffect(() => {
@@ -284,8 +291,73 @@ export function PurchaseRequisition() {
     }
   };
 
+  const loadCompanies = async () => {
+    try {
+      if (!profile) return;
+
+      // If multi-company is enabled, load allowed companies
+      if (profile.enable_multi_company_requests && profile.allowed_companies) {
+        const companyIds = profile.allowed_companies as string[];
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .in('id', companyIds)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setCompanies(data || []);
+
+        // Set default to first company or user's primary company if in list
+        if (data && data.length > 0) {
+          const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
+          setSelectedCompanyId(defaultCompany.id);
+          loadDepartments(defaultCompany.id);
+        }
+      } else {
+        // Single company mode - use profile's company
+        setSelectedCompanyId(profile.company_id || '');
+        setSelectedDepartment(profile.department || '');
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
+
+  const loadDepartments = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setDepartments(data || []);
+
+      // Set default department if user's department is in the list
+      if (profile?.department && data) {
+        const userDept = data.find(d => d.name === profile.department);
+        setSelectedDepartment(userDept ? userDept.name : (data[0]?.name || ''));
+      } else if (data && data.length > 0) {
+        setSelectedDepartment(data[0].name);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    setSelectedDepartment('');
+    setDepartments([]);
+    loadDepartments(companyId);
+  };
+
   const generateDocumentNo = async () => {
-    if (!profile?.company_id) {
+    const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+    if (!companyId) {
       console.error('Company ID not available');
       alert('Unable to generate document number: Company information not available');
       return;
@@ -294,7 +366,7 @@ export function PurchaseRequisition() {
     try {
       const { data, error } = await supabase.rpc('get_next_number', {
         p_series_name: 'Purchase Requisition',
-        p_company_id: profile.company_id
+        p_company_id: companyId
       });
       if (error) throw error;
       setFormData(prev => ({ ...prev, document_no: data }));
@@ -503,9 +575,13 @@ export function PurchaseRequisition() {
         mergedPdfPath = data.path;
       }
 
+      const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+      const requestDepartment = profile?.enable_multi_company_requests ? selectedDepartment : formData.department;
+
       const payload: any = {
         description: formData.description,
-        department: formData.department,
+        department: requestDepartment,
+        company_id: requestCompanyId,
         required_date: formData.date_required,
         date_required: formData.date_required,
         purpose: formData.purpose,
@@ -566,11 +642,11 @@ export function PurchaseRequisition() {
         insertedPR = data;
       }
 
-      if (status === 'pending' && insertedPR && profile?.company_id) {
+      if (status === 'pending' && insertedPR && requestCompanyId) {
         console.log('🚀 Starting approval process...');
         console.log('📋 Request details:', {
-          companyId: profile.company_id,
-          department: formData.department,
+          companyId: requestCompanyId,
+          department: requestDepartment,
           requestType: 'Purchase Requisition',
           isBudgeted: formData.is_budgeted,
           totalAmount: total
@@ -579,8 +655,8 @@ export function PurchaseRequisition() {
         try {
           // STRICT: Get approval flow based on company, department, request type, and budget setup
           const rawApprovalFlows = await getApprovalFlow(
-            profile.company_id,
-            formData.department,
+            requestCompanyId,
+            requestDepartment,
             'Purchase Requisition',
             formData.is_budgeted,
             total
@@ -594,8 +670,8 @@ export function PurchaseRequisition() {
           const approvalFlows = await filterApprovalFlowsForRequester(
             rawApprovalFlows,
             profile.id,
-            formData.department,
-            profile.company_id
+            requestDepartment,
+            requestCompanyId
           );
 
           if (!approvalFlows || approvalFlows.length === 0) {
@@ -624,8 +700,8 @@ export function PurchaseRequisition() {
 
           const approverInfo = await getApproverEmail(
             firstApprover,
-            profile.company_id,
-            formData.department
+            requestCompanyId,
+            requestDepartment
           );
 
           if (!approverInfo) {
@@ -798,12 +874,13 @@ export function PurchaseRequisition() {
     setSubmitting(true);
     setLoading(true);
     try{
-      if (!profile?.company_id) {
+      const requestCompanyId = request.company_id || profile?.company_id;
+      if (!requestCompanyId) {
         throw new Error('Company information not found');
       }
 
       const rawApprovalFlows = await getApprovalFlow(
-        profile.company_id,
+        requestCompanyId,
         request.department,
         'Purchase Requisition',
         request.is_budgeted,
@@ -819,7 +896,7 @@ export function PurchaseRequisition() {
         rawApprovalFlows,
         profile.id,
         request.department,
-        profile.company_id
+        requestCompanyId
       );
 
       if (!approvalFlows || approvalFlows.length === 0) {
@@ -848,7 +925,7 @@ export function PurchaseRequisition() {
       const firstApprover = approvalFlows[0];
       const approverInfo = await getApproverEmail(
         firstApprover,
-        profile.company_id,
+        requestCompanyId,
         request.department
       );
 
