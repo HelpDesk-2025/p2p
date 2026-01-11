@@ -80,4 +80,8 @@ export interface UserProfile {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  company_id: string | null;
+  company_name: string | null;
+  enable_multi_company_requests: boolean;
+  allowed_companies: string[];
 }

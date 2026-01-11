@@ -284,14 +284,14 @@ export function Canvass() {
 
     // Filter companies based on user access
     if (!['admin', 'approver', 'procurement'].includes(profile?.role || '')) {
-      // Build array of accessible company IDs (primary + multi-company access)
-      const accessibleCompanyIds = [profile.company_id];
-      if (profile.multi_company_access && Array.isArray(profile.multi_company_access)) {
-        accessibleCompanyIds.push(...profile.multi_company_access);
+      // If user has multi-company access enabled
+      if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
+        // Filter to only show accessible companies
+        query = query.in('id', profile.allowed_companies);
+      } else {
+        // Single company mode - only show user's company
+        query = query.eq('id', profile.company_id);
       }
-
-      // Filter to only show accessible companies
-      query = query.in('id', accessibleCompanyIds);
     }
 
     const { data } = await query;
