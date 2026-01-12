@@ -38,7 +38,14 @@ export function ApprovalProgressTracker({
   }, [requestId]);
 
   const loadData = async () => {
-    await Promise.all([loadApprovalLedger(), loadRequestData()]);
+    try {
+      setLoading(true);
+      await Promise.all([loadApprovalLedger(), loadRequestData()]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadRequestData = async () => {
@@ -77,52 +84,76 @@ export function ApprovalProgressTracker({
 
         // Load approval flows for this request
         if (companyId) {
-          const { getApprovalFlow, filterApprovalFlowsForRequester } = await import('../lib/approvalFlow');
-          // Handle both column names: is_budgeted (PR, Canvass) and budgeted (Petty Cash, Reimbursement, Cash Advance)
-          const isBudgeted = data.is_budgeted !== undefined ? data.is_budgeted : (data.budgeted || false);
-          const rawFlows = await getApprovalFlow(
-            companyId,
-            data.department || '',
-            requestType,
-            isBudgeted,
-            data.total_amount || data.amount || 0
-          );
+          try {
+            const { getApprovalFlow, filterApprovalFlowsForRequester } = await import('../lib/approvalFlow');
+            // Handle both column names: is_budgeted (PR, Canvass) and budgeted (Petty Cash, Reimbursement, Cash Advance)
+            const isBudgeted = data.is_budgeted !== undefined ? data.is_budgeted : (data.budgeted || false);
 
-          // Filter out requester from approval flows
-          const flows = await filterApprovalFlowsForRequester(
-            rawFlows || [],
-            data.requester_id,
-            data.department || '',
-            companyId
-          );
+            console.log('Loading approval flows for tracker:', {
+              companyId,
+              department: data.department,
+              requestType,
+              isBudgeted,
+              amount: data.total_amount || data.amount || 0
+            });
 
-          setApprovalFlows(flows || []);
+            const rawFlows = await getApprovalFlow(
+              companyId,
+              data.department || '',
+              requestType,
+              isBudgeted,
+              data.total_amount || data.amount || 0
+            );
 
-          // Load approver names for flows with user_id
-          if (flows && flows.length > 0) {
-            const userIds = flows
-              .filter(f => f.user_id)
-              .map(f => f.user_id as string);
+            console.log('Raw flows loaded:', rawFlows?.length || 0);
 
-            if (userIds.length > 0) {
-              const { data: profiles } = await supabase
-                .from('user_profiles')
-                .select('id, full_name')
-                .in('id', userIds);
+            // Filter out requester from approval flows
+            const flows = await filterApprovalFlowsForRequester(
+              rawFlows || [],
+              data.requester_id,
+              data.department || '',
+              companyId
+            );
 
-              if (profiles) {
-                const nameMap: Record<string, string> = {};
-                profiles.forEach(profile => {
-                  nameMap[profile.id] = profile.full_name;
-                });
-                setApproverNames(nameMap);
+            console.log('Filtered flows:', flows?.length || 0);
+
+            setApprovalFlows(flows || []);
+
+            // Load approver names for flows with user_id
+            if (flows && flows.length > 0) {
+              const userIds = flows
+                .filter(f => f.user_id)
+                .map(f => f.user_id as string);
+
+              if (userIds.length > 0) {
+                const { data: profiles } = await supabase
+                  .from('user_profiles')
+                  .select('id, full_name')
+                  .in('id', userIds);
+
+                if (profiles) {
+                  const nameMap: Record<string, string> = {};
+                  profiles.forEach(profile => {
+                    nameMap[profile.id] = profile.full_name;
+                  });
+                  setApproverNames(nameMap);
+                  console.log('Approver names loaded:', Object.keys(nameMap).length);
+                }
               }
             }
+          } catch (flowError) {
+            console.error('Error loading approval flows:', flowError);
+            // Set empty flows to prevent infinite loading
+            setApprovalFlows([]);
           }
+        } else {
+          console.warn('No company ID found for request');
+          setApprovalFlows([]);
         }
       }
     } catch (error) {
       console.error('Error loading request data:', error);
+      setApprovalFlows([]);
     }
   };
 
@@ -150,8 +181,6 @@ export function ApprovalProgressTracker({
       setLedgerEntries(data || []);
     } catch (error) {
       console.error('Error loading approval ledger:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
