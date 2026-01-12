@@ -421,6 +421,10 @@ export function PettyCashApproval() {
                   <p className="text-slate-900 font-mono">{selectedRequest.pc_number}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{selectedRequest.companies?.name || 'N/A'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Department</label>
                   <p className="text-slate-900">
                     {selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A'}

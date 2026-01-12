@@ -316,6 +316,10 @@ export function SmeApproval() {
                   </p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{viewingRequest.purchase_requisitions?.companies?.name || 'N/A'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Department</label>
                   <p className="text-slate-900">{viewingRequest.purchase_requisitions?.department}</p>
                 </div>
