@@ -28,6 +28,9 @@ interface PurchaseReq {
     email: string;
     company_id: string;
   };
+  companies?: {
+    name: string;
+  };
   pr_checklists?: {
     item_name: string;
   };
@@ -69,6 +72,7 @@ export function ProcurementChecking() {
       .select(`
         *,
         user_profiles:requester_id (full_name, email, company_id),
+        companies:company_id (name),
         pr_checklists:pr_checklist_id (item_name)
       `)
       .eq('status', 'approved')
@@ -445,6 +449,10 @@ export function ProcurementChecking() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Document No.</label>
                   <p className="text-slate-900 font-mono">{viewingRequest.document_no || viewingRequest.pr_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{viewingRequest.companies?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Department</label>
