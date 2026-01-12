@@ -335,7 +335,7 @@ export function Canvass() {
 
     let query = supabase
       .from('canvass_requests')
-      .select('*, user_profiles!canvass_requests_requester_id_fkey(company_id)')
+      .select('*, user_profiles!canvass_requests_requester_id_fkey(company_id), companies!canvass_requests_company_id_fkey(id, name)')
       .order('created_at', { ascending: false });
 
     // Only filter by requester_id if user is not an admin

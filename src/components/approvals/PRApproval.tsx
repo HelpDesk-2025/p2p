@@ -82,7 +82,8 @@ export function PRApproval() {
         *,
         user_profiles:requester_id (full_name, email, company_id),
         payment_modes:payment_mode_id (mode_name),
-        pr_checklists:pr_checklist_id (pr_type, item_name)
+        pr_checklists:pr_checklist_id (pr_type, item_name),
+        companies!purchase_requisitions_company_id_fkey (id, name)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });

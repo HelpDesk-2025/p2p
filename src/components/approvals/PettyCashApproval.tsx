@@ -50,7 +50,8 @@ export function PettyCashApproval() {
       .from('petty_cash_requests')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id, department)
+        user_profiles:requester_id (full_name, email, company_id, department),
+        companies!petty_cash_requests_company_id_fkey (id, name)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });

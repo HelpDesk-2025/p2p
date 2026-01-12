@@ -138,7 +138,7 @@ export function CashAdvance() {
 
     let query = supabase
       .from('cash_advance_requests')
-      .select('*, user_profiles!cash_advance_requests_requester_id_fkey(company_id)')
+      .select('*, user_profiles!cash_advance_requests_requester_id_fkey(company_id), companies!cash_advance_requests_company_id_fkey(id, name)')
       .order('created_at', { ascending: false });
 
     // Only filter by requester_id if user is not an admin

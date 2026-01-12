@@ -86,7 +86,8 @@ export function CanvassApproval() {
       .from('canvass_requests')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id)
+        user_profiles:requester_id (full_name, email, company_id),
+        companies!canvass_requests_company_id_fkey (id, name)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });

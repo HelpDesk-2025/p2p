@@ -120,7 +120,7 @@ export function Reimbursement() {
 
     let query = supabase
       .from('reimbursement_requests')
-      .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id)')
+      .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id), companies!reimbursement_requests_company_id_fkey(id, name)')
       .order('created_at', { ascending: false });
 
     // Only filter by requester_id if user is not an admin
