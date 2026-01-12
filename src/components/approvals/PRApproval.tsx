@@ -55,6 +55,10 @@ interface PurchaseReq {
   pr_checklists?: {
     pr_type: string;
   };
+  companies?: {
+    id: string;
+    name: string;
+  };
 }
 
 export function PRApproval() {
@@ -581,6 +585,10 @@ export function PRApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">PR Number</label>
                   <p className="text-slate-900 font-mono">{selectedRequest.pr_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{selectedRequest.companies?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Department</label>
