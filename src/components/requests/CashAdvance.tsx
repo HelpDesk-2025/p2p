@@ -17,6 +17,7 @@ interface CashAdvanceReq {
   ca_number: string;
   request_date: string;
   requester_id: string;
+  company_id?: string;
   payee?: string;
   payee_number?: string;
   purpose: string;
@@ -497,10 +498,13 @@ export function CashAdvance() {
         insertedRequest = data;
       }
 
-      if (status === 'pending' && insertedRequest && profile?.company_id) {
+      if (status === 'pending' && insertedRequest) {
+        const requestCompanyId = insertedRequest.company_id;
+        const requestDepartment = insertedRequest.department || '';
+
         const rawApprovalFlows = await getApprovalFlow(
-          profile.company_id,
-          profile.department || '',
+          requestCompanyId,
+          requestDepartment,
           'Cash Advance',
           budgetedValue,
           formData.amount
@@ -510,8 +514,8 @@ export function CashAdvance() {
         const approvalFlows = await filterApprovalFlowsForRequester(
           rawApprovalFlows,
           profile.id,
-          profile.department || '',
-          profile.company_id
+          requestDepartment,
+          requestCompanyId
         );
 
         if (approvalFlows.length > 0) {
@@ -579,13 +583,14 @@ export function CashAdvance() {
     setSubmitting(true);
     setLoading(true);
     try {
-      if (!profile?.company_id) {
+      if (!request.company_id) {
         throw new Error('Company information not found');
       }
 
+      const department = request.department || profile?.department || '';
       const rawApprovalFlows = await getApprovalFlow(
-        profile.company_id,
-        profile.department || '',
+        request.company_id,
+        department,
         'Cash Advance',
         (request as any).budgeted,
         request.amount
@@ -599,8 +604,8 @@ export function CashAdvance() {
       const approvalFlows = await filterApprovalFlowsForRequester(
         rawApprovalFlows,
         profile.id,
-        profile.department || '',
-        profile.company_id
+        department,
+        request.company_id
       );
 
       if (!approvalFlows || approvalFlows.length === 0) {

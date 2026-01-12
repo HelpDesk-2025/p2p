@@ -18,6 +18,9 @@ interface ReimbursementReq {
   purpose: string;
   amount: number;
   status: string;
+  company_id?: string;
+  department?: string;
+  budgeted?: boolean;
   rfp_pdf_path?: string;
 }
 
@@ -221,10 +224,13 @@ export function Reimbursement() {
         insertedRequest = data;
       }
 
-      if (status === 'pending' && insertedRequest && profile?.company_id) {
+      if (status === 'pending' && insertedRequest) {
+        const requestCompanyId = insertedRequest.company_id;
+        const requestDepartment = insertedRequest.department || '';
+
         const rawApprovalFlows = await getApprovalFlow(
-          profile.company_id,
-          profile.department || '',
+          requestCompanyId,
+          requestDepartment,
           'Reimbursement',
           false,
           formData.amount
@@ -234,8 +240,8 @@ export function Reimbursement() {
         const approvalFlows = await filterApprovalFlowsForRequester(
           rawApprovalFlows,
           profile.id,
-          profile.department || '',
-          profile.company_id
+          requestDepartment,
+          requestCompanyId
         );
 
         if (approvalFlows.length > 0) {
@@ -300,15 +306,16 @@ export function Reimbursement() {
     setSubmitting(true);
     setLoading(true);
     try {
-      if (!profile?.company_id) {
+      if (!request.company_id) {
         throw new Error('Company information not found');
       }
 
+      const department = request.department || profile?.department || '';
       const rawApprovalFlows = await getApprovalFlow(
-        profile.company_id,
-        profile.department || '',
+        request.company_id,
+        department,
         'Reimbursement',
-        request.budgeted,
+        request.budgeted || false,
         request.amount
       );
 
@@ -320,8 +327,8 @@ export function Reimbursement() {
       const approvalFlows = await filterApprovalFlowsForRequester(
         rawApprovalFlows,
         profile.id,
-        profile.department || '',
-        profile.company_id
+        department,
+        request.company_id
       );
 
       if (!approvalFlows || approvalFlows.length === 0) {

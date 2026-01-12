@@ -56,6 +56,7 @@ interface CanvassReq {
   status: string;
   total_amount: number;
   pr_id?: string;
+  company_id?: string;
   department?: string;
   items?: any[];
   suppliers?: any[];
@@ -599,10 +600,10 @@ export function Canvass() {
         }
       }
 
-      if (status === 'pending' && insertedRequest && profile?.company_id) {
-        const department = selectedPR?.department || profile?.department || '';
+      if (status === 'pending' && insertedRequest && selectedCompanyId) {
+        const department = selectedPR?.department || selectedDepartment || profile?.department || '';
         const rawApprovalFlows = await getApprovalFlow(
-          profile.company_id,
+          selectedCompanyId,
           department,
           'Canvass',
           false,
@@ -614,7 +615,7 @@ export function Canvass() {
           rawApprovalFlows,
           profile.id,
           department,
-          profile.company_id
+          selectedCompanyId
         );
 
         if (approvalFlows.length > 0) {
@@ -686,13 +687,14 @@ export function Canvass() {
     setSubmitting(true);
     setLoading(true);
     try {
-      if (!profile?.company_id) {
+      if (!request.company_id) {
         throw new Error('Company information not found');
       }
 
+      const department = request.department || profile?.department || '';
       const rawApprovalFlows = await getApprovalFlow(
-        profile.company_id,
-        profile.department || '',
+        request.company_id,
+        department,
         'Canvass',
         false,
         request.total_amount
@@ -706,8 +708,8 @@ export function Canvass() {
       const approvalFlows = await filterApprovalFlowsForRequester(
         rawApprovalFlows,
         profile.id,
-        profile.department || '',
-        profile.company_id
+        department,
+        request.company_id
       );
 
       if (!approvalFlows || approvalFlows.length === 0) {
