@@ -236,11 +236,13 @@ export function CanvassApproval() {
       console.error('Error loading recommendations:', error);
     }
 
-    if (profile?.company_id) {
+    // Use the request's company_id to load the correct approval flows
+    const requestCompanyId = request.company_id || request.user_profiles?.company_id;
+    if (requestCompanyId) {
       const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
       const rawFlows = await getApprovalFlow(
-        profile.company_id,
-        request.department || profile.department || '',
+        requestCompanyId,
+        request.department || '',
         'Canvass',
         request.is_budgeted || false,
         request.total_amount
@@ -251,7 +253,7 @@ export function CanvassApproval() {
         rawFlows,
         request.requester_id,
         request.department || '',
-        profile.company_id
+        requestCompanyId
       );
 
       setApprovalFlows(flows);
