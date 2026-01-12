@@ -156,7 +156,8 @@ export function PurchaseRequisition() {
             pr_type,
             item_name
           ),
-          user_profiles!purchase_requisitions_requester_id_fkey(company_id)
+          user_profiles!purchase_requisitions_requester_id_fkey(company_id),
+          companies!purchase_requisitions_company_id_fkey(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -1645,6 +1646,10 @@ export function PurchaseRequisition() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Document No.</label>
                   <p className="text-slate-900 font-mono">{viewingRequest.document_no || viewingRequest.pr_number}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{(viewingRequest as any).companies?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Department</label>
