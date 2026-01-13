@@ -180,7 +180,7 @@ export function LoginForm() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Procure to Pay</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Point to Point</h1>
           <p className="text-slate-600">
             {isForgotPassword
               ? otpStep === 'email'

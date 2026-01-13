@@ -51,7 +51,7 @@ export function SmtpConfig() {
           password: '',
           encryption: 'tls',
           from_address: '',
-          from_name: 'Procure to Pay System',
+          from_name: 'Point to Point System',
           is_active: true,
         });
       }
@@ -279,7 +279,7 @@ export function SmtpConfig() {
                 type="text"
                 value={config.from_name}
                 onChange={(e) => setConfig({ ...config, from_name: e.target.value })}
-                placeholder="Procure to Pay System"
+                placeholder="Point to Point System"
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
