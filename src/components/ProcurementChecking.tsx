@@ -94,19 +94,11 @@ export function ProcurementChecking() {
   };
 
   const loadUsers = async () => {
-    if (!profile?.company_id && profile?.role !== 'admin') return;
-
-    let query = supabase
+    const { data } = await supabase
       .from('user_profiles')
       .select('id, full_name, email, company, department, company_id')
-      .eq('is_active', true);
-
-    // Non-admin users only see users from their company
-    if (profile?.role !== 'admin' && profile?.company_id) {
-      query = query.eq('company_id', profile.company_id);
-    }
-
-    const { data } = await query.order('full_name');
+      .eq('is_active', true)
+      .order('full_name');
 
     if (data) {
       setUsers(data);
