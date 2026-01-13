@@ -42,6 +42,15 @@ interface CashAdvanceReq {
   msbc_sync_date?: string;
   msbc_sync_error?: string;
   msbc_journal_id?: string;
+  companies?: {
+    name: string;
+  };
+  user_profiles?: {
+    full_name: string;
+    email: string;
+    company_id: string;
+    department?: string;
+  };
 }
 
 export function CashAdvance() {
@@ -138,7 +147,7 @@ export function CashAdvance() {
 
     let query = supabase
       .from('cash_advance_requests')
-      .select('*, user_profiles!cash_advance_requests_requester_id_fkey(company_id), companies!cash_advance_requests_company_id_fkey(id, name)')
+      .select('*, user_profiles!cash_advance_requests_requester_id_fkey(full_name, email, company_id, department), companies!cash_advance_requests_company_id_fkey(id, name)')
       .order('created_at', { ascending: false });
 
     // Only filter by requester_id if user is not an admin
@@ -1382,6 +1391,14 @@ export function CashAdvance() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{viewingRequest.companies?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Department</label>
+                  <p className="text-slate-900">{viewingRequest.department || viewingRequest.user_profiles?.department || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Payee/Vendor</label>

@@ -40,6 +40,9 @@ interface CashAdvanceReq {
     company_id: string;
     department?: string;
   };
+  companies?: {
+    name: string;
+  };
 }
 
 export function CashAdvanceApproval() {
