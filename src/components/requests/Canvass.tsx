@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
@@ -169,6 +169,7 @@ export function Canvass() {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedPRCompany, setSelectedPRCompany] = useState<string>('');
+  const [isHorizontalLayout, setIsHorizontalLayout] = useState(true);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -1142,16 +1143,36 @@ export function Canvass() {
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-slate-900">Quotations (atleast 1)</h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuotations(addItemToAllQuotations(quotations));
-                    }}
-                    className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-                  >
-                    <Plus size={16} />
-                    Add Item Row to All Quotations
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsHorizontalLayout(!isHorizontalLayout)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-600 text-white text-sm rounded-lg hover:bg-slate-700 transition"
+                      title={isHorizontalLayout ? "Switch to Vertical Layout" : "Switch to Horizontal Layout"}
+                    >
+                      {isHorizontalLayout ? (
+                        <>
+                          <LayoutList size={16} />
+                          <span>Vertical</span>
+                        </>
+                      ) : (
+                        <>
+                          <LayoutGrid size={16} />
+                          <span>Horizontal</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuotations(addItemToAllQuotations(quotations));
+                      }}
+                      className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Plus size={16} />
+                      Add Item Row to All Quotations
+                    </button>
+                  </div>
                 </div>
                 {loadingVendors && (
                   <div className="flex items-center gap-2 mb-4 text-blue-600">
@@ -1159,10 +1180,10 @@ export function Canvass() {
                     <span className="text-sm">Loading vendors...</span>
                   </div>
                 )}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className={isHorizontalLayout ? "grid grid-cols-1 lg:grid-cols-3 gap-4" : "space-y-6"}>
                   {quotations.map((quotation, idx) => (
-                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2.5 flex flex-col">
-                      <h4 className="font-semibold text-slate-900 text-sm text-center border-b pb-1.5">Quotation {idx + 1}</h4>
+                    <div key={idx} className={`bg-slate-50 border border-slate-200 rounded-lg flex flex-col ${isHorizontalLayout ? 'p-3 space-y-2.5' : 'p-4 space-y-3'}`}>
+                      <h4 className={`font-semibold text-slate-900 text-center border-b ${isHorizontalLayout ? 'text-sm pb-1.5' : 'text-base pb-2'}`}>Quotation {idx + 1}</h4>
 
                       <div className="space-y-2 flex-1">
                         <div className="relative vendor-dropdown-container">
@@ -1591,7 +1612,7 @@ export function Canvass() {
 
                       <div className="border-t pt-3 mt-3">
                         <h5 className="font-semibold text-slate-900 mb-2 text-sm">Vendor Details</h5>
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className={`grid gap-2 ${isHorizontalLayout ? 'grid-cols-1' : 'grid-cols-2'}`}>
                           <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Registered Name</label>
                             <input
@@ -1610,7 +1631,7 @@ export function Canvass() {
                               className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
-                          <div>
+                          <div className={isHorizontalLayout ? '' : 'col-span-2'}>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Complete Address</label>
                             <textarea
                               value={quotation.complete_address}
@@ -1684,7 +1705,7 @@ export function Canvass() {
                               className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
-                          <div>
+                          <div className={isHorizontalLayout ? '' : 'col-span-2'}>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Other Information</label>
                             <textarea
                               value={quotation.other_information}
