@@ -1159,14 +1159,14 @@ export function Canvass() {
                     <span className="text-sm">Loading vendors...</span>
                   </div>
                 )}
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {quotations.map((quotation, idx) => (
-                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-                      <h4 className="font-semibold text-slate-900 text-base text-center border-b pb-2">Quotation {idx + 1}</h4>
+                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2.5 flex flex-col">
+                      <h4 className="font-semibold text-slate-900 text-sm text-center border-b pb-1.5">Quotation {idx + 1}</h4>
 
-                      <div className="space-y-3">
+                      <div className="space-y-2 flex-1">
                         <div className="relative vendor-dropdown-container">
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Vendor Name *</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Vendor Name *</label>
                           <input
                             type="text"
                             value={vendorSearchTerm[idx] !== undefined ? vendorSearchTerm[idx] : quotation.vendor_name}
@@ -1176,10 +1176,10 @@ export function Canvass() {
                             }}
                             onFocus={() => setShowVendorDropdown({ ...showVendorDropdown, [idx]: true })}
                             placeholder="Search vendors..."
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
                           {showVendorDropdown[idx] && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                               {vendors
                                 .filter((vendor) =>
                                   vendor.displayName.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase()) ||
@@ -1188,7 +1188,7 @@ export function Canvass() {
                                 .map((vendor) => (
                                   <div
                                     key={vendor.number}
-                                    className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                                    className="px-2.5 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
                                     onClick={() => {
                                       const newQuotations = [...quotations];
                                       newQuotations[idx].vendor_name = vendor.displayName;
@@ -1206,51 +1206,51 @@ export function Canvass() {
                                       setShowVendorDropdown({ ...showVendorDropdown, [idx]: false });
                                     }}
                                   >
-                                    <div className="font-semibold text-slate-900">{vendor.displayName}</div>
-                                    <div className="text-sm text-slate-500">{vendor.number}</div>
+                                    <div className="font-semibold text-slate-900 text-xs">{vendor.displayName}</div>
+                                    <div className="text-xs text-slate-500">{vendor.number}</div>
                                   </div>
                                 ))}
                               {vendors.filter((vendor) =>
                                 vendor.displayName.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase()) ||
                                 vendor.number.toLowerCase().includes((vendorSearchTerm[idx] || '').toLowerCase())
                               ).length === 0 && (
-                                <div className="px-4 py-3 text-sm text-slate-500">No vendors found</div>
+                                <div className="px-2.5 py-2 text-xs text-slate-500">No vendors found</div>
                               )}
                             </div>
                           )}
                         </div>
 
                         {/* Itemization Table */}
-                        <div className="border-t pt-4 mt-4">
-                          <label className="block text-sm font-medium text-slate-700 mb-2">Items</label>
+                        <div className="border-t pt-3 mt-3">
+                          <label className="block text-xs font-medium text-slate-700 mb-2">Items</label>
 
-                          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                            <table className="w-full text-sm">
+                          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden overflow-x-auto">
+                            <table className="w-full text-xs">
                               <thead className="bg-slate-100">
                                 <tr>
-                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
-                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700 w-20">Qty</th>
-                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700 w-20">UOM</th>
-                                  <th className="px-2 py-2 text-left text-xs font-semibold text-slate-700 w-28">Unit Price</th>
-                                  <th className="px-2 py-2 text-right text-xs font-semibold text-slate-700 w-28">Amount</th>
-                                  <th className="px-2 py-2 w-10"></th>
+                                  <th className="px-1.5 py-1.5 text-left text-xs font-semibold text-slate-700">Description</th>
+                                  <th className="px-1.5 py-1.5 text-left text-xs font-semibold text-slate-700 w-16">Qty</th>
+                                  <th className="px-1.5 py-1.5 text-left text-xs font-semibold text-slate-700 w-16">UOM</th>
+                                  <th className="px-1.5 py-1.5 text-left text-xs font-semibold text-slate-700 w-24">Unit Price</th>
+                                  <th className="px-1.5 py-1.5 text-right text-xs font-semibold text-slate-700 w-24">Amount</th>
+                                  <th className="px-1.5 py-1.5 w-8"></th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
                                 {quotation.items.map((item, itemIdx) => (
                                   <tr key={itemIdx}>
-                                    <td className="px-2 py-2">
+                                    <td className="px-1.5 py-1.5">
                                       <input
                                         type="text"
                                         value={item.description}
                                         onChange={(e) => {
                                           setQuotations(updateSharedItemField(quotations, itemIdx, 'description', e.target.value));
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        className="w-full px-1.5 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                         placeholder="Item description"
                                       />
                                     </td>
-                                    <td className="px-2 py-2">
+                                    <td className="px-1.5 py-1.5">
                                       <input
                                         type="number"
                                         value={item.quantity}
@@ -1264,21 +1264,21 @@ export function Canvass() {
                                           newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                           setQuotations(newQuotations);
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        className="w-full px-1.5 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                       />
                                     </td>
-                                    <td className="px-2 py-2">
+                                    <td className="px-1.5 py-1.5">
                                       <input
                                         type="text"
                                         value={item.uom}
                                         onChange={(e) => {
                                           setQuotations(updateSharedItemField(quotations, itemIdx, 'uom', e.target.value));
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        className="w-full px-1.5 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                         placeholder="pcs"
                                       />
                                     </td>
-                                    <td className="px-2 py-2">
+                                    <td className="px-1.5 py-1.5">
                                       <input
                                         type="number"
                                         step="0.01"
@@ -1293,23 +1293,23 @@ export function Canvass() {
                                           newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                           setQuotations(newQuotations);
                                         }}
-                                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                                        className="w-full px-1.5 py-1 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                                       />
                                     </td>
-                                    <td className="px-2 py-2 text-right font-semibold text-slate-900">
+                                    <td className="px-1.5 py-1.5 text-right font-semibold text-slate-900 text-xs">
                                       ₱{item.amount.toFixed(2)}
                                     </td>
-                                    <td className="px-2 py-2">
+                                    <td className="px-1.5 py-1.5">
                                       {quotation.items.length > 1 && (
                                         <button
                                           type="button"
                                           onClick={() => {
                                             setQuotations(removeItemFromAllQuotations(quotations, itemIdx));
                                           }}
-                                          className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                                          className="p-0.5 text-red-600 hover:bg-red-50 rounded transition"
                                           title="Remove this item row from all quotations"
                                         >
-                                          <X size={14} />
+                                          <X size={12} />
                                         </button>
                                       )}
                                     </td>
@@ -1318,10 +1318,10 @@ export function Canvass() {
                               </tbody>
                               <tfoot className="bg-slate-50 border-t-2 border-slate-300">
                                 <tr>
-                                  <td colSpan={4} className="px-2 py-2 text-right font-bold text-slate-900">
+                                  <td colSpan={4} className="px-1.5 py-1.5 text-right font-bold text-slate-900 text-xs">
                                     Total:
                                   </td>
-                                  <td className="px-2 py-2 text-right font-bold text-blue-600">
+                                  <td className="px-1.5 py-1.5 text-right font-bold text-blue-600 text-xs">
                                     ₱{quotation.quoted_amount.toFixed(2)}
                                   </td>
                                   <td></td>
@@ -1331,21 +1331,21 @@ export function Canvass() {
                           </div>
 
                           {/* Add Item Button */}
-                          <div className="mt-3">
+                          <div className="mt-2">
                             <button
                               type="button"
                               onClick={() => setQuotations(addItemToAllQuotations(quotations))}
-                              className="w-full px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition flex items-center justify-center gap-2 font-medium"
+                              className="w-full px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition flex items-center justify-center gap-2 font-medium text-xs"
                             >
-                              <Plus size={16} />
+                              <Plus size={14} />
                               Add Item
                             </button>
                           </div>
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <div className="space-y-2">
+                      <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <div className="flex items-center gap-2">
                             <input
                               type="checkbox"
@@ -1355,9 +1355,9 @@ export function Canvass() {
                                 newQuotations[idx].invoice_availability = e.target.checked;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             />
-                            <label className="text-sm font-medium text-slate-700">Invoice Availability</label>
+                            <label className="text-xs font-medium text-slate-700">Invoice Availability</label>
                           </div>
                           <div className="flex items-center gap-2">
                             <input
@@ -1372,9 +1372,9 @@ export function Canvass() {
                                 }
                                 setQuotations(newQuotations);
                               }}
-                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             />
-                            <label className="text-sm font-medium text-slate-700">Delivery</label>
+                            <label className="text-xs font-medium text-slate-700">Delivery</label>
                           </div>
                           <div className="flex items-center gap-2">
                             <input
@@ -1385,14 +1385,14 @@ export function Canvass() {
                                 newQuotations[idx].installation = e.target.checked;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             />
-                            <label className="text-sm font-medium text-slate-700">Installation</label>
+                            <label className="text-xs font-medium text-slate-700">Installation</label>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Delivery Fee</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Delivery Fee</label>
                           <input
                             type="number"
                             step="0.01"
@@ -1404,24 +1404,24 @@ export function Canvass() {
                               setQuotations(newQuotations);
                             }}
                             disabled={!quotation.delivery}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Total (Quoted + Delivery)</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Total (Quoted + Delivery)</label>
                           <input
                             type="number"
                             step="0.01"
                             value={quotation.total || ''}
                             readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Discounted Price</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Discounted Price</label>
                           <input
                             type="number"
                             step="0.01"
@@ -1432,23 +1432,23 @@ export function Canvass() {
                               newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                               setQuotations(newQuotations);
                             }}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Price</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Purchase Price</label>
                           <input
                             type="number"
                             step="0.01"
                             value={quotation.purchase_price || ''}
                             readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-4">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-3">
                           <div className="flex items-center gap-2">
                             <input
                               type="checkbox"
@@ -1463,9 +1463,9 @@ export function Canvass() {
                                 newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                 setQuotations(newQuotations);
                               }}
-                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             />
-                            <label className="text-sm font-medium text-slate-700">Withholding Tax</label>
+                            <label className="text-xs font-medium text-slate-700">Withholding Tax</label>
                           </div>
                           <div className="flex items-center gap-2">
                             <input
@@ -1477,14 +1477,14 @@ export function Canvass() {
                                 newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                 setQuotations(newQuotations);
                               }}
-                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                              className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                             />
-                            <label className="text-sm font-medium text-slate-700">Vatable</label>
+                            <label className="text-xs font-medium text-slate-700">Vatable</label>
                           </div>
                         </div>
 
                         {quotation.withholding_tax && (
-                          <div className="flex items-center gap-4 ml-6">
+                          <div className="flex flex-wrap items-center gap-3 ml-4">
                             <div className="flex items-center gap-2">
                               <input
                                 type="checkbox"
@@ -1498,9 +1498,9 @@ export function Canvass() {
                                   newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                   setQuotations(newQuotations);
                                 }}
-                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                               />
-                              <label className="text-sm font-medium text-slate-700">Service</label>
+                              <label className="text-xs font-medium text-slate-700">Service</label>
                             </div>
                             <div className="flex items-center gap-2">
                               <input
@@ -1515,61 +1515,61 @@ export function Canvass() {
                                   newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                   setQuotations(newQuotations);
                                 }}
-                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
                               />
-                              <label className="text-sm font-medium text-slate-700">Item</label>
+                              <label className="text-xs font-medium text-slate-700">Item</label>
                             </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Net of VAT</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Net of VAT</label>
                           <input
                             type="number"
                             step="0.01"
                             value={quotation.net_of_vat || ''}
                             readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">VAT 12%</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">VAT 12%</label>
                           <input
                             type="number"
                             step="0.01"
                             value={quotation.vat_12 || ''}
                             readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">EWT</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">EWT</label>
                           <input
                             type="number"
                             step="0.01"
                             value={quotation.ewt || ''}
                             readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">Net Payable</label>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Net Payable</label>
                           <input
                             type="number"
                             step="0.01"
                             value={quotation.net_payable || ''}
                             readOnly
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Quotation File (1 file only)
-                          <span className="block text-xs text-slate-500 mt-0.5">PDF or Image (will be converted to PDF)</span>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          Quotation File
+                          <span className="block text-xs text-slate-500 mt-0.5">PDF or Image</span>
                         </label>
                         <input
                           type="file"
@@ -1580,50 +1580,47 @@ export function Canvass() {
                             newQuotations[idx].quotation_file = file;
                             setQuotations(newQuotations);
                           }}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-xs"
                         />
                         {quotation.quotation_file && (
-                          <p className="text-xs text-slate-600 mt-1">
-                            Selected: {quotation.quotation_file.name}
-                            {quotation.quotation_file.type.startsWith('image/') && (
-                              <span className="text-blue-600"> (will be converted to PDF)</span>
-                            )}
+                          <p className="text-xs text-slate-600 mt-1 truncate" title={quotation.quotation_file.name}>
+                            {quotation.quotation_file.name}
                           </p>
                         )}
                       </div>
 
-                      <div className="border-t pt-4 mt-4">
-                        <h5 className="font-semibold text-slate-900 mb-3">Vendor Details</h5>
-                        <div className="grid grid-cols-2 gap-3">
+                      <div className="border-t pt-3 mt-3">
+                        <h5 className="font-semibold text-slate-900 mb-2 text-sm">Vendor Details</h5>
+                        <div className="grid grid-cols-1 gap-2">
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Registered Name</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Registered Name</label>
                             <input
                               type="text"
                               value={quotation.registered_name}
                               readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">TIN</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">TIN</label>
                             <input
                               type="text"
                               value={quotation.tin}
                               readOnly
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
-                          <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Complete Address</label>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Complete Address</label>
                             <textarea
                               value={quotation.complete_address}
                               readOnly
                               rows={2}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Contact Person</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Contact Person</label>
                             <input
                               type="text"
                               value={quotation.contact_person}
@@ -1632,11 +1629,11 @@ export function Canvass() {
                                 newQuotations[idx].contact_person = e.target.value;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Contact No.</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Contact No.</label>
                             <input
                               type="text"
                               value={quotation.contact_no}
@@ -1645,11 +1642,11 @@ export function Canvass() {
                                 newQuotations[idx].contact_no = e.target.value;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Email Address</label>
                             <input
                               type="email"
                               value={quotation.email_address}
@@ -1658,11 +1655,11 @@ export function Canvass() {
                                 newQuotations[idx].email_address = e.target.value;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Bank Account No.</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Bank Account No.</label>
                             <input
                               type="text"
                               value={quotation.bank_account_no}
@@ -1671,11 +1668,11 @@ export function Canvass() {
                                 newQuotations[idx].bank_account_no = e.target.value;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Depository Bank</label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Depository Bank</label>
                             <input
                               type="text"
                               value={quotation.depository_bank}
@@ -1684,11 +1681,11 @@ export function Canvass() {
                                 newQuotations[idx].depository_bank = e.target.value;
                                 setQuotations(newQuotations);
                               }}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
-                          <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Other Information</label>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Other Information</label>
                             <textarea
                               value={quotation.other_information}
                               onChange={(e) => {
@@ -1697,7 +1694,7 @@ export function Canvass() {
                                 setQuotations(newQuotations);
                               }}
                               rows={2}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                         </div>
