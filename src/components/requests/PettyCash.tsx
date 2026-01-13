@@ -26,6 +26,7 @@ interface PettyCashReq {
   received_at?: string;
   received_by?: string;
   approved_petty_cash_pdf_path?: string;
+  request_type?: string;
 }
 
 export function PettyCash() {
@@ -51,6 +52,7 @@ export function PettyCash() {
     date_needed: '',
     budgeted: true,
     payment_mode_id: '',
+    request_type: 'For Cash Advance',
   });
   const [amountError, setAmountError] = useState('');
 
@@ -222,6 +224,7 @@ export function PettyCash() {
       date_needed: (request as any).date_needed || '',
       budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
       payment_mode_id: (request as any).payment_mode_id || '',
+      request_type: request.request_type || 'For Cash Advance',
     });
     setShowViewModal(false);
     setViewingRequest(null);
@@ -253,6 +256,7 @@ export function PettyCash() {
             date_needed: formData.date_needed || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
+            request_type: formData.request_type,
             status,
           })
           .eq('id', editingRequest.id)
@@ -278,6 +282,7 @@ export function PettyCash() {
             date_needed: formData.date_needed || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
+            request_type: formData.request_type,
             status,
             current_approval_level: 0,
           })
@@ -347,7 +352,7 @@ export function PettyCash() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '', request_type: 'For Cash Advance' });
       setEditingRequest(null);
       setAmountError('');
       loadRequests();
@@ -790,6 +795,19 @@ export function PettyCash() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
+            <select
+              value={formData.request_type}
+              onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              required
+            >
+              <option value="For Cash Advance">For Cash Advance</option>
+              <option value="For Reimbursement/Liquidation">For Reimbursement/Liquidation</option>
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Purpose / Particulars</label>
             <textarea
               value={formData.purpose}
@@ -988,6 +1006,10 @@ export function PettyCash() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">To / Receipient</label>
                   <p className="text-slate-900">{viewingRequest.payee || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Request Type</label>
+                  <p className="text-slate-900">{viewingRequest.request_type || 'For Cash Advance'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>

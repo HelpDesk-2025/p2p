@@ -16,6 +16,7 @@ interface PettyCashReq {
   amount: number;
   payment_mode_id?: string;
   payee?: string;
+  request_type?: string;
   status: string;
   current_approval_level: number;
   attachments?: any[];
@@ -441,6 +442,10 @@ export function PettyCashApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">To / Receipient</label>
                   <p className="text-slate-900">{selectedRequest.payee || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Request Type</label>
+                  <p className="text-slate-900">{selectedRequest.request_type || 'For Cash Advance'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
