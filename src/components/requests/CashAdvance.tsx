@@ -394,6 +394,11 @@ export function CashAdvance() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    if (formData.amount < 5000) {
+      alert('Amount must be at least ₱5,000');
+      return;
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -585,6 +590,11 @@ export function CashAdvance() {
   };
 
   const handleSubmitDraft = async (request: CashAdvanceReq) => {
+    if (request.amount < 5000) {
+      alert('Amount must be at least ₱5,000');
+      return;
+    }
+
     if (!confirm('Are you sure you want to submit this draft for approval?')) {
       return;
     }
@@ -1114,14 +1124,19 @@ export function CashAdvance() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Amount (Min: ₱5,000)</label>
             <input
               type="number"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              min="5000"
+              step="0.01"
               required
             />
+            {formData.amount > 0 && formData.amount < 5000 && (
+              <p className="text-red-600 text-sm mt-1">Amount must be at least ₱5,000</p>
+            )}
           </div>
 
           <div>
