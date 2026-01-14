@@ -563,7 +563,7 @@ export function Reimbursement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Reimbursement Requests</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Reimbursement/Liquidation Requests</h2>
         <button
           onClick={() => {
             setShowForm(true);
