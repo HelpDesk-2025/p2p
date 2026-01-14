@@ -493,9 +493,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             >
               <option value="">All Departments</option>
-              {allDepartments.map((dept) => (
-                <option key={dept.id} value={dept.name}>
-                  {dept.name}
+              {Array.from(new Set(allDepartments.map(dept => dept.name))).sort().map((deptName) => (
+                <option key={deptName} value={deptName}>
+                  {deptName}
                 </option>
               ))}
             </select>
