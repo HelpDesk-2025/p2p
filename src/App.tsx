@@ -19,6 +19,7 @@ import { SmeApproval } from './components/approvals/SmeApproval';
 import { ConfigManager } from './components/config/ConfigManager';
 import { ApprovalLedger } from './components/ApprovalLedger';
 import { ProcurementChecking } from './components/ProcurementChecking';
+import { UserManual } from './components/UserManual';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -53,6 +54,8 @@ function AppContent() {
     switch (currentView) {
       case 'dashboard':
         return <Dashboard />;
+      case 'user-manual':
+        return <UserManual />;
       case 'pr-request':
         return <PurchaseRequisition />;
       case 'canvass-request':

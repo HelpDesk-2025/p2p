@@ -18,6 +18,7 @@ import {
   BookOpen,
   UserCheck,
   KeyRound,
+  ScrollText,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -51,7 +52,8 @@ export type ViewType =
   | 'config-number-series'
   | 'config-smtp'
   | 'config-vendors-items'
-  | 'change-password';
+  | 'change-password'
+  | 'user-manual';
 
 interface MenuItem {
   id: ViewType;
@@ -63,6 +65,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'main' },
+  { id: 'user-manual', label: 'User Manual', icon: BookOpen, group: 'main' },
   {
     id: 'pr-request',
     label: 'Purchase Requisition',
@@ -150,7 +153,7 @@ const menuItems: MenuItem[] = [
   {
     id: 'approval-ledger',
     label: 'Approval Ledger',
-    icon: BookOpen,
+    icon: ScrollText,
     permission: MODULE_PERMISSIONS.APPROVAL_LEDGER,
     group: 'procurement',
   },
