@@ -591,7 +591,7 @@ export function Reimbursement() {
           <tbody className="divide-y divide-slate-200">
             {requests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No reimbursement requests found</td>
+                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No reimbursement/liquidation requests found</td>
               </tr>
             ) : (
               requests.map((req) => (
@@ -627,7 +627,7 @@ export function Reimbursement() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Reimbursement Request Details</h3>
+                <h3 className="text-xl font-bold text-slate-900">Reimbursement/Liquidation Request Details</h3>
                 <p className="text-sm text-slate-600 mt-1">{viewingRequest.reimb_number}</p>
               </div>
               <button
