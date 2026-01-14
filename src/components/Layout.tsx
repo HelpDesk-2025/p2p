@@ -96,7 +96,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: 'reimbursement-request',
-    label: 'Reimbursement',
+    label: 'Reimbursement/Liquidation',
     icon: Receipt,
     permission: MODULE_PERMISSIONS.REIMBURSEMENT,
     group: 'requests',
