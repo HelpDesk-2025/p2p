@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
@@ -123,6 +123,13 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const [departments, setDepartments] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
+  const [filterDepartment, setFilterDepartment] = useState('');
+  const [filterRole, setFilterRole] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sortField, setSortField] = useState<'full_name' | 'email' | 'company' | 'department' | 'role' | 'created_at'>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     loadCompaniesAndDepartments();
@@ -370,6 +377,48 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     });
   };
 
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredAndSortedData = data
+    .filter(user => {
+      const matchesSearch = searchTerm === '' ||
+        user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCompany = filterCompany === '' || user.company === filterCompany;
+      const matchesDepartment = filterDepartment === '' || user.department === filterDepartment;
+      const matchesRole = filterRole === '' || user.role === filterRole;
+      const matchesStatus = filterStatus === 'all' ||
+        (filterStatus === 'active' && user.is_active) ||
+        (filterStatus === 'inactive' && !user.is_active);
+
+      return matchesSearch && matchesCompany && matchesDepartment && matchesRole && matchesStatus;
+    })
+    .sort((a, b) => {
+      let aValue = a[sortField] || '';
+      let bValue = b[sortField] || '';
+
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+      }
+      if (typeof bValue === 'string') {
+        bValue = bValue.toLowerCase();
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
   const inactiveCount = data.filter(user => !user.is_active).length;
 
   return (
@@ -405,6 +454,101 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           </div>
         </div>
       )}
+
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-6">
+        <h3 className="text-lg font-bold text-slate-900 mb-4">Filter & Search</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Company</label>
+            <select
+              value={filterCompany}
+              onChange={(e) => setFilterCompany(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="">All Companies</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.name}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Department</label>
+            <select
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="">All Departments</option>
+              {allDepartments.map((dept) => (
+                <option key={dept.id} value={dept.name}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="">All Roles</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.name}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFilterCompany('');
+                setFilterDepartment('');
+                setFilterRole('');
+                setFilterStatus('all');
+              }}
+              className="w-full px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-all"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 text-sm text-slate-600">
+          Showing {filteredAndSortedData.length} of {data.length} users
+        </div>
+      </div>
 
       {showForm && (
         <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8 mb-8 space-y-6">
@@ -694,19 +838,90 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           <table className="w-full">
             <thead className="bg-gradient-to-r from-slate-100 to-slate-50">
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Email</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Company</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Department</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Role</th>
+                <th
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => handleSort('full_name')}
+                >
+                  <div className="flex items-center gap-2">
+                    Name
+                    {sortField === 'full_name' ? (
+                      sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                    ) : (
+                      <ArrowUpDown size={14} className="text-slate-400" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => handleSort('email')}
+                >
+                  <div className="flex items-center gap-2">
+                    Email
+                    {sortField === 'email' ? (
+                      sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                    ) : (
+                      <ArrowUpDown size={14} className="text-slate-400" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => handleSort('company')}
+                >
+                  <div className="flex items-center gap-2">
+                    Company
+                    {sortField === 'company' ? (
+                      sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                    ) : (
+                      <ArrowUpDown size={14} className="text-slate-400" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => handleSort('department')}
+                >
+                  <div className="flex items-center gap-2">
+                    Department
+                    {sortField === 'department' ? (
+                      sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                    ) : (
+                      <ArrowUpDown size={14} className="text-slate-400" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                  onClick={() => handleSort('role')}
+                >
+                  <div className="flex items-center gap-2">
+                    Role
+                    {sortField === 'role' ? (
+                      sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                    ) : (
+                      <ArrowUpDown size={14} className="text-slate-400" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Approver Type</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {data.map((user) => (
-                <tr key={user.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
+              {filteredAndSortedData.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-500">
+                      <AlertCircle size={48} className="mb-3 text-slate-400" />
+                      <p className="text-lg font-semibold">No users found</p>
+                      <p className="text-sm mt-1">Try adjusting your filters or search terms</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredAndSortedData.map((user) => (
+                  <tr key={user.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                   <td className="px-4 py-4 text-sm">
                     <div className="max-w-[150px] truncate font-semibold text-slate-900" title={user.full_name}>
                       {user.full_name}
@@ -756,7 +971,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     </button>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
