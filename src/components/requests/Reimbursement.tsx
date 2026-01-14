@@ -427,7 +427,7 @@ export function Reimbursement() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Reimbursement Request' : 'New Reimbursement Request'}</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Reimbursement/Liquidation Request' : 'New Reimbursement/Liquidation Request'}</h2>
           <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-4 py-2 text-slate-600">Cancel</button>
         </div>
 
