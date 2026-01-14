@@ -255,8 +255,7 @@ export function UserManual() {
             'Verify technical specifications',
             'Check if requirements are complete and accurate',
             'Validate quantities and technical feasibility',
-            'Mark as "Reviewed" or "Needs Revision"',
-            'Add detailed comments about your findings'
+            'Add detailed comments about your findings and recommendations'
           ],
           notes: [
             'SME review happens before final approval',
