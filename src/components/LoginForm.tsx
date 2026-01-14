@@ -12,6 +12,7 @@ export function LoginForm() {
   const { signIn, signUp, resetPassword } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [signUpStep, setSignUpStep] = useState<'form' | 'otp'>('form');
   const [otpStep, setOtpStep] = useState<'email' | 'otp' | 'password'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -150,22 +151,83 @@ export function LoginForm() {
           }, 3000);
         }
       } else if (isSignUp) {
-        if (!selectedCompanyId) {
-          throw new Error('Please select a company');
+        if (signUpStep === 'form') {
+          if (!selectedCompanyId) {
+            throw new Error('Please select a company');
+          }
+          if (!department) {
+            throw new Error('Please select a department');
+          }
+
+          const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+          const companyName = selectedCompany?.name || '';
+
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-signup-otp`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                email,
+                fullName,
+                password,
+                department,
+                companyId: selectedCompanyId,
+                companyName,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to send OTP');
+          }
+
+          setSuccess('OTP sent to your email! Please check your inbox and enter the code.');
+          setSignUpStep('otp');
+        } else if (signUpStep === 'otp') {
+          if (otpCode.length !== 6) {
+            throw new Error('Please enter a valid 6-digit OTP');
+          }
+
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-signup-otp`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              },
+              body: JSON.stringify({
+                email,
+                otpCode,
+              }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to verify OTP');
+          }
+
+          setSuccess('Account created successfully! Your account is pending approval. An administrator will activate your account soon.');
+          setTimeout(() => {
+            setIsSignUp(false);
+            setSignUpStep('form');
+            setEmail('');
+            setPassword('');
+            setFullName('');
+            setSelectedCompanyId('');
+            setDepartment('');
+            setOtpCode('');
+            setSuccess('');
+          }, 3000);
         }
-        if (!department) {
-          throw new Error('Please select a department');
-        }
-        const selectedCompany = companies.find(c => c.id === selectedCompanyId);
-        const companyName = selectedCompany?.name || '';
-        await signUp(email, password, fullName, department, selectedCompanyId, companyName);
-        setSuccess('Account created successfully! Your account is pending approval. An administrator will activate your account soon.');
-        setIsSignUp(false);
-        setEmail('');
-        setPassword('');
-        setFullName('');
-        setSelectedCompanyId('');
-        setDepartment('');
       } else {
         await signIn(email, password);
       }
@@ -189,7 +251,9 @@ export function LoginForm() {
                   ? 'Enter the OTP sent to your email'
                   : 'Set your new password'
               : isSignUp
-                ? 'Create your account'
+                ? signUpStep === 'form'
+                  ? 'Create your account'
+                  : 'Verify your email'
                 : 'Sign in to continue'}
           </p>
         </div>
@@ -264,7 +328,7 @@ export function LoginForm() {
             </>
           )}
 
-          {!isForgotPassword && isSignUp && (
+          {!isForgotPassword && isSignUp && signUpStep === 'form' && (
             <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -320,7 +384,27 @@ export function LoginForm() {
             </>
           )}
 
-          {!isForgotPassword && (
+          {!isForgotPassword && isSignUp && signUpStep === 'otp' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                OTP Code
+              </label>
+              <input
+                type="text"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                maxLength={6}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center text-2xl tracking-widest font-mono"
+                placeholder="000000"
+              />
+              <p className="text-sm text-slate-500 mt-2 text-center">
+                Enter the 6-digit code sent to {email}
+              </p>
+            </div>
+          )}
+
+          {!isForgotPassword && !(isSignUp && signUpStep === 'otp') && (
             <>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -399,10 +483,17 @@ export function LoginForm() {
                 'Reset Password'
               )
             ) : isSignUp ? (
-              <>
-                <UserPlus size={20} />
-                Sign Up
-              </>
+              signUpStep === 'form' ? (
+                <>
+                  <Mail size={20} />
+                  Send OTP
+                </>
+              ) : (
+                <>
+                  <UserPlus size={20} />
+                  Verify & Sign Up
+                </>
+              )
             ) : (
               <>
                 <LogIn size={20} />
@@ -434,8 +525,12 @@ export function LoginForm() {
                 setOtpCode('');
                 setNewPassword('');
                 setConfirmPassword('');
+              } else if (isSignUp && signUpStep === 'otp') {
+                setSignUpStep('form');
+                setOtpCode('');
               } else {
                 setIsSignUp(!isSignUp);
+                setSignUpStep('form');
               }
               setError('');
               setSuccess('');
@@ -445,7 +540,9 @@ export function LoginForm() {
             {isForgotPassword
               ? 'Back to sign in'
               : isSignUp
-              ? 'Already have an account? Sign in'
+              ? signUpStep === 'otp'
+                ? 'Back to sign up form'
+                : 'Already have an account? Sign in'
               : "Don't have an account? Sign up"}
           </button>
         </div>
