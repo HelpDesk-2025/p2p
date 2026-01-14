@@ -220,6 +220,16 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                   setMobileMenuOpen(false);
                 }}
               />
+              {filteredMenuItems.find((item) => item.id === 'user-manual') && (
+                <NavItem
+                  item={filteredMenuItems.find((item) => item.id === 'user-manual')!}
+                  active={currentView === 'user-manual'}
+                  onClick={() => {
+                    onViewChange('user-manual');
+                    setMobileMenuOpen(false);
+                  }}
+                />
+              )}
             </div>
 
             {requestItems.length > 0 && (
@@ -319,7 +329,17 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
             )}
           </nav>
 
-          <div className="p-4 border-t border-slate-200">
+          <div className="p-4 border-t border-slate-200 space-y-2">
+            {filteredMenuItems.find((item) => item.id === 'change-password') && (
+              <NavItem
+                item={filteredMenuItems.find((item) => item.id === 'change-password')!}
+                active={currentView === 'change-password'}
+                onClick={() => {
+                  onViewChange('change-password');
+                  setMobileMenuOpen(false);
+                }}
+              />
+            )}
             <button
               onClick={handleSignOut}
               className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
