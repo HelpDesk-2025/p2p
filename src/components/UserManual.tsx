@@ -127,15 +127,6 @@ export function UserManual() {
             'Ensure you provide clear justification for the amount requested',
             'Outstanding cash advances may need to be settled before requesting new ones'
           ]
-        },
-        {
-          subtitle: 'After Approval',
-          steps: [
-            'Once approved, the finance team will process payment',
-            'Track payment status in the dashboard',
-            'Keep all receipts for liquidation',
-            'Submit liquidation report within the specified timeframe'
-          ]
         }
       ]
     },
