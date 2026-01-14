@@ -885,6 +885,16 @@ export function PettyCash() {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 Date
               </th>
+              {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
+                <>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Company
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Department
+                  </th>
+                </>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 Purpose
               </th>
@@ -902,7 +912,7 @@ export function PettyCash() {
           <tbody className="divide-y divide-slate-200">
             {requests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-6 py-8 text-center text-slate-500">
                   No petty cash requests found
                 </td>
               </tr>
@@ -913,6 +923,16 @@ export function PettyCash() {
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {new Date(req.request_date).toLocaleDateString()}
                   </td>
+                  {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
+                    <>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {(req as any).companies?.name || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {req.department || 'N/A'}
+                      </td>
+                    </>
+                  )}
                   <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
                     {req.purpose}
                   </td>
@@ -1002,6 +1022,14 @@ export function PettyCash() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{(viewingRequest as any).companies?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Department</label>
+                  <p className="text-slate-900">{viewingRequest.department || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">To / Receipient</label>

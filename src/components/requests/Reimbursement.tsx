@@ -36,7 +36,9 @@ export function Reimbursement() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<ReimbursementReq | null>(null);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -98,17 +100,52 @@ export function Reimbursement() {
         if (data && data.length > 0) {
           const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
           setSelectedCompanyId(defaultCompany.id);
+          loadDepartments(defaultCompany.id);
         }
       } else {
         setSelectedCompanyId(profile.company_id || '');
+        if (profile.company_id) {
+          loadDepartments(profile.company_id);
+        }
       }
     } catch (error) {
       console.error('Error loading companies:', error);
     }
   };
 
+  const loadDepartments = async (companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      setDepartments(data || []);
+
+      if (data && data.length > 0) {
+        const defaultDept = profile?.department && data.find(d => d.name === profile.department)
+          ? profile.department
+          : data[0].name;
+        setSelectedDepartment(defaultDept);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
   const handleCompanyChange = (companyId: string) => {
     setSelectedCompanyId(companyId);
+    setSelectedDepartment('');
+    setDepartments([]);
+
+    if (companyId) {
+      loadDepartments(companyId);
+    }
+
     setFormData(prev => ({
       ...prev,
       document_no: '',
@@ -199,13 +236,14 @@ export function Reimbursement() {
         insertedRequest = data;
       } else {
         const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+        const department = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
         const { data, error } = await supabase
           .from('reimbursement_requests')
           .insert({
             reimb_number: formData.document_no,
             requester_id: profile?.id,
             company_id: companyId,
-            department: profile?.department || '',
+            department: department,
             request_date: new Date().toISOString().split('T')[0],
             payee: formData.payee,
             expense_date: formData.expense_date,
@@ -459,7 +497,46 @@ export function Reimbursement() {
                 ))}
               </select>
             </div>
-          ) : null}
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <span className="font-semibold text-slate-900">{profile?.company_name || 'N/A'}</span>
+              </div>
+            </div>
+          )}
+
+          {profile?.enable_multi_company_requests ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Department
+              </label>
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                required
+                disabled={!selectedCompanyId}
+              >
+                <option value="">Select Department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.name}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+              {!selectedCompanyId && (
+                <p className="text-xs text-amber-600 mt-1">Select a company first</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <span className="font-semibold text-slate-900">{profile?.department || 'N/A'}</span>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
@@ -582,6 +659,12 @@ export function Reimbursement() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Reimb Number</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
+              {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
+                <>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
+                </>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Purpose</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
@@ -591,13 +674,19 @@ export function Reimbursement() {
           <tbody className="divide-y divide-slate-200">
             {requests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No reimbursement/liquidation requests found</td>
+                <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-6 py-8 text-center text-slate-500">No reimbursement/liquidation requests found</td>
               </tr>
             ) : (
               requests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.reimb_number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleDateString()}</td>
+                  {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
+                    <>
+                      <td className="px-6 py-4 text-sm text-slate-600">{(req as any).companies?.name || 'N/A'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{req.department || 'N/A'}</td>
+                    </>
+                  )}
                   <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{req.purpose}</td>
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">${req.amount.toFixed(2)}</td>
                   <td className="px-6 py-4">
@@ -657,6 +746,14 @@ export function Reimbursement() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-slate-900">{(viewingRequest as any).companies?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Department</label>
+                  <p className="text-slate-900">{viewingRequest.department || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Expense Date</label>
