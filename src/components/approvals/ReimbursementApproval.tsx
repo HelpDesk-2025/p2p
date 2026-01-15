@@ -43,6 +43,11 @@ export function ReimbursementApproval() {
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [linkedRequestDetails, setLinkedRequestDetails] = useState<any>(null);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewTitle, setPdfPreviewTitle] = useState<string>('');
+  const [showLinkedPdfPreview, setShowLinkedPdfPreview] = useState(false);
+  const [linkedPdfPreviewUrl, setLinkedPdfPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadRequests();
@@ -153,6 +158,80 @@ export function ReimbursementApproval() {
     } catch (error) {
       console.error('Error loading linked request details:', error);
     }
+  };
+
+  const downloadAttachments = async (pdfPath: string, reimbNumber: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reimbNumber}_Attachments.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachments:', error);
+      alert('Failed to download attachments');
+    }
+  };
+
+  const previewAttachments = async (pdfPath: string, title: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      setPdfPreviewUrl(url);
+      setPdfPreviewTitle(title);
+      setShowPdfPreview(true);
+    } catch (error) {
+      console.error('Error loading PDF preview:', error);
+      alert('Failed to load PDF preview');
+    }
+  };
+
+  const closePdfPreview = () => {
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+    }
+    setPdfPreviewUrl(null);
+    setPdfPreviewTitle('');
+    setShowPdfPreview(false);
+  };
+
+  const previewLinkedRequest = async (pdfPath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      setLinkedPdfPreviewUrl(url);
+      setShowLinkedPdfPreview(true);
+    } catch (error) {
+      console.error('Error loading PDF preview:', error);
+      alert('Failed to load PDF preview');
+    }
+  };
+
+  const closeLinkedPdfPreview = () => {
+    if (linkedPdfPreviewUrl) {
+      URL.revokeObjectURL(linkedPdfPreviewUrl);
+    }
+    setLinkedPdfPreviewUrl(null);
+    setShowLinkedPdfPreview(false);
   };
 
   const handleViewRequest = async (request: ReimbursementReq) => {
@@ -524,23 +603,23 @@ export function ReimbursementApproval() {
                   </div>
                   {linkedRequestDetails.rfp_pdf_path && (
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-medium text-slate-600">Approved {linkedRequestDetails.type} Form</label>
+                      <label className="text-xs font-medium text-slate-600 mb-2 block">Approved {linkedRequestDetails.type} Form</label>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => previewLinkedRequest(linkedRequestDetails.rfp_pdf_path)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <Eye size={18} />
+                          Preview Form
+                        </button>
                         <a
                           href={supabase.storage.from('attachments').getPublicUrl(linkedRequestDetails.rfp_pdf_path).data.publicUrl}
                           download
-                          className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
                         >
-                          <Download size={14} />
+                          <Download size={18} />
                           Download
                         </a>
-                      </div>
-                      <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
-                        <iframe
-                          src={`${supabase.storage.from('attachments').getPublicUrl(linkedRequestDetails.rfp_pdf_path).data.publicUrl}#view=FitH`}
-                          className="w-full h-[400px]"
-                          title={`${linkedRequestDetails.type} Form`}
-                        />
                       </div>
                     </div>
                   )}
@@ -548,24 +627,23 @@ export function ReimbursementApproval() {
               )}
 
               {selectedRequest.merged_pdf_path && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-semibold text-slate-700">Attachments (Receipts)</label>
-                    <a
-                      href={supabase.storage.from('attachments').getPublicUrl(selectedRequest.merged_pdf_path).data.publicUrl}
-                      download
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments (Receipts)</label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => previewAttachments(selectedRequest.merged_pdf_path!, 'Attachments Preview')}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                     >
-                      <Download size={16} />
+                      <Eye size={18} />
+                      Preview Attachments
+                    </button>
+                    <button
+                      onClick={() => downloadAttachments(selectedRequest.merged_pdf_path!, selectedRequest.reimb_number)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
+                    >
+                      <Download size={18} />
                       Download
-                    </a>
-                  </div>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
-                    <iframe
-                      src={`${supabase.storage.from('attachments').getPublicUrl(selectedRequest.merged_pdf_path).data.publicUrl}#view=FitH`}
-                      className="w-full h-[600px]"
-                      title="Reimbursement Attachments"
-                    />
+                    </button>
                   </div>
                 </div>
               )}
@@ -612,6 +690,52 @@ export function ReimbursementApproval() {
                   {rejecting ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPdfPreview && pdfPreviewUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">{pdfPreviewTitle}</h3>
+              <button
+                onClick={closePdfPreview}
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={pdfPreviewUrl}
+                className="w-full h-full"
+                title="PDF Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLinkedPdfPreview && linkedPdfPreviewUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">Approved {linkedRequestDetails?.type} Form Preview</h3>
+              <button
+                onClick={closeLinkedPdfPreview}
+                className="p-2 hover:bg-slate-100 rounded-lg transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={linkedPdfPreviewUrl}
+                className="w-full h-full"
+                title="Linked Request Form Preview"
+              />
             </div>
           </div>
         </div>
