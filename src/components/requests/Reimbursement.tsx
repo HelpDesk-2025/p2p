@@ -816,6 +816,107 @@ export function Reimbursement() {
     }
   };
 
+  const generateLinkedFormPdf = async (requestType: string, requestId: string): Promise<Uint8Array> => {
+    if (requestType === 'Cash Advance') {
+      const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+
+      // Fetch full cash advance details
+      const { data: caDetails } = await supabase
+        .from('cash_advance_requests')
+        .select(`
+          *,
+          user_profiles!cash_advance_requests_requester_id_fkey(full_name, e_sig),
+          companies!cash_advance_requests_company_id_fkey(name)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (!caDetails) throw new Error('Cash Advance request not found');
+
+      // Get payee e-signature
+      const { data: payeeData } = await supabase
+        .from('user_profiles')
+        .select('e_sig')
+        .eq('full_name', caDetails.payee)
+        .maybeSingle();
+
+      // Get approval records
+      const { data: approvalRecords } = await supabase
+        .rpc('get_approval_records_with_signatures', {
+          p_request_id: requestId,
+          p_request_type: 'Cash Advance'
+        });
+
+      return await generateCashAdvanceForm({
+        caNumber: caDetails.ca_number,
+        requestedBy: caDetails.user_profiles?.full_name || 'Unknown',
+        requestDate: new Date(caDetails.request_date).toLocaleDateString(),
+        amount: caDetails.amount,
+        company: caDetails.companies?.name || 'N/A',
+        department: caDetails.department || 'N/A',
+        purpose: caDetails.purpose,
+        payee: caDetails.payee || 'Unknown',
+        payeeEsig: payeeData?.e_sig || null,
+        outstandingAsl: caDetails.outstanding_asl || '',
+        outstandingAslDate: new Date().toLocaleDateString(),
+        remarks: caDetails.remarks || '',
+        approvals: approvalRecords || []
+      });
+    } else if (requestType === 'Petty Cash') {
+      const { generatePettyCashForm } = await import('../../lib/pettyCashFormGenerator');
+
+      // Fetch full petty cash details
+      const { data: pcDetails } = await supabase
+        .from('petty_cash_requests')
+        .select(`
+          *,
+          user_profiles!petty_cash_requests_requester_id_fkey(full_name, department, e_sig),
+          payment_modes(line_name_1)
+        `)
+        .eq('id', requestId)
+        .single();
+
+      if (!pcDetails) throw new Error('Petty Cash request not found');
+
+      // Get approval records
+      const { data: approvalRecords } = await supabase
+        .from('approval_ledger')
+        .select('*')
+        .eq('request_id', requestId)
+        .eq('request_type', 'Petty Cash')
+        .order('approval_level', { ascending: true });
+
+      // Get received by user info if marked as received
+      let receivedByName = 'Unknown';
+      let receivedByEsig = null;
+      if (pcDetails.received_by) {
+        const { data: receivedByData } = await supabase
+          .from('user_profiles')
+          .select('full_name, e_sig')
+          .eq('id', pcDetails.received_by)
+          .maybeSingle();
+
+        if (receivedByData) {
+          receivedByName = receivedByData.full_name;
+          receivedByEsig = receivedByData.e_sig;
+        }
+      }
+
+      return await generatePettyCashForm({
+        ...pcDetails,
+        requester_name: pcDetails.user_profiles?.full_name || 'Unknown',
+        requester_esig: pcDetails.user_profiles?.e_sig || null,
+        department: pcDetails.user_profiles?.department || pcDetails.department || 'N/A',
+        payment_mode: pcDetails.payment_modes?.line_name_1 || 'N/A',
+        received_by_name: receivedByName,
+        received_by_esig: receivedByEsig,
+        approvals: approvalRecords || []
+      });
+    }
+
+    throw new Error(`Unsupported request type: ${requestType}`);
+  };
+
   const regenerateReimbursementForm = async (request: ReimbursementReq) => {
     if (!confirm('Are you sure you want to regenerate the reimbursement form PDF? This will replace the existing form.')) {
       return;
@@ -852,7 +953,6 @@ export function Reimbursement() {
             .eq('id', linkedId)
             .single();
 
-          console.log('Cash Advance linked request data:', data);
           if (!error && data) {
             linkedDetails = {
               type: 'Cash Advance',
@@ -861,8 +961,7 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
-            linkedFormPdfPath = data.approved_ca_pdf_path;
-            console.log('Cash Advance PDF path:', linkedFormPdfPath);
+            linkedFormPdfPath = data.approved_ca_pdf_path || null;
           }
         } else if (linkedType === 'Petty Cash') {
           const { data, error } = await supabase
@@ -871,7 +970,6 @@ export function Reimbursement() {
             .eq('id', linkedId)
             .single();
 
-          console.log('Petty Cash linked request data:', data);
           if (!error && data) {
             linkedDetails = {
               type: 'Petty Cash',
@@ -880,8 +978,7 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
-            linkedFormPdfPath = data.approved_petty_cash_pdf_path;
-            console.log('Petty Cash PDF path:', linkedFormPdfPath);
+            linkedFormPdfPath = data.approved_petty_cash_pdf_path || null;
           }
         }
       }
@@ -953,28 +1050,38 @@ export function Reimbursement() {
       // Collect all PDFs to merge in order
       const pdfsToMerge: Uint8Array[] = [reimbursementFormBytes];
 
-      // Add linked request form PDF if it exists (for liquidation)
-      if (linkedFormPdfPath) {
-        console.log('Attempting to download linked form PDF from path:', linkedFormPdfPath);
+      // Add linked request form PDF (for liquidation)
+      if (linkedDetails && fullRequest.linked_request_id) {
         try {
-          const { data: linkedFormData, error: linkedFormError } = await supabase.storage
-            .from('attachments')
-            .download(linkedFormPdfPath);
+          let linkedFormBytes: Uint8Array;
 
-          if (linkedFormError) {
-            console.error('Error downloading linked form PDF:', linkedFormError);
-            throw linkedFormError;
+          // Try to download existing form PDF first
+          if (linkedFormPdfPath) {
+            try {
+              const { data: linkedFormData, error: linkedFormError } = await supabase.storage
+                .from('attachments')
+                .download(linkedFormPdfPath);
+
+              if (!linkedFormError && linkedFormData) {
+                linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
+                pdfsToMerge.push(linkedFormBytes);
+              } else {
+                throw new Error('PDF not found in storage');
+              }
+            } catch (downloadError) {
+              // If download fails, generate the form on-the-fly
+              linkedFormBytes = await generateLinkedFormPdf(linkedDetails.type, fullRequest.linked_request_id);
+              pdfsToMerge.push(linkedFormBytes);
+            }
+          } else {
+            // No stored PDF, generate it on-the-fly
+            linkedFormBytes = await generateLinkedFormPdf(linkedDetails.type, fullRequest.linked_request_id);
+            pdfsToMerge.push(linkedFormBytes);
           }
-
-          const linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
-          console.log('Successfully downloaded linked form PDF, size:', linkedFormBytes.length);
-          pdfsToMerge.push(linkedFormBytes);
         } catch (error) {
-          console.error('Error downloading linked form PDF:', error);
-          alert(`Failed to include linked ${linkedDetails?.type} form: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.error('Error including linked form PDF:', error);
+          alert(`Failed to include linked ${linkedDetails.type} form: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-      } else {
-        console.log('No linked form PDF path found');
       }
 
       // Add merged attachments PDF if it exists
