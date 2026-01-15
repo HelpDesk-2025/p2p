@@ -423,8 +423,8 @@ export function ReimbursementApproval() {
             .select('approver_name, approval_date, approver_id')
             .eq('request_id', selectedRequest.id)
             .eq('request_type', 'Reimbursement')
-            .eq('status', 'Approved')
-            .order('approval_sequence', { ascending: true });
+            .eq('action', 'Approved')
+            .order('sequence', { ascending: true });
 
           if (ledgerError) throw ledgerError;
 
