@@ -503,8 +503,8 @@ export function Reimbursement() {
           const firstApprover = approvalFlows[0];
           const approverInfo = await getApproverEmail(
             firstApprover,
-            profile.company_id,
-            profile.department || ''
+            requestCompanyId,
+            requestDepartment
           );
 
           if (approverInfo) {
@@ -514,7 +514,7 @@ export function Reimbursement() {
               'Reimbursement',
               formData.document_no,
               profile.full_name || 'Unknown',
-              profile.department || '',
+              requestDepartment,
               totalAmount,
               'Submitted',
               undefined,
@@ -607,8 +607,8 @@ export function Reimbursement() {
       const firstApprover = approvalFlows[0];
       const approverInfo = await getApproverEmail(
         firstApprover,
-        profile.company_id,
-        profile.department || ''
+        request.company_id,
+        department
       );
 
       if (approverInfo) {
@@ -618,7 +618,7 @@ export function Reimbursement() {
           'Reimbursement',
           request.reimb_number,
           profile.full_name || 'Unknown',
-          profile.department || '',
+          department,
           request.amount,
           'Submitted',
           undefined,
