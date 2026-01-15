@@ -836,7 +836,7 @@ export function Reimbursement() {
 
       // Import the necessary modules
       const { generateReimbursementForm } = await import('../../lib/reimbursementFormGenerator');
-      const { mergeFilesToPDFBlob } = await import('../../lib/pdfMerger');
+      const { mergePDFBytes } = await import('../../lib/pdfMerger');
 
       // Get linked request details if this is a liquidation
       let linkedDetails = null;
@@ -963,8 +963,7 @@ export function Reimbursement() {
       }
 
       // Merge all PDFs
-      const mergedPdfBlob = await mergeFilesToPDFBlob(pdfsToMerge);
-      const mergedPdfBytes = new Uint8Array(await mergedPdfBlob.arrayBuffer());
+      const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
 
       // Upload the complete form to storage
       const timestamp = Date.now();
