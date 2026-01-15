@@ -848,7 +848,7 @@ export function Reimbursement() {
         if (linkedType === 'Cash Advance') {
           const { data, error } = await supabase
             .from('cash_advance_requests')
-            .select('ca_number, request_date, amount, purpose, cash_advance_form_pdf_path')
+            .select('ca_number, request_date, amount, purpose, approved_ca_pdf_path')
             .eq('id', linkedId)
             .single();
 
@@ -860,12 +860,12 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
-            linkedFormPdfPath = data.cash_advance_form_pdf_path;
+            linkedFormPdfPath = data.approved_ca_pdf_path;
           }
         } else if (linkedType === 'Petty Cash') {
           const { data, error } = await supabase
             .from('petty_cash_requests')
-            .select('pc_number, request_date, amount, purpose, petty_cash_form_pdf_path')
+            .select('pc_number, request_date, amount, purpose, approved_petty_cash_pdf_path')
             .eq('id', linkedId)
             .single();
 
@@ -877,7 +877,7 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
-            linkedFormPdfPath = data.petty_cash_form_pdf_path;
+            linkedFormPdfPath = data.approved_petty_cash_pdf_path;
           }
         }
       }
