@@ -63,7 +63,6 @@ export function Reimbursement() {
     payee: '',
     date_needed: '',
     purpose: '',
-    budgeted: true,
     payment_mode_id: '',
   });
 
@@ -297,7 +296,6 @@ export function Reimbursement() {
       payee: (request as any).payee || '',
       date_needed: (request as any).date_needed || '',
       purpose: request.purpose,
-      budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
       payment_mode_id: (request as any).payment_mode_id || '',
     });
     setExpenseItems(request.expense_items && request.expense_items.length > 0
@@ -342,7 +340,6 @@ export function Reimbursement() {
             amount: totalAmount,
             expense_items: expenseItems,
             date_needed: formData.date_needed || null,
-            budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
             status,
@@ -371,7 +368,6 @@ export function Reimbursement() {
             amount: totalAmount,
             expense_items: expenseItems,
             date_needed: formData.date_needed || null,
-            budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             status,
             current_approval_level: 0,
@@ -456,7 +452,7 @@ export function Reimbursement() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', budgeted: true, payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', payment_mode_id: '' });
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
       setAttachments([]);
       setEditingRequest(null);
@@ -491,7 +487,7 @@ export function Reimbursement() {
         request.company_id,
         department,
         'Reimbursement',
-        request.budgeted || false,
+        false,
         request.amount
       );
 
@@ -841,18 +837,6 @@ export function Reimbursement() {
                 </div>
               )}
             </div>
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.budgeted}
-                onChange={(e) => setFormData({ ...formData, budgeted: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-slate-700">Budgeted</span>
-            </label>
           </div>
 
           <div>
