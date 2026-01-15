@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -42,6 +42,7 @@ export function ReimbursementApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
+  const [linkedRequestDetails, setLinkedRequestDetails] = useState<any>(null);
 
   useEffect(() => {
     loadRequests();
@@ -55,7 +56,10 @@ export function ReimbursementApproval() {
       .select(`
         *,
         user_profiles:requester_id (full_name, email, company_id, department),
-        companies!reimbursement_requests_company_id_fkey (id, name)
+        companies!reimbursement_requests_company_id_fkey (id, name),
+        request_type,
+        linked_cash_advance_id,
+        cash_advance_type
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false});
@@ -125,10 +129,42 @@ export function ReimbursementApproval() {
     setRequests(filteredRequests);
   };
 
+  const loadLinkedRequestDetails = async (linkedId: string, type: 'Cash Advance' | 'Petty Cash') => {
+    try {
+      if (type === 'Cash Advance') {
+        const { data, error } = await supabase
+          .from('cash_advance_requests')
+          .select('id, ca_number, request_date, amount, purpose, rfp_pdf_path')
+          .eq('id', linkedId)
+          .single();
+
+        if (error) throw error;
+        setLinkedRequestDetails({ ...data, type: 'Cash Advance', display_number: data.ca_number });
+      } else if (type === 'Petty Cash') {
+        const { data, error } = await supabase
+          .from('petty_cash_requests')
+          .select('id, pc_number, request_date, amount, purpose, rfp_pdf_path')
+          .eq('id', linkedId)
+          .single();
+
+        if (error) throw error;
+        setLinkedRequestDetails({ ...data, type: 'Petty Cash', display_number: data.pc_number });
+      }
+    } catch (error) {
+      console.error('Error loading linked request details:', error);
+    }
+  };
+
   const handleViewRequest = async (request: ReimbursementReq) => {
     setSelectedRequest(request);
     setShowModal(true);
     setComments('');
+    setLinkedRequestDetails(null);
+
+    // Load linked request details if this is a liquidation
+    if ((request as any).request_type === 'Liquidation' && (request as any).linked_cash_advance_id && (request as any).cash_advance_type) {
+      await loadLinkedRequestDetails((request as any).linked_cash_advance_id, (request as any).cash_advance_type);
+    }
 
     // Use the reimbursement request's company_id to look up the correct approval flow
     const reimbCompanyId = request.company_id || request.user_profiles?.company_id;
@@ -311,6 +347,7 @@ export function ReimbursementApproval() {
 
       setShowModal(false);
       setSelectedRequest(null);
+      setLinkedRequestDetails(null);
       setComments('');
       loadRequests();
     } catch (error: any) {
@@ -411,7 +448,10 @@ export function ReimbursementApproval() {
                 <p className="text-sm text-slate-600 mt-1">{selectedRequest.reimb_number}</p>
               </div>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setLinkedRequestDetails(null);
+                }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
                 <X size={20} />
@@ -457,9 +497,69 @@ export function ReimbursementApproval() {
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
 
+              {(selectedRequest as any).request_type === 'Liquidation' && linkedRequestDetails && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Linked Request Details</label>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Type</label>
+                      <p className="text-sm text-slate-900">{linkedRequestDetails.type}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Number</label>
+                      <p className="text-sm text-slate-900 font-mono">{linkedRequestDetails.display_number}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Request Date</label>
+                      <p className="text-sm text-slate-900">{new Date(linkedRequestDetails.request_date).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Amount</label>
+                      <p className="text-sm text-slate-900 font-medium">₱{linkedRequestDetails.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-medium text-slate-600">Purpose</label>
+                      <p className="text-sm text-slate-900">{linkedRequestDetails.purpose}</p>
+                    </div>
+                  </div>
+                  {linkedRequestDetails.rfp_pdf_path && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-medium text-slate-600">Approved {linkedRequestDetails.type} Form</label>
+                        <a
+                          href={supabase.storage.from('attachments').getPublicUrl(linkedRequestDetails.rfp_pdf_path).data.publicUrl}
+                          download
+                          className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                        >
+                          <Download size={14} />
+                          Download
+                        </a>
+                      </div>
+                      <div className="border border-slate-300 rounded-lg overflow-hidden bg-white">
+                        <iframe
+                          src={`${supabase.storage.from('attachments').getPublicUrl(linkedRequestDetails.rfp_pdf_path).data.publicUrl}#view=FitH`}
+                          className="w-full h-[400px]"
+                          title={`${linkedRequestDetails.type} Form`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {selectedRequest.merged_pdf_path && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Attachments</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-slate-700">Attachments (Receipts)</label>
+                    <a
+                      href={supabase.storage.from('attachments').getPublicUrl(selectedRequest.merged_pdf_path).data.publicUrl}
+                      download
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Download size={16} />
+                      Download
+                    </a>
+                  </div>
                   <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
                     <iframe
                       src={`${supabase.storage.from('attachments').getPublicUrl(selectedRequest.merged_pdf_path).data.publicUrl}#view=FitH`}
