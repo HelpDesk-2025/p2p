@@ -58,6 +58,7 @@ export function Reimbursement() {
   ]);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [cashAdvance, setCashAdvance] = useState<number>(0);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -302,6 +303,7 @@ export function Reimbursement() {
       ? request.expense_items
       : [{ date: '', description: '', amount: 0 }]
     );
+    setCashAdvance((request as any).cash_advance || 0);
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -339,6 +341,7 @@ export function Reimbursement() {
             purpose: formData.purpose,
             amount: totalAmount,
             expense_items: expenseItems,
+            cash_advance: cashAdvance,
             date_needed: formData.date_needed || null,
             payment_mode_id: formData.payment_mode_id || null,
             attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
@@ -367,6 +370,7 @@ export function Reimbursement() {
             purpose: formData.purpose,
             amount: totalAmount,
             expense_items: expenseItems,
+            cash_advance: cashAdvance,
             date_needed: formData.date_needed || null,
             payment_mode_id: formData.payment_mode_id || null,
             status,
@@ -454,6 +458,7 @@ export function Reimbursement() {
       setShowForm(false);
       setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', payment_mode_id: '' });
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
+      setCashAdvance(0);
       setAttachments([]);
       setEditingRequest(null);
       loadRequests();
@@ -784,6 +789,32 @@ export function Reimbursement() {
                     </td>
                     <td></td>
                   </tr>
+                  <tr>
+                    <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                      Less: Cash Advance:
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={cashAdvance}
+                        onChange={(e) => setCashAdvance(Number(e.target.value) || 0)}
+                        className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                      />
+                    </td>
+                    <td></td>
+                  </tr>
+                  <tr className="border-t-2 border-slate-300">
+                    <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
+                      {(calculateTotalExpenditures() - cashAdvance) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
+                    </td>
+                    <td className="px-4 py-2 font-bold text-lg text-slate-900">
+                      ₱{Math.abs(calculateTotalExpenditures() - cashAdvance).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td></td>
+                  </tr>
                 </tfoot>
               </table>
             </div>
@@ -991,14 +1022,6 @@ export function Reimbursement() {
                   <p className="text-slate-900">{viewingRequest.department || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Expense Date</label>
-                  <p className="text-slate-900">{new Date(viewingRequest.expense_date).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Amount</label>
-                  <p className="text-slate-900 font-bold">₱{viewingRequest.amount.toFixed(2)}</p>
-                </div>
-                <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
                     {viewingRequest.status}
@@ -1010,6 +1033,58 @@ export function Reimbursement() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
+
+              {viewingRequest.expense_items && viewingRequest.expense_items.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expense Itemization</label>
+                  <div className="border border-slate-300 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Description</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {viewingRequest.expense_items.map((item: ExpenseItem, index: number) => (
+                          <tr key={index}>
+                            <td className="px-4 py-2 text-sm text-slate-700">{new Date(item.date).toLocaleDateString()}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.description}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900 font-medium">₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t">
+                        <tr>
+                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                            Total Expenditures:
+                          </td>
+                          <td className="px-4 py-2 font-bold text-slate-900">
+                            ₱{viewingRequest.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                            Less: Cash Advance:
+                          </td>
+                          <td className="px-4 py-2 font-semibold text-slate-900">
+                            ₱{((viewingRequest as any).cash_advance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                        <tr className="border-t-2 border-slate-300">
+                          <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
+                            {(viewingRequest.amount - ((viewingRequest as any).cash_advance || 0)) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
+                          </td>
+                          <td className="px-4 py-2 font-bold text-lg text-slate-900">
+                            ₱{Math.abs(viewingRequest.amount - ((viewingRequest as any).cash_advance || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
