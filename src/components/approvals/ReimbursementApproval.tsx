@@ -139,12 +139,17 @@ export function ReimbursementApproval() {
       if (type === 'Cash Advance') {
         const { data, error } = await supabase
           .from('cash_advance_requests')
-          .select('id, ca_number, request_date, amount, purpose, rfp_pdf_path')
+          .select('id, ca_number, request_date, amount, purpose, approved_ca_pdf_path')
           .eq('id', linkedId)
           .single();
 
         if (error) throw error;
-        setLinkedRequestDetails({ ...data, type: 'Cash Advance', display_number: data.ca_number });
+        setLinkedRequestDetails({
+          ...data,
+          type: 'Cash Advance',
+          display_number: data.ca_number,
+          rfp_pdf_path: data.approved_ca_pdf_path // Map to rfp_pdf_path for consistency
+        });
       } else if (type === 'Petty Cash') {
         const { data, error } = await supabase
           .from('petty_cash_requests')
