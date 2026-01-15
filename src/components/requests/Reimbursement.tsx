@@ -821,22 +821,28 @@ export function Reimbursement() {
       return;
     }
 
-    if (!request.requester_id) {
-      alert('Requester information not found. Cannot regenerate form.');
-      return;
-    }
-
     setLoading(true);
     try {
+      // First, fetch the complete request data from the database
+      const { data: fullRequest, error: fetchError } = await supabase
+        .from('reimbursement_requests')
+        .select('*, user_profiles!reimbursement_requests_requester_id_fkey(full_name, e_sig), companies!reimbursement_requests_company_id_fkey(id, name)')
+        .eq('id', request.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!fullRequest) throw new Error('Request not found');
+      if (!fullRequest.requester_id) throw new Error('Requester information not found');
+
       // Import the necessary modules
       const { generateReimbursementForm } = await import('../../lib/reimbursementFormGenerator');
       const { mergeFilesToPDFBlob } = await import('../../lib/pdfMerger');
 
       // Get linked request details if this is a liquidation
       let linkedDetails = null;
-      if ((request as any).request_type === 'Liquidation' && (request as any).linked_request_id) {
-        const linkedType = (request as any).linked_request_type;
-        const linkedId = (request as any).linked_request_id;
+      if (fullRequest.request_type === 'Liquidation' && fullRequest.linked_request_id) {
+        const linkedType = fullRequest.linked_request_type;
+        const linkedId = fullRequest.linked_request_id;
 
         if (linkedType === 'Cash Advance') {
           const { data, error } = await supabase
@@ -877,7 +883,7 @@ export function Reimbursement() {
       const { data: approvalRecords, error: ledgerError } = await supabase
         .from('approval_ledger')
         .select('approver_name, approval_date, approver_id')
-        .eq('request_id', request.id)
+        .eq('request_id', fullRequest.id)
         .eq('request_type', 'Reimbursement')
         .eq('action', 'Approved')
         .order('sequence', { ascending: true });
@@ -893,14 +899,11 @@ export function Reimbursement() {
 
       if (profilesError) throw profilesError;
 
-      // Get requester's profile
-      const { data: requesterData, error: requesterError } = await supabase
-        .from('user_profiles')
-        .select('e_sig, full_name')
-        .eq('id', (request as any).requester_id)
-        .single();
-
-      if (requesterError) throw requesterError;
+      // Use the requester info from the fetched request
+      const requesterData = {
+        full_name: fullRequest.user_profiles?.full_name || 'Unknown',
+        e_sig: fullRequest.user_profiles?.e_sig || null
+      };
 
       // Create a map of approver IDs to their e-signatures
       const esigMap = new Map<string, string | null>();
@@ -916,24 +919,24 @@ export function Reimbursement() {
       }));
 
       // Calculate net amount
-      const netAmount = request.amount - ((request as any).cash_advance || 0);
+      const netAmount = fullRequest.amount - (fullRequest.cash_advance || 0);
 
       // Get company name
-      const companyName = (request as any).companies?.name || 'N/A';
+      const companyName = fullRequest.companies?.name || 'N/A';
 
       // Generate the reimbursement form PDF
       const reimbursementFormBytes = await generateReimbursementForm({
-        reimbNumber: request.reimb_number,
-        requestType: (request as any).request_type || 'Reimbursement',
+        reimbNumber: fullRequest.reimb_number,
+        requestType: fullRequest.request_type || 'Reimbursement',
         requestedBy: requesterData.full_name || 'Unknown',
-        requestDate: new Date(request.request_date).toLocaleDateString(),
+        requestDate: new Date(fullRequest.request_date).toLocaleDateString(),
         company: companyName,
-        department: request.department || 'N/A',
+        department: fullRequest.department || 'N/A',
         linkedRequestNumber: linkedDetails?.display_number || undefined,
-        purpose: request.purpose,
-        expenseItems: request.expense_items || [],
-        totalExpenditures: request.amount,
-        cashAdvance: (request as any).cash_advance || 0,
+        purpose: fullRequest.purpose,
+        expenseItems: fullRequest.expense_items || [],
+        totalExpenditures: fullRequest.amount,
+        cashAdvance: fullRequest.cash_advance || 0,
         netAmount: netAmount,
         payee: requesterData.full_name || 'Unknown',
         payeeEsig: requesterData.e_sig || null,
@@ -944,11 +947,11 @@ export function Reimbursement() {
       const pdfsToMerge: Uint8Array[] = [reimbursementFormBytes];
 
       // Add merged attachments PDF if it exists
-      if (request.merged_pdf_path) {
+      if (fullRequest.merged_pdf_path) {
         try {
           const { data: attachmentsData, error: attachmentsError } = await supabase.storage
             .from('attachments')
-            .download(request.merged_pdf_path);
+            .download(fullRequest.merged_pdf_path);
 
           if (attachmentsError) throw attachmentsError;
 
@@ -965,7 +968,7 @@ export function Reimbursement() {
 
       // Upload the complete form to storage
       const timestamp = Date.now();
-      const formPath = `reimbursement-forms/${request.id}_${timestamp}_form.pdf`;
+      const formPath = `reimbursement-forms/${fullRequest.id}_${timestamp}_form.pdf`;
 
       const { error: uploadError } = await supabase.storage
         .from('attachments')
@@ -983,7 +986,7 @@ export function Reimbursement() {
           reimbursement_form_pdf_path: formPath,
           updated_at: new Date().toISOString()
         })
-        .eq('id', request.id);
+        .eq('id', fullRequest.id);
 
       if (updateError) throw updateError;
 
@@ -991,8 +994,8 @@ export function Reimbursement() {
       await loadRequests();
 
       // Update viewing request if currently viewing
-      if (viewingRequest?.id === request.id) {
-        const updatedRequest = { ...request, reimbursement_form_pdf_path: formPath };
+      if (viewingRequest?.id === fullRequest.id) {
+        const updatedRequest = { ...fullRequest, reimbursement_form_pdf_path: formPath };
         setViewingRequest(updatedRequest as ReimbursementReq);
       }
     } catch (error) {
