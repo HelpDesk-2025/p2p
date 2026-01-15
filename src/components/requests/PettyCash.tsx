@@ -127,8 +127,19 @@ export function PettyCash() {
           loadDepartments(defaultCompany.id);
         }
       } else {
+        // Single company mode - load the user's company details
         setSelectedCompanyId(profile.company_id || '');
         if (profile.company_id) {
+          const { data: companyData, error: companyError } = await supabase
+            .from('companies')
+            .select('id, name')
+            .eq('id', profile.company_id)
+            .single();
+
+          if (!companyError && companyData) {
+            setCompanies([companyData]);
+          }
+
           loadDepartments(profile.company_id);
         }
       }
@@ -746,7 +757,7 @@ export function PettyCash() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
                 <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-                  <span className="font-semibold text-slate-900">{profile?.company_name || 'N/A'}</span>
+                  <span className="font-semibold text-slate-900">{companies[0]?.name || profile?.company_name || 'N/A'}</span>
                 </div>
               </div>
             )}
