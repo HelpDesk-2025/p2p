@@ -420,13 +420,22 @@ export function ReimbursementApproval() {
           // Get all approval records from the ledger
           const { data: approvalRecords, error: ledgerError } = await supabase
             .from('approval_ledger')
-            .select('approver_name, approval_date, user_profiles!approval_ledger_approver_id_fkey (esig)')
+            .select('approver_name, approval_date, approver_id')
             .eq('request_id', selectedRequest.id)
             .eq('request_type', 'Reimbursement')
             .eq('status', 'Approved')
             .order('approval_sequence', { ascending: true });
 
           if (ledgerError) throw ledgerError;
+
+          // Get e-signatures for all approvers
+          const approverIds = (approvalRecords || []).map((record: any) => record.approver_id);
+          const { data: approverProfiles, error: profilesError } = await supabase
+            .from('user_profiles')
+            .select('id, esig')
+            .in('id', approverIds);
+
+          if (profilesError) throw profilesError;
 
           // Get requester's esig
           const { data: requesterData, error: requesterError } = await supabase
@@ -437,10 +446,16 @@ export function ReimbursementApproval() {
 
           if (requesterError) throw requesterError;
 
+          // Create a map of approver IDs to their e-signatures
+          const esigMap = new Map<string, string | null>();
+          (approverProfiles || []).forEach((profile: any) => {
+            esigMap.set(profile.id, profile.esig);
+          });
+
           // Prepare approval records with esig
           const approvals = (approvalRecords || []).map((record: any, index: number) => ({
             approver_name: record.approver_name,
-            approver_esig: record.user_profiles?.esig || null,
+            approver_esig: esigMap.get(record.approver_id) || null,
             approval_date: record.approval_date,
             sequence: index + 1
           }));
