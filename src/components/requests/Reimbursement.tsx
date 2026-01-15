@@ -816,107 +816,6 @@ export function Reimbursement() {
     }
   };
 
-  const generateLinkedFormPdf = async (requestType: string, requestId: string): Promise<Uint8Array> => {
-    if (requestType === 'Cash Advance') {
-      const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
-
-      // Fetch full cash advance details
-      const { data: caDetails } = await supabase
-        .from('cash_advance_requests')
-        .select(`
-          *,
-          user_profiles!cash_advance_requests_requester_id_fkey(full_name, e_sig),
-          companies!cash_advance_requests_company_id_fkey(name)
-        `)
-        .eq('id', requestId)
-        .single();
-
-      if (!caDetails) throw new Error('Cash Advance request not found');
-
-      // Get payee e-signature
-      const { data: payeeData } = await supabase
-        .from('user_profiles')
-        .select('e_sig')
-        .eq('full_name', caDetails.payee)
-        .maybeSingle();
-
-      // Get approval records
-      const { data: approvalRecords } = await supabase
-        .rpc('get_approval_records_with_signatures', {
-          p_request_id: requestId,
-          p_request_type: 'Cash Advance'
-        });
-
-      return await generateCashAdvanceForm({
-        caNumber: caDetails.ca_number,
-        requestedBy: caDetails.user_profiles?.full_name || 'Unknown',
-        requestDate: new Date(caDetails.request_date).toLocaleDateString(),
-        amount: caDetails.amount,
-        company: caDetails.companies?.name || 'N/A',
-        department: caDetails.department || 'N/A',
-        purpose: caDetails.purpose,
-        payee: caDetails.payee || 'Unknown',
-        payeeEsig: payeeData?.e_sig || null,
-        outstandingAsl: caDetails.outstanding_asl || '',
-        outstandingAslDate: new Date().toLocaleDateString(),
-        remarks: caDetails.remarks || '',
-        approvals: approvalRecords || []
-      });
-    } else if (requestType === 'Petty Cash') {
-      const { generatePettyCashForm } = await import('../../lib/pettyCashFormGenerator');
-
-      // Fetch full petty cash details
-      const { data: pcDetails } = await supabase
-        .from('petty_cash_requests')
-        .select(`
-          *,
-          user_profiles!petty_cash_requests_requester_id_fkey(full_name, department, e_sig),
-          payment_modes(line_name_1)
-        `)
-        .eq('id', requestId)
-        .single();
-
-      if (!pcDetails) throw new Error('Petty Cash request not found');
-
-      // Get approval records
-      const { data: approvalRecords } = await supabase
-        .from('approval_ledger')
-        .select('*')
-        .eq('request_id', requestId)
-        .eq('request_type', 'Petty Cash')
-        .order('approval_level', { ascending: true });
-
-      // Get received by user info if marked as received
-      let receivedByName = 'Unknown';
-      let receivedByEsig = null;
-      if (pcDetails.received_by) {
-        const { data: receivedByData } = await supabase
-          .from('user_profiles')
-          .select('full_name, e_sig')
-          .eq('id', pcDetails.received_by)
-          .maybeSingle();
-
-        if (receivedByData) {
-          receivedByName = receivedByData.full_name;
-          receivedByEsig = receivedByData.e_sig;
-        }
-      }
-
-      return await generatePettyCashForm({
-        ...pcDetails,
-        requester_name: pcDetails.user_profiles?.full_name || 'Unknown',
-        requester_esig: pcDetails.user_profiles?.e_sig || null,
-        department: pcDetails.user_profiles?.department || pcDetails.department || 'N/A',
-        payment_mode: pcDetails.payment_modes?.line_name_1 || 'N/A',
-        received_by_name: receivedByName,
-        received_by_esig: receivedByEsig,
-        approvals: approvalRecords || []
-      });
-    }
-
-    throw new Error(`Unsupported request type: ${requestType}`);
-  };
-
   const regenerateReimbursementForm = async (request: ReimbursementReq) => {
     if (!confirm('Are you sure you want to regenerate the reimbursement form PDF? This will replace the existing form.')) {
       return;
@@ -924,7 +823,7 @@ export function Reimbursement() {
 
     setLoading(true);
     try {
-      // First, fetch the complete request data from the database
+      // Fetch the complete request data from the database
       const { data: fullRequest, error: fetchError } = await supabase
         .from('reimbursement_requests')
         .select('*, user_profiles!reimbursement_requests_requester_id_fkey(full_name, e_sig), companies!reimbursement_requests_company_id_fkey(id, name)')
@@ -935,13 +834,11 @@ export function Reimbursement() {
       if (!fullRequest) throw new Error('Request not found');
       if (!fullRequest.requester_id) throw new Error('Requester information not found');
 
-      // Import the necessary modules
+      // Import the form generator
       const { generateReimbursementForm } = await import('../../lib/reimbursementFormGenerator');
-      const { mergePDFBytes } = await import('../../lib/pdfMerger');
 
       // Get linked request details if this is a liquidation
       let linkedDetails = null;
-      let linkedFormPdfPath: string | null = null;
       if (fullRequest.request_type === 'Liquidation' && fullRequest.linked_request_id) {
         const linkedType = fullRequest.linked_request_type;
         const linkedId = fullRequest.linked_request_id;
@@ -949,7 +846,7 @@ export function Reimbursement() {
         if (linkedType === 'Cash Advance') {
           const { data, error } = await supabase
             .from('cash_advance_requests')
-            .select('ca_number, request_date, amount, purpose, approved_ca_pdf_path')
+            .select('ca_number, request_date, amount, purpose')
             .eq('id', linkedId)
             .single();
 
@@ -961,12 +858,11 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
-            linkedFormPdfPath = data.approved_ca_pdf_path || null;
           }
         } else if (linkedType === 'Petty Cash') {
           const { data, error } = await supabase
             .from('petty_cash_requests')
-            .select('pc_number, request_date, amount, purpose, approved_petty_cash_pdf_path')
+            .select('pc_number, request_date, amount, purpose')
             .eq('id', linkedId)
             .single();
 
@@ -978,7 +874,6 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
-            linkedFormPdfPath = data.approved_petty_cash_pdf_path || null;
           }
         }
       }
@@ -1028,7 +923,7 @@ export function Reimbursement() {
       // Get company name
       const companyName = fullRequest.companies?.name || 'N/A';
 
-      // Generate the reimbursement form PDF
+      // Generate ONLY the reimbursement form PDF (no attachments, no linked forms)
       const reimbursementFormBytes = await generateReimbursementForm({
         reimbNumber: fullRequest.reimb_number,
         requestType: fullRequest.request_type || 'Reimbursement',
@@ -1047,69 +942,13 @@ export function Reimbursement() {
         approvals: approvals
       });
 
-      // Collect all PDFs to merge in order
-      const pdfsToMerge: Uint8Array[] = [reimbursementFormBytes];
-
-      // Add linked request form PDF (for liquidation)
-      if (linkedDetails && fullRequest.linked_request_id) {
-        try {
-          let linkedFormBytes: Uint8Array;
-
-          // Try to download existing form PDF first
-          if (linkedFormPdfPath) {
-            try {
-              const { data: linkedFormData, error: linkedFormError } = await supabase.storage
-                .from('attachments')
-                .download(linkedFormPdfPath);
-
-              if (!linkedFormError && linkedFormData) {
-                linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
-                pdfsToMerge.push(linkedFormBytes);
-              } else {
-                throw new Error('PDF not found in storage');
-              }
-            } catch (downloadError) {
-              // If download fails, generate the form on-the-fly
-              linkedFormBytes = await generateLinkedFormPdf(linkedDetails.type, fullRequest.linked_request_id);
-              pdfsToMerge.push(linkedFormBytes);
-            }
-          } else {
-            // No stored PDF, generate it on-the-fly
-            linkedFormBytes = await generateLinkedFormPdf(linkedDetails.type, fullRequest.linked_request_id);
-            pdfsToMerge.push(linkedFormBytes);
-          }
-        } catch (error) {
-          console.error('Error including linked form PDF:', error);
-          alert(`Failed to include linked ${linkedDetails.type} form: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      }
-
-      // Add merged attachments PDF if it exists
-      if (fullRequest.merged_pdf_path) {
-        try {
-          const { data: attachmentsData, error: attachmentsError } = await supabase.storage
-            .from('attachments')
-            .download(fullRequest.merged_pdf_path);
-
-          if (attachmentsError) throw attachmentsError;
-
-          const attachmentsBytes = new Uint8Array(await attachmentsData.arrayBuffer());
-          pdfsToMerge.push(attachmentsBytes);
-        } catch (error) {
-          console.error('Error downloading attachments PDF:', error);
-        }
-      }
-
-      // Merge all PDFs
-      const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
-
-      // Upload the complete form to storage
+      // Upload the reimbursement form to storage
       const timestamp = Date.now();
       const formPath = `reimbursement-forms/${fullRequest.id}_${timestamp}_form.pdf`;
 
       const { error: uploadError } = await supabase.storage
         .from('attachments')
-        .upload(formPath, mergedPdfBytes, {
+        .upload(formPath, reimbursementFormBytes, {
           contentType: 'application/pdf',
           upsert: true
         });
@@ -1127,7 +966,7 @@ export function Reimbursement() {
 
       if (updateError) throw updateError;
 
-      alert('Reimbursement form regenerated successfully!');
+      alert('Reimbursement form generated successfully!');
       await loadRequests();
 
       // Update viewing request if currently viewing
@@ -1136,8 +975,8 @@ export function Reimbursement() {
         setViewingRequest(updatedRequest as ReimbursementReq);
       }
     } catch (error) {
-      console.error('Error regenerating reimbursement form:', error);
-      alert('Failed to regenerate reimbursement form. Please try again.');
+      console.error('Error generating reimbursement form:', error);
+      alert('Failed to generate reimbursement form. Please try again.');
     } finally {
       setLoading(false);
     }
