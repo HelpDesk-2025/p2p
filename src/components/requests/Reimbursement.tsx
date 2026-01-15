@@ -31,8 +31,18 @@ interface ReimbursementReq {
   budgeted?: boolean;
   rfp_pdf_path?: string;
   reimbursement_form_pdf_path?: string;
+  merged_pdf_path?: string;
+  requester_id?: string;
   expense_items?: ExpenseItem[];
   attachments?: Attachment[];
+  user_profiles?: {
+    company_id?: string;
+    full_name?: string;
+  };
+  companies?: {
+    id: string;
+    name: string;
+  };
 }
 
 export function Reimbursement() {
@@ -200,7 +210,7 @@ export function Reimbursement() {
 
     let query = supabase
       .from('reimbursement_requests')
-      .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id), companies!reimbursement_requests_company_id_fkey(id, name)')
+      .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id, full_name), companies!reimbursement_requests_company_id_fkey(id, name)')
       .order('created_at', { ascending: false });
 
     // Only filter by requester_id if user is not an admin
@@ -806,6 +816,193 @@ export function Reimbursement() {
     }
   };
 
+  const regenerateReimbursementForm = async (request: ReimbursementReq) => {
+    if (!confirm('Are you sure you want to regenerate the reimbursement form PDF? This will replace the existing form.')) {
+      return;
+    }
+
+    if (!request.requester_id) {
+      alert('Requester information not found. Cannot regenerate form.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Import the necessary modules
+      const { generateReimbursementForm } = await import('../../lib/reimbursementFormGenerator');
+      const { mergeFilesToPDFBlob } = await import('../../lib/pdfMerger');
+
+      // Get linked request details if this is a liquidation
+      let linkedDetails = null;
+      if ((request as any).request_type === 'Liquidation' && (request as any).linked_request_id) {
+        const linkedType = (request as any).linked_request_type;
+        const linkedId = (request as any).linked_request_id;
+
+        if (linkedType === 'Cash Advance') {
+          const { data, error } = await supabase
+            .from('cash_advance_requests')
+            .select('ca_number, request_date, amount, purpose')
+            .eq('id', linkedId)
+            .single();
+
+          if (!error && data) {
+            linkedDetails = {
+              type: 'Cash Advance',
+              display_number: data.ca_number,
+              request_date: data.request_date,
+              amount: data.amount,
+              purpose: data.purpose
+            };
+          }
+        } else if (linkedType === 'Petty Cash') {
+          const { data, error } = await supabase
+            .from('petty_cash_requests')
+            .select('pc_number, request_date, amount, purpose')
+            .eq('id', linkedId)
+            .single();
+
+          if (!error && data) {
+            linkedDetails = {
+              type: 'Petty Cash',
+              display_number: data.pc_number,
+              request_date: data.request_date,
+              amount: data.amount,
+              purpose: data.purpose
+            };
+          }
+        }
+      }
+
+      // Get all approval records from the ledger
+      const { data: approvalRecords, error: ledgerError } = await supabase
+        .from('approval_ledger')
+        .select('approver_name, approval_date, approver_id')
+        .eq('request_id', request.id)
+        .eq('request_type', 'Reimbursement')
+        .eq('action', 'Approved')
+        .order('sequence', { ascending: true });
+
+      if (ledgerError) throw ledgerError;
+
+      // Get e-signatures for all approvers
+      const approverIds = (approvalRecords || []).map((record: any) => record.approver_id);
+      const { data: approverProfiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, e_sig')
+        .in('id', approverIds);
+
+      if (profilesError) throw profilesError;
+
+      // Get requester's profile
+      const { data: requesterData, error: requesterError } = await supabase
+        .from('user_profiles')
+        .select('e_sig, full_name')
+        .eq('id', (request as any).requester_id)
+        .single();
+
+      if (requesterError) throw requesterError;
+
+      // Create a map of approver IDs to their e-signatures
+      const esigMap = new Map<string, string | null>();
+      (approverProfiles || []).forEach((profile: any) => {
+        esigMap.set(profile.id, profile.e_sig);
+      });
+
+      // Prepare approval records with esig
+      const approvals = (approvalRecords || []).map((record: any) => ({
+        approver_name: record.approver_name,
+        approver_esig: esigMap.get(record.approver_id) || null,
+        approval_date: record.approval_date,
+      }));
+
+      // Calculate net amount
+      const netAmount = request.amount - ((request as any).cash_advance || 0);
+
+      // Get company name
+      const companyName = (request as any).companies?.name || 'N/A';
+
+      // Generate the reimbursement form PDF
+      const reimbursementFormBytes = await generateReimbursementForm({
+        reimbNumber: request.reimb_number,
+        requestType: (request as any).request_type || 'Reimbursement',
+        requestedBy: requesterData.full_name || 'Unknown',
+        requestDate: new Date(request.request_date).toLocaleDateString(),
+        company: companyName,
+        department: request.department || 'N/A',
+        linkedRequestNumber: linkedDetails?.display_number || undefined,
+        purpose: request.purpose,
+        expenseItems: request.expense_items || [],
+        totalExpenditures: request.amount,
+        cashAdvance: (request as any).cash_advance || 0,
+        netAmount: netAmount,
+        payee: requesterData.full_name || 'Unknown',
+        payeeEsig: requesterData.e_sig || null,
+        approvals: approvals
+      });
+
+      // Collect all PDFs to merge in order
+      const pdfsToMerge: Uint8Array[] = [reimbursementFormBytes];
+
+      // Add merged attachments PDF if it exists
+      if (request.merged_pdf_path) {
+        try {
+          const { data: attachmentsData, error: attachmentsError } = await supabase.storage
+            .from('attachments')
+            .download(request.merged_pdf_path);
+
+          if (attachmentsError) throw attachmentsError;
+
+          const attachmentsBytes = new Uint8Array(await attachmentsData.arrayBuffer());
+          pdfsToMerge.push(attachmentsBytes);
+        } catch (error) {
+          console.error('Error downloading attachments PDF:', error);
+        }
+      }
+
+      // Merge all PDFs
+      const mergedPdfBlob = await mergeFilesToPDFBlob(pdfsToMerge);
+      const mergedPdfBytes = new Uint8Array(await mergedPdfBlob.arrayBuffer());
+
+      // Upload the complete form to storage
+      const timestamp = Date.now();
+      const formPath = `reimbursement-forms/${request.id}_${timestamp}_form.pdf`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(formPath, mergedPdfBytes, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Update the request with the new form path
+      const { error: updateError } = await supabase
+        .from('reimbursement_requests')
+        .update({
+          reimbursement_form_pdf_path: formPath,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', request.id);
+
+      if (updateError) throw updateError;
+
+      alert('Reimbursement form regenerated successfully!');
+      await loadRequests();
+
+      // Update viewing request if currently viewing
+      if (viewingRequest?.id === request.id) {
+        const updatedRequest = { ...request, reimbursement_form_pdf_path: formPath };
+        setViewingRequest(updatedRequest as ReimbursementReq);
+      }
+    } catch (error) {
+      console.error('Error regenerating reimbursement form:', error);
+      alert('Failed to regenerate reimbursement form. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -1403,7 +1600,25 @@ export function Reimbursement() {
                       <Download size={18} />
                       Download Form
                     </button>
+                    <button
+                      onClick={() => regenerateReimbursementForm(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                      Regenerate PDF
+                    </button>
                   </>
+                )}
+                {viewingRequest.status === 'approved' && !viewingRequest.reimbursement_form_pdf_path && (
+                  <button
+                    onClick={() => regenerateReimbursementForm(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                    Generate PDF
+                  </button>
                 )}
               </div>
               <button
