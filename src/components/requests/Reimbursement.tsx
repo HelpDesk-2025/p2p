@@ -1439,6 +1439,10 @@ export function Reimbursement() {
                   <p className="text-slate-900">{(viewingRequest as any).request_type || 'Reimbursement'}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Payee</label>
+                  <p className="text-slate-900">{(viewingRequest as any).payee || 'N/A'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
                     {viewingRequest.status}
