@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { Plus, Edit, Trash2, X } from "lucide-react";
+import { Plus, Edit, Trash2, X, Search, Filter, ArrowUpDown } from "lucide-react";
 
 interface ApprovalFlowSetup {
   id: string;
@@ -42,6 +42,14 @@ export function ApprovalFlowSetupConfig() {
     user_id: "",
     days_to_approve: "3"
   });
+
+  // Filter and sorting states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCompany, setFilterCompany] = useState("");
+  const [filterRequestType, setFilterRequestType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "company" | "request_type" | "status">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     loadSetups();
@@ -316,6 +324,80 @@ export function ApprovalFlowSetupConfig() {
 
   const selectedCompany = companies.find(c => c.id === formData.company_id);
   const currentSteps = editingSetupId ? steps.filter(s => s.approval_flow_setup_id === editingSetupId) : [];
+
+  // Filter and sort setups
+  const filteredAndSortedSetups = setups
+    .filter((setup) => {
+      // Search filter
+      if (searchQuery && !setup.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+
+      // Company filter
+      if (filterCompany && setup.company_id !== filterCompany) {
+        return false;
+      }
+
+      // Request type filter
+      if (filterRequestType && setup.request_type !== filterRequestType) {
+        return false;
+      }
+
+      // Status filter
+      if (filterStatus === "active" && !setup.is_active) {
+        return false;
+      }
+      if (filterStatus === "inactive" && setup.is_active) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      let compareA: string | boolean = "";
+      let compareB: string | boolean = "";
+
+      switch (sortBy) {
+        case "name":
+          compareA = a.name.toLowerCase();
+          compareB = b.name.toLowerCase();
+          break;
+        case "company":
+          compareA = (a.companies?.name || "").toLowerCase();
+          compareB = (b.companies?.name || "").toLowerCase();
+          break;
+        case "request_type":
+          compareA = a.request_type.toLowerCase();
+          compareB = b.request_type.toLowerCase();
+          break;
+        case "status":
+          compareA = a.is_active;
+          compareB = b.is_active;
+          break;
+      }
+
+      if (sortOrder === "asc") {
+        return compareA < compareB ? -1 : compareA > compareB ? 1 : 0;
+      } else {
+        return compareA > compareB ? -1 : compareA < compareB ? 1 : 0;
+      }
+    });
+
+  const handleSort = (column: "name" | "company" | "request_type" | "status") => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterCompany("");
+    setFilterRequestType("");
+    setFilterStatus("");
+  };
 
   return (
     <div>
@@ -644,72 +726,193 @@ export function ApprovalFlowSetupConfig() {
 
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
         <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900">All Approval Flow Setups</h3>
-          <p className="text-sm text-slate-600 mt-0.5">{setups.length} configured setups</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">All Approval Flow Setups</h3>
+              <p className="text-sm text-slate-600 mt-0.5">
+                {filteredAndSortedSetups.length} of {setups.length} setups
+              </p>
+            </div>
+            {(searchQuery || filterCompany || filterRequestType || filterStatus) && (
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-all"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+
+          {/* Filter Section */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+            </div>
+
+            {/* Company Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <select
+                value={filterCompany}
+                onChange={(e) => setFilterCompany(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none bg-white"
+              >
+                <option value="">All Companies</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Request Type Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <select
+                value={filterRequestType}
+                onChange={(e) => setFilterRequestType(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none bg-white"
+              >
+                <option value="">All Request Types</option>
+                <option value="Purchase Requisition">Purchase Requisition</option>
+                <option value="Canvass">Canvass</option>
+                <option value="Petty Cash">Petty Cash</option>
+                <option value="Cash Advance">Cash Advance</option>
+                <option value="Reimbursement">Reimbursement</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm appearance-none bg-white"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-slate-100 to-slate-50">
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Company</th>
+                <th
+                  onClick={() => handleSort("name")}
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    Name
+                    <ArrowUpDown size={14} className={sortBy === "name" ? "text-blue-600" : "text-slate-400"} />
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("company")}
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    Company
+                    <ArrowUpDown size={14} className={sortBy === "company" ? "text-blue-600" : "text-slate-400"} />
+                  </div>
+                </th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Department</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Request Type</th>
+                <th
+                  onClick={() => handleSort("request_type")}
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    Request Type
+                    <ArrowUpDown size={14} className={sortBy === "request_type" ? "text-blue-600" : "text-slate-400"} />
+                  </div>
+                </th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Total Steps</th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
+                <th
+                  onClick={() => handleSort("status")}
+                  className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    Status
+                    <ArrowUpDown size={14} className={sortBy === "status" ? "text-blue-600" : "text-slate-400"} />
+                  </div>
+                </th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {setups.map((setup) => {
-                const setupSteps = steps.filter(s => s.approval_flow_setup_id === setup.id);
-                return (
-                  <tr key={setup.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
-                    <td className="px-4 py-4 text-sm font-semibold text-slate-900">{setup.name}</td>
-                    <td className="px-4 py-4 text-sm text-slate-600">{setup.companies?.name || "-"}</td>
-                    <td className="px-4 py-4 text-sm text-slate-600">
-                      {setup.department_id || <span className="text-slate-400 italic">Whole Company</span>}
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800">
-                        {setup.request_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800">
-                        {setupSteps.length} Steps
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm ${
-                        setup.is_active
-                          ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800"
-                          : "bg-gradient-to-r from-red-100 to-red-200 text-red-800"
-                      }`}>
-                        {setup.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditSetup(setup)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all group"
-                          title="Edit"
-                        >
-                          <Edit size={18} className="group-hover:scale-110 transition-transform" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSetup(setup.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all group"
-                          title="Delete"
-                        >
-                          <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filteredAndSortedSetups.length > 0 ? (
+                filteredAndSortedSetups.map((setup) => {
+                  const setupSteps = steps.filter(s => s.approval_flow_setup_id === setup.id);
+                  return (
+                    <tr key={setup.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
+                      <td className="px-4 py-4 text-sm font-semibold text-slate-900">{setup.name}</td>
+                      <td className="px-4 py-4 text-sm text-slate-600">{setup.companies?.name || "-"}</td>
+                      <td className="px-4 py-4 text-sm text-slate-600">
+                        {setup.department_id || <span className="text-slate-400 italic">Whole Company</span>}
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800">
+                          {setup.request_type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800">
+                          {setupSteps.length} Steps
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm ${
+                          setup.is_active
+                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800"
+                            : "bg-gradient-to-r from-red-100 to-red-200 text-red-800"
+                        }`}>
+                          {setup.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditSetup(setup)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all group"
+                            title="Edit"
+                          >
+                            <Edit size={18} className="group-hover:scale-110 transition-transform" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSetup(setup.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all group"
+                            title="Delete"
+                          >
+                            <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-500">
+                      <Filter size={48} className="mb-4 text-slate-300" />
+                      <p className="text-lg font-semibold mb-1">No setups found</p>
+                      <p className="text-sm">Try adjusting your filters or search criteria</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
