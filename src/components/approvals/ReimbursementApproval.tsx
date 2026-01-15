@@ -148,12 +148,17 @@ export function ReimbursementApproval() {
       } else if (type === 'Petty Cash') {
         const { data, error } = await supabase
           .from('petty_cash_requests')
-          .select('id, pc_number, request_date, amount, purpose, rfp_pdf_path')
+          .select('id, pc_number, request_date, amount, purpose, approved_petty_cash_pdf_path')
           .eq('id', linkedId)
           .single();
 
         if (error) throw error;
-        setLinkedRequestDetails({ ...data, type: 'Petty Cash', display_number: data.pc_number });
+        setLinkedRequestDetails({
+          ...data,
+          type: 'Petty Cash',
+          display_number: data.pc_number,
+          rfp_pdf_path: data.approved_petty_cash_pdf_path // Map to rfp_pdf_path for consistency
+        });
       }
     } catch (error) {
       console.error('Error loading linked request details:', error);
