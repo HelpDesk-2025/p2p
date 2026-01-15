@@ -98,8 +98,13 @@ export function CashAdvance() {
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
-    loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      loadCompanies();
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (selectedCompanyId) {

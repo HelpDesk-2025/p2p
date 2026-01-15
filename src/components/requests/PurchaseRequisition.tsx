@@ -113,8 +113,13 @@ export function PurchaseRequisition() {
     loadPaymentModes();
     loadVendors();
     loadItems();
-    loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      loadCompanies();
+    }
+  }, [profile]);
 
   useEffect(() => {
     loadPRChecklists();

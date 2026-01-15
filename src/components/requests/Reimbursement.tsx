@@ -53,8 +53,13 @@ export function Reimbursement() {
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
-    loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      loadCompanies();
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (selectedCompanyId && !formData.document_no) {

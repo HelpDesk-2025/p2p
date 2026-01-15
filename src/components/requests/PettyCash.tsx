@@ -77,8 +77,13 @@ export function PettyCash() {
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
-    loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      loadCompanies();
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (selectedCompanyId && !formData.document_no) {

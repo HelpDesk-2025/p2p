@@ -254,8 +254,13 @@ export function Canvass() {
 
   useEffect(() => {
     loadRequests();
-    loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      loadCompanies();
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (selectedCompanyId && !formData.document_no) {
