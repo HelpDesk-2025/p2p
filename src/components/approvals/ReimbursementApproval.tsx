@@ -12,13 +12,17 @@ interface ReimbursementReq {
   company_id?: string;
   department?: string;
   request_date: string;
-  expense_date: string;
   purpose: string;
   amount: number;
   payment_mode_id?: string;
   status: string;
   current_approval_level: number;
   receipts?: any[];
+  expense_items?: Array<{
+    date: string;
+    description: string;
+    amount: number;
+  }>;
   merged_pdf_path?: string;
   user_profiles?: {
     full_name: string;
@@ -575,16 +579,47 @@ export function ReimbursementApproval() {
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Expense Date</label>
-                  <p className="text-slate-900">{new Date(selectedRequest.expense_date).toLocaleDateString()}</p>
-                </div>
               </div>
 
               <div>
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {/* Expense Itemization */}
+              {selectedRequest.expense_items && selectedRequest.expense_items.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Expense Itemization</label>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-semibold text-slate-700">Date</th>
+                          <th className="px-4 py-2 text-left font-semibold text-slate-700">Description</th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-700">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {selectedRequest.expense_items.map((item, index) => (
+                          <tr key={index} className="hover:bg-slate-50">
+                            <td className="px-4 py-2 text-slate-900">{new Date(item.date).toLocaleDateString()}</td>
+                            <td className="px-4 py-2 text-slate-900">{item.description}</td>
+                            <td className="px-4 py-2 text-right text-slate-900 font-medium">
+                              ₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-slate-100 font-semibold">
+                          <td className="px-4 py-2 text-slate-700" colSpan={2}>Total</td>
+                          <td className="px-4 py-2 text-right text-slate-900">
+                            ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {(selectedRequest as any).request_type === 'Liquidation' && linkedRequestDetails && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
