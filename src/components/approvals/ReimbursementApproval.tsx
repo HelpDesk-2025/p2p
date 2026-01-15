@@ -432,7 +432,7 @@ export function ReimbursementApproval() {
           const approverIds = (approvalRecords || []).map((record: any) => record.approver_id);
           const { data: approverProfiles, error: profilesError } = await supabase
             .from('user_profiles')
-            .select('id, esig')
+            .select('id, e_sig')
             .in('id', approverIds);
 
           if (profilesError) throw profilesError;
@@ -440,7 +440,7 @@ export function ReimbursementApproval() {
           // Get requester's esig
           const { data: requesterData, error: requesterError } = await supabase
             .from('user_profiles')
-            .select('esig')
+            .select('e_sig')
             .eq('id', selectedRequest.requester_id)
             .single();
 
@@ -449,7 +449,7 @@ export function ReimbursementApproval() {
           // Create a map of approver IDs to their e-signatures
           const esigMap = new Map<string, string | null>();
           (approverProfiles || []).forEach((profile: any) => {
-            esigMap.set(profile.id, profile.esig);
+            esigMap.set(profile.id, profile.e_sig);
           });
 
           // Prepare approval records with esig
@@ -478,7 +478,7 @@ export function ReimbursementApproval() {
             cashAdvance: selectedRequest.cash_advance || 0,
             netAmount: netAmount,
             payee: selectedRequest.user_profiles?.full_name || 'Unknown',
-            payeeEsig: requesterData.esig || null,
+            payeeEsig: requesterData.e_sig || null,
             approvals: approvals
           });
 
