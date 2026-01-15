@@ -59,6 +59,9 @@ export function Reimbursement() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [cashAdvance, setCashAdvance] = useState<number>(0);
+  const [requestType, setRequestType] = useState<'Reimbursement' | 'Liquidation'>('Reimbursement');
+  const [approvedRequests, setApprovedRequests] = useState<any[]>([]);
+  const [selectedRequestId, setSelectedRequestId] = useState<string>('');
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -83,6 +86,16 @@ export function Reimbursement() {
       generateDocumentNo();
     }
   }, [selectedCompanyId]);
+
+  useEffect(() => {
+    if (requestType === 'Liquidation') {
+      loadApprovedRequestsForLiquidation();
+    } else {
+      setApprovedRequests([]);
+      setSelectedRequestId('');
+      setCashAdvance(0);
+    }
+  }, [requestType, profile?.id]);
 
   const generateDocumentNo = async () => {
     const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
@@ -213,6 +226,47 @@ export function Reimbursement() {
     setPaymentModes(data || []);
   };
 
+  const loadApprovedRequestsForLiquidation = async () => {
+    if (!profile?.id) return;
+
+    try {
+      // Load approved cash advance requests
+      const { data: cashAdvanceData } = await supabase
+        .from('cash_advance_requests')
+        .select('id, ca_number, request_date, amount, purpose')
+        .eq('requester_id', profile.id)
+        .eq('status', 'approved')
+        .order('request_date', { ascending: false });
+
+      // Load approved petty cash requests with request_type = 'For Cash Advance'
+      const { data: pettyCashData } = await supabase
+        .from('petty_cash_requests')
+        .select('id, pc_number, request_date, amount, purpose, request_type')
+        .eq('requester_id', profile.id)
+        .eq('status', 'approved')
+        .eq('request_type', 'For Cash Advance')
+        .order('request_date', { ascending: false });
+
+      // Combine and format the data
+      const combined = [
+        ...(cashAdvanceData || []).map(req => ({
+          ...req,
+          type: 'Cash Advance',
+          display_number: req.ca_number,
+        })),
+        ...(pettyCashData || []).map(req => ({
+          ...req,
+          type: 'Petty Cash',
+          display_number: req.pc_number,
+        })),
+      ].sort((a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime());
+
+      setApprovedRequests(combined);
+    } catch (error) {
+      console.error('Error loading approved requests:', error);
+    }
+  };
+
   const generateNumber = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -239,6 +293,16 @@ export function Reimbursement() {
 
   const calculateTotalExpenditures = () => {
     return expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  };
+
+  const handleRequestSelection = (requestId: string) => {
+    setSelectedRequestId(requestId);
+    const selectedRequest = approvedRequests.find(req => req.id === requestId);
+    if (selectedRequest) {
+      setCashAdvance(selectedRequest.amount);
+    } else {
+      setCashAdvance(0);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -303,7 +367,9 @@ export function Reimbursement() {
       ? request.expense_items
       : [{ date: '', description: '', amount: 0 }]
     );
+    setRequestType((request as any).request_type || 'Reimbursement');
     setCashAdvance((request as any).cash_advance || 0);
+    setSelectedRequestId((request as any).linked_cash_advance_id || '');
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -341,7 +407,9 @@ export function Reimbursement() {
             purpose: formData.purpose,
             amount: totalAmount,
             expense_items: expenseItems,
+            request_type: requestType,
             cash_advance: cashAdvance,
+            linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             date_needed: formData.date_needed || null,
             payment_mode_id: formData.payment_mode_id || null,
             attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
@@ -370,7 +438,9 @@ export function Reimbursement() {
             purpose: formData.purpose,
             amount: totalAmount,
             expense_items: expenseItems,
+            request_type: requestType,
             cash_advance: cashAdvance,
+            linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             date_needed: formData.date_needed || null,
             payment_mode_id: formData.payment_mode_id || null,
             status,
@@ -458,7 +528,10 @@ export function Reimbursement() {
       setShowForm(false);
       setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', payment_mode_id: '' });
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
+      setRequestType('Reimbursement');
       setCashAdvance(0);
+      setSelectedRequestId('');
+      setApprovedRequests([]);
       setAttachments([]);
       setEditingRequest(null);
       loadRequests();
@@ -678,6 +751,43 @@ export function Reimbursement() {
           )}
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
+            <select
+              value={requestType}
+              onChange={(e) => setRequestType(e.target.value as 'Reimbursement' | 'Liquidation')}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              required
+            >
+              <option value="Reimbursement">Reimbursement</option>
+              <option value="Liquidation">Liquidation</option>
+            </select>
+          </div>
+
+          {requestType === 'Liquidation' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <label className="block text-sm font-medium text-slate-700">
+                Select Approved Cash Advance/Petty Cash Request
+              </label>
+              <select
+                value={selectedRequestId}
+                onChange={(e) => handleRequestSelection(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                required={requestType === 'Liquidation'}
+              >
+                <option value="">Select a request to liquidate</option>
+                {approvedRequests.map((req) => (
+                  <option key={req.id} value={req.id}>
+                    {req.type} - {req.display_number} | ₱{req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} | {new Date(req.request_date).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+              {approvedRequests.length === 0 && (
+                <p className="text-sm text-amber-600">No approved cash advance or petty cash requests available for liquidation.</p>
+              )}
+            </div>
+          )}
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
             <input
               type="text"
@@ -726,7 +836,7 @@ export function Reimbursement() {
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Description</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name/Vendor Name</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
                     <th className="px-4 py-2 w-12"></th>
                   </tr>
@@ -798,10 +908,11 @@ export function Reimbursement() {
                         type="number"
                         value={cashAdvance}
                         onChange={(e) => setCashAdvance(Number(e.target.value) || 0)}
-                        className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                        className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-slate-100 disabled:cursor-not-allowed"
                         placeholder="0.00"
                         step="0.01"
                         min="0"
+                        disabled={requestType === 'Liquidation' && !!selectedRequestId}
                       />
                     </td>
                     <td></td>
@@ -1022,6 +1133,10 @@ export function Reimbursement() {
                   <p className="text-slate-900">{viewingRequest.department || 'N/A'}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Request Type</label>
+                  <p className="text-slate-900">{(viewingRequest as any).request_type || 'Reimbursement'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
                     {viewingRequest.status}
@@ -1042,7 +1157,7 @@ export function Reimbursement() {
                       <thead className="bg-slate-50 border-b">
                         <tr>
                           <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Description</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name/Vendor Name</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
                         </tr>
                       </thead>
