@@ -19,11 +19,15 @@ interface ReimbursementReq {
   status: string;
   current_approval_level: number;
   receipts?: any[];
+  merged_pdf_path?: string;
   user_profiles?: {
     full_name: string;
     email: string;
     company_id: string;
     department?: string;
+  };
+  companies?: {
+    name: string;
   };
 }
 
@@ -452,6 +456,19 @@ export function ReimbursementApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.merged_pdf_path && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Attachments</label>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                    <iframe
+                      src={`${supabase.storage.from('attachments').getPublicUrl(selectedRequest.merged_pdf_path).data.publicUrl}#view=FitH`}
+                      className="w-full h-[600px]"
+                      title="Reimbursement Attachments"
+                    />
+                  </div>
+                </div>
+              )}
 
               <ApprovalProgressTracker
                 requestType="Reimbursement"

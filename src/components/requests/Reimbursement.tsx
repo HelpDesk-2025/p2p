@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2 } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 
 interface PaymentMode {
   id: string;
@@ -386,6 +387,36 @@ export function Reimbursement() {
     return uploadedPaths;
   };
 
+  const mergeAndUploadAttachmentsPDF = async (requestId: string, files: File[]) => {
+    try {
+      if (files.length === 0) {
+        return null;
+      }
+
+      // Merge all attachments (images and PDFs) into a single PDF
+      const mergedPdfBlob = await mergeFilesToPDFBlob(files);
+
+      // Upload merged PDF
+      const mergedFileName = `${requestId}/merged_attachments_${Date.now()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(mergedFileName, mergedPdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Error uploading merged PDF:', uploadError);
+        throw uploadError;
+      }
+
+      return mergedFileName;
+    } catch (error) {
+      console.error('Error merging and uploading attachments PDF:', error);
+      throw error;
+    }
+  };
+
   const handleEditDraft = (request: ReimbursementReq) => {
     setEditingRequest(request);
     setFormData({
@@ -427,9 +458,12 @@ export function Reimbursement() {
       if (editingRequest) {
         // Upload attachments if any
         let uploadedAttachments: Attachment[] = [];
+        let mergedPdfPath: string | null = null;
         if (attachments.length > 0) {
           setUploadingFiles(true);
           uploadedAttachments = await uploadAttachments(editingRequest.id);
+          // Merge attachments into a single PDF
+          mergedPdfPath = await mergeAndUploadAttachmentsPDF(editingRequest.id, attachments);
         }
 
         const { data, error } = await supabase
@@ -445,6 +479,7 @@ export function Reimbursement() {
             date_needed: formData.date_needed || null,
             payment_mode_id: formData.payment_mode_id || null,
             attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
+            merged_pdf_path: mergedPdfPath || editingRequest.merged_pdf_path,
             status,
           })
           .eq('id', editingRequest.id)
@@ -489,10 +524,16 @@ export function Reimbursement() {
           setUploadingFiles(true);
           const uploadedAttachments = await uploadAttachments(insertedRequest.id);
 
-          // Update the request with attachment paths
+          // Merge attachments into a single PDF
+          const mergedPdfPath = await mergeAndUploadAttachmentsPDF(insertedRequest.id, attachments);
+
+          // Update the request with attachment paths and merged PDF
           await supabase
             .from('reimbursement_requests')
-            .update({ attachments: uploadedAttachments })
+            .update({
+              attachments: uploadedAttachments,
+              merged_pdf_path: mergedPdfPath
+            })
             .eq('id', insertedRequest.id);
 
           setUploadingFiles(false);
