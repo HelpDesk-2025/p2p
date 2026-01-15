@@ -95,7 +95,7 @@ export function Reimbursement() {
       setSelectedRequestId('');
       setCashAdvance(0);
     }
-  }, [requestType, profile?.id]);
+  }, [requestType, profile?.id, editingRequest?.id]);
 
   const generateDocumentNo = async () => {
     const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
@@ -230,6 +230,34 @@ export function Reimbursement() {
     if (!profile?.id) return;
 
     try {
+      // Get all cash_advance_id values from reimbursement requests that are pending, approved, or reimbursed
+      // Exclude the currently editing request if applicable
+      let query = supabase
+        .from('reimbursement_requests')
+        .select('cash_advance_id, cash_advance_type')
+        .in('status', ['pending', 'approved', 'reimbursed'])
+        .not('cash_advance_id', 'is', null);
+
+      // If editing a request, exclude it from the "used" list
+      if (editingRequest?.id) {
+        query = query.neq('id', editingRequest.id);
+      }
+
+      const { data: usedRequestsData } = await query;
+
+      // Extract the IDs that are already used, grouped by type
+      const usedCashAdvanceIds = new Set(
+        (usedRequestsData || [])
+          .filter(req => req.cash_advance_type === 'Cash Advance')
+          .map(req => req.cash_advance_id)
+      );
+
+      const usedPettyCashIds = new Set(
+        (usedRequestsData || [])
+          .filter(req => req.cash_advance_type === 'Petty Cash')
+          .map(req => req.cash_advance_id)
+      );
+
       // Load approved cash advance requests
       const { data: cashAdvanceData } = await supabase
         .from('cash_advance_requests')
@@ -247,18 +275,22 @@ export function Reimbursement() {
         .eq('request_type', 'For Cash Advance')
         .order('request_date', { ascending: false });
 
-      // Combine and format the data
+      // Filter out already used requests and combine the data
       const combined = [
-        ...(cashAdvanceData || []).map(req => ({
-          ...req,
-          type: 'Cash Advance',
-          display_number: req.ca_number,
-        })),
-        ...(pettyCashData || []).map(req => ({
-          ...req,
-          type: 'Petty Cash',
-          display_number: req.pc_number,
-        })),
+        ...(cashAdvanceData || [])
+          .filter(req => !usedCashAdvanceIds.has(req.id))
+          .map(req => ({
+            ...req,
+            type: 'Cash Advance',
+            display_number: req.ca_number,
+          })),
+        ...(pettyCashData || [])
+          .filter(req => !usedPettyCashIds.has(req.id))
+          .map(req => ({
+            ...req,
+            type: 'Petty Cash',
+            display_number: req.pc_number,
+          })),
       ].sort((a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime());
 
       setApprovedRequests(combined);
