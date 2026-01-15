@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download } from 'luc
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
+import { mergePDFBytes } from '../../lib/pdfMerger';
 
 interface ReimbursementReq {
   id: string;
@@ -447,8 +448,8 @@ export function ReimbursementApproval() {
           // Calculate net amount
           const netAmount = selectedRequest.amount - (selectedRequest.cash_advance || 0);
 
-          // Generate the PDF
-          const pdfBytes = await generateReimbursementForm({
+          // Generate the reimbursement form PDF
+          const reimbursementFormBytes = await generateReimbursementForm({
             reimbNumber: selectedRequest.reimb_number,
             requestType: (selectedRequest as any).request_type || 'Reimbursement',
             requestedBy: selectedRequest.user_profiles?.full_name || 'Unknown',
@@ -466,13 +467,53 @@ export function ReimbursementApproval() {
             approvals: approvals
           });
 
-          // Upload the PDF to Supabase storage
+          // Collect all PDFs to merge in order
+          const pdfsToMerge: Uint8Array[] = [reimbursementFormBytes];
+
+          // Add merged attachments PDF if it exists
+          if (selectedRequest.merged_pdf_path) {
+            try {
+              const { data: attachmentsData, error: attachmentsError } = await supabase.storage
+                .from('attachments')
+                .download(selectedRequest.merged_pdf_path);
+
+              if (!attachmentsError && attachmentsData) {
+                const attachmentsBytes = new Uint8Array(await attachmentsData.arrayBuffer());
+                pdfsToMerge.push(attachmentsBytes);
+              }
+            } catch (attachError) {
+              console.error('Error loading merged attachments:', attachError);
+            }
+          }
+
+          // Add linked approved form PDF if it exists
+          if (linkedRequestDetails?.rfp_pdf_path) {
+            try {
+              const { data: linkedFormData, error: linkedFormError } = await supabase.storage
+                .from('attachments')
+                .download(linkedRequestDetails.rfp_pdf_path);
+
+              if (!linkedFormError && linkedFormData) {
+                const linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
+                pdfsToMerge.push(linkedFormBytes);
+              }
+            } catch (linkedError) {
+              console.error('Error loading linked approved form:', linkedError);
+            }
+          }
+
+          // Merge all PDFs together
+          const mergedPdfBytes = pdfsToMerge.length > 1
+            ? await mergePDFBytes(pdfsToMerge)
+            : reimbursementFormBytes;
+
+          // Upload the merged PDF to Supabase storage
           const fileName = `${selectedRequest.reimb_number}_Approved_Form.pdf`;
           const filePath = `reimbursement-forms/${selectedRequest.reimb_number}/${fileName}`;
 
           const { error: uploadError } = await supabase.storage
             .from('attachments')
-            .upload(filePath, pdfBytes, {
+            .upload(filePath, mergedPdfBytes, {
               contentType: 'application/pdf',
               upsert: true
             });
