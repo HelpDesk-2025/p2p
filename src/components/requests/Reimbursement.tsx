@@ -57,6 +57,7 @@ export function Reimbursement() {
   const [requestType, setRequestType] = useState<'Reimbursement' | 'Liquidation'>('Reimbursement');
   const [approvedRequests, setApprovedRequests] = useState<any[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>('');
+  const [selectedRequestType, setSelectedRequestType] = useState<'Cash Advance' | 'Petty Cash' | ''>('');
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -86,6 +87,7 @@ export function Reimbursement() {
     } else {
       setApprovedRequests([]);
       setSelectedRequestId('');
+      setSelectedRequestType('');
       setCashAdvance(0);
     }
   }, [requestType, profile?.id, editingRequest?.id]);
@@ -320,8 +322,10 @@ export function Reimbursement() {
     const selectedRequest = approvedRequests.find(req => req.id === requestId);
     if (selectedRequest) {
       setCashAdvance(selectedRequest.amount);
+      setSelectedRequestType(selectedRequest.type);
     } else {
       setCashAdvance(0);
+      setSelectedRequestType('');
     }
   };
 
@@ -419,6 +423,7 @@ export function Reimbursement() {
     setRequestType((request as any).request_type || 'Reimbursement');
     setCashAdvance((request as any).cash_advance || 0);
     setSelectedRequestId((request as any).linked_cash_advance_id || '');
+    setSelectedRequestType((request as any).cash_advance_type || '');
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -462,6 +467,7 @@ export function Reimbursement() {
             request_type: requestType,
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
+            cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
             date_needed: formData.date_needed || null,
             attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
             merged_pdf_path: mergedPdfPath || editingRequest.merged_pdf_path,
@@ -493,6 +499,7 @@ export function Reimbursement() {
             request_type: requestType,
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
+            cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
             date_needed: formData.date_needed || null,
             status,
             current_approval_level: 0,
@@ -588,6 +595,7 @@ export function Reimbursement() {
       setRequestType('Reimbursement');
       setCashAdvance(0);
       setSelectedRequestId('');
+      setSelectedRequestType('');
       setApprovedRequests([]);
       setAttachments([]);
       setEditingRequest(null);
