@@ -23,6 +23,8 @@ interface ReimbursementReq {
     description: string;
     amount: number;
   }>;
+  cash_advance?: number;
+  request_type?: string;
   merged_pdf_path?: string;
   user_profiles?: {
     full_name: string;
@@ -590,32 +592,52 @@ export function ReimbursementApproval() {
               {selectedRequest.expense_items && selectedRequest.expense_items.length > 0 && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-2 block">Expense Itemization</label>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50">
+                  <div className="border border-slate-300 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b">
                         <tr>
-                          <th className="px-4 py-2 text-left font-semibold text-slate-700">Date</th>
-                          <th className="px-4 py-2 text-left font-semibold text-slate-700">Description</th>
-                          <th className="px-4 py-2 text-right font-semibold text-slate-700">Amount</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name/Vendor Name</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {selectedRequest.expense_items.map((item, index) => (
-                          <tr key={index} className="hover:bg-slate-50">
-                            <td className="px-4 py-2 text-slate-900">{new Date(item.date).toLocaleDateString()}</td>
-                            <td className="px-4 py-2 text-slate-900">{item.description}</td>
-                            <td className="px-4 py-2 text-right text-slate-900 font-medium">
+                          <tr key={index}>
+                            <td className="px-4 py-2 text-sm text-slate-700">{new Date(item.date).toLocaleDateString()}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.description}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900 font-medium">
                               ₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
                         ))}
-                        <tr className="bg-slate-100 font-semibold">
-                          <td className="px-4 py-2 text-slate-700" colSpan={2}>Total</td>
-                          <td className="px-4 py-2 text-right text-slate-900">
-                            ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t">
+                        <tr>
+                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                            Total Expenditures:
+                          </td>
+                          <td className="px-4 py-2 font-bold text-slate-900">
+                            ₱{selectedRequest.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
-                      </tbody>
+                        <tr>
+                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                            Less: Cash Advance:
+                          </td>
+                          <td className="px-4 py-2 font-semibold text-slate-900">
+                            ₱{(selectedRequest.cash_advance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                        <tr className="border-t-2 border-slate-300">
+                          <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
+                            {(selectedRequest.amount - (selectedRequest.cash_advance || 0)) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
+                          </td>
+                          <td className="px-4 py-2 font-bold text-lg text-slate-900">
+                            ₱{Math.abs(selectedRequest.amount - (selectedRequest.cash_advance || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
