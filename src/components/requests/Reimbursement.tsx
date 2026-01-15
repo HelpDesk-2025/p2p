@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, Edit, Loader2, RefreshCw, Upload, Trash2 } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -10,11 +10,23 @@ interface PaymentMode {
   mode_name: string;
 }
 
+interface ExpenseItem {
+  date: string;
+  description: string;
+  amount: number;
+}
+
+interface Attachment {
+  name: string;
+  path: string;
+  type: string;
+  size: number;
+}
+
 interface ReimbursementReq {
   id: string;
   reimb_number: string;
   request_date: string;
-  expense_date: string;
   purpose: string;
   amount: number;
   status: string;
@@ -22,6 +34,8 @@ interface ReimbursementReq {
   department?: string;
   budgeted?: boolean;
   rfp_pdf_path?: string;
+  expense_items?: ExpenseItem[];
+  attachments?: Attachment[];
 }
 
 export function Reimbursement() {
@@ -39,13 +53,16 @@ export function Reimbursement() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([
+    { date: '', description: '', amount: 0 }
+  ]);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
-    expense_date: '',
-    purpose: '',
-    amount: 0,
     date_needed: '',
+    purpose: '',
     budgeted: true,
     payment_mode_id: '',
   });
@@ -204,18 +221,89 @@ export function Reimbursement() {
     return `RB-${year}${month}-${random}`;
   };
 
+  const addExpenseItem = () => {
+    setExpenseItems([...expenseItems, { date: '', description: '', amount: 0 }]);
+  };
+
+  const removeExpenseItem = (index: number) => {
+    if (expenseItems.length > 1) {
+      setExpenseItems(expenseItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
+    const updated = [...expenseItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setExpenseItems(updated);
+  };
+
+  const calculateTotalExpenditures = () => {
+    return expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+
+      // Validate file types (only images and PDFs)
+      const validFiles = selectedFiles.filter(file => {
+        const type = file.type;
+        return type.startsWith('image/') || type === 'application/pdf';
+      });
+
+      if (validFiles.length !== selectedFiles.length) {
+        alert('Only image and PDF files are allowed');
+      }
+
+      setAttachments(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadAttachments = async (requestId: string) => {
+    const uploadedPaths: Attachment[] = [];
+
+    for (const file of attachments) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${requestId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        throw uploadError;
+      }
+
+      uploadedPaths.push({
+        name: file.name,
+        path: fileName,
+        type: file.type,
+        size: file.size
+      });
+    }
+
+    return uploadedPaths;
+  };
+
   const handleEditDraft = (request: ReimbursementReq) => {
     setEditingRequest(request);
     setFormData({
       document_no: request.reimb_number,
-      payee: request.payee,
-      expense_date: (request as any).expense_date || '',
-      purpose: request.purpose,
-      amount: request.amount,
+      payee: (request as any).payee || '',
       date_needed: (request as any).date_needed || '',
+      purpose: request.purpose,
       budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
       payment_mode_id: (request as any).payment_mode_id || '',
     });
+    setExpenseItems(request.expense_items && request.expense_items.length > 0
+      ? request.expense_items
+      : [{ date: '', description: '', amount: 0 }]
+    );
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -229,19 +317,34 @@ export function Reimbursement() {
     }
     setLoading(true);
     try {
+      const totalAmount = calculateTotalExpenditures();
+
+      if (totalAmount === 0) {
+        alert('Please add at least one expense item with an amount');
+        return;
+      }
+
       let insertedRequest;
 
       if (editingRequest) {
+        // Upload attachments if any
+        let uploadedAttachments: Attachment[] = [];
+        if (attachments.length > 0) {
+          setUploadingFiles(true);
+          uploadedAttachments = await uploadAttachments(editingRequest.id);
+        }
+
         const { data, error } = await supabase
           .from('reimbursement_requests')
           .update({
             payee: formData.payee,
-            expense_date: formData.expense_date,
             purpose: formData.purpose,
-            amount: formData.amount,
+            amount: totalAmount,
+            expense_items: expenseItems,
             date_needed: formData.date_needed || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
+            attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
             status,
           })
           .eq('id', editingRequest.id)
@@ -253,6 +356,8 @@ export function Reimbursement() {
       } else {
         const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
         const department = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
+
+        // First create the request
         const { data, error } = await supabase
           .from('reimbursement_requests')
           .insert({
@@ -262,9 +367,9 @@ export function Reimbursement() {
             department: department,
             request_date: new Date().toISOString().split('T')[0],
             payee: formData.payee,
-            expense_date: formData.expense_date,
             purpose: formData.purpose,
-            amount: formData.amount,
+            amount: totalAmount,
+            expense_items: expenseItems,
             date_needed: formData.date_needed || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
@@ -276,6 +381,20 @@ export function Reimbursement() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        // Upload attachments after creating the request
+        if (attachments.length > 0) {
+          setUploadingFiles(true);
+          const uploadedAttachments = await uploadAttachments(insertedRequest.id);
+
+          // Update the request with attachment paths
+          await supabase
+            .from('reimbursement_requests')
+            .update({ attachments: uploadedAttachments })
+            .eq('id', insertedRequest.id);
+
+          setUploadingFiles(false);
+        }
       }
 
       if (status === 'pending' && insertedRequest) {
@@ -287,7 +406,7 @@ export function Reimbursement() {
           requestDepartment,
           'Reimbursement',
           false,
-          formData.amount
+          totalAmount
         );
 
         // Filter out requester from approval flows
@@ -326,7 +445,7 @@ export function Reimbursement() {
               formData.document_no,
               profile.full_name || 'Unknown',
               profile.department || '',
-              formData.amount,
+              totalAmount,
               'Submitted',
               undefined,
               undefined,
@@ -337,7 +456,9 @@ export function Reimbursement() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', expense_date: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', budgeted: true, payment_mode_id: '' });
+      setExpenseItems([{ date: '', description: '', amount: 0 }]);
+      setAttachments([]);
       setEditingRequest(null);
       loadRequests();
       if (!editingRequest) {
@@ -349,6 +470,7 @@ export function Reimbursement() {
       setLoading(false);
       setSavingDraft(false);
       setSubmitting(false);
+      setUploadingFiles(false);
     }
   };
 
@@ -566,13 +688,12 @@ export function Reimbursement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Expense Date</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date Needed</label>
             <input
               type="date"
-              value={formData.expense_date}
-              onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+              value={formData.date_needed}
+              onChange={(e) => setFormData({ ...formData, date_needed: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              required
             />
           </div>
 
@@ -588,24 +709,138 @@ export function Reimbursement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date Needed</label>
-            <input
-              type="date"
-              value={formData.date_needed}
-              onChange={(e) => setFormData({ ...formData, date_needed: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700">Expense Itemization</label>
+              <button
+                type="button"
+                onClick={addExpenseItem}
+                className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"
+              >
+                <Plus size={16} />
+                Add Item
+              </button>
+            </div>
+            <div className="border border-slate-300 rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Description</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
+                    <th className="px-4 py-2 w-12"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {expenseItems.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-2">
+                        <input
+                          type="date"
+                          value={item.date}
+                          onChange={(e) => updateExpenseItem(index, 'date', e.target.value)}
+                          className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                          required
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updateExpenseItem(index, 'description', e.target.value)}
+                          className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                          placeholder="Enter description"
+                          required
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          value={item.amount}
+                          onChange={(e) => updateExpenseItem(index, 'amount', Number(e.target.value))}
+                          className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                          required
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {expenseItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeExpenseItem(index)}
+                            className="text-red-600 hover:text-red-700 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-slate-50 border-t">
+                  <tr>
+                    <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                      Total Expenditures:
+                    </td>
+                    <td className="px-4 py-2 font-bold text-slate-900">
+                      ₱{calculateTotalExpenditures().toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
-            <input
-              type="number"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              required
-            />
+            <label className="block text-sm font-medium text-slate-700 mb-2">Attachments (Receipts)</label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition">
+                  <Upload size={18} className="text-slate-600" />
+                  <span className="text-sm text-slate-700">Upload Files</span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-slate-500">Images and PDFs only</span>
+              </div>
+
+              {attachments.length > 0 && (
+                <div className="border border-slate-300 rounded-lg divide-y divide-slate-200">
+                  {attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <FileText size={16} className="text-slate-400" />
+                        <span className="text-sm text-slate-700">{file.name}</span>
+                        <span className="text-xs text-slate-500">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="text-red-600 hover:text-red-700 transition"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {uploadingFiles && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Uploading files...</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
