@@ -58,6 +58,7 @@ export function Reimbursement() {
   const [approvedRequests, setApprovedRequests] = useState<any[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>('');
   const [selectedRequestType, setSelectedRequestType] = useState<'Cash Advance' | 'Petty Cash' | ''>('');
+  const [linkedRequestDetails, setLinkedRequestDetails] = useState<any>(null);
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -220,13 +221,13 @@ export function Reimbursement() {
     if (!profile?.id) return;
 
     try {
-      // Get all cash_advance_id values from reimbursement requests that are pending, approved, or reimbursed
+      // Get all linked_cash_advance_id values from reimbursement requests that are pending, approved, or reimbursed
       // Exclude the currently editing request if applicable
       let query = supabase
         .from('reimbursement_requests')
-        .select('cash_advance_id, cash_advance_type')
+        .select('linked_cash_advance_id, cash_advance_type')
         .in('status', ['pending', 'approved', 'reimbursed'])
-        .not('cash_advance_id', 'is', null);
+        .not('linked_cash_advance_id', 'is', null);
 
       // If editing a request, exclude it from the "used" list
       if (editingRequest?.id) {
@@ -239,13 +240,13 @@ export function Reimbursement() {
       const usedCashAdvanceIds = new Set(
         (usedRequestsData || [])
           .filter(req => req.cash_advance_type === 'Cash Advance')
-          .map(req => req.cash_advance_id)
+          .map(req => req.linked_cash_advance_id)
       );
 
       const usedPettyCashIds = new Set(
         (usedRequestsData || [])
           .filter(req => req.cash_advance_type === 'Petty Cash')
-          .map(req => req.cash_advance_id)
+          .map(req => req.linked_cash_advance_id)
       );
 
       // Load approved cash advance requests
@@ -326,6 +327,32 @@ export function Reimbursement() {
     } else {
       setCashAdvance(0);
       setSelectedRequestType('');
+    }
+  };
+
+  const loadLinkedRequestDetails = async (linkedId: string, type: 'Cash Advance' | 'Petty Cash') => {
+    try {
+      if (type === 'Cash Advance') {
+        const { data, error } = await supabase
+          .from('cash_advance_requests')
+          .select('id, ca_number, request_date, amount, purpose')
+          .eq('id', linkedId)
+          .single();
+
+        if (error) throw error;
+        setLinkedRequestDetails({ ...data, type: 'Cash Advance', display_number: data.ca_number });
+      } else if (type === 'Petty Cash') {
+        const { data, error } = await supabase
+          .from('petty_cash_requests')
+          .select('id, pc_number, request_date, amount, purpose')
+          .eq('id', linkedId)
+          .single();
+
+        if (error) throw error;
+        setLinkedRequestDetails({ ...data, type: 'Petty Cash', display_number: data.pc_number });
+      }
+    } catch (error) {
+      console.error('Error loading linked request details:', error);
     }
   };
 
@@ -426,6 +453,7 @@ export function Reimbursement() {
     setSelectedRequestType((request as any).cash_advance_type || '');
     setShowViewModal(false);
     setViewingRequest(null);
+    setLinkedRequestDetails(null);
     setShowForm(true);
   };
 
@@ -694,6 +722,7 @@ export function Reimbursement() {
 
       setShowViewModal(false);
       setViewingRequest(null);
+      setLinkedRequestDetails(null);
       alert('Draft submitted for approval successfully!');
       await loadRequests();
     } catch (error: any) {
@@ -1122,9 +1151,15 @@ export function Reimbursement() {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setViewingRequest(req);
                         setShowViewModal(true);
+                        setLinkedRequestDetails(null);
+
+                        // Load linked request details if this is a liquidation
+                        if ((req as any).request_type === 'Liquidation' && (req as any).linked_cash_advance_id && (req as any).cash_advance_type) {
+                          await loadLinkedRequestDetails((req as any).linked_cash_advance_id, (req as any).cash_advance_type);
+                        }
                       }}
                       className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
@@ -1151,6 +1186,7 @@ export function Reimbursement() {
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingRequest(null);
+                  setLinkedRequestDetails(null);
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
@@ -1194,6 +1230,34 @@ export function Reimbursement() {
                   </span>
                 </div>
               </div>
+
+              {(viewingRequest as any).request_type === 'Liquidation' && linkedRequestDetails && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Linked Request Details</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Type</label>
+                      <p className="text-sm text-slate-900">{linkedRequestDetails.type}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Number</label>
+                      <p className="text-sm text-slate-900 font-mono">{linkedRequestDetails.display_number}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Request Date</label>
+                      <p className="text-sm text-slate-900">{new Date(linkedRequestDetails.request_date).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Amount</label>
+                      <p className="text-sm text-slate-900 font-medium">₱{linkedRequestDetails.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-medium text-slate-600">Purpose</label>
+                      <p className="text-sm text-slate-900">{linkedRequestDetails.purpose}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
@@ -1289,6 +1353,7 @@ export function Reimbursement() {
                 onClick={() => {
                   setShowViewModal(false);
                   setViewingRequest(null);
+                  setLinkedRequestDetails(null);
                 }}
                 className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
               >
