@@ -6,11 +6,6 @@ import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerE
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 
-interface PaymentMode {
-  id: string;
-  mode_name: string;
-}
-
 interface ExpenseItem {
   date: string;
   description: string;
@@ -42,7 +37,6 @@ interface ReimbursementReq {
 export function Reimbursement() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<ReimbursementReq[]>([]);
-  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -68,12 +62,10 @@ export function Reimbursement() {
     payee: '',
     date_needed: '',
     purpose: '',
-    payment_mode_id: '',
   });
 
   useEffect(() => {
     loadRequests();
-    loadPaymentModes();
   }, []);
 
   useEffect(() => {
@@ -220,11 +212,6 @@ export function Reimbursement() {
       : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
 
     setRequests(filteredRequests || []);
-  };
-
-  const loadPaymentModes = async () => {
-    const { data } = await supabase.from('payment_modes').select('*').eq('is_active', true);
-    setPaymentModes(data || []);
   };
 
   const loadApprovedRequestsForLiquidation = async () => {
@@ -424,7 +411,6 @@ export function Reimbursement() {
       payee: (request as any).payee || '',
       date_needed: (request as any).date_needed || '',
       purpose: request.purpose,
-      payment_mode_id: (request as any).payment_mode_id || '',
     });
     setExpenseItems(request.expense_items && request.expense_items.length > 0
       ? request.expense_items
@@ -477,7 +463,6 @@ export function Reimbursement() {
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             date_needed: formData.date_needed || null,
-            payment_mode_id: formData.payment_mode_id || null,
             attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
             merged_pdf_path: mergedPdfPath || editingRequest.merged_pdf_path,
             status,
@@ -509,7 +494,6 @@ export function Reimbursement() {
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             date_needed: formData.date_needed || null,
-            payment_mode_id: formData.payment_mode_id || null,
             status,
             current_approval_level: 0,
           })
@@ -599,7 +583,7 @@ export function Reimbursement() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', payment_mode_id: '' });
+      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '' });
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
       setRequestType('Reimbursement');
       setCashAdvance(0);
@@ -1052,20 +1036,6 @@ export function Reimbursement() {
                 </div>
               )}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
-            <select
-              value={formData.payment_mode_id}
-              onChange={(e) => setFormData({ ...formData, payment_mode_id: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="">Select payment mode</option>
-              {paymentModes.map((mode) => (
-                <option key={mode.id} value={mode.id}>{mode.mode_name}</option>
-              ))}
-            </select>
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
