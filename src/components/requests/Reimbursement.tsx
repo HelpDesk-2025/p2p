@@ -852,6 +852,7 @@ export function Reimbursement() {
             .eq('id', linkedId)
             .single();
 
+          console.log('Cash Advance linked request data:', data);
           if (!error && data) {
             linkedDetails = {
               type: 'Cash Advance',
@@ -861,6 +862,7 @@ export function Reimbursement() {
               purpose: data.purpose
             };
             linkedFormPdfPath = data.approved_ca_pdf_path;
+            console.log('Cash Advance PDF path:', linkedFormPdfPath);
           }
         } else if (linkedType === 'Petty Cash') {
           const { data, error } = await supabase
@@ -869,6 +871,7 @@ export function Reimbursement() {
             .eq('id', linkedId)
             .single();
 
+          console.log('Petty Cash linked request data:', data);
           if (!error && data) {
             linkedDetails = {
               type: 'Petty Cash',
@@ -878,6 +881,7 @@ export function Reimbursement() {
               purpose: data.purpose
             };
             linkedFormPdfPath = data.approved_petty_cash_pdf_path;
+            console.log('Petty Cash PDF path:', linkedFormPdfPath);
           }
         }
       }
@@ -951,18 +955,26 @@ export function Reimbursement() {
 
       // Add linked request form PDF if it exists (for liquidation)
       if (linkedFormPdfPath) {
+        console.log('Attempting to download linked form PDF from path:', linkedFormPdfPath);
         try {
           const { data: linkedFormData, error: linkedFormError } = await supabase.storage
             .from('attachments')
             .download(linkedFormPdfPath);
 
-          if (linkedFormError) throw linkedFormError;
+          if (linkedFormError) {
+            console.error('Error downloading linked form PDF:', linkedFormError);
+            throw linkedFormError;
+          }
 
           const linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
+          console.log('Successfully downloaded linked form PDF, size:', linkedFormBytes.length);
           pdfsToMerge.push(linkedFormBytes);
         } catch (error) {
           console.error('Error downloading linked form PDF:', error);
+          alert(`Failed to include linked ${linkedDetails?.type} form: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+      } else {
+        console.log('No linked form PDF path found');
       }
 
       // Add merged attachments PDF if it exists
