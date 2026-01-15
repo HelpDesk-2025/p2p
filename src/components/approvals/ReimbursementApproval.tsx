@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
 
 interface ReimbursementReq {
   id: string;
@@ -413,6 +414,84 @@ export function ReimbursementApproval() {
           );
         }
       } else if (action === 'approved' && isLastApproval) {
+        // Generate reimbursement form PDF
+        try {
+          // Get all approval records from the ledger
+          const { data: approvalRecords, error: ledgerError } = await supabase
+            .from('approval_ledger')
+            .select('approver_name, approval_date, user_profiles!approval_ledger_approver_id_fkey (esig)')
+            .eq('request_id', selectedRequest.id)
+            .eq('request_type', 'Reimbursement')
+            .eq('status', 'Approved')
+            .order('approval_sequence', { ascending: true });
+
+          if (ledgerError) throw ledgerError;
+
+          // Get requester's esig
+          const { data: requesterData, error: requesterError } = await supabase
+            .from('user_profiles')
+            .select('esig')
+            .eq('id', selectedRequest.requester_id)
+            .single();
+
+          if (requesterError) throw requesterError;
+
+          // Prepare approval records with esig
+          const approvals = (approvalRecords || []).map((record: any, index: number) => ({
+            approver_name: record.approver_name,
+            approver_esig: record.user_profiles?.esig || null,
+            approval_date: record.approval_date,
+            sequence: index + 1
+          }));
+
+          // Calculate net amount
+          const netAmount = selectedRequest.amount - (selectedRequest.cash_advance || 0);
+
+          // Generate the PDF
+          const pdfBytes = await generateReimbursementForm({
+            reimbNumber: selectedRequest.reimb_number,
+            requestType: (selectedRequest as any).request_type || 'Reimbursement',
+            requestedBy: selectedRequest.user_profiles?.full_name || 'Unknown',
+            requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
+            company: selectedRequest.companies?.name || 'N/A',
+            department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+            linkedRequestNumber: linkedRequestDetails?.display_number || undefined,
+            purpose: selectedRequest.purpose,
+            expenseItems: selectedRequest.expense_items || [],
+            totalExpenditures: selectedRequest.amount,
+            cashAdvance: selectedRequest.cash_advance || 0,
+            netAmount: netAmount,
+            payee: selectedRequest.user_profiles?.full_name || 'Unknown',
+            payeeEsig: requesterData.esig || null,
+            approvals: approvals
+          });
+
+          // Upload the PDF to Supabase storage
+          const fileName = `${selectedRequest.reimb_number}_Approved_Form.pdf`;
+          const filePath = `reimbursement-forms/${selectedRequest.reimb_number}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, pdfBytes, {
+              contentType: 'application/pdf',
+              upsert: true
+            });
+
+          if (uploadError) throw uploadError;
+
+          // Update the request with the PDF path
+          const { error: updatePdfError } = await supabase
+            .from('reimbursement_requests')
+            .update({ reimbursement_form_pdf_path: filePath })
+            .eq('id', selectedRequest.id);
+
+          if (updatePdfError) throw updatePdfError;
+
+        } catch (pdfError: any) {
+          console.error('Error generating reimbursement form:', pdfError);
+          // Don't fail the approval if PDF generation fails
+        }
+
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',
@@ -575,7 +654,9 @@ export function ReimbursementApproval() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
-                  <p className="text-slate-900 font-bold">₱{selectedRequest.amount.toLocaleString()}</p>
+                  <p className="text-slate-900 font-bold">
+                    ₱{Math.abs(selectedRequest.amount - (selectedRequest.cash_advance || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>

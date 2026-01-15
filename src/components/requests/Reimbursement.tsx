@@ -30,6 +30,7 @@ interface ReimbursementReq {
   department?: string;
   budgeted?: boolean;
   rfp_pdf_path?: string;
+  reimbursement_form_pdf_path?: string;
   expense_items?: ExpenseItem[];
   attachments?: Attachment[];
 }
@@ -767,6 +768,44 @@ export function Reimbursement() {
     }
   };
 
+  const previewReimbursementForm = async (pdfPath: string, reimbNumber: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing reimbursement form:', error);
+      alert('Failed to preview reimbursement form');
+    }
+  };
+
+  const downloadReimbursementForm = async (pdfPath: string, reimbNumber: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(pdfPath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reimbNumber}_Approved_Form.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading reimbursement form:', error);
+      alert('Failed to download reimbursement form');
+    }
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -1347,6 +1386,24 @@ export function Reimbursement() {
                     <Download size={18} />
                     Download RFP
                   </button>
+                )}
+                {viewingRequest.status === 'approved' && viewingRequest.reimbursement_form_pdf_path && (
+                  <>
+                    <button
+                      onClick={() => previewReimbursementForm(viewingRequest.reimbursement_form_pdf_path!, viewingRequest.reimb_number)}
+                      className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    >
+                      <Eye size={18} />
+                      Preview Form
+                    </button>
+                    <button
+                      onClick={() => downloadReimbursementForm(viewingRequest.reimbursement_form_pdf_path!, viewingRequest.reimb_number)}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Download size={18} />
+                      Download Form
+                    </button>
+                  </>
                 )}
               </div>
               <button
