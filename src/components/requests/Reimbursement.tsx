@@ -840,6 +840,7 @@ export function Reimbursement() {
 
       // Get linked request details if this is a liquidation
       let linkedDetails = null;
+      let linkedFormPdfPath: string | null = null;
       if (fullRequest.request_type === 'Liquidation' && fullRequest.linked_request_id) {
         const linkedType = fullRequest.linked_request_type;
         const linkedId = fullRequest.linked_request_id;
@@ -847,7 +848,7 @@ export function Reimbursement() {
         if (linkedType === 'Cash Advance') {
           const { data, error } = await supabase
             .from('cash_advance_requests')
-            .select('ca_number, request_date, amount, purpose')
+            .select('ca_number, request_date, amount, purpose, cash_advance_form_pdf_path')
             .eq('id', linkedId)
             .single();
 
@@ -859,11 +860,12 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
+            linkedFormPdfPath = data.cash_advance_form_pdf_path;
           }
         } else if (linkedType === 'Petty Cash') {
           const { data, error } = await supabase
             .from('petty_cash_requests')
-            .select('pc_number, request_date, amount, purpose')
+            .select('pc_number, request_date, amount, purpose, petty_cash_form_pdf_path')
             .eq('id', linkedId)
             .single();
 
@@ -875,6 +877,7 @@ export function Reimbursement() {
               amount: data.amount,
               purpose: data.purpose
             };
+            linkedFormPdfPath = data.petty_cash_form_pdf_path;
           }
         }
       }
@@ -945,6 +948,22 @@ export function Reimbursement() {
 
       // Collect all PDFs to merge in order
       const pdfsToMerge: Uint8Array[] = [reimbursementFormBytes];
+
+      // Add linked request form PDF if it exists (for liquidation)
+      if (linkedFormPdfPath) {
+        try {
+          const { data: linkedFormData, error: linkedFormError } = await supabase.storage
+            .from('attachments')
+            .download(linkedFormPdfPath);
+
+          if (linkedFormError) throw linkedFormError;
+
+          const linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
+          pdfsToMerge.push(linkedFormBytes);
+        } catch (error) {
+          console.error('Error downloading linked form PDF:', error);
+        }
+      }
 
       // Add merged attachments PDF if it exists
       if (fullRequest.merged_pdf_path) {

@@ -151,7 +151,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   const itemsPerPage = 8;
   const itemHeight = 15;
   const headerHeight = 20;
-  const footerHeight = 60;
+  const footerHeight = 90;
   const expenseTableHeight = headerHeight + (Math.min(data.expenseItems.length, itemsPerPage) * itemHeight) + footerHeight;
 
   drawBox(margin, yPos - expenseTableHeight, width - 2 * margin, expenseTableHeight);
