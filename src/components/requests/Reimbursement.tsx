@@ -937,7 +937,7 @@ export function Reimbursement() {
         totalExpenditures: fullRequest.amount,
         cashAdvance: fullRequest.cash_advance || 0,
         netAmount: netAmount,
-        payee: requesterData.full_name || 'Unknown',
+        payee: fullRequest.payee || requesterData.full_name || 'Unknown',
         payeeEsig: requesterData.e_sig || null,
         approvals: approvals
       });
