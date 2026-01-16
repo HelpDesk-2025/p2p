@@ -14,6 +14,7 @@ interface ReimbursementReq {
   company_id?: string;
   department?: string;
   request_date: string;
+  payee?: string;
   purpose: string;
   amount: number;
   payment_mode_id?: string;
@@ -28,6 +29,8 @@ interface ReimbursementReq {
   cash_advance?: number;
   request_type?: string;
   merged_pdf_path?: string;
+  linked_cash_advance_id?: string;
+  cash_advance_type?: string;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -472,12 +475,14 @@ export function ReimbursementApproval() {
             company: selectedRequest.companies?.name || 'N/A',
             department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
             linkedRequestNumber: linkedRequestDetails?.display_number || undefined,
+            linkedRequestDate: linkedRequestDetails?.request_date ? new Date(linkedRequestDetails.request_date).toLocaleDateString() : undefined,
+            linkedRequestAmount: linkedRequestDetails?.amount || undefined,
             purpose: selectedRequest.purpose,
             expenseItems: selectedRequest.expense_items || [],
             totalExpenditures: selectedRequest.amount,
             cashAdvance: selectedRequest.cash_advance || 0,
             netAmount: netAmount,
-            payee: selectedRequest.user_profiles?.full_name || 'Unknown',
+            payee: selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'Unknown',
             payeeEsig: requesterData.e_sig || null,
             approvals: approvals
           });

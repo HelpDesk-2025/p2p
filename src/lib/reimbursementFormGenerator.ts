@@ -21,6 +21,8 @@ interface ReimbursementFormData {
   company: string;
   department: string;
   linkedRequestNumber?: string;
+  linkedRequestDate?: string;
+  linkedRequestAmount?: number;
   purpose: string;
   expenseItems: ExpenseItem[];
   totalExpenditures: number;
@@ -151,6 +153,35 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   yPos -= sectionHeight + 10;
 
+  // Linked request details section (for Liquidation requests)
+  if (data.requestType === 'Liquidation' && data.linkedRequestNumber) {
+    const linkedSectionHeight = 60;
+    drawBox(margin, yPos - linkedSectionHeight, width - 2 * margin, linkedSectionHeight);
+
+    let linkedY = yPos - 20;
+
+    drawText('Linked Cash Advance/Petty Cash Request', margin + 10, linkedY, 11, true);
+    linkedY -= 20;
+
+    drawText('Request Number:', leftColX, linkedY, 10, true);
+    drawText(data.linkedRequestNumber, leftColX + valueOffset, linkedY, 10, false);
+
+    if (data.linkedRequestDate) {
+      drawText('Date:', rightColX, linkedY, 10, true);
+      drawText(data.linkedRequestDate, rightColX + 85, linkedY, 10, false);
+    }
+
+    linkedY -= 20;
+
+    if (data.linkedRequestAmount !== undefined) {
+      drawText('Amount:', leftColX, linkedY, 10, true);
+      drawText(`P${data.linkedRequestAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        leftColX + valueOffset, linkedY, 10, false);
+    }
+
+    yPos -= linkedSectionHeight + 10;
+  }
+
   // Expense Itemization section
   const itemsPerPage = 8;
   const itemHeight = 15;
@@ -208,11 +239,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   drawText('Less: Cash Advance:', amountColX - 150, expenseY, 10, true);
   drawText(`P${data.cashAdvance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     amountColX, expenseY, 10, false);
-  expenseY -= 18;
-
-  // Draw final line
-  drawLine(amountColX - 160, expenseY + 5, width - margin - 10, expenseY + 5);
-  expenseY -= 5;
+  expenseY -= 20;
 
   const isReimbursement = data.netAmount >= 0;
   drawText(isReimbursement ? 'Over for Reimbursement:' : 'Excess for Deposit:',
