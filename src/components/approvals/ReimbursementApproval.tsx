@@ -461,12 +461,13 @@ export function ReimbursementApproval() {
             }
           }
 
-          // Get all approval records from the ledger
+          // Get all approval records from the ledger (use actual request type)
+          const actualRequestType = selectedRequest.request_type || 'Reimbursement';
           const { data: approvalRecords, error: ledgerError } = await supabase
             .from('approval_ledger')
             .select('approver_name, approval_date, approver_id')
             .eq('request_id', selectedRequest.id)
-            .eq('request_type', 'Reimbursement')
+            .eq('request_type', actualRequestType)
             .eq('action', 'Approved')
             .order('sequence', { ascending: true });
 
@@ -481,14 +482,11 @@ export function ReimbursementApproval() {
 
           if (profilesError) throw profilesError;
 
-          // Get requester's esig
-          const { data: requesterData, error: requesterError } = await supabase
-            .from('user_profiles')
-            .select('e_sig')
-            .eq('id', selectedRequest.requester_id)
-            .single();
-
-          if (requesterError) throw requesterError;
+          // Use the requester info from the fetched request
+          const requesterData = {
+            full_name: selectedRequest.user_profiles?.full_name || 'Unknown',
+            e_sig: selectedRequest.user_profiles?.e_sig || null
+          };
 
           // Create a map of approver IDs to their e-signatures
           const esigMap = new Map<string, string | null>();
@@ -497,25 +495,27 @@ export function ReimbursementApproval() {
           });
 
           // Prepare approval records with esig
-          const approvals = (approvalRecords || []).map((record: any, index: number) => ({
+          const approvals = (approvalRecords || []).map((record: any) => ({
             approver_name: record.approver_name,
             approver_esig: esigMap.get(record.approver_id) || null,
             approval_date: record.approval_date,
-            sequence: index + 1
           }));
 
           // Calculate net amount
           const netAmount = selectedRequest.amount - (selectedRequest.cash_advance || 0);
 
+          // Get company name
+          const companyName = selectedRequest.companies?.name || 'N/A';
+
           // Generate the reimbursement form PDF
           const reimbursementFormBytes = await generateReimbursementForm({
             reimbNumber: selectedRequest.reimb_number,
-            requestType: (selectedRequest as any).request_type || 'Reimbursement',
-            requestedBy: selectedRequest.user_profiles?.full_name || 'Unknown',
+            requestType: selectedRequest.request_type || 'Reimbursement',
+            requestedBy: requesterData.full_name || 'Unknown',
             requestedByEsig: requesterData.e_sig || null,
             requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
-            company: selectedRequest.companies?.name || 'N/A',
-            department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+            company: companyName,
+            department: selectedRequest.department || 'N/A',
             linkedRequestType: linkedDetails?.type || undefined,
             linkedRequestNumber: linkedDetails?.display_number || undefined,
             linkedRequestDate: linkedDetails?.request_date ? new Date(linkedDetails.request_date).toLocaleDateString() : undefined,

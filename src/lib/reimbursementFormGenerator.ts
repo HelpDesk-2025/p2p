@@ -10,7 +10,6 @@ interface ApprovalRecord {
   approver_name: string;
   approver_esig: string | null;
   approval_date: string;
-  sequence: number;
 }
 
 interface ReimbursementFormData {
