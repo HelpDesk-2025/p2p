@@ -95,7 +95,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   yPos -= 30;
 
   // First section: Request details
-  const sectionHeight = data.linkedRequestNumber ? 160 : 140;
+  const sectionHeight = 140;
   drawBox(margin, yPos - sectionHeight, width - 2 * margin, sectionHeight);
 
   const leftColX = margin + 10;
@@ -119,12 +119,6 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   drawText('Request Type', leftColX, detailY, 10, true);
   drawText(data.requestType, leftColX + valueOffset, detailY, 10, false);
   detailY -= 20;
-
-  if (data.linkedRequestNumber) {
-    drawText('Linked Request', leftColX, detailY, 10, true);
-    drawText(data.linkedRequestNumber, leftColX + valueOffset, detailY, 10, false);
-    detailY -= 20;
-  }
 
   drawText('Purpose', leftColX, detailY, 10, true);
   detailY -= 15;
