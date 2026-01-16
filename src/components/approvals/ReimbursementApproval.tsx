@@ -398,10 +398,6 @@ export function ReimbursementApproval() {
       // Keep track of actual request type for emails and PDF display
       const actualRequestType = selectedRequest.request_type || 'Reimbursement';
 
-      // Wait a moment to ensure the approval ledger entry is committed to the database
-      // This prevents timing issues where the PDF generation queries before the data is available
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
         const nextApproverInfo = await getApproverEmail(
@@ -470,16 +466,48 @@ export function ReimbursementApproval() {
             }
           }
 
-          // Get all approval records from the ledger (always use 'Reimbursement' since that's what we store)
-          const { data: approvalRecords, error: ledgerError } = await supabase
-            .from('approval_ledger')
-            .select('approver_name, approval_date, approver_id')
-            .eq('request_id', selectedRequest.id)
-            .eq('request_type', 'Reimbursement')
-            .eq('action', 'Approved')
-            .order('sequence', { ascending: true });
+          // Wait for and verify all approval records are in the ledger
+          // We need to wait for the database to fully commit all approval entries
+          let approvalRecords: any[] = [];
+          const expectedApprovalCount = approvalFlows.length;
+          let retries = 0;
+          const maxRetries = 10;
 
-          if (ledgerError) throw ledgerError;
+          while (retries < maxRetries) {
+            const { data, error } = await supabase
+              .from('approval_ledger')
+              .select('approver_name, approval_date, approver_id')
+              .eq('request_id', selectedRequest.id)
+              .eq('request_type', 'Reimbursement')
+              .eq('action', 'Approved')
+              .order('sequence', { ascending: true });
+
+            if (error) throw error;
+
+            // Check if we have all expected approvals
+            if (data && data.length >= expectedApprovalCount) {
+              approvalRecords = data;
+              break;
+            }
+
+            // Wait 300ms before retrying
+            await new Promise(resolve => setTimeout(resolve, 300));
+            retries++;
+          }
+
+          // If we still don't have all approvals after retries, use what we have
+          if (approvalRecords.length === 0) {
+            const { data, error: ledgerError } = await supabase
+              .from('approval_ledger')
+              .select('approver_name, approval_date, approver_id')
+              .eq('request_id', selectedRequest.id)
+              .eq('request_type', 'Reimbursement')
+              .eq('action', 'Approved')
+              .order('sequence', { ascending: true });
+
+            if (ledgerError) throw ledgerError;
+            approvalRecords = data || [];
+          }
 
           // Get e-signatures for all approvers
           const approverIds = (approvalRecords || []).map((record: any) => record.approver_id);
