@@ -928,6 +928,7 @@ export function Reimbursement() {
         reimbNumber: fullRequest.reimb_number,
         requestType: fullRequest.request_type || 'Reimbursement',
         requestedBy: requesterData.full_name || 'Unknown',
+        requestedByEsig: requesterData.e_sig || null,
         requestDate: new Date(fullRequest.request_date).toLocaleDateString(),
         company: companyName,
         department: fullRequest.department || 'N/A',
@@ -938,7 +939,6 @@ export function Reimbursement() {
         cashAdvance: fullRequest.cash_advance || 0,
         netAmount: netAmount,
         payee: fullRequest.payee || requesterData.full_name || 'Unknown',
-        payeeEsig: requesterData.e_sig || null,
         approvals: approvals
       });
 

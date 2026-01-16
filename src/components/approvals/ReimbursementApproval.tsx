@@ -471,6 +471,7 @@ export function ReimbursementApproval() {
             reimbNumber: selectedRequest.reimb_number,
             requestType: (selectedRequest as any).request_type || 'Reimbursement',
             requestedBy: selectedRequest.user_profiles?.full_name || 'Unknown',
+            requestedByEsig: requesterData.e_sig || null,
             requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
             company: selectedRequest.companies?.name || 'N/A',
             department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
@@ -483,7 +484,6 @@ export function ReimbursementApproval() {
             cashAdvance: selectedRequest.cash_advance || 0,
             netAmount: netAmount,
             payee: selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'Unknown',
-            payeeEsig: requesterData.e_sig || null,
             approvals: approvals
           });
 

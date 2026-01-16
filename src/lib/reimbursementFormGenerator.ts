@@ -17,6 +17,7 @@ interface ReimbursementFormData {
   reimbNumber: string;
   requestType: string;
   requestedBy: string;
+  requestedByEsig: string | null;
   requestDate: string;
   company: string;
   department: string;
@@ -29,7 +30,6 @@ interface ReimbursementFormData {
   cashAdvance: number;
   netAmount: number;
   payee: string;
-  payeeEsig: string | null;
   approvals: ApprovalRecord[];
 }
 
@@ -260,10 +260,10 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   signatoryY -= 50;
 
-  // Draw payee signature
-  if (data.payeeEsig) {
+  // Draw requester signature
+  if (data.requestedByEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(data.payeeEsig);
+      const esigImage = await pdfDoc.embedPng(data.requestedByEsig);
       const esigDims = esigImage.scale(0.35);
       page.drawImage(esigImage, {
         x: leftColX + 15,
@@ -272,11 +272,11 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
         height: esigDims.height,
       });
     } catch (error) {
-      console.error('Error embedding payee e-signature:', error);
+      console.error('Error embedding requester e-signature:', error);
     }
   }
 
-  drawText(data.payee, leftColX, signatoryY - 30, 9, false);
+  drawText(data.requestedBy, leftColX, signatoryY - 30, 9, false);
   drawText(data.requestDate, leftColX, signatoryY - 45, 8, false);
 
   // Draw approver signatures
