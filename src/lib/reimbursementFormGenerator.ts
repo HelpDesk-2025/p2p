@@ -93,7 +93,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   yPos -= 30;
 
   // First section: Request details
-  const sectionHeight = data.linkedRequestNumber ? 140 : 120;
+  const sectionHeight = data.linkedRequestNumber ? 160 : 140;
   drawBox(margin, yPos - sectionHeight, width - 2 * margin, sectionHeight);
 
   const leftColX = margin + 10;
@@ -102,8 +102,8 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   let detailY = yPos - 20;
 
-  drawText('Requested By', leftColX, detailY, 10, true);
-  drawText(data.requestedBy, leftColX + valueOffset, detailY, 10, false);
+  drawText('Payee', leftColX, detailY, 10, true);
+  drawText(data.payee, leftColX + valueOffset, detailY, 10, false);
   drawText('Date', rightColX, detailY, 10, true);
   drawText(data.requestDate, rightColX + 85, detailY, 10, false);
   detailY -= 20;
@@ -112,6 +112,10 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   drawText(data.company, leftColX + valueOffset, detailY, 10, false);
   drawText('Department', rightColX, detailY, 10, true);
   drawText(data.department, rightColX + 85, detailY, 10, false);
+  detailY -= 20;
+
+  drawText('Request Type', leftColX, detailY, 10, true);
+  drawText(data.requestType, leftColX + valueOffset, detailY, 10, false);
   detailY -= 20;
 
   if (data.linkedRequestNumber) {
@@ -161,9 +165,6 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   // Table header
   drawText('Expense Itemization', margin + 10, expenseY, 11, true);
   expenseY -= headerHeight;
-
-  // Draw table header line
-  drawLine(margin, expenseY + 5, width - margin, expenseY + 5);
 
   // Column headers
   const dateColX = margin + 10;
@@ -232,11 +233,11 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   const colWidth = (width - 2 * margin) / totalApprovers;
 
   // Draw headers
-  drawText('Payee', leftColX, signatoryY, 10, true);
+  drawText('Prepared By', leftColX, signatoryY, 10, true);
 
   for (let i = 0; i < data.approvals.length; i++) {
     const colX = margin + ((i + 1) * colWidth) + 10;
-    const label = i === 0 ? 'Recommended By' : 'Approved By';
+    const label = i === 0 ? 'Approved By' : 'Noted/Checked By';
     drawText(label, colX, signatoryY, 10, true);
   }
 
