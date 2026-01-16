@@ -146,10 +146,6 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   yPos -= sectionHeight + 10;
 
   // Linked request details section (for Liquidation requests)
-  console.log('PDF Generator - Request Type:', data.requestType);
-  console.log('PDF Generator - Linked Request Number:', data.linkedRequestNumber);
-  console.log('PDF Generator - Linked Request Type:', data.linkedRequestType);
-
   if (data.requestType === 'Liquidation' && data.linkedRequestNumber) {
     const linkedSectionHeight = 100;
     drawBox(margin, yPos - linkedSectionHeight, width - 2 * margin, linkedSectionHeight);

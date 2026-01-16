@@ -923,10 +923,6 @@ export function Reimbursement() {
       // Get company name
       const companyName = fullRequest.companies?.name || 'N/A';
 
-      // Debug: Log the request type and linked details
-      console.log('Request Type:', fullRequest.request_type);
-      console.log('Linked Details:', linkedDetails);
-
       // Generate ONLY the reimbursement form PDF (no attachments, no linked forms)
       const reimbursementFormBytes = await generateReimbursementForm({
         reimbNumber: fullRequest.reimb_number,
@@ -1591,17 +1587,19 @@ export function Reimbursement() {
                       <Download size={18} />
                       Download Form
                     </button>
-                    <button
-                      onClick={() => regenerateReimbursementForm(viewingRequest)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                      Regenerate PDF
-                    </button>
+                    {profile?.role === 'admin' && (
+                      <button
+                        onClick={() => regenerateReimbursementForm(viewingRequest)}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                        Regenerate PDF
+                      </button>
+                    )}
                   </>
                 )}
-                {viewingRequest.status === 'approved' && !viewingRequest.reimbursement_form_pdf_path && (
+                {viewingRequest.status === 'approved' && !viewingRequest.reimbursement_form_pdf_path && profile?.role === 'admin' && (
                   <button
                     onClick={() => regenerateReimbursementForm(viewingRequest)}
                     disabled={loading}
