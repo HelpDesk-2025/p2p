@@ -367,8 +367,11 @@ export function ReimbursementApproval() {
 
       if (updateError) throw updateError;
 
+      // Use the actual request type for ledger entries
+      const actualRequestType = selectedRequest.request_type || 'Reimbursement';
+
       await createApprovalLedgerEntry(
-        'Reimbursement',
+        actualRequestType,
         selectedRequest.id,
         selectedRequest.reimb_number,
         profile.id,
@@ -383,7 +386,7 @@ export function ReimbursementApproval() {
 
       if (action === 'rejected') {
         await createRejectedLedgerEntries(
-          'Reimbursement',
+          actualRequestType,
           selectedRequest.id,
           selectedRequest.reimb_number,
           approvalFlows,
@@ -405,7 +408,7 @@ export function ReimbursementApproval() {
           await sendApprovalEmail(
             nextApproverInfo.email,
             nextApproverInfo.name,
-            'Reimbursement',
+            actualRequestType,
             selectedRequest.reimb_number,
             selectedRequest.user_profiles?.full_name || 'Unknown',
             requestDepartment,
@@ -462,7 +465,6 @@ export function ReimbursementApproval() {
           }
 
           // Get all approval records from the ledger (use actual request type)
-          const actualRequestType = selectedRequest.request_type || 'Reimbursement';
           const { data: approvalRecords, error: ledgerError } = await supabase
             .from('approval_ledger')
             .select('approver_name, approval_date, approver_id')
@@ -562,7 +564,7 @@ export function ReimbursementApproval() {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',
-          'Reimbursement',
+          actualRequestType,
           selectedRequest.reimb_number,
           selectedRequest.user_profiles?.full_name || 'Unknown',
           requestDepartment,
@@ -575,7 +577,7 @@ export function ReimbursementApproval() {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',
-          'Reimbursement',
+          actualRequestType,
           selectedRequest.reimb_number,
           selectedRequest.user_profiles?.full_name || 'Unknown',
           requestDepartment,
