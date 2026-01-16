@@ -21,9 +21,11 @@ interface ReimbursementFormData {
   requestDate: string;
   company: string;
   department: string;
+  linkedRequestType?: string;
   linkedRequestNumber?: string;
   linkedRequestDate?: string;
   linkedRequestAmount?: number;
+  linkedRequestPurpose?: string;
   purpose: string;
   expenseItems: ExpenseItem[];
   totalExpenditures: number;
@@ -145,28 +147,43 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   // Linked request details section (for Liquidation requests)
   if (data.requestType === 'Liquidation' && data.linkedRequestNumber) {
-    const linkedSectionHeight = 60;
+    const linkedSectionHeight = 100;
     drawBox(margin, yPos - linkedSectionHeight, width - 2 * margin, linkedSectionHeight);
 
     let linkedY = yPos - 20;
 
-    drawText('Linked Cash Advance/Petty Cash Request', margin + 10, linkedY, 11, true);
+    drawText('Linked Request Details', margin + 10, linkedY, 11, true);
     linkedY -= 20;
 
-    drawText('Request Number:', leftColX, linkedY, 10, true);
-    drawText(data.linkedRequestNumber, leftColX + valueOffset, linkedY, 10, false);
-
-    if (data.linkedRequestDate) {
-      drawText('Date:', rightColX, linkedY, 10, true);
-      drawText(data.linkedRequestDate, rightColX + 85, linkedY, 10, false);
+    if (data.linkedRequestType) {
+      drawText('Type:', leftColX, linkedY, 10, true);
+      drawText(data.linkedRequestType, leftColX + valueOffset, linkedY, 10, false);
     }
 
+    drawText('Number:', rightColX, linkedY, 10, true);
+    drawText(data.linkedRequestNumber, rightColX + 85, linkedY, 10, false);
     linkedY -= 20;
 
+    if (data.linkedRequestDate) {
+      drawText('Request Date:', leftColX, linkedY, 10, true);
+      drawText(data.linkedRequestDate, leftColX + valueOffset, linkedY, 10, false);
+    }
+
     if (data.linkedRequestAmount !== undefined) {
-      drawText('Amount:', leftColX, linkedY, 10, true);
+      drawText('Amount:', rightColX, linkedY, 10, true);
       drawText(`P${data.linkedRequestAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        leftColX + valueOffset, linkedY, 10, false);
+        rightColX + 85, linkedY, 10, false);
+    }
+    linkedY -= 20;
+
+    if (data.linkedRequestPurpose) {
+      drawText('Purpose:', leftColX, linkedY, 10, true);
+      const maxPurposeWidth = width - 2 * margin - valueOffset - 20;
+      const linkedPurpose = data.linkedRequestPurpose;
+      const purposeText = font.widthOfTextAtSize(linkedPurpose, 10) > maxPurposeWidth
+        ? linkedPurpose.substring(0, 60) + '...'
+        : linkedPurpose;
+      drawText(purposeText, leftColX + valueOffset, linkedY, 10, false);
     }
 
     yPos -= linkedSectionHeight + 10;
