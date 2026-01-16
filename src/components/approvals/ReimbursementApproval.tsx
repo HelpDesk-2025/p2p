@@ -398,6 +398,10 @@ export function ReimbursementApproval() {
       // Keep track of actual request type for emails and PDF display
       const actualRequestType = selectedRequest.request_type || 'Reimbursement';
 
+      // Wait a moment to ensure the approval ledger entry is committed to the database
+      // This prevents timing issues where the PDF generation queries before the data is available
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
         const nextApproverInfo = await getApproverEmail(
