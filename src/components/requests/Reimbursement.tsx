@@ -839,9 +839,9 @@ export function Reimbursement() {
 
       // Get linked request details if this is a liquidation
       let linkedDetails = null;
-      if (fullRequest.request_type === 'Liquidation' && fullRequest.linked_request_id) {
-        const linkedType = fullRequest.linked_request_type;
-        const linkedId = fullRequest.linked_request_id;
+      if (fullRequest.request_type === 'Liquidation' && fullRequest.linked_cash_advance_id) {
+        const linkedType = fullRequest.cash_advance_type;
+        const linkedId = fullRequest.linked_cash_advance_id;
 
         if (linkedType === 'Cash Advance') {
           const { data, error } = await supabase
@@ -922,6 +922,10 @@ export function Reimbursement() {
 
       // Get company name
       const companyName = fullRequest.companies?.name || 'N/A';
+
+      // Debug: Log the request type and linked details
+      console.log('Request Type:', fullRequest.request_type);
+      console.log('Linked Details:', linkedDetails);
 
       // Generate ONLY the reimbursement form PDF (no attachments, no linked forms)
       const reimbursementFormBytes = await generateReimbursementForm({
