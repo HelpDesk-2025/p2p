@@ -420,6 +420,48 @@ export function ReimbursementApproval() {
       } else if (action === 'approved' && isLastApproval) {
         // Generate reimbursement form PDF
         try {
+          // Get linked request details if this is a liquidation
+          let linkedDetails = null;
+          if (selectedRequest.request_type === 'Liquidation' && selectedRequest.linked_cash_advance_id) {
+            const linkedType = selectedRequest.cash_advance_type;
+            const linkedId = selectedRequest.linked_cash_advance_id;
+
+            if (linkedType === 'Cash Advance') {
+              const { data, error } = await supabase
+                .from('cash_advance_requests')
+                .select('ca_number, request_date, amount, purpose, rfp_pdf_path')
+                .eq('id', linkedId)
+                .single();
+
+              if (!error && data) {
+                linkedDetails = {
+                  type: 'Cash Advance',
+                  display_number: data.ca_number,
+                  request_date: data.request_date,
+                  amount: data.amount,
+                  purpose: data.purpose,
+                  rfp_pdf_path: data.rfp_pdf_path
+                };
+              }
+            } else if (linkedType === 'Petty Cash') {
+              const { data, error } = await supabase
+                .from('petty_cash_requests')
+                .select('pc_number, request_date, amount, purpose')
+                .eq('id', linkedId)
+                .single();
+
+              if (!error && data) {
+                linkedDetails = {
+                  type: 'Petty Cash',
+                  display_number: data.pc_number,
+                  request_date: data.request_date,
+                  amount: data.amount,
+                  purpose: data.purpose
+                };
+              }
+            }
+          }
+
           // Get all approval records from the ledger
           const { data: approvalRecords, error: ledgerError } = await supabase
             .from('approval_ledger')
@@ -475,11 +517,11 @@ export function ReimbursementApproval() {
             requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
             company: selectedRequest.companies?.name || 'N/A',
             department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
-            linkedRequestType: linkedRequestDetails?.type || undefined,
-            linkedRequestNumber: linkedRequestDetails?.display_number || undefined,
-            linkedRequestDate: linkedRequestDetails?.request_date ? new Date(linkedRequestDetails.request_date).toLocaleDateString() : undefined,
-            linkedRequestAmount: linkedRequestDetails?.amount || undefined,
-            linkedRequestPurpose: linkedRequestDetails?.purpose || undefined,
+            linkedRequestType: linkedDetails?.type || undefined,
+            linkedRequestNumber: linkedDetails?.display_number || undefined,
+            linkedRequestDate: linkedDetails?.request_date ? new Date(linkedDetails.request_date).toLocaleDateString() : undefined,
+            linkedRequestAmount: linkedDetails?.amount || undefined,
+            linkedRequestPurpose: linkedDetails?.purpose || undefined,
             purpose: selectedRequest.purpose,
             expenseItems: selectedRequest.expense_items || [],
             totalExpenditures: selectedRequest.amount,
@@ -509,11 +551,11 @@ export function ReimbursementApproval() {
           }
 
           // Add linked approved form PDF if it exists
-          if (linkedRequestDetails?.rfp_pdf_path) {
+          if (linkedDetails?.rfp_pdf_path) {
             try {
               const { data: linkedFormData, error: linkedFormError } = await supabase.storage
                 .from('attachments')
-                .download(linkedRequestDetails.rfp_pdf_path);
+                .download(linkedDetails.rfp_pdf_path);
 
               if (!linkedFormError && linkedFormData) {
                 const linkedFormBytes = new Uint8Array(await linkedFormData.arrayBuffer());
