@@ -398,7 +398,9 @@ export function ReimbursementApproval() {
       // Keep track of actual request type for emails and PDF display
       const actualRequestType = selectedRequest.request_type || 'Reimbursement';
 
+      // Handle email notifications first (separate from PDF generation)
       if (action === 'approved' && !isLastApproval) {
+        // Send email to next approver
         const nextApprover = approvalFlows[nextLevel];
         const nextApproverInfo = await getApproverEmail(
           nextApprover,
@@ -421,7 +423,42 @@ export function ReimbursementApproval() {
             nextApproverInfo.name
           );
         }
+      } else if (action === 'rejected') {
+        // Send rejection email to requester
+        await sendApprovalEmail(
+          selectedRequest.user_profiles?.email || '',
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          actualRequestType,
+          selectedRequest.reimb_number,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          requestDepartment,
+          selectedRequest.amount,
+          'Rejected',
+          profile.full_name || 'Unknown',
+          comments
+        );
       } else if (action === 'approved' && isLastApproval) {
+        // Send final approval email to requester
+        await sendApprovalEmail(
+          selectedRequest.user_profiles?.email || '',
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          actualRequestType,
+          selectedRequest.reimb_number,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          requestDepartment,
+          selectedRequest.amount,
+          'Fully Approved',
+          profile.full_name || 'Unknown',
+          comments
+        );
+      }
+
+      // NOW generate the PDF as the absolute LAST step (only for final approval)
+      if (action === 'approved' && isLastApproval) {
+        // Wait to ensure all database transactions are committed
+        // This is critical for the approval ledger entries to be fully persisted
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         // Generate reimbursement form PDF
         try {
           // Get linked request details if this is a liquidation
@@ -471,7 +508,9 @@ export function ReimbursementApproval() {
           let approvalRecords: any[] = [];
           const expectedApprovalCount = approvalFlows.length;
           let retries = 0;
-          const maxRetries = 10;
+          const maxRetries = 15; // Increased from 10
+
+          console.log(`Waiting for ${expectedApprovalCount} approval records...`);
 
           while (retries < maxRetries) {
             const { data, error } = await supabase
@@ -482,22 +521,31 @@ export function ReimbursementApproval() {
               .eq('action', 'Approved')
               .order('sequence', { ascending: true });
 
-            if (error) throw error;
+            if (error) {
+              console.error('Error fetching approval records:', error);
+              throw error;
+            }
+
+            console.log(`Attempt ${retries + 1}: Found ${data?.length || 0} approval records`);
 
             // Check if we have all expected approvals
             if (data && data.length >= expectedApprovalCount) {
               approvalRecords = data;
+              console.log('All approval records found!');
               break;
             }
 
-            // Wait 300ms before retrying
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Wait 500ms before retrying (increased from 300ms)
+            await new Promise(resolve => setTimeout(resolve, 500));
             retries++;
           }
 
-          // If we still don't have all approvals after retries, use what we have
-          if (approvalRecords.length === 0) {
-            const { data, error: ledgerError } = await supabase
+          // If we still don't have enough records, log a warning and use what we have
+          if (approvalRecords.length < expectedApprovalCount) {
+            console.warn(`Only found ${approvalRecords.length} of ${expectedApprovalCount} expected approval records after ${retries} retries`);
+
+            // One final attempt to fetch the records
+            const { data: finalData, error: finalError } = await supabase
               .from('approval_ledger')
               .select('approver_name, approval_date, approver_id')
               .eq('request_id', selectedRequest.id)
@@ -505,8 +553,10 @@ export function ReimbursementApproval() {
               .eq('action', 'Approved')
               .order('sequence', { ascending: true });
 
-            if (ledgerError) throw ledgerError;
-            approvalRecords = data || [];
+            if (!finalError && finalData) {
+              approvalRecords = finalData;
+              console.log(`Final attempt: Found ${finalData.length} approval records`);
+            }
           }
 
           // Get e-signatures for all approvers
@@ -594,32 +644,6 @@ export function ReimbursementApproval() {
           console.error('Error generating reimbursement form:', pdfError);
           // Don't fail the approval if PDF generation fails
         }
-
-        await sendApprovalEmail(
-          selectedRequest.user_profiles?.email || '',
-          selectedRequest.user_profiles?.full_name || 'User',
-          actualRequestType,
-          selectedRequest.reimb_number,
-          selectedRequest.user_profiles?.full_name || 'Unknown',
-          requestDepartment,
-          selectedRequest.amount,
-          'Fully Approved',
-          profile.full_name || 'Unknown',
-          comments
-        );
-      } else if (action === 'rejected') {
-        await sendApprovalEmail(
-          selectedRequest.user_profiles?.email || '',
-          selectedRequest.user_profiles?.full_name || 'User',
-          actualRequestType,
-          selectedRequest.reimb_number,
-          selectedRequest.user_profiles?.full_name || 'Unknown',
-          requestDepartment,
-          selectedRequest.amount,
-          'Rejected',
-          profile.full_name || 'Unknown',
-          comments
-        );
       }
 
       setShowModal(false);
