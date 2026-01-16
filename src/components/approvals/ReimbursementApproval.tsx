@@ -70,7 +70,7 @@ export function ReimbursementApproval() {
       .from('reimbursement_requests')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id, department),
+        user_profiles:requester_id (full_name, email, company_id, department, e_sig),
         companies!reimbursement_requests_company_id_fkey (id, name),
         request_type,
         linked_cash_advance_id,
