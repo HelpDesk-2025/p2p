@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -19,12 +19,20 @@ interface PettyCashReq {
   request_type?: string;
   status: string;
   current_approval_level: number;
-  attachments?: any[];
+  attachments?: Array<{
+    file_name: string;
+    file_path: string;
+    file_type: string;
+  }>;
   user_profiles?: {
     full_name: string;
     email: string;
     company_id: string;
     department?: string;
+  };
+  companies?: {
+    id: string;
+    name: string;
   };
 }
 
@@ -319,6 +327,44 @@ export function PettyCashApproval() {
     }
   };
 
+  const downloadAttachment = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(filePath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('Failed to download attachment');
+    }
+  };
+
+  const previewAttachment = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(filePath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing attachment:', error);
+      alert('Failed to preview attachment');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -457,6 +503,38 @@ export function PettyCashApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Attached Reimbursement/Liquidation Form
+                  </label>
+                  {selectedRequest.attachments.map((attachment: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                      <div className="flex items-center gap-2">
+                        <Paperclip size={18} className="text-blue-600" />
+                        <span className="text-sm text-slate-700">{attachment.file_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewAttachment(attachment.file_path)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                        >
+                          <Eye size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadAttachment(attachment.file_path, attachment.file_name)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <ApprovalProgressTracker
                 requestType="Petty Cash"

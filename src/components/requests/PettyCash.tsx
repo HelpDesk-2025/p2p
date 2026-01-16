@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
+import { PDFDocument } from 'pdf-lib';
 
 interface PaymentMode {
   id: string;
@@ -27,6 +28,11 @@ interface PettyCashReq {
   received_by?: string;
   approved_petty_cash_pdf_path?: string;
   request_type?: string;
+  attachments?: Array<{
+    file_name: string;
+    file_path: string;
+    file_type: string;
+  }>;
 }
 
 export function PettyCash() {
@@ -55,6 +61,8 @@ export function PettyCash() {
     request_type: 'For Cash Advance',
   });
   const [amountError, setAmountError] = useState('');
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState('');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -72,6 +80,69 @@ export function PettyCash() {
       setAmountError('');
     }
     setFormData({ ...formData, amount: value });
+  };
+
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setAttachmentFile(null);
+      setAttachmentError('');
+      return;
+    }
+
+    // Check if file is PDF or image
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setAttachmentError('Please upload a PDF or image file (JPG, JPEG, PNG)');
+      setAttachmentFile(null);
+      return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setAttachmentError('File size must be less than 10MB');
+      setAttachmentFile(null);
+      return;
+    }
+
+    setAttachmentFile(file);
+    setAttachmentError('');
+  };
+
+  const convertImageToPDF = async (imageFile: File): Promise<Uint8Array> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const imageBytes = event.target?.result as ArrayBuffer;
+          const pdfDoc = await PDFDocument.create();
+
+          let image;
+          if (imageFile.type === 'image/jpeg' || imageFile.type === 'image/jpg') {
+            image = await pdfDoc.embedJpg(imageBytes);
+          } else if (imageFile.type === 'image/png') {
+            image = await pdfDoc.embedPng(imageBytes);
+          } else {
+            throw new Error('Unsupported image type');
+          }
+
+          const page = pdfDoc.addPage([image.width, image.height]);
+          page.drawImage(image, {
+            x: 0,
+            y: 0,
+            width: image.width,
+            height: image.height,
+          });
+
+          const pdfBytes = await pdfDoc.save();
+          resolve(pdfBytes);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read image file'));
+      reader.readAsArrayBuffer(imageFile);
+    });
   };
 
   useEffect(() => {
@@ -253,6 +324,12 @@ export function PettyCash() {
       return;
     }
 
+    // Validate attachment for "For Reimbursement/Liquidation" type
+    if (formData.request_type === 'For Reimbursement/Liquidation' && !attachmentFile && !editingRequest) {
+      alert('Please upload the approved reimbursement/liquidation form');
+      return;
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -307,6 +384,54 @@ export function PettyCash() {
 
         if (error) throw error;
         insertedRequest = data;
+      }
+
+      // Upload attachment if present
+      if (attachmentFile && insertedRequest) {
+        let fileToUpload: Blob | Uint8Array = attachmentFile;
+        let fileName = attachmentFile.name;
+        let fileType = attachmentFile.type;
+
+        // Convert image to PDF if needed
+        if (attachmentFile.type.startsWith('image/')) {
+          try {
+            const pdfBytes = await convertImageToPDF(attachmentFile);
+            fileToUpload = new Blob([pdfBytes], { type: 'application/pdf' });
+            // Change file extension to .pdf
+            fileName = fileName.replace(/\.(jpg|jpeg|png)$/i, '.pdf');
+            fileType = 'application/pdf';
+          } catch (conversionError) {
+            console.error('Error converting image to PDF:', conversionError);
+            throw new Error('Failed to convert image to PDF. Please try again.');
+          }
+        }
+
+        // Upload to storage
+        const timestamp = Date.now();
+        const filePath = `petty-cash-attachments/${insertedRequest.id}_${timestamp}_${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, fileToUpload, {
+            contentType: fileType,
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Update request with attachment info
+        const attachmentData = [{
+          file_name: fileName,
+          file_path: filePath,
+          file_type: fileType
+        }];
+
+        const { error: updateError } = await supabase
+          .from('petty_cash_requests')
+          .update({ attachments: attachmentData })
+          .eq('id', insertedRequest.id);
+
+        if (updateError) throw updateError;
       }
 
       if (status === 'pending' && insertedRequest) {
@@ -371,6 +496,8 @@ export function PettyCash() {
       setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '', request_type: 'For Cash Advance' });
       setEditingRequest(null);
       setAmountError('');
+      setAttachmentFile(null);
+      setAttachmentError('');
       loadRequests();
       if (!editingRequest) {
         generateDocumentNo();
@@ -599,6 +726,44 @@ export function PettyCash() {
     }
   };
 
+  const downloadAttachment = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(filePath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('Failed to download attachment');
+    }
+  };
+
+  const previewAttachment = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(filePath);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing attachment:', error);
+      alert('Failed to preview attachment');
+    }
+  };
+
   const downloadApprovedPettyCash = async (pdfPath: string, pcNumber: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -814,7 +979,14 @@ export function PettyCash() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
             <select
               value={formData.request_type}
-              onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, request_type: e.target.value });
+                // Clear attachment if switching away from Reimbursement/Liquidation
+                if (e.target.value !== 'For Reimbursement/Liquidation') {
+                  setAttachmentFile(null);
+                  setAttachmentError('');
+                }
+              }}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
               required
             >
@@ -822,6 +994,49 @@ export function PettyCash() {
               <option value="For Reimbursement/Liquidation">For Reimbursement/Liquidation</option>
             </select>
           </div>
+
+          {formData.request_type === 'For Reimbursement/Liquidation' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Approved Reimbursement/Liquidation Form
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <p className="text-xs text-slate-600 mb-3">
+                Upload the approved reimbursement or liquidation form (PDF or image file)
+              </p>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                  <Upload size={18} className="text-slate-600" />
+                  <span className="text-sm text-slate-700">Choose File</span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/jpg,image/png"
+                    onChange={handleAttachmentChange}
+                    className="hidden"
+                  />
+                </label>
+                {attachmentFile && (
+                  <div className="flex items-center gap-2 text-sm text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-300">
+                    <Paperclip size={16} className="text-blue-600" />
+                    <span className="truncate max-w-xs">{attachmentFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentFile(null);
+                        setAttachmentError('');
+                      }}
+                      className="text-red-500 hover:text-red-700 ml-2"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {attachmentError && (
+                <p className="mt-2 text-sm text-red-600">{attachmentError}</p>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Purpose / Particulars</label>
@@ -1071,6 +1286,38 @@ export function PettyCash() {
                 <label className="text-sm font-semibold text-slate-700">Purpose / Particulars</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
+
+              {viewingRequest.attachments && viewingRequest.attachments.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Attached Reimbursement/Liquidation Form
+                  </label>
+                  {viewingRequest.attachments.map((attachment, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                      <div className="flex items-center gap-2">
+                        <Paperclip size={18} className="text-blue-600" />
+                        <span className="text-sm text-slate-700">{attachment.file_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewAttachment(attachment.file_path)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                        >
+                          <Eye size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadAttachment(attachment.file_path, attachment.file_name)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
