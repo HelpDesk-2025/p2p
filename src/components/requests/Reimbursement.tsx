@@ -878,13 +878,12 @@ export function Reimbursement() {
         }
       }
 
-      // Get all approval records from the ledger (use actual request type)
-      const actualRequestType = fullRequest.request_type || 'Reimbursement';
+      // Get all approval records from the ledger (always use 'Reimbursement' since that's what we store)
       const { data: approvalRecords, error: ledgerError } = await supabase
         .from('approval_ledger')
         .select('approver_name, approval_date, approver_id')
         .eq('request_id', fullRequest.id)
-        .eq('request_type', actualRequestType)
+        .eq('request_type', 'Reimbursement')
         .eq('action', 'Approved')
         .order('sequence', { ascending: true });
 

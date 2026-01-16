@@ -367,11 +367,10 @@ export function ReimbursementApproval() {
 
       if (updateError) throw updateError;
 
-      // Use the actual request type for ledger entries
-      const actualRequestType = selectedRequest.request_type || 'Reimbursement';
-
+      // For approval ledger, always use 'Reimbursement' (Liquidation is a type of Reimbursement)
+      // The approval_ledger table constraint only allows specific values
       await createApprovalLedgerEntry(
-        actualRequestType,
+        'Reimbursement',
         selectedRequest.id,
         selectedRequest.reimb_number,
         profile.id,
@@ -386,7 +385,7 @@ export function ReimbursementApproval() {
 
       if (action === 'rejected') {
         await createRejectedLedgerEntries(
-          actualRequestType,
+          'Reimbursement',
           selectedRequest.id,
           selectedRequest.reimb_number,
           approvalFlows,
@@ -395,6 +394,9 @@ export function ReimbursementApproval() {
           requestDepartment
         );
       }
+
+      // Keep track of actual request type for emails and PDF display
+      const actualRequestType = selectedRequest.request_type || 'Reimbursement';
 
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
@@ -464,12 +466,12 @@ export function ReimbursementApproval() {
             }
           }
 
-          // Get all approval records from the ledger (use actual request type)
+          // Get all approval records from the ledger (always use 'Reimbursement' since that's what we store)
           const { data: approvalRecords, error: ledgerError } = await supabase
             .from('approval_ledger')
             .select('approver_name, approval_date, approver_id')
             .eq('request_id', selectedRequest.id)
-            .eq('request_type', actualRequestType)
+            .eq('request_type', 'Reimbursement')
             .eq('action', 'Approved')
             .order('sequence', { ascending: true });
 
