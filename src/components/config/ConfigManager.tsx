@@ -1649,7 +1649,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
   const [formData, setFormData] = useState({
     name: '',
     api_id: '',
-    president_min_amount: '0'
+    president_min_amount: '0',
+    accounting_notification_email: ''
   });
   const [departments, setDepartments] = useState<any[]>([]);
   const [showDepartments, setShowDepartments] = useState<string | null>(null);
@@ -1660,21 +1661,23 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
         const { error } = await supabase.from('companies').update({
           name: formData.name,
           api_id: formData.api_id || null,
-          president_min_amount: parseFloat(formData.president_min_amount) || 0
+          president_min_amount: parseFloat(formData.president_min_amount) || 0,
+          accounting_notification_email: formData.accounting_notification_email || null
         }).eq('id', editingId);
         if (error) throw error;
       } else {
         const payload = {
           name: formData.name,
           api_id: formData.api_id || null,
-          president_min_amount: parseFloat(formData.president_min_amount) || 0
+          president_min_amount: parseFloat(formData.president_min_amount) || 0,
+          accounting_notification_email: formData.accounting_notification_email || null
         };
         const { error } = await supabase.from('companies').insert(payload);
         if (error) throw error;
       }
       setShowForm(false);
       setEditingId(null);
-      setFormData({ name: '', api_id: '', president_min_amount: '0' });
+      setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -1686,7 +1689,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
     setFormData({
       name: company.name,
       api_id: company.api_id || '',
-      president_min_amount: company.president_min_amount?.toString() || '0'
+      president_min_amount: company.president_min_amount?.toString() || '0',
+      accounting_notification_email: company.accounting_notification_email || ''
     });
     setShowForm(true);
   };
@@ -1694,7 +1698,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: '', approver_president: '', approver_email: '', president_min_amount: '0' });
+    setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '' });
   };
 
   const handleDelete = async (id: string) => {
@@ -1798,6 +1802,18 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
               </div>
               <p className="text-xs text-slate-500">Amounts above this require president approval</p>
             </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Accounting Notification Email</label>
+              <input
+                type="email"
+                placeholder="accounting@example.com"
+                value={formData.accounting_notification_email}
+                onChange={(e) => setFormData({ ...formData, accounting_notification_email: e.target.value })}
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+              <p className="text-xs text-slate-500">Email address to notify when requests are posted to MSBC</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
@@ -1828,13 +1844,19 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
                   {company.api_id && (
                     <div className="mt-1 text-xs text-slate-500 font-mono bg-slate-50 inline-block px-2 py-0.5 rounded">API: {company.api_id}</div>
                   )}
-                  <div className="mt-3">
+                  <div className="mt-3 space-y-1">
                     <div className="text-sm">
                       <span className="font-semibold text-slate-700">President Minimum Approval Amount:</span>
                       <span className="ml-2 text-slate-600 font-mono">
                         ₱{company.president_min_amount ? parseFloat(company.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                       </span>
                     </div>
+                    {company.accounting_notification_email && (
+                      <div className="text-sm">
+                        <span className="font-semibold text-slate-700">Accounting Email:</span>
+                        <span className="ml-2 text-slate-600">{company.accounting_notification_email}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
