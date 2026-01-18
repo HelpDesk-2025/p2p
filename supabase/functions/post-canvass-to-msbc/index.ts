@@ -48,8 +48,8 @@ Deno.serve(async (req: Request) => {
       .from('canvass_requests')
       .select(`
         *,
-        requester:user_profiles!requester_id(full_name),
-        company:companies!company_id(id, name, api_id),
+        requester:user_profiles!requester_id(full_name, email),
+        company:companies!company_id(id, name, api_id, accounting_notification_email),
         pr:purchase_requisitions!pr_id(purpose, required_date)
       `)
       .eq('id', canvassId)
@@ -271,6 +271,55 @@ Deno.serve(async (req: Request) => {
       .eq('id', canvassId);
 
     console.log('🎉 MSBC posting completed successfully!');
+
+    console.log('📧 Sending email notifications...');
+    const emailRecipients: string[] = [];
+
+    if (canvass.requester?.email) {
+      emailRecipients.push(canvass.requester.email);
+    }
+
+    if (canvass.company?.accounting_notification_email) {
+      emailRecipients.push(canvass.company.accounting_notification_email);
+    }
+
+    const totalAmount = canvass.suppliers?.[canvass.recommended_quotation_index ?? 0]?.items?.reduce(
+      (sum: number, item: any) => sum + parseFloat(item.amount || 0),
+      0
+    ) || 0;
+
+    for (const recipient of emailRecipients) {
+      try {
+        const emailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-approval-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: recipient,
+            subject: `Canvass ${canvass.canvass_number} Posted to MSBC`,
+            recipientName: recipient === canvass.requester?.email ? canvass.requester?.full_name : 'Accounting Team',
+            requestType: 'Canvass Request',
+            documentNo: canvass.canvass_number,
+            requesterName: canvass.requester?.full_name || 'N/A',
+            department: 'N/A',
+            totalAmount: totalAmount,
+            action: 'Posted to MSBC',
+            actionBy: 'System',
+            comments: `Invoice ID: ${invoiceID}`,
+          }),
+        });
+
+        if (emailResponse.ok) {
+          console.log(`✅ Email sent to ${recipient}`);
+        } else {
+          console.warn(`⚠️ Failed to send email to ${recipient}`);
+        }
+      } catch (emailError) {
+        console.warn(`⚠️ Email notification error for ${recipient}:`, emailError);
+      }
+    }
 
     return new Response(
       JSON.stringify({

@@ -43,8 +43,8 @@ Deno.serve(async (req: Request) => {
       .from('purchase_requisitions')
       .select(`
         *,
-        requester:user_profiles!requester_id(full_name),
-        company:companies!company_id(id, name, api_id)
+        requester:user_profiles!requester_id(full_name, email),
+        company:companies!company_id(id, name, api_id, accounting_notification_email)
       `)
       .eq('id', requestId)
       .single();
@@ -298,6 +298,50 @@ Deno.serve(async (req: Request) => {
       .eq('id', requestId);
 
     console.log('🎉 MSBC posting completed successfully!');
+
+    console.log('📧 Sending email notifications...');
+    const emailRecipients: string[] = [];
+
+    if (pr.requester?.email) {
+      emailRecipients.push(pr.requester.email);
+    }
+
+    if (pr.company?.accounting_notification_email) {
+      emailRecipients.push(pr.company.accounting_notification_email);
+    }
+
+    for (const recipient of emailRecipients) {
+      try {
+        const emailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-approval-email`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: recipient,
+            subject: `Purchase Requisition ${pr.document_no} Posted to MSBC`,
+            recipientName: recipient === pr.requester?.email ? pr.requester?.full_name : 'Accounting Team',
+            requestType: 'Purchase Requisition',
+            documentNo: pr.document_no,
+            requesterName: pr.requester?.full_name || 'N/A',
+            department: pr.department || 'N/A',
+            totalAmount: parseFloat(pr.amount_net_vat || 0),
+            action: 'Posted to MSBC',
+            actionBy: 'System',
+            comments: `Journal Batch ID: ${parentID}`,
+          }),
+        });
+
+        if (emailResponse.ok) {
+          console.log(`✅ Email sent to ${recipient}`);
+        } else {
+          console.warn(`⚠️ Failed to send email to ${recipient}`);
+        }
+      } catch (emailError) {
+        console.warn(`⚠️ Email notification error for ${recipient}:`, emailError);
+      }
+    }
 
     return new Response(
       JSON.stringify({
