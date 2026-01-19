@@ -326,7 +326,7 @@ export function PettyCash() {
 
     // Validate attachment for "For Reimbursement" or "For Liquidation" type
     if ((formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') && !attachmentFile && !editingRequest) {
-      alert('Please upload the approved reimbursement/liquidation form');
+      alert('Please upload receipts');
       return;
     }
 
@@ -999,11 +999,11 @@ export function PettyCash() {
           {(formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Approved Reimbursement/Liquidation Form
+                Upload Receipts
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <p className="text-xs text-slate-600 mb-3">
-                Upload the approved reimbursement or liquidation form (PDF or image file)
+                Upload receipts or supporting documents (PDF or image file)
               </p>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition">
@@ -1291,7 +1291,7 @@ export function PettyCash() {
               {viewingRequest.attachments && viewingRequest.attachments.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Attached Reimbursement/Liquidation Form
+                    Attached Receipts
                   </label>
                   {viewingRequest.attachments.map((attachment, index) => (
                     <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
