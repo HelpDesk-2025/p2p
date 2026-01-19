@@ -35,6 +35,8 @@ interface PettyCashReq {
   approved_petty_cash_pdf_path?: string;
   request_type?: string;
   expense_items?: ExpenseItem[];
+  linked_petty_cash_id?: string;
+  petty_cash_advance?: number;
   attachments?: Array<{
     file_name: string;
     file_path: string;
@@ -73,6 +75,9 @@ export function PettyCash() {
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([
     { date: '', description: '', amount: 0 }
   ]);
+  const [approvedPettyCashRequests, setApprovedPettyCashRequests] = useState<any[]>([]);
+  const [selectedPettyCashId, setSelectedPettyCashId] = useState<string>('');
+  const [pettyCashAdvance, setPettyCashAdvance] = useState<number>(0);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -192,6 +197,16 @@ export function PettyCash() {
     }
   }, [selectedCompanyId]);
 
+  useEffect(() => {
+    if (formData.request_type === 'For Liquidation') {
+      loadApprovedPettyCashForLiquidation();
+    } else {
+      setApprovedPettyCashRequests([]);
+      setSelectedPettyCashId('');
+      setPettyCashAdvance(0);
+    }
+  }, [formData.request_type, profile?.id, editingRequest?.id]);
+
   const generateDocumentNo = async () => {
     const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
     if (!companyId) {
@@ -208,6 +223,61 @@ export function PettyCash() {
       setFormData(prev => ({ ...prev, document_no: data }));
     } catch (error) {
       console.error('Error generating document number:', error);
+    }
+  };
+
+  const loadApprovedPettyCashForLiquidation = async () => {
+    if (!profile?.id) return;
+
+    try {
+      // Get all linked_petty_cash_id values from petty cash requests that are pending, approved, or received
+      // Exclude the currently editing request if applicable
+      let query = supabase
+        .from('petty_cash_requests')
+        .select('linked_petty_cash_id')
+        .in('status', ['pending', 'approved', 'received'])
+        .eq('request_type', 'For Liquidation')
+        .not('linked_petty_cash_id', 'is', null);
+
+      // If editing a request, exclude it from the "used" list
+      if (editingRequest?.id) {
+        query = query.neq('id', editingRequest.id);
+      }
+
+      const { data: usedRequestsData } = await query;
+
+      // Extract the IDs that are already used
+      const usedPettyCashIds = new Set(
+        (usedRequestsData || []).map(req => req.linked_petty_cash_id)
+      );
+
+      // Load approved petty cash requests with request_type = 'For Cash Advance'
+      const { data: pettyCashData } = await supabase
+        .from('petty_cash_requests')
+        .select('id, pc_number, request_date, amount, purpose, request_type')
+        .eq('requester_id', profile.id)
+        .eq('status', 'approved')
+        .eq('request_type', 'For Cash Advance')
+        .order('request_date', { ascending: false });
+
+      // Filter out already used requests
+      const available = (pettyCashData || [])
+        .filter(req => !usedPettyCashIds.has(req.id))
+        .sort((a, b) => new Date(b.request_date).getTime() - new Date(a.request_date).getTime());
+
+      setApprovedPettyCashRequests(available);
+    } catch (error) {
+      console.error('Error loading approved petty cash requests:', error);
+    }
+  };
+
+  const handlePettyCashSelection = (requestId: string) => {
+    setSelectedPettyCashId(requestId);
+    const selectedRequest = approvedPettyCashRequests.find(req => req.id === requestId);
+    if (selectedRequest) {
+      setPettyCashAdvance(selectedRequest.amount);
+    } else {
+      setPettyCashAdvance(0);
     }
   };
 
@@ -349,6 +419,9 @@ export function PettyCash() {
     } else {
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
     }
+    // Initialize linked petty cash for liquidation
+    setPettyCashAdvance((request as any).petty_cash_advance || 0);
+    setSelectedPettyCashId((request as any).linked_petty_cash_id || '');
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -412,6 +485,8 @@ export function PettyCash() {
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
             expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
+            linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
+            petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
             status,
           })
           .eq('id', editingRequest.id)
@@ -439,6 +514,8 @@ export function PettyCash() {
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
             expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
+            linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
+            petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
             status,
             current_approval_level: 0,
           })
@@ -562,6 +639,9 @@ export function PettyCash() {
       setAttachmentFile(null);
       setAttachmentError('');
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
+      setSelectedPettyCashId('');
+      setPettyCashAdvance(0);
+      setApprovedPettyCashRequests([]);
       loadRequests();
       if (!editingRequest) {
         generateDocumentNo();
@@ -958,6 +1038,9 @@ export function PettyCash() {
             setEditingRequest(null);
             setAmountError('');
             setExpenseItems([{ date: '', description: '', amount: 0 }]);
+            setSelectedPettyCashId('');
+            setPettyCashAdvance(0);
+            setApprovedPettyCashRequests([]);
           }} className="px-4 py-2 text-slate-600">
             Cancel
           </button>
@@ -1119,6 +1202,29 @@ export function PettyCash() {
             />
           </div>
 
+          {formData.request_type === 'For Liquidation' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <label className="block text-sm font-medium text-slate-700">
+                Select Approved Petty Cash (For Cash Advance)
+              </label>
+              <select
+                value={selectedPettyCashId}
+                onChange={(e) => handlePettyCashSelection(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              >
+                <option value="">Select a petty cash to liquidate</option>
+                {approvedPettyCashRequests.map((req) => (
+                  <option key={req.id} value={req.id}>
+                    {req.pc_number} | ₱{req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} | {new Date(req.request_date).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+              {approvedPettyCashRequests.length === 0 && (
+                <p className="text-sm text-amber-600">No approved petty cash (For Cash Advance) available for liquidation.</p>
+              )}
+            </div>
+          )}
+
           {formData.request_type === 'For Liquidation' ? (
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -1197,6 +1303,24 @@ export function PettyCash() {
                       </td>
                       <td className="px-4 py-2 font-bold text-slate-900">
                         ₱{calculateTotalExpenditures().toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td></td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                        Less: Petty Cash Advance:
+                      </td>
+                      <td className="px-4 py-2 font-semibold text-slate-900">
+                        ₱{pettyCashAdvance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td></td>
+                    </tr>
+                    <tr className="border-t-2 border-slate-300">
+                      <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
+                        {(calculateTotalExpenditures() - pettyCashAdvance) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
+                      </td>
+                      <td className="px-4 py-2 font-bold text-lg text-slate-900">
+                        ₱{Math.abs(calculateTotalExpenditures() - pettyCashAdvance).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td></td>
                     </tr>
@@ -1492,6 +1616,26 @@ export function PettyCash() {
                             {formatCurrency(viewingRequest.amount)}
                           </td>
                         </tr>
+                        {viewingRequest.petty_cash_advance && (
+                          <>
+                            <tr>
+                              <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                                Less: Petty Cash Advance:
+                              </td>
+                              <td className="px-4 py-2 font-semibold text-slate-900">
+                                {formatCurrency(viewingRequest.petty_cash_advance)}
+                              </td>
+                            </tr>
+                            <tr className="border-t-2 border-slate-300">
+                              <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
+                                {(viewingRequest.amount - viewingRequest.petty_cash_advance) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
+                              </td>
+                              <td className="px-4 py-2 font-bold text-lg text-slate-900">
+                                {formatCurrency(Math.abs(viewingRequest.amount - viewingRequest.petty_cash_advance))}
+                              </td>
+                            </tr>
+                          </>
+                        )}
                       </tfoot>
                     </table>
                   </div>
