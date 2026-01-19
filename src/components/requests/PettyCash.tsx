@@ -42,6 +42,7 @@ interface PettyCashReq {
   id: string;
   pc_number: string;
   request_date: string;
+  date_of_transactions?: string;
   purpose: string;
   amount: number;
   status: string;
@@ -86,6 +87,7 @@ export function PettyCash() {
     purpose: '',
     amount: 0,
     date_needed: '',
+    date_of_transactions: '',
     budgeted: true,
     payment_mode_id: '',
     request_type: 'For Cash Advance',
@@ -504,6 +506,7 @@ export function PettyCash() {
       purpose: request.purpose,
       amount: request.amount,
       date_needed: (request as any).date_needed || '',
+      date_of_transactions: request.date_of_transactions || '',
       budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
       payment_mode_id: (request as any).payment_mode_id || '',
       request_type: request.request_type || 'For Cash Advance',
@@ -579,6 +582,7 @@ export function PettyCash() {
             purpose: formData.purpose,
             amount: finalAmount,
             date_needed: formData.date_needed || null,
+            date_of_transactions: formData.date_of_transactions || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
@@ -609,6 +613,7 @@ export function PettyCash() {
             purpose: formData.purpose,
             amount: finalAmount,
             date_needed: formData.date_needed || null,
+            date_of_transactions: formData.date_of_transactions || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
@@ -733,7 +738,7 @@ export function PettyCash() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', budgeted: true, payment_mode_id: '', request_type: 'For Cash Advance' });
+      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', date_of_transactions: '', budgeted: true, payment_mode_id: '', request_type: 'For Cash Advance', no_of_pax: 0 });
       setEditingRequest(null);
       setAmountError('');
       setAttachmentFile(null);
@@ -1252,6 +1257,16 @@ export function PettyCash() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date of Transactions</label>
+            <input
+              type="date"
+              value={formData.date_of_transactions}
+              onChange={(e) => setFormData({ ...formData, date_of_transactions: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
             <select
               value={formData.request_type}
@@ -1611,9 +1626,11 @@ export function PettyCash() {
               purpose: '',
               amount: 0,
               date_needed: '',
+              date_of_transactions: '',
               budgeted: true,
               payment_mode_id: '',
               request_type: 'For Cash Advance',
+              no_of_pax: 0,
             });
             generateDocumentNo();
           }}
@@ -1771,6 +1788,14 @@ export function PettyCash() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Date of Transactions</label>
+                  <p className="text-slate-900">
+                    {viewingRequest.date_of_transactions
+                      ? new Date(viewingRequest.date_of_transactions).toLocaleDateString()
+                      : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Company</label>

@@ -12,6 +12,7 @@ interface PettyCashReq {
   company_id?: string;
   department?: string;
   request_date: string;
+  date_of_transactions?: string;
   purpose: string;
   amount: number;
   payment_mode_id?: string;
@@ -485,6 +486,14 @@ export function PettyCashApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Date</label>
                   <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Date of Transactions</label>
+                  <p className="text-slate-900">
+                    {selectedRequest.date_of_transactions
+                      ? new Date(selectedRequest.date_of_transactions).toLocaleDateString()
+                      : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">To / Receipient</label>
