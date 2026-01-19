@@ -2569,7 +2569,11 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
     name: '',
     description: '',
     is_active: true,
+    sub_items: [] as { name: string; description: string }[]
   });
+  const [newSubItem, setNewSubItem] = useState({ name: '', description: '' });
+  const [editingSubItemIndex, setEditingSubItemIndex] = useState<number | null>(null);
+  const [editingSubItemData, setEditingSubItemData] = useState({ name: '', description: '' });
 
   const handleAdd = async () => {
     try {
@@ -2578,6 +2582,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
           name: formData.name,
           description: formData.description,
           is_active: formData.is_active,
+          sub_items: formData.sub_items,
         }).eq('id', editingId);
         if (error) throw error;
       } else {
@@ -2585,6 +2590,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
           name: formData.name,
           description: formData.description,
           is_active: formData.is_active,
+          sub_items: formData.sub_items,
         });
         if (error) throw error;
       }
@@ -2594,6 +2600,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
         name: '',
         description: '',
         is_active: true,
+        sub_items: []
       });
       reload();
     } catch (error: any) {
@@ -2607,6 +2614,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
       name: item.name,
       description: item.description || '',
       is_active: item.is_active,
+      sub_items: item.sub_items || []
     });
     setShowForm(true);
   };
@@ -2618,7 +2626,54 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
       name: '',
       description: '',
       is_active: true,
+      sub_items: []
     });
+  };
+
+  const addSubItem = () => {
+    if (!newSubItem.name.trim()) {
+      alert('Please enter a sub-item name');
+      return;
+    }
+    setFormData({
+      ...formData,
+      sub_items: [...formData.sub_items, { ...newSubItem }]
+    });
+    setNewSubItem({ name: '', description: '' });
+  };
+
+  const removeSubItem = (index: number) => {
+    setFormData({
+      ...formData,
+      sub_items: formData.sub_items.filter((_, i) => i !== index)
+    });
+    if (editingSubItemIndex === index) {
+      setEditingSubItemIndex(null);
+    }
+  };
+
+  const startEditingSubItem = (index: number) => {
+    setEditingSubItemIndex(index);
+    setEditingSubItemData({ ...formData.sub_items[index] });
+  };
+
+  const saveSubItemEdit = (index: number) => {
+    if (!editingSubItemData.name.trim()) {
+      alert('Please enter a sub-item name');
+      return;
+    }
+    const updatedSubItems = [...formData.sub_items];
+    updatedSubItems[index] = { ...editingSubItemData };
+    setFormData({
+      ...formData,
+      sub_items: updatedSubItems
+    });
+    setEditingSubItemIndex(null);
+  };
+
+  const cancelSubItemEdit = () => {
+    setEditingSubItemIndex(null);
+    setEditingSubItemData({ name: '', description: '' });
   };
 
   const handleDelete = async (id: string) => {
@@ -2683,6 +2738,105 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
             <span className="text-sm text-slate-700">Active</span>
           </label>
 
+          <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-medium text-slate-900">Sub-Items</h3>
+
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Sub-Item Name"
+                  value={newSubItem.name}
+                  onChange={(e) => setNewSubItem({ ...newSubItem, name: e.target.value })}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Description (Optional)"
+                  value={newSubItem.description}
+                  onChange={(e) => setNewSubItem({ ...newSubItem, description: e.target.value })}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={addSubItem}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                <Plus size={16} className="inline mr-1" />
+                Add Sub-Item
+              </button>
+            </div>
+
+            {formData.sub_items.length > 0 && (
+              <div className="space-y-2">
+                {formData.sub_items.map((subItem, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded">
+                    {editingSubItemIndex === idx ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editingSubItemData.name}
+                          onChange={(e) => setEditingSubItemData({ ...editingSubItemData, name: e.target.value })}
+                          className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                          placeholder="Name"
+                        />
+                        <input
+                          type="text"
+                          value={editingSubItemData.description}
+                          onChange={(e) => setEditingSubItemData({ ...editingSubItemData, description: e.target.value })}
+                          className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
+                          placeholder="Description"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => saveSubItemEdit(idx)}
+                          className="text-green-600 hover:text-green-800"
+                          title="Save"
+                        >
+                          <Save size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelSubItemEdit}
+                          className="text-slate-600 hover:text-slate-800"
+                          title="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-1">
+                          <div className="text-sm text-slate-900 font-medium">{subItem.name}</div>
+                          {subItem.description && (
+                            <div className="text-xs text-slate-600">{subItem.description}</div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => startEditingSubItem(idx)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Edit"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeSubItem(idx)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <button onClick={handleAdd} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               {editingId ? 'Update' : 'Save'}
@@ -2700,6 +2854,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Sub-Items</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
             </tr>
@@ -2709,6 +2864,20 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
               <tr key={item.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4 text-sm text-slate-900 font-medium">{item.name}</td>
                 <td className="px-6 py-4 text-sm text-slate-600">{item.description || '-'}</td>
+                <td className="px-6 py-4 text-sm text-slate-600">
+                  {item.sub_items && item.sub_items.length > 0 ? (
+                    <div className="space-y-1">
+                      {item.sub_items.map((subItem: any, idx: number) => (
+                        <div key={idx} className="text-xs">
+                          <span className="font-medium">{subItem.name}</span>
+                          {subItem.description && <span className="text-slate-500"> - {subItem.description}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    '-'
+                  )}
+                </td>
                 <td className="px-6 py-4 text-sm">
                   <span className={`px-2 py-1 rounded-full text-xs ${item.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                     {item.is_active ? 'Active' : 'Inactive'}
