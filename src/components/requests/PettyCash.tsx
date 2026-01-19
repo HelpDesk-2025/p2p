@@ -324,8 +324,8 @@ export function PettyCash() {
       return;
     }
 
-    // Validate attachment for "For Reimbursement/Liquidation" type
-    if (formData.request_type === 'For Reimbursement/Liquidation' && !attachmentFile && !editingRequest) {
+    // Validate attachment for "For Reimbursement" or "For Liquidation" type
+    if ((formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') && !attachmentFile && !editingRequest) {
       alert('Please upload the approved reimbursement/liquidation form');
       return;
     }
@@ -982,7 +982,7 @@ export function PettyCash() {
               onChange={(e) => {
                 setFormData({ ...formData, request_type: e.target.value });
                 // Clear attachment if switching away from Reimbursement/Liquidation
-                if (e.target.value !== 'For Reimbursement/Liquidation') {
+                if (e.target.value !== 'For Reimbursement' && e.target.value !== 'For Liquidation') {
                   setAttachmentFile(null);
                   setAttachmentError('');
                 }
@@ -991,11 +991,12 @@ export function PettyCash() {
               required
             >
               <option value="For Cash Advance">For Cash Advance</option>
-              <option value="For Reimbursement/Liquidation">For Reimbursement/Liquidation</option>
+              <option value="For Reimbursement">For Reimbursement</option>
+              <option value="For Liquidation">For Liquidation</option>
             </select>
           </div>
 
-          {formData.request_type === 'For Reimbursement/Liquidation' && (
+          {(formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Approved Reimbursement/Liquidation Form
