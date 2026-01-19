@@ -483,6 +483,11 @@ export function Reimbursement() {
         return;
       }
 
+      if (totalAmount < 5000) {
+        alert('Total Expenditures must not be lower than ₱5,000.00');
+        return;
+      }
+
       let insertedRequest;
 
       if (editingRequest) {
@@ -1079,7 +1084,7 @@ export function Reimbursement() {
           {requestType === 'Liquidation' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
               <label className="block text-sm font-medium text-slate-700">
-                Select Approved Cash Advance/Petty Cash Request
+                Select Approved Cash Advance
               </label>
               <select
                 value={selectedRequestId}
@@ -1087,15 +1092,15 @@ export function Reimbursement() {
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 required={requestType === 'Liquidation'}
               >
-                <option value="">Select a request to liquidate</option>
-                {approvedRequests.map((req) => (
+                <option value="">Select a cash advance to liquidate</option>
+                {approvedRequests.filter(req => req.type === 'Cash Advance').map((req) => (
                   <option key={req.id} value={req.id}>
-                    {req.type} - {req.display_number} | ₱{req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} | {new Date(req.request_date).toLocaleDateString()}
+                    {req.display_number} | ₱{req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} | {new Date(req.request_date).toLocaleDateString()}
                   </option>
                 ))}
               </select>
-              {approvedRequests.length === 0 && (
-                <p className="text-sm text-amber-600">No approved cash advance or petty cash requests available for liquidation.</p>
+              {approvedRequests.filter(req => req.type === 'Cash Advance').length === 0 && (
+                <p className="text-sm text-amber-600">No approved cash advance requests available for liquidation.</p>
               )}
             </div>
           )}
