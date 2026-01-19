@@ -4,7 +4,12 @@ interface PettyCashFormData {
   pcNumber: string;
   recipient: string;
   requestDate: string;
-  particulars: string;
+  requestType: string;
+  purpose: string;
+  noOfPax: number;
+  dateOfTransaction: string;
+  company: string;
+  department: string;
   amount: number;
   approvedByName: string;
   approvedByEsig: string | null;
@@ -105,28 +110,60 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   drawLine(margin, yPos - contentHeight, margin + boxWidth, yPos - contentHeight);
   drawLine(midX, yPos, midX, yPos - contentHeight);
 
-  // Draw particulars (word wrap)
-  const maxParticularWidth = boxWidth / 2 - 30;
-  const particularWords = data.particulars.split(' ');
-  let currentLine = '';
-  let particularY = yPos - 30;
+  // Draw particulars with label-value pairs
+  let particularY = yPos - 20;
+  const labelX = margin + 15;
+  const valueX = margin + 110;
+  const lineSpacing = 16;
 
-  for (const word of particularWords) {
-    const testLine = currentLine + (currentLine ? ' ' : '') + word;
-    const lineWidth = font.widthOfTextAtSize(testLine, 12);
+  // Type of Request
+  drawText('Type of Request :', labelX, particularY, 10, false);
+  drawText(data.requestType, valueX, particularY, 10, false);
+  particularY -= lineSpacing;
 
-    if (lineWidth > maxParticularWidth && currentLine !== '') {
-      drawText(currentLine, margin + 15, particularY, 12, false);
-      currentLine = word;
-      particularY -= 18;
+  // Purpose (with word wrap if needed)
+  drawText('Purpose :', labelX, particularY, 10, false);
+  const maxPurposeWidth = boxWidth / 2 - 130;
+  const purposeWords = data.purpose.split(' ');
+  let currentPurposeLine = '';
+  let purposeY = particularY;
+
+  for (const word of purposeWords) {
+    const testLine = currentPurposeLine + (currentPurposeLine ? ' ' : '') + word;
+    const lineWidth = font.widthOfTextAtSize(testLine, 10);
+
+    if (lineWidth > maxPurposeWidth && currentPurposeLine !== '') {
+      drawText(currentPurposeLine, valueX, purposeY, 10, false);
+      currentPurposeLine = word;
+      purposeY -= lineSpacing;
     } else {
-      currentLine = testLine;
+      currentPurposeLine = testLine;
     }
   }
 
-  if (currentLine) {
-    drawText(currentLine, margin + 15, particularY, 12, false);
+  if (currentPurposeLine) {
+    drawText(currentPurposeLine, valueX, purposeY, 10, false);
   }
+  particularY = purposeY - lineSpacing;
+
+  // No. Pax
+  drawText('No. Pax :', labelX, particularY, 10, false);
+  drawText(data.noOfPax.toString(), valueX, particularY, 10, false);
+  particularY -= lineSpacing;
+
+  // Date of Transaction
+  drawText('Date of Transaction :', labelX, particularY, 10, false);
+  drawText(data.dateOfTransaction, valueX, particularY, 10, false);
+  particularY -= lineSpacing;
+
+  // Company
+  drawText('Company :', labelX, particularY, 10, false);
+  drawText(data.company, valueX, particularY, 10, false);
+  particularY -= lineSpacing;
+
+  // Department
+  drawText('Department :', labelX, particularY, 10, false);
+  drawText(data.department, valueX, particularY, 10, false);
 
   // Draw amount
   const amountStr = data.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

@@ -895,12 +895,26 @@ export function PettyCash() {
 
       const firstApprover = ledgerData[0];
 
+      // Get company name
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', request.company_id || profile.company_id)
+        .single();
+
       // Generate approved petty cash PDF
       const pdfBytes = await generatePettyCashForm({
         pcNumber: request.pc_number,
         recipient: request.payee || profile.full_name || 'Unknown',
         requestDate: new Date(request.request_date).toLocaleDateString(),
-        particulars: request.purpose,
+        requestType: request.request_type || 'For Cash Advance',
+        purpose: request.purpose,
+        noOfPax: request.no_of_pax || 0,
+        dateOfTransaction: request.date_of_transactions
+          ? new Date(request.date_of_transactions).toLocaleDateString()
+          : 'N/A',
+        company: companyData?.name || profile.company_name || 'Unknown',
+        department: request.department || profile.department || 'Unknown',
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
         approvedByEsig: firstApprover.user_profiles?.e_sig || null,
@@ -1096,11 +1110,25 @@ export function PettyCash() {
 
       const firstApprover = ledgerData[0];
 
+      // Get company name
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', request.company_id || profile.company_id)
+        .single();
+
       const pdfBytes = await generatePettyCashForm({
         pcNumber: request.pc_number,
         recipient: request.payee || profile.full_name || 'Unknown',
         requestDate: new Date(request.request_date).toLocaleDateString(),
-        particulars: request.purpose,
+        requestType: request.request_type || 'For Cash Advance',
+        purpose: request.purpose,
+        noOfPax: request.no_of_pax || 0,
+        dateOfTransaction: request.date_of_transactions
+          ? new Date(request.date_of_transactions).toLocaleDateString()
+          : 'N/A',
+        company: companyData?.name || profile.company_name || 'Unknown',
+        department: request.department || profile.department || 'Unknown',
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
         approvedByEsig: firstApprover.user_profiles?.e_sig || null,
