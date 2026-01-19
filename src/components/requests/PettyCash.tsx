@@ -857,6 +857,11 @@ export function PettyCash() {
   };
 
   const handleReceivePettyCash = async (request: PettyCashReq) => {
+    if (request.request_type !== 'For Reimbursement' && request.request_type !== 'For Cash Advance') {
+      alert('Receive cash functionality is only available for "For Reimbursement" and "For Cash Advance" request types.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to mark this petty cash as received? This will generate the approved petty cash form.')) {
       return;
     }
@@ -1054,6 +1059,11 @@ export function PettyCash() {
   };
 
   const handleRegenerateApprovedPettyCash = async (request: PettyCashReq) => {
+    if (request.request_type !== 'For Reimbursement' && request.request_type !== 'For Cash Advance') {
+      alert('Petty cash form generation is only available for "For Reimbursement" and "For Cash Advance" request types.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to regenerate the approved petty cash form? This will replace the existing document.')) {
       return;
     }
@@ -1736,7 +1746,7 @@ export function PettyCash() {
                 />
               )}
 
-              {viewingRequest.status === 'approved' && !viewingRequest.received_at && (
+              {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
@@ -1748,7 +1758,7 @@ export function PettyCash() {
                 </div>
               )}
 
-              {viewingRequest.status === 'approved' && viewingRequest.received_at && (
+              {viewingRequest.status === 'approved' && viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
                   <div>
@@ -1959,7 +1969,7 @@ export function PettyCash() {
                     </button>
                   </>
                 )}
-                {viewingRequest.status === 'approved' && !viewingRequest.received_at && (
+                {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
                   <button
                     onClick={() => handleReceivePettyCash(viewingRequest)}
                     disabled={loading}
@@ -1969,7 +1979,7 @@ export function PettyCash() {
                     {loading ? 'Processing...' : 'Receive Cash'}
                   </button>
                 )}
-                {viewingRequest.status === 'approved' && viewingRequest.received_at && viewingRequest.approved_petty_cash_pdf_path && (
+                {viewingRequest.status === 'approved' && viewingRequest.received_at && viewingRequest.approved_petty_cash_pdf_path && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
                   <>
                     <button
                       onClick={() => previewApprovedPettyCash(viewingRequest.approved_petty_cash_pdf_path!)}
