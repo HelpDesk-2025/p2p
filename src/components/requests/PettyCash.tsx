@@ -33,6 +33,7 @@ interface ExpenseType {
   sub_items: Array<{
     name: string;
     description: string;
+    status: string;
   }>;
 }
 
@@ -1342,7 +1343,12 @@ export function PettyCash() {
                   return (
                     <div key={idx} className="flex items-center gap-2">
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-slate-900">{subItem.name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-medium text-slate-900">{subItem.name}</div>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${subItem.status === 'Pre Identify' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                            {subItem.status || 'Pre Identify'}
+                          </span>
+                        </div>
                         {subItem.description && (
                           <div className="text-xs text-slate-600">{subItem.description}</div>
                         )}

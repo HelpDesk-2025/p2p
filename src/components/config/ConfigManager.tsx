@@ -2569,11 +2569,11 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
     name: '',
     description: '',
     is_active: true,
-    sub_items: [] as { name: string; description: string }[]
+    sub_items: [] as { name: string; description: string; status: string }[]
   });
-  const [newSubItem, setNewSubItem] = useState({ name: '', description: '' });
+  const [newSubItem, setNewSubItem] = useState({ name: '', description: '', status: 'Pre Identify' });
   const [editingSubItemIndex, setEditingSubItemIndex] = useState<number | null>(null);
-  const [editingSubItemData, setEditingSubItemData] = useState({ name: '', description: '' });
+  const [editingSubItemData, setEditingSubItemData] = useState({ name: '', description: '', status: 'Pre Identify' });
 
   const handleAdd = async () => {
     try {
@@ -2639,7 +2639,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
       ...formData,
       sub_items: [...formData.sub_items, { ...newSubItem }]
     });
-    setNewSubItem({ name: '', description: '' });
+    setNewSubItem({ name: '', description: '', status: 'Pre Identify' });
   };
 
   const removeSubItem = (index: number) => {
@@ -2673,7 +2673,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
 
   const cancelSubItemEdit = () => {
     setEditingSubItemIndex(null);
-    setEditingSubItemData({ name: '', description: '' });
+    setEditingSubItemData({ name: '', description: '', status: 'Pre Identify' });
   };
 
   const handleDelete = async (id: string) => {
@@ -2742,7 +2742,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
             <h3 className="text-sm font-medium text-slate-900">Sub-Items</h3>
 
             <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <input
                   type="text"
                   placeholder="Sub-Item Name"
@@ -2757,6 +2757,14 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
                   onChange={(e) => setNewSubItem({ ...newSubItem, description: e.target.value })}
                   className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
                 />
+                <select
+                  value={newSubItem.status}
+                  onChange={(e) => setNewSubItem({ ...newSubItem, status: e.target.value })}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                >
+                  <option value="Pre Identify">Pre Identify</option>
+                  <option value="Specify">Specify</option>
+                </select>
               </div>
               <button
                 type="button"
@@ -2788,6 +2796,14 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
                           className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
                           placeholder="Description"
                         />
+                        <select
+                          value={editingSubItemData.status}
+                          onChange={(e) => setEditingSubItemData({ ...editingSubItemData, status: e.target.value })}
+                          className="px-2 py-1 border border-slate-300 rounded text-sm"
+                        >
+                          <option value="Pre Identify">Pre Identify</option>
+                          <option value="Specify">Specify</option>
+                        </select>
                         <button
                           type="button"
                           onClick={() => saveSubItemEdit(idx)}
@@ -2813,6 +2829,9 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
                             <div className="text-xs text-slate-600">{subItem.description}</div>
                           )}
                         </div>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${subItem.status === 'Pre Identify' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                          {subItem.status || 'Pre Identify'}
+                        </span>
                         <button
                           type="button"
                           onClick={() => startEditingSubItem(idx)}
@@ -2868,9 +2887,12 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
                   {item.sub_items && item.sub_items.length > 0 ? (
                     <div className="space-y-1">
                       {item.sub_items.map((subItem: any, idx: number) => (
-                        <div key={idx} className="text-xs">
+                        <div key={idx} className="text-xs flex items-center gap-2">
                           <span className="font-medium">{subItem.name}</span>
                           {subItem.description && <span className="text-slate-500"> - {subItem.description}</span>}
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${subItem.status === 'Pre Identify' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                            {subItem.status || 'Pre Identify'}
+                          </span>
                         </div>
                       ))}
                     </div>
