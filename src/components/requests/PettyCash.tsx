@@ -22,7 +22,8 @@ interface ExpenseTypeItem {
   expense_type_id: string;
   expense_type_name: string;
   sub_item_name: string;
-  amount: number;
+  status: string;
+  specify_value?: string;
 }
 
 interface ExpenseType {
@@ -103,7 +104,7 @@ export function PettyCash() {
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [selectedExpenseTypeId, setSelectedExpenseTypeId] = useState<string>('');
   const [expenseTypeItems, setExpenseTypeItems] = useState<ExpenseTypeItem[]>([]);
-  const [tempSubItemAmounts, setTempSubItemAmounts] = useState<{ [key: string]: number }>({});
+  const [tempSubItemSpecifyValues, setTempSubItemSpecifyValues] = useState<{ [key: string]: string }>({});
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -308,21 +309,25 @@ export function PettyCash() {
     }
   };
 
-  const handleAddExpenseTypeItem = (subItemName: string) => {
+  const handleAddExpenseTypeItem = (subItemName: string, subItemStatus: string) => {
     const selectedExpenseType = expenseTypes.find(et => et.id === selectedExpenseTypeId);
     if (!selectedExpenseType) return;
 
-    const amount = tempSubItemAmounts[subItemName] || 0;
-    if (amount <= 0) {
-      alert('Please enter a valid amount');
-      return;
+    // For "Specify" status, require a value
+    if (subItemStatus === 'Specify') {
+      const specifyValue = tempSubItemSpecifyValues[subItemName] || '';
+      if (!specifyValue.trim()) {
+        alert('Please enter a value for the Specify field');
+        return;
+      }
     }
 
     const newItem: ExpenseTypeItem = {
       expense_type_id: selectedExpenseType.id,
       expense_type_name: selectedExpenseType.name,
       sub_item_name: subItemName,
-      amount: amount
+      status: subItemStatus,
+      specify_value: subItemStatus === 'Specify' ? tempSubItemSpecifyValues[subItemName] : undefined
     };
 
     const updatedItems = [...expenseTypeItems, newItem];
@@ -331,9 +336,12 @@ export function PettyCash() {
     // Update PURPOSE field with all selected sub-items
     updatePurposeFromExpenseTypes(updatedItems);
 
-    const newTempAmounts = { ...tempSubItemAmounts };
-    delete newTempAmounts[subItemName];
-    setTempSubItemAmounts(newTempAmounts);
+    // Clear the specify value if it was used
+    if (subItemStatus === 'Specify') {
+      const newTempValues = { ...tempSubItemSpecifyValues };
+      delete newTempValues[subItemName];
+      setTempSubItemSpecifyValues(newTempValues);
+    }
   };
 
   const handleRemoveExpenseTypeItem = (index: number) => {
@@ -354,7 +362,11 @@ export function PettyCash() {
       if (!grouped[item.expense_type_name]) {
         grouped[item.expense_type_name] = [];
       }
-      grouped[item.expense_type_name].push(item.sub_item_name);
+      // Include specify value if present
+      const subItemText = item.specify_value
+        ? `${item.sub_item_name} (${item.specify_value})`
+        : item.sub_item_name;
+      grouped[item.expense_type_name].push(subItemText);
     });
 
     // Build purpose string
@@ -365,9 +377,6 @@ export function PettyCash() {
     setFormData({ ...formData, purpose: purposeParts.join('; ') });
   };
 
-  const calculateTotalExpenseTypeAmount = () => {
-    return expenseTypeItems.reduce((sum, item) => sum + item.amount, 0);
-  };
 
   const loadCompanies = async () => {
     try {
@@ -1353,19 +1362,19 @@ export function PettyCash() {
                           <div className="text-xs text-slate-600">{subItem.description}</div>
                         )}
                       </div>
-                      <input
-                        type="number"
-                        placeholder="Amount"
-                        value={tempSubItemAmounts[subItem.name] || ''}
-                        onChange={(e) => setTempSubItemAmounts({ ...tempSubItemAmounts, [subItem.name]: Number(e.target.value) })}
-                        className="w-32 px-3 py-1.5 border border-slate-300 rounded text-sm"
-                        step="0.01"
-                        min="0"
-                        disabled={isAdded}
-                      />
+                      {subItem.status === 'Specify' && (
+                        <input
+                          type="text"
+                          placeholder="Specify value"
+                          value={tempSubItemSpecifyValues[subItem.name] || ''}
+                          onChange={(e) => setTempSubItemSpecifyValues({ ...tempSubItemSpecifyValues, [subItem.name]: e.target.value })}
+                          className="w-48 px-3 py-1.5 border border-slate-300 rounded text-sm"
+                          disabled={isAdded}
+                        />
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleAddExpenseTypeItem(subItem.name)}
+                        onClick={() => handleAddExpenseTypeItem(subItem.name, subItem.status || 'Pre Identify')}
                         disabled={isAdded}
                         className={`px-3 py-1.5 text-sm rounded ${
                           isAdded
@@ -1382,48 +1391,28 @@ export function PettyCash() {
             )}
 
             {expenseTypeItems.length > 0 && (
-              <div className="border border-slate-300 rounded-lg bg-white overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-600">Expense Type</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-600">Sub-Item</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-slate-600">Amount</th>
-                      <th className="px-3 py-2 w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {expenseTypeItems.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-3 py-2 text-sm text-slate-900">{item.expense_type_name}</td>
-                        <td className="px-3 py-2 text-sm text-slate-700">{item.sub_item_name}</td>
-                        <td className="px-3 py-2 text-sm text-slate-900 text-right font-medium">
-                          ₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExpenseTypeItem(index)}
-                            className="text-red-600 hover:text-red-700 transition"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50 border-t">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2 text-right font-semibold text-slate-700">
-                        Total:
-                      </td>
-                      <td className="px-3 py-2 font-bold text-slate-900 text-right">
-                        ₱{calculateTotalExpenseTypeAmount().toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
+              <div className="border border-slate-300 rounded-lg bg-white p-3">
+                <label className="block text-xs font-medium text-slate-700 mb-2">Added Items</label>
+                <div className="space-y-1.5">
+                  {expenseTypeItems.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded text-sm">
+                      <div className="flex-1">
+                        <span className="font-medium text-slate-900">{item.expense_type_name}</span>
+                        <span className="text-slate-600"> - {item.sub_item_name}</span>
+                        {item.specify_value && (
+                          <span className="text-slate-700"> ({item.specify_value})</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExpenseTypeItem(index)}
+                        className="text-red-600 hover:text-red-700 transition ml-2"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
