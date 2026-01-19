@@ -52,6 +52,8 @@ export type ViewType =
   | 'config-number-series'
   | 'config-smtp'
   | 'config-vendors-items'
+  | 'config-expense-types'
+  | 'config-roles-permissions'
   | 'change-password'
   | 'user-manual';
 
@@ -176,6 +178,7 @@ const configItems: MenuItem[] = [
   { id: 'config-number-series', label: 'Number Series', icon: Settings, permission: MODULE_PERMISSIONS.NUMBER_SERIES },
   { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, permission: MODULE_PERMISSIONS.SMTP },
+  { id: 'config-expense-types', label: 'Type of Expense', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
 ];
 

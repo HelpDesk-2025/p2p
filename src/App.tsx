@@ -100,6 +100,8 @@ function AppContent() {
         return <ConfigManager type="vendors-items" />;
       case 'config-smtp':
         return <ConfigManager type="smtp" />;
+      case 'config-expense-types':
+        return <ConfigManager type="expense-types" />;
       case 'config-roles-permissions':
         return <ConfigManager type="roles-permissions" />;
       case 'change-password':
