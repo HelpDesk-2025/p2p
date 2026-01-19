@@ -575,6 +575,22 @@ export function PettyCashApproval() {
                             ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
                           </td>
                         </tr>
+                        <tr className="bg-slate-100">
+                          <td colSpan={2} className="px-4 py-2 text-sm text-slate-700 text-right">Less: Petty Cash Advance</td>
+                          <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">
+                            ₱{selectedRequest.amount.toLocaleString()}
+                          </td>
+                        </tr>
+                        <tr className={`font-bold ${selectedRequest.amount - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) > 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                          <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">
+                            {selectedRequest.amount - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) > 0
+                              ? 'Excess for Deposit:'
+                              : 'Over for Reimbursement:'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-900 text-right">
+                            ₱{Math.abs(selectedRequest.amount - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0)).toLocaleString()}
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
