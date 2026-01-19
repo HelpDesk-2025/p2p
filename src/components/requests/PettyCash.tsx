@@ -58,7 +58,6 @@ interface PettyCashReq {
   linked_petty_cash_id?: string;
   petty_cash_advance?: number;
   no_of_pax?: number;
-  expense_type_items?: ExpenseTypeItem[];
   attachments?: Array<{
     file_name: string;
     file_path: string;
@@ -517,11 +516,7 @@ export function PettyCash() {
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
     }
     // Initialize expense type items
-    if (request.expense_type_items && request.expense_type_items.length > 0) {
-      setExpenseTypeItems(request.expense_type_items);
-    } else {
-      setExpenseTypeItems([]);
-    }
+    setExpenseTypeItems([]);
     // Initialize linked petty cash for liquidation
     setPettyCashAdvance((request as any).petty_cash_advance || 0);
     setSelectedPettyCashId((request as any).linked_petty_cash_id || '');
@@ -591,7 +586,6 @@ export function PettyCash() {
             linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
             petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
             no_of_pax: formData.no_of_pax || null,
-            expense_type_items: expenseTypeItems.length > 0 ? expenseTypeItems : null,
             status,
           })
           .eq('id', editingRequest.id)
@@ -622,7 +616,6 @@ export function PettyCash() {
             linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
             petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
             no_of_pax: formData.no_of_pax || null,
-            expense_type_items: expenseTypeItems.length > 0 ? expenseTypeItems : null,
             status,
             current_approval_level: 0,
           })
@@ -1815,44 +1808,6 @@ export function PettyCash() {
                 <label className="text-sm font-semibold text-slate-700">Purpose / Particulars</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
-
-              {viewingRequest.expense_type_items && viewingRequest.expense_type_items.length > 0 && (
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expense Type Items</label>
-                  <div className="border border-slate-300 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Expense Type</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Sub-Item</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-slate-600">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {viewingRequest.expense_type_items.map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.expense_type_name}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.sub_item_name}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">
-                              {formatCurrency(item.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-50 border-t">
-                        <tr>
-                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
-                            Total:
-                          </td>
-                          <td className="px-4 py-2 font-bold text-slate-900 text-right">
-                            {formatCurrency(viewingRequest.expense_type_items.reduce((sum, item) => sum + item.amount, 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              )}
 
               {viewingRequest.request_type === 'For Liquidation' && viewingRequest.expense_items && viewingRequest.expense_items.length > 0 && (
                 <div>
