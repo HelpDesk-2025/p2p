@@ -1257,7 +1257,7 @@ export function PettyCash() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date of Transactions</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date of Transaction</label>
             <input
               type="date"
               value={formData.date_of_transactions}
@@ -1790,7 +1790,7 @@ export function PettyCash() {
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Date of Transactions</label>
+                  <label className="text-sm font-semibold text-slate-700">Date of Transaction</label>
                   <p className="text-slate-900">
                     {viewingRequest.date_of_transactions
                       ? new Date(viewingRequest.date_of_transactions).toLocaleDateString()
