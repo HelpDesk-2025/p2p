@@ -18,24 +18,6 @@ interface ExpenseItem {
   amount: number;
 }
 
-interface ExpenseTypeItem {
-  expense_type_id: string;
-  expense_type_name: string;
-  sub_item_name: string;
-  amount: number;
-}
-
-interface ExpenseType {
-  id: string;
-  name: string;
-  description: string;
-  is_active: boolean;
-  sub_items: Array<{
-    name: string;
-    description: string;
-  }>;
-}
-
 interface PettyCashReq {
   id: string;
   pc_number: string;
@@ -55,8 +37,6 @@ interface PettyCashReq {
   expense_items?: ExpenseItem[];
   linked_petty_cash_id?: string;
   petty_cash_advance?: number;
-  no_of_pax?: number;
-  expense_type_items?: ExpenseTypeItem[];
   attachments?: Array<{
     file_name: string;
     file_path: string;
@@ -88,7 +68,6 @@ export function PettyCash() {
     budgeted: true,
     payment_mode_id: '',
     request_type: 'For Cash Advance',
-    no_of_pax: 0,
   });
   const [amountError, setAmountError] = useState('');
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
@@ -99,10 +78,6 @@ export function PettyCash() {
   const [approvedPettyCashRequests, setApprovedPettyCashRequests] = useState<any[]>([]);
   const [selectedPettyCashId, setSelectedPettyCashId] = useState<string>('');
   const [pettyCashAdvance, setPettyCashAdvance] = useState<number>(0);
-  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
-  const [selectedExpenseTypeId, setSelectedExpenseTypeId] = useState<string>('');
-  const [expenseTypeItems, setExpenseTypeItems] = useState<ExpenseTypeItem[]>([]);
-  const [tempSubItemAmounts, setTempSubItemAmounts] = useState<{ [key: string]: number }>({});
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -208,7 +183,6 @@ export function PettyCash() {
   useEffect(() => {
     loadRequests();
     loadPaymentModes();
-    loadExpenseTypes();
   }, []);
 
   useEffect(() => {
@@ -305,38 +279,6 @@ export function PettyCash() {
     } else {
       setPettyCashAdvance(0);
     }
-  };
-
-  const handleAddExpenseTypeItem = (subItemName: string) => {
-    const selectedExpenseType = expenseTypes.find(et => et.id === selectedExpenseTypeId);
-    if (!selectedExpenseType) return;
-
-    const amount = tempSubItemAmounts[subItemName] || 0;
-    if (amount <= 0) {
-      alert('Please enter a valid amount');
-      return;
-    }
-
-    const newItem: ExpenseTypeItem = {
-      expense_type_id: selectedExpenseType.id,
-      expense_type_name: selectedExpenseType.name,
-      sub_item_name: subItemName,
-      amount: amount
-    };
-
-    setExpenseTypeItems([...expenseTypeItems, newItem]);
-
-    const newTempAmounts = { ...tempSubItemAmounts };
-    delete newTempAmounts[subItemName];
-    setTempSubItemAmounts(newTempAmounts);
-  };
-
-  const handleRemoveExpenseTypeItem = (index: number) => {
-    setExpenseTypeItems(expenseTypeItems.filter((_, i) => i !== index));
-  };
-
-  const calculateTotalExpenseTypeAmount = () => {
-    return expenseTypeItems.reduce((sum, item) => sum + item.amount, 0);
   };
 
   const loadCompanies = async () => {
@@ -449,15 +391,6 @@ export function PettyCash() {
     setPaymentModes(data || []);
   };
 
-  const loadExpenseTypes = async () => {
-    const { data } = await supabase
-      .from('expense_types')
-      .select('*')
-      .eq('is_active', true)
-      .order('name', { ascending: true });
-    setExpenseTypes(data || []);
-  };
-
   const generateNumber = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -479,19 +412,12 @@ export function PettyCash() {
       budgeted: (request as any).budgeted !== undefined ? (request as any).budgeted : true,
       payment_mode_id: (request as any).payment_mode_id || '',
       request_type: request.request_type || 'For Cash Advance',
-      no_of_pax: request.no_of_pax || 0,
     });
     // Initialize expense items for liquidation
     if (request.expense_items && request.expense_items.length > 0) {
       setExpenseItems(request.expense_items);
     } else {
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
-    }
-    // Initialize expense type items
-    if (request.expense_type_items && request.expense_type_items.length > 0) {
-      setExpenseTypeItems(request.expense_type_items);
-    } else {
-      setExpenseTypeItems([]);
     }
     // Initialize linked petty cash for liquidation
     setPettyCashAdvance((request as any).petty_cash_advance || 0);
@@ -561,8 +487,6 @@ export function PettyCash() {
             expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
             linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
             petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
-            no_of_pax: formData.no_of_pax || null,
-            expense_type_items: expenseTypeItems.length > 0 ? expenseTypeItems : null,
             status,
           })
           .eq('id', editingRequest.id)
@@ -592,8 +516,6 @@ export function PettyCash() {
             expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
             linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
             petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
-            no_of_pax: formData.no_of_pax || null,
-            expense_type_items: expenseTypeItems.length > 0 ? expenseTypeItems : null,
             status,
             current_approval_level: 0,
           })
@@ -1194,29 +1116,15 @@ export function PettyCash() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">To / Recipient</label>
-              <input
-                type="text"
-                value={formData.payee}
-                onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">No. of Pax</label>
-              <input
-                type="number"
-                value={formData.no_of_pax}
-                onChange={(e) => setFormData({ ...formData, no_of_pax: Number(e.target.value) })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                min="0"
-                step="1"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">To / Recipient</label>
+            <input
+              type="text"
+              value={formData.payee}
+              onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
+            />
           </div>
 
           <div>
@@ -1292,116 +1200,6 @@ export function PettyCash() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-            <label className="block text-sm font-medium text-slate-900 mb-2">Type of Expense</label>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Select Expense Type</label>
-              <select
-                value={selectedExpenseTypeId}
-                onChange={(e) => setSelectedExpenseTypeId(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-              >
-                <option value="">Select an expense type</option>
-                {expenseTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedExpenseTypeId && expenseTypes.find(et => et.id === selectedExpenseTypeId)?.sub_items && expenseTypes.find(et => et.id === selectedExpenseTypeId)?.sub_items.length > 0 && (
-              <div className="border border-slate-300 rounded-lg bg-white p-3 space-y-2">
-                <label className="block text-xs font-medium text-slate-700">Sub-Items</label>
-                {expenseTypes.find(et => et.id === selectedExpenseTypeId)?.sub_items.map((subItem, idx) => {
-                  const isAdded = expenseTypeItems.some(
-                    item => item.expense_type_id === selectedExpenseTypeId && item.sub_item_name === subItem.name
-                  );
-
-                  return (
-                    <div key={idx} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-slate-900">{subItem.name}</div>
-                        {subItem.description && (
-                          <div className="text-xs text-slate-600">{subItem.description}</div>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        placeholder="Amount"
-                        value={tempSubItemAmounts[subItem.name] || ''}
-                        onChange={(e) => setTempSubItemAmounts({ ...tempSubItemAmounts, [subItem.name]: Number(e.target.value) })}
-                        className="w-32 px-3 py-1.5 border border-slate-300 rounded text-sm"
-                        step="0.01"
-                        min="0"
-                        disabled={isAdded}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddExpenseTypeItem(subItem.name)}
-                        disabled={isAdded}
-                        className={`px-3 py-1.5 text-sm rounded ${
-                          isAdded
-                            ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
-                        }`}
-                      >
-                        {isAdded ? 'Added' : 'Add'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {expenseTypeItems.length > 0 && (
-              <div className="border border-slate-300 rounded-lg bg-white overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-600">Expense Type</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-600">Sub-Item</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-slate-600">Amount</th>
-                      <th className="px-3 py-2 w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {expenseTypeItems.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-3 py-2 text-sm text-slate-900">{item.expense_type_name}</td>
-                        <td className="px-3 py-2 text-sm text-slate-700">{item.sub_item_name}</td>
-                        <td className="px-3 py-2 text-sm text-slate-900 text-right font-medium">
-                          ₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExpenseTypeItem(index)}
-                            className="text-red-600 hover:text-red-700 transition"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50 border-t">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2 text-right font-semibold text-slate-700">
-                        Total:
-                      </td>
-                      <td className="px-3 py-2 font-bold text-slate-900 text-right">
-                        ₱{calculateTotalExpenseTypeAmount().toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
           </div>
 
           {formData.request_type === 'For Liquidation' && (
@@ -1764,10 +1562,6 @@ export function PettyCash() {
                   <p className="text-slate-900">{viewingRequest.payee || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">No. of Pax</label>
-                  <p className="text-slate-900">{viewingRequest.no_of_pax || 0}</p>
-                </div>
-                <div>
                   <label className="text-sm font-semibold text-slate-700">Request Type</label>
                   <p className="text-slate-900">{viewingRequest.request_type || 'For Cash Advance'}</p>
                 </div>
@@ -1787,44 +1581,6 @@ export function PettyCash() {
                 <label className="text-sm font-semibold text-slate-700">Purpose / Particulars</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
-
-              {viewingRequest.expense_type_items && viewingRequest.expense_type_items.length > 0 && (
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expense Type Items</label>
-                  <div className="border border-slate-300 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Expense Type</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Sub-Item</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-slate-600">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {viewingRequest.expense_type_items.map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.expense_type_name}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.sub_item_name}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">
-                              {formatCurrency(item.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-50 border-t">
-                        <tr>
-                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
-                            Total:
-                          </td>
-                          <td className="px-4 py-2 font-bold text-slate-900 text-right">
-                            {formatCurrency(viewingRequest.expense_type_items.reduce((sum, item) => sum + item.amount, 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              )}
 
               {viewingRequest.request_type === 'For Liquidation' && viewingRequest.expense_items && viewingRequest.expense_items.length > 0 && (
                 <div>
