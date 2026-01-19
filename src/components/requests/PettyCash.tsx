@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2 } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
@@ -10,6 +10,12 @@ import { PDFDocument } from 'pdf-lib';
 interface PaymentMode {
   id: string;
   mode_name: string;
+}
+
+interface ExpenseItem {
+  date: string;
+  description: string;
+  amount: number;
 }
 
 interface PettyCashReq {
@@ -28,6 +34,7 @@ interface PettyCashReq {
   received_by?: string;
   approved_petty_cash_pdf_path?: string;
   request_type?: string;
+  expense_items?: ExpenseItem[];
   attachments?: Array<{
     file_name: string;
     file_path: string;
@@ -63,6 +70,9 @@ export function PettyCash() {
   const [amountError, setAmountError] = useState('');
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
+  const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([
+    { date: '', description: '', amount: 0 }
+  ]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -107,6 +117,26 @@ export function PettyCash() {
 
     setAttachmentFile(file);
     setAttachmentError('');
+  };
+
+  const addExpenseItem = () => {
+    setExpenseItems([...expenseItems, { date: '', description: '', amount: 0 }]);
+  };
+
+  const removeExpenseItem = (index: number) => {
+    if (expenseItems.length > 1) {
+      setExpenseItems(expenseItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
+    const updated = [...expenseItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setExpenseItems(updated);
+  };
+
+  const calculateTotalExpenditures = () => {
+    return expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   };
 
   const convertImageToPDF = async (imageFile: File): Promise<Uint8Array> => {
@@ -313,15 +343,41 @@ export function PettyCash() {
       payment_mode_id: (request as any).payment_mode_id || '',
       request_type: request.request_type || 'For Cash Advance',
     });
+    // Initialize expense items for liquidation
+    if (request.expense_items && request.expense_items.length > 0) {
+      setExpenseItems(request.expense_items);
+    } else {
+      setExpenseItems([{ date: '', description: '', amount: 0 }]);
+    }
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
-    if (formData.amount > 5000) {
-      alert('Petty cash amount cannot exceed ₱5,000.00');
-      return;
+    // For Liquidation: validate expense items instead of regular amount
+    if (formData.request_type === 'For Liquidation') {
+      const totalExpenditures = calculateTotalExpenditures();
+      if (totalExpenditures > 5000) {
+        alert('Total expenditures cannot exceed ₱5,000.00');
+        return;
+      }
+      if (totalExpenditures === 0) {
+        alert('Please add at least one expense item with a valid amount');
+        return;
+      }
+      // Validate that all expense items have required fields
+      const hasEmptyFields = expenseItems.some(item => !item.date || !item.description || item.amount <= 0);
+      if (hasEmptyFields) {
+        alert('Please fill in all expense item fields (date, description, and amount must be greater than 0)');
+        return;
+      }
+    } else {
+      // For other types: validate regular amount
+      if (formData.amount > 5000) {
+        alert('Petty cash amount cannot exceed ₱5,000.00');
+        return;
+      }
     }
 
     // Validate attachment for "For Reimbursement" or "For Liquidation" type
@@ -339,17 +395,23 @@ export function PettyCash() {
     try {
       let insertedRequest;
 
+      // Calculate amount based on request type
+      const finalAmount = formData.request_type === 'For Liquidation'
+        ? calculateTotalExpenditures()
+        : formData.amount;
+
       if (editingRequest) {
         const { data, error } = await supabase
           .from('petty_cash_requests')
           .update({
             payee: formData.payee,
             purpose: formData.purpose,
-            amount: formData.amount,
+            amount: finalAmount,
             date_needed: formData.date_needed || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
+            expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
             status,
           })
           .eq('id', editingRequest.id)
@@ -371,11 +433,12 @@ export function PettyCash() {
             request_date: new Date().toISOString().split('T')[0],
             payee: formData.payee,
             purpose: formData.purpose,
-            amount: formData.amount,
+            amount: finalAmount,
             date_needed: formData.date_needed || null,
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
+            expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
             status,
             current_approval_level: 0,
           })
@@ -498,6 +561,7 @@ export function PettyCash() {
       setAmountError('');
       setAttachmentFile(null);
       setAttachmentError('');
+      setExpenseItems([{ date: '', description: '', amount: 0 }]);
       loadRequests();
       if (!editingRequest) {
         generateDocumentNo();
@@ -889,7 +953,12 @@ export function PettyCash() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Petty Cash Request' : 'New Petty Cash Request'}</h2>
-          <button onClick={() => { setShowForm(false); setEditingRequest(null); setAmountError(''); }} className="px-4 py-2 text-slate-600">
+          <button onClick={() => {
+            setShowForm(false);
+            setEditingRequest(null);
+            setAmountError('');
+            setExpenseItems([{ date: '', description: '', amount: 0 }]);
+          }} className="px-4 py-2 text-slate-600">
             Cancel
           </button>
         </div>
@@ -1050,27 +1119,117 @@ export function PettyCash() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Amount <span className="text-xs text-slate-500">(Maximum: ₱5,000.00)</span>
-            </label>
-            <input
-              type="number"
-              value={formData.amount}
-              onChange={(e) => handleAmountChange(Number(e.target.value))}
-              max={5000}
-              step="0.01"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none ${
-                amountError
-                  ? 'border-red-300 focus:ring-red-500'
-                  : 'border-slate-300 focus:ring-blue-500'
-              }`}
-              required
-            />
-            {amountError && (
-              <p className="mt-1 text-sm text-red-600">{amountError}</p>
-            )}
-          </div>
+          {formData.request_type === 'For Liquidation' ? (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-slate-700">Expense Itemization</label>
+                <button
+                  type="button"
+                  onClick={addExpenseItem}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"
+                >
+                  <Plus size={16} />
+                  Add Item
+                </button>
+              </div>
+              <div className="border border-slate-300 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name/Vendor Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
+                      <th className="px-4 py-2 w-12"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {expenseItems.map((item, index) => (
+                      <tr key={index}>
+                        <td className="px-4 py-2">
+                          <input
+                            type="date"
+                            value={item.date}
+                            onChange={(e) => updateExpenseItem(index, 'date', e.target.value)}
+                            className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                            required
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => updateExpenseItem(index, 'description', e.target.value)}
+                            className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                            placeholder="Enter description"
+                            required
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            value={item.amount}
+                            onChange={(e) => updateExpenseItem(index, 'amount', Number(e.target.value))}
+                            className="w-full px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                            required
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          {expenseItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeExpenseItem(index)}
+                              className="text-red-600 hover:text-red-700 transition"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-slate-50 border-t">
+                    <tr>
+                      <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                        Total Expenditures:
+                      </td>
+                      <td className="px-4 py-2 font-bold text-slate-900">
+                        ₱{calculateTotalExpenditures().toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              {calculateTotalExpenditures() > 5000 && (
+                <p className="mt-2 text-sm text-red-600">Total expenditures cannot exceed ₱5,000.00</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Amount <span className="text-xs text-slate-500">(Maximum: ₱5,000.00)</span>
+              </label>
+              <input
+                type="number"
+                value={formData.amount}
+                onChange={(e) => handleAmountChange(Number(e.target.value))}
+                max={5000}
+                step="0.01"
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none ${
+                  amountError
+                    ? 'border-red-300 focus:ring-red-500'
+                    : 'border-slate-300 focus:ring-blue-500'
+                }`}
+                required
+              />
+              {amountError && (
+                <p className="mt-1 text-sm text-red-600">{amountError}</p>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button
@@ -1098,6 +1257,17 @@ export function PettyCash() {
         <button
           onClick={() => {
             setShowForm(true);
+            setExpenseItems([{ date: '', description: '', amount: 0 }]);
+            setFormData({
+              document_no: '',
+              payee: '',
+              purpose: '',
+              amount: 0,
+              date_needed: '',
+              budgeted: true,
+              payment_mode_id: '',
+              request_type: 'For Cash Advance',
+            });
             generateDocumentNo();
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -1287,6 +1457,46 @@ export function PettyCash() {
                 <label className="text-sm font-semibold text-slate-700">Purpose / Particulars</label>
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
+
+              {viewingRequest.request_type === 'For Liquidation' && viewingRequest.expense_items && viewingRequest.expense_items.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expense Itemization</label>
+                  <div className="border border-slate-300 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name/Vendor Name</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {viewingRequest.expense_items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-4 py-2 text-sm text-slate-700">
+                              {new Date(item.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.description}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900 font-semibold">
+                              ₱{item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t">
+                        <tr>
+                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                            Total Expenditures:
+                          </td>
+                          <td className="px-4 py-2 font-bold text-slate-900">
+                            {formatCurrency(viewingRequest.amount)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {viewingRequest.attachments && viewingRequest.attachments.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
