@@ -136,33 +136,86 @@ export function UserManual() {
       icon: DollarSign,
       content: [
         {
-          subtitle: 'Petty Cash Request',
+          subtitle: 'Petty Cash Request (For Cash Advance)',
           steps: [
             'Navigate to Requests > Petty Cash',
-            'Select "Petty Cash" as request type',
-            'Enter the description of expenses',
-            'Input the total amount',
-            'Specify the date of expense',
-            'Upload receipts and supporting documents',
-            'Click "Submit" for approval'
+            'Click "New Request"',
+            'Document number is auto-generated',
+            'Enter recipient name (To / Recipient)',
+            'Enter number of pax if applicable',
+            'Select date of transaction',
+            'Select "For Cash Advance" as request type',
+            'Select expense types from the dropdown and add sub-items to auto-populate the purpose',
+            'Enter or edit purpose/particulars if needed',
+            'Enter amount (maximum ₱5,000.00)',
+            'Review all information',
+            'Click "Submit" to send for approval'
+          ],
+          notes: [
+            'Maximum amount per petty cash request is ₱5,000.00',
+            'Expense types help categorize and auto-populate the purpose field',
+            'Some expense sub-items may require you to specify additional details'
           ]
         },
         {
-          subtitle: 'Reimbursement Request',
+          subtitle: 'Petty Cash Request (For Reimbursement)',
           steps: [
             'Navigate to Requests > Petty Cash',
-            'Select "Reimbursement" as request type',
-            'List all expenses with descriptions',
-            'Enter amounts for each expense',
-            'Upload all original receipts',
-            'Provide bank details for reimbursement',
-            'Submit for approval'
+            'Click "New Request"',
+            'Enter recipient name and other basic details',
+            'Select "For Reimbursement" as request type',
+            'Upload receipts (PDF or image files, max 10MB)',
+            'Select expense types and add sub-items',
+            'Enter or edit purpose/particulars',
+            'Enter reimbursement amount (maximum ₱5,000.00)',
+            'Click "Submit" for approval'
           ],
-          tips: [
-            'Keep all original receipts',
-            'Ensure receipts are clear and legible',
-            'Submit reimbursements within company policy timeframe',
-            'Provide detailed descriptions for each expense'
+          notes: [
+            'Receipts are mandatory for reimbursement requests',
+            'Image files will be automatically converted to PDF',
+            'Keep original receipts for audit purposes'
+          ]
+        },
+        {
+          subtitle: 'Petty Cash Request (For Liquidation)',
+          steps: [
+            'Navigate to Requests > Petty Cash',
+            'Click "New Request"',
+            'Select "For Liquidation" as request type',
+            'Select an approved petty cash advance to liquidate from the dropdown',
+            'Upload receipts (PDF or image files)',
+            'Add expense items with date, supplier/vendor name, and amount',
+            'Click "Add Item" to add multiple expenses',
+            'Review the calculation showing Total Expenditures, Less Petty Cash Advance, and Excess/Over amount',
+            'Select expense types if needed',
+            'Click "Submit" for approval'
+          ],
+          notes: [
+            'You can only liquidate approved petty cash advances (For Cash Advance type)',
+            'Total expenditures cannot exceed ₱5,000.00',
+            'System automatically calculates if you have excess to deposit or need reimbursement',
+            'Each approved cash advance can only be liquidated once'
+          ]
+        },
+        {
+          subtitle: 'Receiving Approved Petty Cash',
+          steps: [
+            'After your request is fully approved, open the request details',
+            'For "For Cash Advance" or "For Reimbursement" types only',
+            'Click "Receive Cash" button',
+            'System generates approved petty cash form with e-signatures',
+            'Download or preview the approved form',
+            'Request is now marked as received with timestamp'
+          ]
+        },
+        {
+          subtitle: 'Understanding the Liquidation Calculation',
+          steps: [
+            'Total Expenditures: Sum of all expense items',
+            'Less: Petty Cash Advance: Original cash advance amount',
+            'If Total > Advance: Shows "Over for Reimbursement" (you spent more)',
+            'If Advance > Total: Shows "Excess for Deposit" (you need to return money)',
+            'The difference amount is clearly displayed in the form'
           ]
         }
       ]
