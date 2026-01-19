@@ -5,6 +5,12 @@ import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip 
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
+interface ExpenseItem {
+  date: string;
+  description: string;
+  amount: number;
+}
+
 interface ExpenseTypeItem {
   expense_type_id: string;
   expense_type_name: string;
@@ -27,6 +33,7 @@ interface PettyCashReq {
   payee?: string;
   request_type?: string;
   no_of_pax?: number;
+  expense_items?: ExpenseItem[];
   expense_type_items?: ExpenseTypeItem[];
   status: string;
   current_approval_level: number;
@@ -537,6 +544,40 @@ export function PettyCashApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">No. of Pax</label>
                   <p className="text-slate-900">{selectedRequest.no_of_pax}</p>
+                </div>
+              )}
+
+              {selectedRequest.expense_items && selectedRequest.expense_items.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Expense Itemization
+                  </label>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-slate-300 rounded-lg">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Date</th>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Description</th>
+                          <th className="px-4 py-2 text-right text-sm font-semibold text-slate-700 border-b">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedRequest.expense_items.map((item, index) => (
+                          <tr key={index} className="border-b last:border-b-0 hover:bg-slate-50">
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.date || 'N/A'}</td>
+                            <td className="px-4 py-2 text-sm text-slate-700">{item.description}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">₱{item.amount.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-slate-50 font-semibold">
+                          <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">Total Expenditures:</td>
+                          <td className="px-4 py-3 text-sm text-slate-900 text-right">
+                            ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
