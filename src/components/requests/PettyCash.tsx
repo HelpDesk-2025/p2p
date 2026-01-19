@@ -1413,9 +1413,13 @@ export function PettyCash() {
               value={formData.purpose}
               onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
               rows={3}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100 disabled:cursor-not-allowed"
               required
+              disabled={expenseTypeItems.length > 0}
             />
+            {expenseTypeItems.length > 0 && (
+              <p className="text-xs text-slate-500 mt-1">Purpose is automatically generated from expense type items</p>
+            )}
           </div>
 
           {formData.request_type === 'For Liquidation' && (
