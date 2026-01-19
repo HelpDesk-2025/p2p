@@ -28,13 +28,35 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   const { width, height } = page.getSize();
   const margin = 100;
 
-  const sanitizeText = (text: string): string => {
-    if (!text) return '';
-    return text
+  const sanitizeText = (text: string | number | null | undefined): string => {
+    if (text === null || text === undefined) return '';
+    const str = typeof text === 'number' ? text.toString() : text;
+    if (!str) return '';
+    return str
       .replace(/\r\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\n/g, ' ')
       .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  };
+
+  // Sanitize all input data upfront
+  const sanitizedData = {
+    pcNumber: sanitizeText(data.pcNumber),
+    recipient: sanitizeText(data.recipient),
+    requestDate: sanitizeText(data.requestDate),
+    requestType: sanitizeText(data.requestType),
+    purpose: sanitizeText(data.purpose),
+    noOfPax: data.noOfPax,
+    dateOfTransaction: sanitizeText(data.dateOfTransaction),
+    company: sanitizeText(data.company),
+    department: sanitizeText(data.department),
+    amount: data.amount,
+    approvedByName: sanitizeText(data.approvedByName),
+    approvedByEsig: data.approvedByEsig,
+    approvedByDate: sanitizeText(data.approvedByDate),
+    receivedByName: sanitizeText(data.receivedByName),
+    receivedByEsig: data.receivedByEsig,
+    receivedByDate: sanitizeText(data.receivedByDate),
   };
 
   const drawText = (text: string, x: number, y: number, size = 10, isBold = false) => {
@@ -74,7 +96,7 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   drawText(titleText, margin + 20, titleY + 10, 18, true);
 
   drawText('P.C. No.:', margin + boxWidth - 180, titleY + 10, 11, false);
-  drawText(data.pcNumber, margin + boxWidth - 120, titleY + 10, 11, false);
+  drawText(sanitizedData.pcNumber, margin + boxWidth - 120, titleY + 10, 11, false);
 
   yPos = titleY;
 
@@ -84,9 +106,9 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   drawLine(midX, yPos, midX, yPos - 30);
 
   drawText('To:', margin + 10, yPos - 20, 11, false);
-  drawText(data.recipient, margin + 40, yPos - 20, 11, false);
+  drawText(sanitizedData.recipient, margin + 40, yPos - 20, 11, false);
   drawText('Date', midX + 10, yPos - 20, 11, false);
-  drawText(data.requestDate, midX + 50, yPos - 20, 11, false);
+  drawText(sanitizedData.requestDate, midX + 50, yPos - 20, 11, false);
 
   yPos -= 30;
 
@@ -118,13 +140,13 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
 
   // Type of Request
   drawText('Type of Request :', labelX, particularY, 10, false);
-  drawText(data.requestType, valueX, particularY, 10, false);
+  drawText(sanitizedData.requestType, valueX, particularY, 10, false);
   particularY -= lineSpacing;
 
   // Purpose (with word wrap if needed)
   drawText('Purpose :', labelX, particularY, 10, false);
   const maxPurposeWidth = boxWidth / 2 - 130;
-  const purposeWords = data.purpose.split(' ');
+  const purposeWords = sanitizedData.purpose.split(' ');
   let currentPurposeLine = '';
   let purposeY = particularY;
 
@@ -148,25 +170,25 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
 
   // No. Pax
   drawText('No. Pax :', labelX, particularY, 10, false);
-  drawText(data.noOfPax.toString(), valueX, particularY, 10, false);
+  drawText(sanitizedData.noOfPax.toString(), valueX, particularY, 10, false);
   particularY -= lineSpacing;
 
   // Date of Transaction
   drawText('Date of Transaction :', labelX, particularY, 10, false);
-  drawText(data.dateOfTransaction, valueX, particularY, 10, false);
+  drawText(sanitizedData.dateOfTransaction, valueX, particularY, 10, false);
   particularY -= lineSpacing;
 
   // Company
   drawText('Company :', labelX, particularY, 10, false);
-  drawText(data.company, valueX, particularY, 10, false);
+  drawText(sanitizedData.company, valueX, particularY, 10, false);
   particularY -= lineSpacing;
 
   // Department
   drawText('Department :', labelX, particularY, 10, false);
-  drawText(data.department, valueX, particularY, 10, false);
+  drawText(sanitizedData.department, valueX, particularY, 10, false);
 
   // Draw amount
-  const amountStr = data.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const amountStr = sanitizedData.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const amountStrWidth = font.widthOfTextAtSize(amountStr, 12);
   drawText(amountStr, (midX + margin + boxWidth) / 2 - amountStrWidth / 2, yPos - 30, 12, false);
 
@@ -182,9 +204,9 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   // Approved By (left side)
   let leftSigY = yPos - 30;
 
-  if (data.approvedByEsig) {
+  if (sanitizedData.approvedByEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(data.approvedByEsig);
+      const esigImage = await pdfDoc.embedPng(sanitizedData.approvedByEsig);
       const esigDims = esigImage.scale(0.4);
       page.drawImage(esigImage, {
         x: margin + boxWidth / 4 - esigDims.width / 2,
@@ -201,23 +223,23 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
     leftSigY -= 40;
   }
 
-  const approvedByNameWidth = font.widthOfTextAtSize(data.approvedByName, 11);
-  drawText(data.approvedByName, margin + boxWidth / 4 - approvedByNameWidth / 2, leftSigY, 11, false);
+  const approvedByNameWidth = font.widthOfTextAtSize(sanitizedData.approvedByName, 11);
+  drawText(sanitizedData.approvedByName, margin + boxWidth / 4 - approvedByNameWidth / 2, leftSigY, 11, false);
 
   leftSigY -= 20;
   const approvedByLabelWidth = boldFont.widthOfTextAtSize('Approved By', 11);
   drawText('Approved By', margin + boxWidth / 4 - approvedByLabelWidth / 2, leftSigY, 11, true);
 
   leftSigY -= 20;
-  const approvedByDateWidth = font.widthOfTextAtSize(data.approvedByDate, 10);
-  drawText(data.approvedByDate, margin + boxWidth / 4 - approvedByDateWidth / 2, leftSigY, 10, false);
+  const approvedByDateWidth = font.widthOfTextAtSize(sanitizedData.approvedByDate, 10);
+  drawText(sanitizedData.approvedByDate, margin + boxWidth / 4 - approvedByDateWidth / 2, leftSigY, 10, false);
 
   // Received By (right side)
   let rightSigY = yPos - 30;
 
-  if (data.receivedByEsig) {
+  if (sanitizedData.receivedByEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(data.receivedByEsig);
+      const esigImage = await pdfDoc.embedPng(sanitizedData.receivedByEsig);
       const esigDims = esigImage.scale(0.4);
       page.drawImage(esigImage, {
         x: midX + boxWidth / 4 - esigDims.width / 2,
@@ -234,16 +256,16 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
     rightSigY -= 40;
   }
 
-  const receivedByNameWidth = font.widthOfTextAtSize(data.receivedByName, 11);
-  drawText(data.receivedByName, midX + boxWidth / 4 - receivedByNameWidth / 2, rightSigY, 11, false);
+  const receivedByNameWidth = font.widthOfTextAtSize(sanitizedData.receivedByName, 11);
+  drawText(sanitizedData.receivedByName, midX + boxWidth / 4 - receivedByNameWidth / 2, rightSigY, 11, false);
 
   rightSigY -= 20;
   const receivedByLabelWidth = boldFont.widthOfTextAtSize('Received By', 11);
   drawText('Received By', midX + boxWidth / 4 - receivedByLabelWidth / 2, rightSigY, 11, true);
 
   rightSigY -= 20;
-  const receivedByDateWidth = font.widthOfTextAtSize(data.receivedByDate, 10);
-  drawText(data.receivedByDate, midX + boxWidth / 4 - receivedByDateWidth / 2, rightSigY, 10, false);
+  const receivedByDateWidth = font.widthOfTextAtSize(sanitizedData.receivedByDate, 10);
+  drawText(sanitizedData.receivedByDate, midX + boxWidth / 4 - receivedByDateWidth / 2, rightSigY, 10, false);
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
