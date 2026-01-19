@@ -5,6 +5,14 @@ import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip 
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
+interface ExpenseTypeItem {
+  expense_type_id: string;
+  expense_type_name: string;
+  sub_item_name: string;
+  status: string;
+  specify_value?: string;
+}
+
 interface PettyCashReq {
   id: string;
   pc_number: string;
@@ -19,6 +27,7 @@ interface PettyCashReq {
   payee?: string;
   request_type?: string;
   no_of_pax?: number;
+  expense_type_items?: ExpenseTypeItem[];
   status: string;
   current_approval_level: number;
   attachments?: Array<{
@@ -511,7 +520,17 @@ export function PettyCashApproval() {
 
               <div>
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
-                <p className="text-slate-900">{selectedRequest.purpose}</p>
+                {selectedRequest.expense_type_items && selectedRequest.expense_type_items.length > 0 ? (
+                  <div className="space-y-1 mt-1">
+                    {selectedRequest.expense_type_items.map((item, index) => (
+                      <p key={index} className="text-slate-900">
+                        {item.expense_type_name} : {item.sub_item_name}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-900">{selectedRequest.purpose}</p>
+                )}
               </div>
 
               {selectedRequest.no_of_pax && (
