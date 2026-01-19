@@ -17,6 +17,7 @@ interface PettyCashReq {
   payment_mode_id?: string;
   payee?: string;
   request_type?: string;
+  no_of_pax?: number;
   status: string;
   current_approval_level: number;
   attachments?: Array<{
@@ -503,6 +504,13 @@ export function PettyCashApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.no_of_pax && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">No. of Pax</label>
+                  <p className="text-slate-900">{selectedRequest.no_of_pax}</p>
+                </div>
+              )}
 
               {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
