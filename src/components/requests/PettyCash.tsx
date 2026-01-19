@@ -356,25 +356,15 @@ export function PettyCash() {
       return;
     }
 
-    // Group by expense type
-    const grouped: { [key: string]: string[] } = {};
-    items.forEach(item => {
-      if (!grouped[item.expense_type_name]) {
-        grouped[item.expense_type_name] = [];
-      }
-      // Include specify value if present
+    // Build purpose string with each item on a new line
+    const purposeLines = items.map(item => {
       const subItemText = item.specify_value
-        ? `${item.sub_item_name} (${item.specify_value})`
-        : item.sub_item_name;
-      grouped[item.expense_type_name].push(subItemText);
+        ? `${item.expense_type_name}: ${item.sub_item_name} (${item.specify_value})`
+        : `${item.expense_type_name}: ${item.sub_item_name}`;
+      return subItemText;
     });
 
-    // Build purpose string
-    const purposeParts = Object.entries(grouped).map(([typeName, subItems]) => {
-      return `${typeName}: ${subItems.join(', ')}`;
-    });
-
-    setFormData({ ...formData, purpose: purposeParts.join('; ') });
+    setFormData({ ...formData, purpose: purposeLines.join('\n') });
   };
 
 
