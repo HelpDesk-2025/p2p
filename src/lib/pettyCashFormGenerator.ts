@@ -1,11 +1,20 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
+interface ExpenseTypeItem {
+  expense_type_id: string;
+  expense_type_name: string;
+  sub_item_name: string;
+  status: string;
+  specify_value?: string;
+}
+
 interface PettyCashFormData {
   pcNumber: string;
   recipient: string;
   requestDate: string;
   requestType: string;
   purpose: string;
+  expenseTypeItems?: ExpenseTypeItem[];
   noOfPax: number;
   dateOfTransaction: string;
   company: string;
@@ -143,30 +152,43 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
   drawText(sanitizedData.requestType, valueX, particularY, 10, false);
   particularY -= lineSpacing;
 
-  // Purpose (with word wrap if needed)
+  // Purpose - show expense type items if available, otherwise show purpose text
   drawText('Purpose :', labelX, particularY, 10, false);
-  const maxPurposeWidth = boxWidth / 2 - 130;
-  const purposeWords = sanitizedData.purpose.split(' ');
-  let currentPurposeLine = '';
   let purposeY = particularY;
 
-  for (const word of purposeWords) {
-    const testLine = currentPurposeLine + (currentPurposeLine ? ' ' : '') + word;
-    const lineWidth = font.widthOfTextAtSize(testLine, 10);
-
-    if (lineWidth > maxPurposeWidth && currentPurposeLine !== '') {
-      drawText(currentPurposeLine, valueX, purposeY, 10, false);
-      currentPurposeLine = word;
+  if (data.expenseTypeItems && data.expenseTypeItems.length > 0) {
+    // Display expense type items
+    for (const item of data.expenseTypeItems) {
+      const expenseText = `${sanitizeText(item.expense_type_name)} : ${sanitizeText(item.sub_item_name)}`;
+      drawText(expenseText, valueX, purposeY, 10, false);
       purposeY -= lineSpacing;
-    } else {
-      currentPurposeLine = testLine;
     }
+  } else {
+    // Display purpose text with word wrap
+    const maxPurposeWidth = boxWidth / 2 - 130;
+    const purposeWords = sanitizedData.purpose.split(' ');
+    let currentPurposeLine = '';
+
+    for (const word of purposeWords) {
+      const testLine = currentPurposeLine + (currentPurposeLine ? ' ' : '') + word;
+      const lineWidth = font.widthOfTextAtSize(testLine, 10);
+
+      if (lineWidth > maxPurposeWidth && currentPurposeLine !== '') {
+        drawText(currentPurposeLine, valueX, purposeY, 10, false);
+        currentPurposeLine = word;
+        purposeY -= lineSpacing;
+      } else {
+        currentPurposeLine = testLine;
+      }
+    }
+
+    if (currentPurposeLine) {
+      drawText(currentPurposeLine, valueX, purposeY, 10, false);
+    }
+    purposeY -= lineSpacing;
   }
 
-  if (currentPurposeLine) {
-    drawText(currentPurposeLine, valueX, purposeY, 10, false);
-  }
-  particularY = purposeY - lineSpacing;
+  particularY = purposeY;
 
   // No. Pax
   drawText('No. Pax :', labelX, particularY, 10, false);

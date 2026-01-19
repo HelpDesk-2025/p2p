@@ -56,6 +56,7 @@ interface PettyCashReq {
   approved_petty_cash_pdf_path?: string;
   request_type?: string;
   expense_items?: ExpenseItem[];
+  expense_type_items?: ExpenseTypeItem[];
   linked_petty_cash_id?: string;
   petty_cash_advance?: number;
   no_of_pax?: number;
@@ -909,6 +910,7 @@ export function PettyCash() {
         requestDate: new Date(request.request_date).toLocaleDateString(),
         requestType: request.request_type || 'For Cash Advance',
         purpose: request.purpose,
+        expenseTypeItems: request.expense_type_items || [],
         noOfPax: request.no_of_pax || 0,
         dateOfTransaction: request.date_of_transactions
           ? new Date(request.date_of_transactions).toLocaleDateString()
@@ -1123,6 +1125,7 @@ export function PettyCash() {
         requestDate: new Date(request.request_date).toLocaleDateString(),
         requestType: request.request_type || 'For Cash Advance',
         purpose: request.purpose,
+        expenseTypeItems: request.expense_type_items || [],
         noOfPax: request.no_of_pax || 0,
         dateOfTransaction: request.date_of_transactions
           ? new Date(request.date_of_transactions).toLocaleDateString()
