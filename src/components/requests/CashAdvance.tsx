@@ -1233,7 +1233,7 @@ export function CashAdvance() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Attachments (Images & PDFs)
+              Attachments (Images & PDFs) <span className="text-red-500">*</span>
             </label>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
