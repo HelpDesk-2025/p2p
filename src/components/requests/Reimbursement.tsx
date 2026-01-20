@@ -1268,7 +1268,7 @@ export function Reimbursement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Attachments (Receipts)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Attachments (Receipts) <span className="text-red-500">*</span></label>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <label className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-100 transition">
