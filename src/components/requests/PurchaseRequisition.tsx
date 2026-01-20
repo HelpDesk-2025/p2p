@@ -560,6 +560,29 @@ export function PurchaseRequisition() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    // Validate required checklist attachments
+    const missingRequiredAttachments = formData.checklist_items.filter(
+      item => item.is_required && !item.file && !item.fileName
+    );
+
+    if (missingRequiredAttachments.length > 0 && !editingRequest) {
+      const missingNames = missingRequiredAttachments.map(item => item.item_name).join(', ');
+      alert(`Please upload required attachments: ${missingNames}`);
+      return;
+    }
+
+    // For editing, check if required items still need files
+    if (editingRequest) {
+      const missingRequiredForEdit = formData.checklist_items.filter(
+        item => item.is_required && !item.file && !item.fileName
+      );
+      if (missingRequiredForEdit.length > 0) {
+        const missingNames = missingRequiredForEdit.map(item => item.item_name).join(', ');
+        alert(`Please upload required attachments: ${missingNames}`);
+        return;
+      }
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -897,6 +920,16 @@ export function PurchaseRequisition() {
   };
 
   const handleSubmitDraft = async (request: PurchaseReq) => {
+    // Validate required checklist attachments from saved draft
+    const checklistItems = (request as any).checklist_items || [];
+    const missingRequired = checklistItems.filter((item: any) => item.is_required && !item.fileName);
+
+    if (missingRequired.length > 0) {
+      const missingNames = missingRequired.map((item: any) => item.item_name).join(', ');
+      alert(`Please upload required attachments before submitting: ${missingNames}`);
+      return;
+    }
+
     if (!confirm('Are you sure you want to submit this draft for approval?')) {
       return;
     }

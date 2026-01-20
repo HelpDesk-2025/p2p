@@ -469,6 +469,18 @@ export function Reimbursement() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    // Validate attachments are required for reimbursement
+    if (attachments.length === 0 && !editingRequest) {
+      alert('Please upload receipts/supporting documents. Attachments are required for reimbursement requests.');
+      return;
+    }
+
+    // For editing, check if attachments exist either as new uploads or existing ones
+    if (editingRequest && attachments.length === 0 && (!editingRequest.attachments || editingRequest.attachments.length === 0)) {
+      alert('Please upload receipts/supporting documents. Attachments are required for reimbursement requests.');
+      return;
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -658,6 +670,12 @@ export function Reimbursement() {
   };
 
   const handleSubmitDraft = async (request: ReimbursementReq) => {
+    // Validate attachments before submitting draft
+    if (!request.attachments || request.attachments.length === 0) {
+      alert('Please upload receipts/supporting documents before submitting. Attachments are required for reimbursement requests.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to submit this draft for approval?')) {
       return;
     }

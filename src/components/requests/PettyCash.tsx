@@ -556,9 +556,17 @@ export function PettyCash() {
     }
 
     // Validate attachment for "For Reimbursement" or "For Liquidation" type
-    if ((formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') && !attachmentFile && !editingRequest) {
-      alert('Please upload receipts');
-      return;
+    if (formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') {
+      // For new requests, attachments are required
+      if (!attachmentFile && !editingRequest) {
+        alert('Please upload receipts. Attachments are required for Reimbursement and Liquidation requests.');
+        return;
+      }
+      // For editing, check if attachments exist either as new upload or existing ones
+      if (editingRequest && !attachmentFile && (!editingRequest.attachments || editingRequest.attachments.length === 0)) {
+        alert('Please upload receipts. Attachments are required for Reimbursement and Liquidation requests.');
+        return;
+      }
     }
 
     if (status === 'draft') {
@@ -762,6 +770,14 @@ export function PettyCash() {
   };
 
   const handleSubmitDraft = async (request: PettyCashReq) => {
+    // Validate attachments for Reimbursement and Liquidation request types
+    if (request.request_type === 'For Reimbursement' || request.request_type === 'For Liquidation') {
+      if (!request.attachments || request.attachments.length === 0) {
+        alert('Please upload receipts before submitting. Attachments are required for Reimbursement and Liquidation requests.');
+        return;
+      }
+    }
+
     if (!confirm('Are you sure you want to submit this draft for approval?')) {
       return;
     }
