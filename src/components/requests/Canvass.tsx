@@ -472,6 +472,16 @@ export function Canvass() {
         return;
       }
 
+      // Validate that each filled quotation has an attachment
+      const quotationsWithoutFiles = filledQuotations.filter(
+        (q, index) => !q.quotation_file && !q.quotation_file_path
+      );
+
+      if (quotationsWithoutFiles.length > 0) {
+        alert('Please upload quotation attachments for all vendors. Each quotation requires a supporting document.');
+        return;
+      }
+
       if (recommendedQuotationIndex === null) {
         alert('Please select a recommended quotation.');
         return;
@@ -686,6 +696,22 @@ export function Canvass() {
   };
 
   const handleSubmitDraft = async (request: CanvassReq) => {
+    // Validate that all quotations have attachments
+    const suppliers = request.suppliers || [];
+    const quotationsWithoutFiles = suppliers.filter(
+      (supplier: any) => !supplier.quotation_file_path
+    );
+
+    if (quotationsWithoutFiles.length > 0) {
+      alert('Please upload quotation attachments for all vendors before submitting. Each quotation requires a supporting document.');
+      return;
+    }
+
+    if (suppliers.length === 0) {
+      alert('Please add at least one quotation before submitting.');
+      return;
+    }
+
     if (!confirm('Are you sure you want to submit this draft for approval?')) {
       return;
     }

@@ -404,6 +404,18 @@ export function CashAdvance() {
       return;
     }
 
+    // Validate attachments are required for cash advance
+    if (attachments.length === 0 && !editingRequest) {
+      alert('Please upload supporting documents. Attachments are required for cash advance requests.');
+      return;
+    }
+
+    // For editing, check if attachments exist either as new uploads or existing ones
+    if (editingRequest && attachments.length === 0 && (!editingRequest.attachment_metadata || editingRequest.attachment_metadata.length === 0)) {
+      alert('Please upload supporting documents. Attachments are required for cash advance requests.');
+      return;
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
@@ -597,6 +609,12 @@ export function CashAdvance() {
   const handleSubmitDraft = async (request: CashAdvanceReq) => {
     if (request.amount < 5000) {
       alert('Amount must be at least ₱5,000');
+      return;
+    }
+
+    // Validate attachments before submitting draft
+    if (!request.attachment_metadata || request.attachment_metadata.length === 0) {
+      alert('Please upload supporting documents before submitting. Attachments are required for cash advance requests.');
       return;
     }
 
