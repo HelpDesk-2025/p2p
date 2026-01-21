@@ -416,6 +416,17 @@ export function CashAdvance() {
       return;
     }
 
+    // Validate required payment mode lines
+    const missingPaymentModeLines = formData.payment_mode_lines.filter(
+      line => line.is_required && !line.value.trim()
+    );
+
+    if (missingPaymentModeLines.length > 0) {
+      const missingNames = missingPaymentModeLines.map(line => line.name).join(', ');
+      alert(`Please fill in required payment mode fields: ${missingNames}`);
+      return;
+    }
+
     if (status === 'draft') {
       setSavingDraft(true);
     } else {
