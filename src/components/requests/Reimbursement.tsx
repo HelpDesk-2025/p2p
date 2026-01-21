@@ -947,12 +947,14 @@ export function Reimbursement() {
       const companyName = fullRequest.companies?.name || 'N/A';
 
       // Generate ONLY the reimbursement form PDF (no attachments, no linked forms)
+      const requestDateObj = new Date(fullRequest.request_date);
       const reimbursementFormBytes = await generateReimbursementForm({
         reimbNumber: fullRequest.reimb_number,
         requestType: fullRequest.request_type || 'Reimbursement',
         requestedBy: requesterData.full_name || 'Unknown',
         requestedByEsig: requesterData.e_sig || null,
-        requestDate: new Date(fullRequest.request_date).toLocaleDateString(),
+        requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          requestDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         company: companyName,
         department: fullRequest.department || 'N/A',
         linkedRequestType: linkedDetails?.type || undefined,

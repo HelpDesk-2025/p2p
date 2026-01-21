@@ -594,12 +594,14 @@ export function ReimbursementApproval() {
           const companyName = selectedRequest.companies?.name || 'N/A';
 
           // Generate the reimbursement form PDF
+          const requestDateObj = new Date(selectedRequest.request_date);
           const reimbursementFormBytes = await generateReimbursementForm({
             reimbNumber: selectedRequest.reimb_number,
             requestType: selectedRequest.request_type || 'Reimbursement',
             requestedBy: requesterData.full_name || 'Unknown',
             requestedByEsig: requesterData.e_sig || null,
-            requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
+            requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+              requestDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
             company: companyName,
             department: selectedRequest.department || 'N/A',
             linkedRequestType: linkedDetails?.type || undefined,

@@ -218,7 +218,10 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 18;
 
   drawText('Date', rightColX, accountingY, 9, true);
-  const approvalDate = lastApprover ? new Date(lastApprover.approval_date).toLocaleDateString() : data.outstandingAslDate;
+  const approvalDate = lastApprover
+    ? new Date(lastApprover.approval_date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      new Date(lastApprover.approval_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    : data.outstandingAslDate;
   drawText(approvalDate, rightColX + 100, accountingY, 9, false);
   accountingY -= 18;
 
@@ -291,7 +294,12 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
 
     drawText(firstApprover.approver_name, recByX, approvalY - 30, 9, false);
-    drawText(new Date(firstApprover.approval_date).toLocaleDateString(), recByX, approvalY - 45, 8, false);
+    const firstApprovalDate = new Date(firstApprover.approval_date);
+    drawText(
+      firstApprovalDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      firstApprovalDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      recByX, approvalY - 45, 8, false
+    );
   }
 
   // Draw middle approvers (Approved By section - max 2)
@@ -313,7 +321,12 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
 
     drawText(approver1.approver_name, app1X, approvalY - 30, 9, false);
-    drawText(new Date(approver1.approval_date).toLocaleDateString(), app1X, approvalY - 45, 8, false);
+    const approver1Date = new Date(approver1.approval_date);
+    drawText(
+      approver1Date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      approver1Date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      app1X, approvalY - 45, 8, false
+    );
   }
 
   if (middleApprovers.length > 1) {
@@ -334,7 +347,12 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
 
     drawText(approver2.approver_name, app2X, approvalY - 30, 9, false);
-    drawText(new Date(approver2.approval_date).toLocaleDateString(), app2X, approvalY - 45, 8, false);
+    const approver2Date = new Date(approver2.approval_date);
+    drawText(
+      approver2Date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      approver2Date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      app2X, approvalY - 45, 8, false
+    );
   }
 
   const pdfBytes = await pdfDoc.save();

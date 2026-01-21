@@ -920,10 +920,15 @@ export function PettyCash() {
         .single();
 
       // Generate approved petty cash PDF
+      const requestDateObj = new Date(request.request_date);
+      const approvedDateObj = new Date(firstApprover.approval_date);
+      const receivedDateObj = new Date();
+
       const pdfBytes = await generatePettyCashForm({
         pcNumber: request.pc_number,
         recipient: request.payee || profile.full_name || 'Unknown',
-        requestDate: new Date(request.request_date).toLocaleDateString(),
+        requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          requestDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         requestType: request.request_type || 'For Cash Advance',
         purpose: request.purpose,
         expenseTypeItems: request.expense_type_items || [],
@@ -936,10 +941,12 @@ export function PettyCash() {
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
         approvedByEsig: firstApprover.user_profiles?.e_sig || null,
-        approvedByDate: new Date(firstApprover.approval_date).toLocaleDateString(),
+        approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          approvedDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         receivedByName: profile.full_name || 'Unknown',
         receivedByEsig: profile.e_sig || null,
-        receivedByDate: new Date().toLocaleDateString(),
+        receivedByDate: receivedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          receivedDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       });
 
       // Upload PDF to storage
@@ -1135,10 +1142,15 @@ export function PettyCash() {
         .eq('id', request.company_id || profile.company_id)
         .single();
 
+      const requestDateObj = new Date(request.request_date);
+      const approvedDateObj = new Date(firstApprover.approval_date);
+      const receivedDateObj = new Date(request.received_at || new Date());
+
       const pdfBytes = await generatePettyCashForm({
         pcNumber: request.pc_number,
         recipient: request.payee || profile.full_name || 'Unknown',
-        requestDate: new Date(request.request_date).toLocaleDateString(),
+        requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          requestDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         requestType: request.request_type || 'For Cash Advance',
         purpose: request.purpose,
         expenseTypeItems: request.expense_type_items || [],
@@ -1151,10 +1163,12 @@ export function PettyCash() {
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
         approvedByEsig: firstApprover.user_profiles?.e_sig || null,
-        approvedByDate: new Date(firstApprover.approval_date).toLocaleDateString(),
+        approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          approvedDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         receivedByName: profile.full_name || 'Unknown',
         receivedByEsig: profile.e_sig || null,
-        receivedByDate: new Date(request.received_at || new Date()).toLocaleDateString(),
+        receivedByDate: receivedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+          receivedDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       });
 
       const pdfFileName = `approved_petty_cash_${request.pc_number}_${Date.now()}.pdf`;

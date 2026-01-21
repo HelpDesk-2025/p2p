@@ -316,7 +316,12 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
     }
 
     drawText(approver.approver_name, colX, signatoryY - 30, 9, false);
-    drawText(new Date(approver.approval_date).toLocaleDateString(), colX, signatoryY - 45, 8, false);
+    const approverDate = new Date(approver.approval_date);
+    drawText(
+      approverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      approverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      colX, signatoryY - 45, 8, false
+    );
   }
 
   const pdfBytes = await pdfDoc.save();
