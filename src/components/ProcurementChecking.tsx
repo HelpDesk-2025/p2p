@@ -18,6 +18,7 @@ interface PurchaseReq {
   is_budgeted: boolean;
   requester_id: string;
   current_approval_level: number;
+  company_id?: string;
   checklist_items?: any[];
   items?: any[];
   payee?: string;
@@ -100,10 +101,32 @@ export function ProcurementChecking() {
       return;
     }
 
-    // Admin users can see all requests, others only see their company's requests
-    const filteredRequests = profile?.role === 'admin'
-      ? data
-      : data.filter(req => req.user_profiles?.company_id === profile.company_id);
+    // Admin users can see all requests
+    if (profile?.role === 'admin') {
+      setRequests(data);
+      return;
+    }
+
+    // For non-admin users, filter based on company access
+    const allowedCompanyIds = new Set<string>();
+
+    // Always include user's primary company
+    if (profile.company_id) {
+      allowedCompanyIds.add(profile.company_id);
+    }
+
+    // If user has multi-company access, include allowed companies
+    if (profile.enable_multi_company_requests && profile.allowed_companies) {
+      const allowedCompanies = Array.isArray(profile.allowed_companies)
+        ? profile.allowed_companies
+        : [];
+      allowedCompanies.forEach(companyId => allowedCompanyIds.add(companyId));
+    }
+
+    // Filter requests to only show those from allowed companies
+    const filteredRequests = data.filter(req =>
+      req.company_id && allowedCompanyIds.has(req.company_id)
+    );
 
     setRequests(filteredRequests);
   };
@@ -336,6 +359,9 @@ export function ProcurementChecking() {
                   Document No.
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Company
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Requester
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -358,7 +384,7 @@ export function ProcurementChecking() {
             <tbody className="divide-y divide-slate-200">
               {requests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
                     No approved purchase order requests found
                   </td>
                 </tr>
@@ -367,6 +393,9 @@ export function ProcurementChecking() {
                   <tr key={req.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
                       {req.document_no || req.pr_number}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                      {req.companies?.name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       {req.user_profiles?.full_name || 'N/A'}
