@@ -17,6 +17,7 @@ interface ApprovalRecord {
 interface RFPData {
   companyName: string;
   requestType: string;
+  documentNumber: string;
   dateOfRequest: string;
   payee: string;
   purpose: string;
@@ -73,6 +74,12 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   const rfpTitleWidth = boldFont.widthOfTextAtSize('REQUEST FOR PAYMENT', 12);
   drawText('REQUEST FOR PAYMENT', (width - rfpTitleWidth) / 2, yPosition, 12, true);
   yPosition -= 30;
+
+  // Document Number (right aligned)
+  const docNumText = `DOCUMENT NO.    ${data.documentNumber}`;
+  const docNumWidth = font.widthOfTextAtSize(docNumText, 10);
+  drawText(docNumText, width - docNumWidth - 50, yPosition, 10, false);
+  yPosition -= 20;
 
   // Date (right aligned)
   const dateText = `DATE    ${data.dateOfRequest}`;
@@ -971,6 +978,7 @@ export async function generateAndUploadCanvassRFP(
     const rfpData: RFPData = {
       companyName: canvass.company?.name || 'Company Name',
       requestType: 'Canvass',
+      documentNumber: canvassNumber,
       dateOfRequest: new Date(canvass.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
@@ -1272,6 +1280,7 @@ export async function generateAndUploadRFP(
       companyName: request.company?.name || 'Company Name',
       requestType: requestType === 'purchase_requisition' ? 'Purchase Requisition' :
                    requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement',
+      documentNumber: requestNumber,
       dateOfRequest: new Date(request.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
