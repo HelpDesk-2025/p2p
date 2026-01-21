@@ -1629,7 +1629,7 @@ export function PurchaseRequisition() {
                       {req.description || req.purpose}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(req.request_date).toLocaleString()}
+                      {new Date(req.request_date).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       {req.purchase_type || 'N/A'}
