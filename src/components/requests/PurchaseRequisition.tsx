@@ -1449,7 +1449,7 @@ export function PurchaseRequisition() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Amount Net of VAT
+                    Amount to be paid
                   </label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold">₱</span>
@@ -1819,7 +1819,7 @@ export function PurchaseRequisition() {
                       <p className="text-slate-900">{viewingRequest.payee}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-semibold text-slate-700">Amount Net of VAT</label>
+                      <label className="text-sm font-semibold text-slate-700">Amount to be paid</label>
                       <p className="text-slate-900 font-bold">₱{viewingRequest.amount_net_vat?.toFixed(2)}</p>
                     </div>
                   </div>
