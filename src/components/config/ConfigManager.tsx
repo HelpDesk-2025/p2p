@@ -29,7 +29,7 @@ export function ConfigManager({ type }: ConfigManagerProps) {
           query = supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
           break;
         case 'checklists':
-          query = supabase.from('pr_checklists').select('*').order('order_index', { ascending: true });
+          query = supabase.from('pr_checklists').select('*').order('item_name', { ascending: true });
           break;
         case 'payment-modes':
           query = supabase.from('payment_modes').select('*').order('created_at', { ascending: false });

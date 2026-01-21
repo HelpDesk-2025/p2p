@@ -200,7 +200,7 @@ export function PurchaseRequisition() {
         .select('*')
         .eq('pr_type', dbPurchaseType)
         .eq('is_active', true)
-        .order('order_index', { ascending: true });
+        .order('item_name', { ascending: true });
 
       if (error) throw error;
       setPrChecklists(data || []);
