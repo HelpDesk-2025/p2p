@@ -407,7 +407,7 @@ export function ProcurementChecking() {
                       {req.description || req.purpose}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(req.request_date).toLocaleDateString()}
+                      {new Date(req.request_date).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

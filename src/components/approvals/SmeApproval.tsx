@@ -239,7 +239,7 @@ export function SmeApproval() {
                       {req.purpose}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(req.created_at).toLocaleDateString()}
+                      {new Date(req.created_at).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

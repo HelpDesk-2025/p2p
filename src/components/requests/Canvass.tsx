@@ -1020,7 +1020,7 @@ export function Canvass() {
                     <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
                     <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(pr.request_date).toLocaleDateString()}
+                      {new Date(pr.request_date).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <button
@@ -1862,8 +1862,8 @@ export function Canvass() {
               requests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.canvass_number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.required_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.required_date).toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>{req.status}</span>
                   </td>

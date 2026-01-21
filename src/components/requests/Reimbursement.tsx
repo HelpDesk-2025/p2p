@@ -1379,7 +1379,7 @@ export function Reimbursement() {
               requests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.reimb_number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleString()}</td>
                   {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
                     <>
                       <td className="px-6 py-4 text-sm text-slate-600">{(req as any).companies?.name || 'N/A'}</td>

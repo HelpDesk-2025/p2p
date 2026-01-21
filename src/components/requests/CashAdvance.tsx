@@ -1362,7 +1362,7 @@ export function CashAdvance() {
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.ca_number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">
-                    {new Date(req.request_date).toLocaleDateString()}
+                    {new Date(req.request_date).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
                     {req.purpose}
