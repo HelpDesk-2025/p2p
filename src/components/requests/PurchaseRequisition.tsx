@@ -693,7 +693,7 @@ export function PurchaseRequisition() {
         payload.document_no = formData.document_no;
         payload.pr_number = prNumber;
         payload.requester_id = profile?.id;
-        payload.request_date = new Date().toISOString().split('T')[0];
+        payload.request_date = new Date().toISOString();
         payload.current_approval_level = 0;
 
         const { data, error } = await supabase

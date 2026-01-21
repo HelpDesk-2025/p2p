@@ -588,7 +588,7 @@ export function Canvass() {
             company_id: selectedCompanyId,
             pr_id: selectedPR?.id || null,
             department: selectedPR?.department || profile?.department || '',
-            request_date: new Date().toISOString().split('T')[0],
+            request_date: new Date().toISOString(),
             required_date: formData.required_date,
             items: formData.items,
             suppliers: quotationsWithFiles,

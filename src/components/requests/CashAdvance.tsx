@@ -512,7 +512,7 @@ export function CashAdvance() {
           requester_id: profile?.id,
           company_id: requestCompanyId,
           department: requestDepartment,
-          request_date: new Date().toISOString().split('T')[0],
+          request_date: new Date().toISOString(),
           payee: formData.payee,
           payee_number: formData.payee_number,
           purpose: formData.purpose,

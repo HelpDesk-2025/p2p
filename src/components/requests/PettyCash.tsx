@@ -617,7 +617,7 @@ export function PettyCash() {
             requester_id: profile?.id,
             company_id: companyId,
             department: department,
-            request_date: new Date().toISOString().split('T')[0],
+            request_date: new Date().toISOString(),
             payee: formData.payee,
             purpose: formData.purpose,
             amount: finalAmount,
