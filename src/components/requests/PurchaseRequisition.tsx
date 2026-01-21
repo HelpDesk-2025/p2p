@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -82,6 +82,10 @@ export function PurchaseRequisition() {
   const [viewingRequest, setViewingRequest] = useState<PurchaseReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PurchaseReq | null>(null);
+
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string>('request_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Multi-company support
   const [companies, setCompanies] = useState<any[]>([]);
@@ -1043,6 +1047,44 @@ export function PurchaseRequisition() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any = a[sortColumn as keyof PurchaseReq];
+    let bVal: any = b[sortColumn as keyof PurchaseReq];
+
+    if (sortColumn === 'document_no') {
+      aVal = a.document_no || a.pr_number;
+      bVal = b.document_no || b.pr_number;
+    } else if (sortColumn === 'description') {
+      aVal = a.description || a.purpose;
+      bVal = b.description || b.purpose;
+    }
+
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -1590,22 +1632,34 @@ export function PurchaseRequisition() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Document No.
+                  <button onClick={() => handleSort('document_no')} className="flex items-center gap-2 hover:text-slate-700">
+                    Document No. {getSortIcon('document_no')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Description
+                  <button onClick={() => handleSort('description')} className="flex items-center gap-2 hover:text-slate-700">
+                    Description {getSortIcon('description')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Date
+                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
+                    Date {getSortIcon('request_date')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Type
+                  <button onClick={() => handleSort('purchase_type')} className="flex items-center gap-2 hover:text-slate-700">
+                    Type {getSortIcon('purchase_type')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Amount
+                  <button onClick={() => handleSort('total_amount')} className="flex items-center gap-2 hover:text-slate-700">
+                    Amount {getSortIcon('total_amount')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Status
+                  <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
+                    Status {getSortIcon('status')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Actions
@@ -1613,14 +1667,14 @@ export function PurchaseRequisition() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {requests.length === 0 ? (
+              {sortedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
                     No purchase requisitions found
                   </td>
                 </tr>
               ) : (
-                requests.map((req) => (
+                sortedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
                       {req.document_no || req.pr_number}

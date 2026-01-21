@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2 } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
@@ -107,6 +107,8 @@ export function PettyCash() {
   const [selectedExpenseTypeId, setSelectedExpenseTypeId] = useState<string>('');
   const [expenseTypeItems, setExpenseTypeItems] = useState<ExpenseTypeItem[]>([]);
   const [tempSubItemSpecifyValues, setTempSubItemSpecifyValues] = useState<{ [key: string]: string }>({});
+  const [sortColumn, setSortColumn] = useState<string>('request_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -997,6 +999,36 @@ export function PettyCash() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any = a[sortColumn as keyof PettyCashReq];
+    let bVal: any = b[sortColumn as keyof PettyCashReq];
+
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const downloadRFP = async (rfpPath: string, pcNumber: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -1707,10 +1739,14 @@ export function PettyCash() {
           <thead className="bg-slate-50 border-b">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                PC Number
+                <button onClick={() => handleSort('pc_number')} className="flex items-center gap-2 hover:text-slate-700">
+                  PC Number {getSortIcon('pc_number')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Date
+                <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
+                  Date {getSortIcon('request_date')}
+                </button>
               </th>
               {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
                 <>
@@ -1723,13 +1759,19 @@ export function PettyCash() {
                 </>
               )}
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Purpose
+                <button onClick={() => handleSort('purpose')} className="flex items-center gap-2 hover:text-slate-700">
+                  Purpose {getSortIcon('purpose')}
+                </button>
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
-                Amount
+                <button onClick={() => handleSort('amount')} className="flex items-center gap-2 hover:text-slate-700">
+                  Amount {getSortIcon('amount')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Status
+                <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
+                  Status {getSortIcon('status')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 Actions
@@ -1737,14 +1779,14 @@ export function PettyCash() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {requests.length === 0 ? (
+            {sortedRequests.length === 0 ? (
               <tr>
                 <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-6 py-8 text-center text-slate-500">
                   No petty cash requests found
                 </td>
               </tr>
             ) : (
-              requests.map((req) => (
+              sortedRequests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.pc_number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">

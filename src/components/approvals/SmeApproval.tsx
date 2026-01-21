@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, X, ClipboardList, FileText, User, Download, ExternalLink } from 'lucide-react';
+import { Eye, X, ClipboardList, FileText, User, Download, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface SmeRequest {
   id: string;
@@ -44,6 +44,8 @@ export function SmeApproval() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [comments, setComments] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     loadSmeRequests();
@@ -167,6 +169,56 @@ export function SmeApproval() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (sortColumn) {
+      case 'document_no':
+        aVal = a.purchase_requisitions?.document_no || a.purchase_requisitions?.pr_number || '';
+        bVal = b.purchase_requisitions?.document_no || b.purchase_requisitions?.pr_number || '';
+        break;
+      case 'requester':
+        aVal = a.requester?.full_name || '';
+        bVal = b.requester?.full_name || '';
+        break;
+      case 'department':
+        aVal = a.purchase_requisitions?.department || '';
+        bVal = b.purchase_requisitions?.department || '';
+        break;
+      case 'purpose':
+        aVal = a.purpose || '';
+        bVal = b.purpose || '';
+        break;
+      case 'created_at':
+        aVal = new Date(a.created_at).getTime();
+        bVal = new Date(b.created_at).getTime();
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -184,13 +236,31 @@ export function SmeApproval() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Document No.
+                  <button
+                    onClick={() => handleSort('document_no')}
+                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  >
+                    Document No.
+                    {getSortIcon('document_no')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Requester
+                  <button
+                    onClick={() => handleSort('requester')}
+                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  >
+                    Requester
+                    {getSortIcon('requester')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Department
+                  <button
+                    onClick={() => handleSort('department')}
+                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  >
+                    Department
+                    {getSortIcon('department')}
+                  </button>
                 </th>
                 {profile?.role === 'admin' && (
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -198,10 +268,22 @@ export function SmeApproval() {
                   </th>
                 )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Purpose
+                  <button
+                    onClick={() => handleSort('purpose')}
+                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  >
+                    Purpose
+                    {getSortIcon('purpose')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Request Date
+                  <button
+                    onClick={() => handleSort('created_at')}
+                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  >
+                    Request Date
+                    {getSortIcon('created_at')}
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Status
@@ -212,14 +294,14 @@ export function SmeApproval() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {requests.length === 0 ? (
+              {sortedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={profile?.role === 'admin' ? 8 : 7} className="px-6 py-8 text-center text-slate-500">
                     No SME requests found
                   </td>
                 </tr>
               ) : (
-                requests.map((req) => (
+                sortedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
                       {req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}

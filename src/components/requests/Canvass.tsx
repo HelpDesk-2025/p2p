@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
@@ -170,6 +170,8 @@ export function Canvass() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedPRCompany, setSelectedPRCompany] = useState<string>('');
   const [isHorizontalLayout, setIsHorizontalLayout] = useState(true);
+  const [sortColumn, setSortColumn] = useState<string>('request_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -882,6 +884,36 @@ export function Canvass() {
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any = a[sortColumn as keyof CanvassReq];
+    let bVal: any = b[sortColumn as keyof CanvassReq];
+
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const previewMergedPDF = async (pdfPath: string) => {
     const { data } = await supabase.storage.from('attachments').createSignedUrl(pdfPath, 60);
@@ -1846,20 +1878,36 @@ export function Canvass() {
         <table className="w-full">
           <thead className="bg-slate-50 border-b">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Canvass Number</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Required Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                <button onClick={() => handleSort('canvass_number')} className="flex items-center gap-2 hover:text-slate-700">
+                  Canvass Number {getSortIcon('canvass_number')}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
+                  Date {getSortIcon('request_date')}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                <button onClick={() => handleSort('required_date')} className="flex items-center gap-2 hover:text-slate-700">
+                  Required Date {getSortIcon('required_date')}
+                </button>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
+                  Status {getSortIcon('status')}
+                </button>
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {requests.length === 0 ? (
+            {sortedRequests.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No canvass requests found</td>
               </tr>
             ) : (
-              requests.map((req) => (
+              sortedRequests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.canvass_number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleString()}</td>

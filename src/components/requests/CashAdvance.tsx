@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Upload, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Upload, Trash2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -76,6 +76,8 @@ export function CashAdvance() {
   const [postingToMsbc, setPostingToMsbc] = useState(false);
   const [paymentModes, setPaymentModes] = useState<any[]>([]);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
+  const [sortColumn, setSortColumn] = useState<string>('request_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Multi-company support
   const [companies, setCompanies] = useState<any[]>([]);
@@ -731,6 +733,56 @@ export function CashAdvance() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (sortColumn) {
+      case 'ca_number':
+        aVal = a.ca_number;
+        bVal = b.ca_number;
+        break;
+      case 'request_date':
+        aVal = new Date(a.request_date).getTime();
+        bVal = new Date(b.request_date).getTime();
+        break;
+      case 'purpose':
+        aVal = a.purpose;
+        bVal = b.purpose;
+        break;
+      case 'amount':
+        aVal = a.amount;
+        bVal = b.amount;
+        break;
+      case 'status':
+        aVal = a.status;
+        bVal = b.status;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const downloadRFP = async (rfpPath: string, caNumber: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -1342,19 +1394,49 @@ export function CashAdvance() {
           <thead className="bg-slate-50 border-b">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                CA Number
+                <button
+                  onClick={() => handleSort('ca_number')}
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                >
+                  CA Number
+                  {getSortIcon('ca_number')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Date
+                <button
+                  onClick={() => handleSort('request_date')}
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                >
+                  Date
+                  {getSortIcon('request_date')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Purpose
+                <button
+                  onClick={() => handleSort('purpose')}
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                >
+                  Purpose
+                  {getSortIcon('purpose')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Amount
+                <button
+                  onClick={() => handleSort('amount')}
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                >
+                  Amount
+                  {getSortIcon('amount')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Status
+                <button
+                  onClick={() => handleSort('status')}
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                >
+                  Status
+                  {getSortIcon('status')}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 Actions
@@ -1362,14 +1444,14 @@ export function CashAdvance() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {requests.length === 0 ? (
+            {sortedRequests.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                   No cash advance requests found
                 </td>
               </tr>
             ) : (
-              requests.map((req) => (
+              sortedRequests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.ca_number}</td>
                   <td className="px-6 py-4 text-sm text-slate-600">

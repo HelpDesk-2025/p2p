@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, X, Loader2, Eye, Download } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
@@ -61,6 +61,8 @@ export function CashAdvanceApproval() {
   const [outstandingAsl, setOutstandingAsl] = useState('None');
   const [remarks, setRemarks] = useState('OK');
   const [paymentModeName, setPaymentModeName] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<string>('request_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     loadRequests();
@@ -218,6 +220,56 @@ export function CashAdvanceApproval() {
 
     return false;
   };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (sortColumn) {
+      case 'ca_number':
+        aVal = a.ca_number;
+        bVal = b.ca_number;
+        break;
+      case 'requester':
+        aVal = a.user_profiles?.full_name || '';
+        bVal = b.user_profiles?.full_name || '';
+        break;
+      case 'department':
+        aVal = a.department || a.user_profiles?.department || '';
+        bVal = b.department || b.user_profiles?.department || '';
+        break;
+      case 'amount':
+        aVal = a.amount;
+        bVal = b.amount;
+        break;
+      case 'request_date':
+        aVal = new Date(a.request_date).getTime();
+        bVal = new Date(b.request_date).getTime();
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const downloadAttachments = async (pdfPath: string, caNumber: string) => {
     try {
@@ -597,16 +649,40 @@ export function CashAdvanceApproval() {
             <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  CA Number
+                  <button
+                    onClick={() => handleSort('ca_number')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    CA Number
+                    {getSortIcon('ca_number')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Requester
+                  <button
+                    onClick={() => handleSort('requester')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Requester
+                    {getSortIcon('requester')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Department
+                  <button
+                    onClick={() => handleSort('department')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Department
+                    {getSortIcon('department')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Amount
+                  <button
+                    onClick={() => handleSort('amount')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Amount
+                    {getSortIcon('amount')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Approval Level
@@ -617,7 +693,7 @@ export function CashAdvanceApproval() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {requests.map((request) => (
+              {sortedRequests.map((request) => (
                 <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-mono font-semibold text-slate-900">{request.ca_number}</span>

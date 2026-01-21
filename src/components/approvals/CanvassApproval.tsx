@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
@@ -74,6 +74,8 @@ export function CanvassApproval() {
   const [myRecommendedVendorIndex, setMyRecommendedVendorIndex] = useState<number | null>(null);
   const [myRecommendationRemarks, setMyRecommendationRemarks] = useState<string>('');
   const [previousRecommendations, setPreviousRecommendations] = useState<ApproverRecommendation[]>([]);
+  const [sortColumn, setSortColumn] = useState<string>('request_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     loadRequests();
@@ -293,6 +295,56 @@ export function CanvassApproval() {
 
     return false;
   };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const sortedRequests = [...requests].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (sortColumn) {
+      case 'canvass_number':
+        aVal = a.canvass_number;
+        bVal = b.canvass_number;
+        break;
+      case 'requester':
+        aVal = a.user_profiles?.full_name || '';
+        bVal = b.user_profiles?.full_name || '';
+        break;
+      case 'department':
+        aVal = a.department || '';
+        bVal = b.department || '';
+        break;
+      case 'total_amount':
+        aVal = a.total_amount;
+        bVal = b.total_amount;
+        break;
+      case 'request_date':
+        aVal = new Date(a.request_date).getTime();
+        bVal = new Date(b.request_date).getTime();
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const handleAction = async (action: 'approved' | 'rejected') => {
     if (!selectedRequest || !profile?.company_id) return;
@@ -537,16 +589,40 @@ export function CanvassApproval() {
             <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Canvass Number
+                  <button
+                    onClick={() => handleSort('canvass_number')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Canvass Number
+                    {getSortIcon('canvass_number')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Requester
+                  <button
+                    onClick={() => handleSort('requester')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Requester
+                    {getSortIcon('requester')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Department
+                  <button
+                    onClick={() => handleSort('department')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Department
+                    {getSortIcon('department')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Total Amount
+                  <button
+                    onClick={() => handleSort('total_amount')}
+                    className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                  >
+                    Total Amount
+                    {getSortIcon('total_amount')}
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Approval Level
@@ -557,7 +633,7 @@ export function CanvassApproval() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {requests.map((request) => (
+              {sortedRequests.map((request) => (
                 <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-mono font-semibold text-slate-900">{request.canvass_number}</span>
