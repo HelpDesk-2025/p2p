@@ -36,6 +36,8 @@ interface PettyCashReq {
   no_of_pax?: number;
   expense_items?: ExpenseItem[];
   expense_type_items?: ExpenseTypeItem[];
+  linked_petty_cash_id?: string;
+  petty_cash_advance?: number;
   status: string;
   current_approval_level: number;
   attachments?: Array<{
@@ -68,10 +70,35 @@ export function PettyCashApproval() {
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [linkedPettyCashDetails, setLinkedPettyCashDetails] = useState<PettyCashReq | null>(null);
 
   useEffect(() => {
     loadRequests();
   }, [profile]);
+
+  useEffect(() => {
+    const fetchLinkedPettyCash = async () => {
+      if (selectedRequest?.request_type === 'For Liquidation' && selectedRequest?.linked_petty_cash_id) {
+        try {
+          const { data, error } = await supabase
+            .from('petty_cash_requests')
+            .select('*')
+            .eq('id', selectedRequest.linked_petty_cash_id)
+            .maybeSingle();
+
+          if (error) throw error;
+          setLinkedPettyCashDetails(data);
+        } catch (error) {
+          console.error('Error fetching linked petty cash:', error);
+          setLinkedPettyCashDetails(null);
+        }
+      } else {
+        setLinkedPettyCashDetails(null);
+      }
+    };
+
+    fetchLinkedPettyCash();
+  }, [selectedRequest]);
 
   const loadRequests = async () => {
     if (!profile?.company_id && profile?.role !== 'admin') return;
@@ -701,6 +728,50 @@ export function PettyCashApproval() {
                   <p className="text-slate-900">{selectedRequest.purpose}</p>
                 )}
               </div>
+
+              {selectedRequest.request_type === 'For Liquidation' && linkedPettyCashDetails && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Linked Petty Cash Advance Request</label>
+                  <div className="bg-white rounded-lg p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">PC Number</label>
+                        <p className="text-sm text-slate-900 font-semibold">{linkedPettyCashDetails.pc_number}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Request Date</label>
+                        <p className="text-sm text-slate-900">
+                          {new Date(linkedPettyCashDetails.request_date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Advance Amount</label>
+                        <p className="text-sm text-slate-900 font-bold text-green-700">
+                          ₱{linkedPettyCashDetails.amount.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600">Status</label>
+                        <span className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          {linkedPettyCashDetails.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Purpose</label>
+                      <p className="text-sm text-slate-900">{linkedPettyCashDetails.purpose}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Payee</label>
+                      <p className="text-sm text-slate-900">{linkedPettyCashDetails.payee || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {selectedRequest.no_of_pax && (
                 <div>
