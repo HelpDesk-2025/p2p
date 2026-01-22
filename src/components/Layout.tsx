@@ -179,7 +179,7 @@ const configItems: MenuItem[] = [
   { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, permission: MODULE_PERMISSIONS.SMTP },
   { id: 'config-expense-types', label: 'Type of Expense', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-vat-rates', label: 'VAT Rates', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-withholding-tax-rates', label: 'Withholding Tax Rates', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
 ];
 

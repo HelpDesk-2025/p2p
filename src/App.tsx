@@ -102,8 +102,8 @@ function AppContent() {
         return <ConfigManager type="smtp" />;
       case 'config-expense-types':
         return <ConfigManager type="expense-types" />;
-      case 'config-vat-rates':
-        return <ConfigManager type="vat-rates" />;
+      case 'config-withholding-tax-rates':
+        return <ConfigManager type="withholding-tax-rates" />;
       case 'config-roles-permissions':
         return <ConfigManager type="roles-permissions" />;
       case 'change-password':

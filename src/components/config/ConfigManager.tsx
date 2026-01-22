@@ -6,7 +6,7 @@ import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
 import { RolesPermissionsConfig } from './RolesPermissionsConfig';
 
-type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'vat-rates';
+type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates';
 
 interface ConfigManagerProps {
   type: ConfigType;
@@ -50,8 +50,8 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         case 'expense-types':
           query = supabase.from('expense_types').select('*').order('name', { ascending: true });
           break;
-        case 'vat-rates':
-          query = supabase.from('vat_rates').select('*').order('name', { ascending: true });
+        case 'withholding-tax-rates':
+          query = supabase.from('withholding_tax_rates').select('*').order('name', { ascending: true });
           break;
         default:
           query = supabase.from('approvers').select(`
@@ -92,8 +92,8 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         return <RolesPermissionsConfig />;
       case 'expense-types':
         return <ExpenseTypesConfig data={data} reload={loadData} />;
-      case 'vat-rates':
-        return <VatRatesConfig data={data} reload={loadData} />;
+      case 'withholding-tax-rates':
+        return <WithholdingTaxRatesConfig data={data} reload={loadData} />;
       default:
         return <div>Select a configuration type</div>;
     }
@@ -2929,7 +2929,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
   );
 }
 
-function VatRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
+function WithholdingTaxRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -2951,7 +2951,7 @@ function VatRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
       }
 
       if (editingId) {
-        const { error } = await supabase.from('vat_rates').update({
+        const { error } = await supabase.from('withholding_tax_rates').update({
           name: formData.name,
           rate: parseFloat(formData.rate),
           description: formData.description,
@@ -2959,7 +2959,7 @@ function VatRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
         }).eq('id', editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('vat_rates').insert({
+        const { error } = await supabase.from('withholding_tax_rates').insert({
           name: formData.name,
           rate: parseFloat(formData.rate),
           description: formData.description,
@@ -3004,9 +3004,9 @@ function VatRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this VAT rate?')) return;
+    if (!confirm('Delete this withholding tax rate?')) return;
     try {
-      const { error } = await supabase.from('vat_rates').delete().eq('id', id);
+      const { error } = await supabase.from('withholding_tax_rates').delete().eq('id', id);
       if (error) throw error;
       reload();
     } catch (error: any) {
@@ -3017,27 +3017,27 @@ function VatRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-slate-900">VAT Rates</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Withholding Tax Rates</h2>
         <button
           onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus size={20} />
-          Add VAT Rate
+          Add Withholding Tax Rate
         </button>
       </div>
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 space-y-4">
           <h3 className="text-lg font-semibold text-slate-900">
-            {editingId ? 'Edit VAT Rate' : 'Add VAT Rate'}
+            {editingId ? 'Edit Withholding Tax Rate' : 'Add Withholding Tax Rate'}
           </h3>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
             <input
               type="text"
-              placeholder="e.g., Standard VAT, Zero-Rated, VAT Exempt"
+              placeholder="e.g., EWT 1%, EWT 2%, Final Tax 20%"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
