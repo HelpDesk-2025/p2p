@@ -109,6 +109,8 @@ interface QuotationForm {
   discounted_price: number;
   purchase_price: number;
   withholding_tax: boolean;
+  withholding_tax_rate_id?: string;
+  withholding_tax_rate?: number;
   vatable: boolean;
   is_service: boolean;
   is_item: boolean;
@@ -172,6 +174,7 @@ export function Canvass() {
   const [isHorizontalLayout, setIsHorizontalLayout] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [withholdingTaxRates, setWithholdingTaxRates] = useState<{ id: string; name: string; rate: number }[]>([]);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -190,6 +193,8 @@ export function Canvass() {
     discounted_price: 0,
     purchase_price: 0,
     withholding_tax: false,
+    withholding_tax_rate_id: undefined,
+    withholding_tax_rate: undefined,
     vatable: false,
     is_service: false,
     is_item: false,
@@ -261,6 +266,7 @@ export function Canvass() {
   useEffect(() => {
     if (profile) {
       loadCompanies();
+      loadWithholdingTaxRates();
     }
   }, [profile]);
 
@@ -305,6 +311,16 @@ export function Canvass() {
 
     const { data } = await query;
     setCompanies(data || []);
+  };
+
+  const loadWithholdingTaxRates = async () => {
+    const { data } = await supabase
+      .from('withholding_tax_rates')
+      .select('id, name, rate')
+      .eq('is_active', true)
+      .order('name');
+
+    setWithholdingTaxRates(data || []);
   };
 
   const loadAvailablePRs = async () => {
@@ -427,7 +443,9 @@ export function Canvass() {
       updated.vat_12 = 0;
     }
 
-    if (updated.withholding_tax) {
+    if (updated.withholding_tax && updated.withholding_tax_rate !== undefined) {
+      updated.ewt = Math.round((updated.net_of_vat * (updated.withholding_tax_rate / 100)) * 100) / 100;
+    } else if (updated.withholding_tax) {
       if (updated.is_service) {
         updated.ewt = Math.round((updated.net_of_vat * 0.02) * 100) / 100;
       } else if (updated.is_item) {
@@ -1543,6 +1561,8 @@ export function Canvass() {
                                 if (!e.target.checked) {
                                   newQuotations[idx].is_service = false;
                                   newQuotations[idx].is_item = false;
+                                  newQuotations[idx].withholding_tax_rate_id = undefined;
+                                  newQuotations[idx].withholding_tax_rate = undefined;
                                 }
                                 newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
                                 setQuotations(newQuotations);
@@ -1568,41 +1588,27 @@ export function Canvass() {
                         </div>
 
                         {quotation.withholding_tax && (
-                          <div className="flex flex-wrap items-center gap-3 ml-4">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={quotation.is_service}
-                                onChange={(e) => {
-                                  const newQuotations = [...quotations];
-                                  newQuotations[idx].is_service = e.target.checked;
-                                  if (e.target.checked) {
-                                    newQuotations[idx].is_item = false;
-                                  }
-                                  newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
-                                  setQuotations(newQuotations);
-                                }}
-                                className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                              />
-                              <label className="text-xs font-medium text-slate-700">Service</label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={quotation.is_item}
-                                onChange={(e) => {
-                                  const newQuotations = [...quotations];
-                                  newQuotations[idx].is_item = e.target.checked;
-                                  if (e.target.checked) {
-                                    newQuotations[idx].is_service = false;
-                                  }
-                                  newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
-                                  setQuotations(newQuotations);
-                                }}
-                                className="w-3.5 h-3.5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                              />
-                              <label className="text-xs font-medium text-slate-700">Item</label>
-                            </div>
+                          <div className="ml-4">
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Withholding Tax Rate</label>
+                            <select
+                              value={quotation.withholding_tax_rate_id || ''}
+                              onChange={(e) => {
+                                const newQuotations = [...quotations];
+                                const selectedRate = withholdingTaxRates.find(r => r.id === e.target.value);
+                                newQuotations[idx].withholding_tax_rate_id = e.target.value || undefined;
+                                newQuotations[idx].withholding_tax_rate = selectedRate?.rate || undefined;
+                                newQuotations[idx] = calculateQuotationValues(newQuotations[idx]);
+                                setQuotations(newQuotations);
+                              }}
+                              className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">Select Rate</option>
+                              {withholdingTaxRates.map((rate) => (
+                                <option key={rate.id} value={rate.id}>
+                                  {rate.name} ({rate.rate}%)
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         )}
                       </div>
