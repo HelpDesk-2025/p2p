@@ -1366,11 +1366,6 @@ export function PettyCash() {
               value={formData.request_type}
               onChange={(e) => {
                 setFormData({ ...formData, request_type: e.target.value });
-                // Clear attachment if switching away from Reimbursement/Liquidation
-                if (e.target.value !== 'For Reimbursement' && e.target.value !== 'For Liquidation') {
-                  setAttachmentFile(null);
-                  setAttachmentError('');
-                }
               }}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
               required
@@ -1380,6 +1375,49 @@ export function PettyCash() {
               <option value="For Liquidation">For Liquidation</option>
             </select>
           </div>
+
+          {formData.request_type === 'For Cash Advance' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Supporting Documents
+                <span className="text-xs text-slate-500 ml-2 font-normal">(Optional)</span>
+              </label>
+              <p className="text-xs text-slate-600 mb-3">
+                Upload supporting documents if available (PDF or image file)
+              </p>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition">
+                  <Upload size={18} className="text-slate-600" />
+                  <span className="text-sm text-slate-700">Choose File</span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/jpeg,image/jpg,image/png"
+                    onChange={handleAttachmentChange}
+                    className="hidden"
+                  />
+                </label>
+                {attachmentFile && (
+                  <div className="flex items-center gap-2 text-sm text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-300">
+                    <Paperclip size={16} className="text-green-600" />
+                    <span className="truncate max-w-xs">{attachmentFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentFile(null);
+                        setAttachmentError('');
+                      }}
+                      className="text-red-500 hover:text-red-700 ml-2"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {attachmentError && (
+                <p className="mt-2 text-sm text-red-600">{attachmentError}</p>
+              )}
+            </div>
+          )}
 
           {(formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
