@@ -1029,62 +1029,105 @@ export function Canvass() {
 
   if (showPRSelection) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Select Purchase Requisition</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Select Purchase Requisition</h2>
             <p className="text-sm text-slate-600 mt-1">Choose a PR that is ready for canvass</p>
           </div>
           <button
             onClick={() => setShowPRSelection(false)}
-            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition self-start sm:self-auto"
           >
             Cancel
           </button>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document No.</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {availablePRs.length === 0 ? (
+        {/* Desktop Table View */}
+        <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                    No purchase requisitions ready for canvass
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document No.</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
-              ) : (
-                availablePRs.map((pr) => (
-                  <tr key={pr.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 text-sm font-mono font-medium text-slate-900">
-                      {pr.document_no || pr.pr_number}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(pr.request_date).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => handlePRSelection(pr)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                      >
-                        Select
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {availablePRs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                      No purchase requisitions ready for canvass
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  availablePRs.map((pr) => (
+                    <tr key={pr.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 text-sm font-mono font-medium text-slate-900">
+                        {pr.document_no || pr.pr_number}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {new Date(pr.request_date).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <button
+                          onClick={() => handlePRSelection(pr)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Select
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-3">
+          {availablePRs.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center text-slate-500">
+              No purchase requisitions ready for canvass
+            </div>
+          ) : (
+            availablePRs.map((pr) => (
+              <div key={pr.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-slate-500 uppercase mb-1">Document No.</p>
+                    <p className="text-sm font-mono font-semibold text-slate-900">{pr.document_no || pr.pr_number}</p>
+                  </div>
+                  <button
+                    onClick={() => handlePRSelection(pr)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium whitespace-nowrap"
+                  >
+                    Select
+                  </button>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase mb-1">Description</p>
+                  <p className="text-sm text-slate-700 line-clamp-2">{pr.description}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase mb-1">Department</p>
+                    <p className="text-sm text-slate-700">{pr.department}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase mb-1">Request Date</p>
+                    <p className="text-sm text-slate-700">{new Date(pr.request_date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     );
@@ -1092,9 +1135,9 @@ export function Canvass() {
 
   if (showForm) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">New Canvass Request</h2>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">New Canvass Request</h2>
           <button
             onClick={() => {
               setShowForm(false);
@@ -1107,7 +1150,7 @@ export function Canvass() {
                 createEmptyQuotation(),
               ]);
             }}
-            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition self-start sm:self-auto"
           >
             Cancel
           </button>
@@ -1115,9 +1158,9 @@ export function Canvass() {
 
         {selectedPR && (
           <>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-blue-900 mb-4">Selected Purchase Requisition</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-blue-900 mb-4">Selected Purchase Requisition</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                 <div>
                   <label className="font-semibold text-blue-700">Document No.</label>
                   <p className="text-blue-900 font-mono">{selectedPR.document_no || selectedPR.pr_number}</p>
@@ -1138,11 +1181,11 @@ export function Canvass() {
                   <label className="font-semibold text-blue-700">Request Date</label>
                   <p className="text-blue-900">{new Date(selectedPR.request_date).toLocaleDateString()}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="font-semibold text-blue-700">Description</label>
                   <p className="text-blue-900">{selectedPR.description}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="font-semibold text-blue-700">Purpose</label>
                   <p className="text-blue-900">{selectedPR.purpose}</p>
                 </div>
@@ -1153,7 +1196,7 @@ export function Canvass() {
                   <label className="font-semibold text-blue-700 block mb-2">Merged PDF Document</label>
                   <button
                     onClick={() => previewMergedPDF(selectedPR.merged_pdf_path!)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"
                   >
                     <FileText size={16} />
                     View Merged PDF
@@ -1171,30 +1214,32 @@ export function Canvass() {
                   <div className="mt-4">
                     <label className="font-semibold text-blue-700 block mb-2">Items</label>
                     <div className="bg-white border border-blue-200 rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-blue-100">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-blue-900">Item Name</th>
-                            <th className="px-3 py-2 text-left text-blue-900">Description</th>
-                            <th className="px-3 py-2 text-left text-blue-900">Quantity</th>
-                            <th className="px-3 py-2 text-left text-blue-900">Unit</th>
-                            <th className="px-3 py-2 text-left text-blue-900">Unit Price</th>
-                            <th className="px-3 py-2 text-left text-blue-900">Total Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-blue-100">
-                          {validItems.map((item: any, index: number) => (
-                            <tr key={index}>
-                              <td className="px-3 py-2 text-slate-900">{item.item_description || item.description || 'N/A'}</td>
-                              <td className="px-3 py-2 text-slate-700">{item.item_notes || '-'}</td>
-                              <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
-                              <td className="px-3 py-2 text-slate-700">{item.unit}</td>
-                              <td className="px-3 py-2 text-slate-700">₱{item.unit_price?.toFixed(2) || '0.00'}</td>
-                              <td className="px-3 py-2 text-slate-900 font-semibold">₱{item.total_price?.toFixed(2) || '0.00'}</td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-blue-100">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Item Name</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Description</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Quantity</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Unit</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Unit Price</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Total Amount</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-blue-100">
+                            {validItems.map((item: any, index: number) => (
+                              <tr key={index}>
+                                <td className="px-3 py-2 text-slate-900 whitespace-nowrap">{item.item_description || item.description || 'N/A'}</td>
+                                <td className="px-3 py-2 text-slate-700">{item.item_notes || '-'}</td>
+                                <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{item.quantity}</td>
+                                <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{item.unit}</td>
+                                <td className="px-3 py-2 text-slate-700 whitespace-nowrap">₱{item.unit_price?.toFixed(2) || '0.00'}</td>
+                                <td className="px-3 py-2 text-slate-900 font-semibold whitespace-nowrap">₱{item.total_price?.toFixed(2) || '0.00'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 );
