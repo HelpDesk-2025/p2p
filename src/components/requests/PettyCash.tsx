@@ -5,6 +5,7 @@ import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loade
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
+import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import { PDFDocument } from 'pdf-lib';
 
 interface PaymentMode {
@@ -111,6 +112,7 @@ export function PettyCash() {
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [linkedPettyCashDetails, setLinkedPettyCashDetails] = useState<PettyCashReq | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -1137,6 +1139,145 @@ export function PettyCash() {
     }
   };
 
+  const regenerateLiquidationForm = async () => {
+    if (!viewingRequest || !profile?.company_id) return;
+
+    try {
+      setRegenerating(true);
+
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', viewingRequest.company_id || profile.company_id)
+        .single();
+
+      const requestDepartment = viewingRequest.department || profile.department || '';
+
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('approval_ledger')
+        .select(`
+          approver_name,
+          approval_date,
+          approver_id,
+          user_profiles!approval_ledger_approver_id_fkey (
+            e_sig
+          )
+        `)
+        .eq('request_type', 'Petty Cash')
+        .eq('request_id', viewingRequest.id)
+        .eq('action', 'Approved')
+        .order('sequence', { ascending: true });
+
+      if (ledgerError) throw ledgerError;
+
+      if (!ledgerData || ledgerData.length === 0) {
+        alert('No approval records found for this request.');
+        return;
+      }
+
+      const firstApprover = ledgerData[0];
+
+      const { data: requesterData } = await supabase
+        .from('user_profiles')
+        .select('full_name, e_sig')
+        .eq('id', viewingRequest.requester_id)
+        .single();
+
+      const totalExpenses = (viewingRequest.expense_items || []).reduce((sum, item) => sum + item.amount, 0);
+      const cashAdvanceReceived = viewingRequest.petty_cash_advance || 0;
+      const balance = cashAdvanceReceived - totalExpenses;
+
+      const requestDateObj = new Date(viewingRequest.request_date);
+      const approvedDateObj = new Date(firstApprover.approval_date);
+      const preparedDateObj = new Date();
+
+      let linkedRequestData = null;
+      if (viewingRequest.linked_petty_cash_id) {
+        const { data: linkedData } = await supabase
+          .from('petty_cash_requests')
+          .select('pc_number, request_date, amount, purpose, payee, status')
+          .eq('id', viewingRequest.linked_petty_cash_id)
+          .maybeSingle();
+
+        if (linkedData) {
+          linkedRequestData = {
+            pcNumber: linkedData.pc_number,
+            requestDate: new Date(linkedData.request_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+            amount: linkedData.amount,
+            purpose: linkedData.purpose,
+            payee: linkedData.payee || 'N/A',
+            status: linkedData.status
+          };
+        }
+      }
+
+      const liquidationPdfBytes = await generateLiquidationForm({
+        pcNumber: viewingRequest.pc_number,
+        accountable: viewingRequest.payee || requesterData?.full_name || 'Unknown',
+        requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        purpose: viewingRequest.purpose,
+        cashAdvanceAmount: cashAdvanceReceived,
+        expenseItems: viewingRequest.expense_items || [],
+        expenseTypeItems: viewingRequest.expense_type_items || [],
+        noOfPax: viewingRequest.no_of_pax || 0,
+        dateOfTransaction: viewingRequest.date_of_transactions
+          ? new Date(viewingRequest.date_of_transactions).toLocaleDateString()
+          : 'N/A',
+        company: companyData?.name || profile.company_name || 'Unknown',
+        department: viewingRequest.department || requestDepartment,
+        totalExpenses: totalExpenses,
+        cashAdvanceReceived: cashAdvanceReceived,
+        balance: balance,
+        preparedByName: requesterData?.full_name || 'Unknown',
+        preparedByEsig: requesterData?.e_sig || null,
+        preparedByDate: preparedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        approvedByName: firstApprover.approver_name,
+        approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+        approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        linkedPettyCashRequest: linkedRequestData,
+      });
+
+      const liquidationPdfFileName = `liquidation_${viewingRequest.pc_number}_${Date.now()}.pdf`;
+      const liquidationPdfPath = `petty_cash/${viewingRequest.company_id || profile.company_id}/${liquidationPdfFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(liquidationPdfPath, liquidationPdfBytes, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { error: updatePdfError } = await supabase
+        .from('petty_cash_requests')
+        .update({ liquidation_pdf_path: liquidationPdfPath })
+        .eq('id', viewingRequest.id);
+
+      if (updatePdfError) throw updatePdfError;
+
+      alert('Liquidation form regenerated successfully!');
+
+      // Refresh the viewing request to show the new PDF path
+      const { data: updatedRequest } = await supabase
+        .from('petty_cash_requests')
+        .select('*')
+        .eq('id', viewingRequest.id)
+        .single();
+
+      if (updatedRequest) {
+        setViewingRequest(updatedRequest);
+      }
+
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error regenerating liquidation form:', error);
+      alert('Failed to regenerate liquidation form: ' + error.message);
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const previewApprovedPettyCash = async (pdfPath: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -2138,8 +2279,8 @@ export function PettyCash() {
               )}
 
               {viewingRequest.status === 'approved' && viewingRequest.request_type === 'For Liquidation' && viewingRequest.liquidation_pdf_path && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
+                  <label className="block text-sm font-semibold text-slate-700">
                     Liquidation Report
                   </label>
                   <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
@@ -2163,6 +2304,28 @@ export function PettyCash() {
                         Download
                       </button>
                     </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-slate-300">
+                    <p className="text-sm text-slate-700 mb-2">
+                      Regenerate the liquidation report with the latest data and signatures.
+                    </p>
+                    <button
+                      onClick={regenerateLiquidationForm}
+                      disabled={regenerating}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      {regenerating ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw size={18} />
+                          Regenerate Liquidation Report
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
