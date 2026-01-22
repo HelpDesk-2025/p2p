@@ -50,6 +50,7 @@ interface PettyCashReq {
     email: string;
     company_id: string;
     department?: string;
+    e_sig?: string;
   };
   companies?: {
     id: string;
@@ -71,6 +72,7 @@ export function PettyCashApproval() {
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [linkedPettyCashDetails, setLinkedPettyCashDetails] = useState<PettyCashReq | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -107,7 +109,7 @@ export function PettyCashApproval() {
       .from('petty_cash_requests')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id, department),
+        user_profiles:requester_id (full_name, email, company_id, department, e_sig),
         companies!petty_cash_requests_company_id_fkey (id, name)
       `)
       .eq('status', 'pending')
@@ -421,6 +423,26 @@ export function PettyCashApproval() {
               const approvedDateObj = new Date(firstApprover.approval_date);
               const preparedDateObj = new Date();
 
+              let linkedRequestData = null;
+              if (selectedRequest.linked_petty_cash_id) {
+                const { data: linkedData } = await supabase
+                  .from('petty_cash_requests')
+                  .select('pc_number, request_date, amount, purpose, payee, status')
+                  .eq('id', selectedRequest.linked_petty_cash_id)
+                  .maybeSingle();
+
+                if (linkedData) {
+                  linkedRequestData = {
+                    pcNumber: linkedData.pc_number,
+                    requestDate: new Date(linkedData.request_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                    amount: linkedData.amount,
+                    purpose: linkedData.purpose,
+                    payee: linkedData.payee || 'N/A',
+                    status: linkedData.status
+                  };
+                }
+              }
+
               const liquidationPdfBytes = await generateLiquidationForm({
                 pcNumber: selectedRequest.pc_number,
                 accountable: selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'Unknown',
@@ -439,11 +461,12 @@ export function PettyCashApproval() {
                 cashAdvanceReceived: cashAdvanceReceived,
                 balance: balance,
                 preparedByName: selectedRequest.user_profiles?.full_name || 'Unknown',
-                preparedByEsig: null,
+                preparedByEsig: selectedRequest.user_profiles?.e_sig || null,
                 preparedByDate: preparedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
                 approvedByName: firstApprover.approver_name,
                 approvedByEsig: firstApprover.user_profiles?.e_sig || null,
                 approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                linkedPettyCashRequest: linkedRequestData,
               });
 
               const liquidationPdfFileName = `liquidation_${selectedRequest.pc_number}_${Date.now()}.pdf`;
@@ -507,6 +530,128 @@ export function PettyCashApproval() {
       setLoading(false);
       setApproving(false);
       setRejecting(false);
+    }
+  };
+
+  const regenerateLiquidationForm = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
+
+    try {
+      setRegenerating(true);
+
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', selectedRequest.company_id || profile.company_id)
+        .single();
+
+      const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || profile.department || '';
+
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('approval_ledger')
+        .select(`
+          approver_name,
+          approval_date,
+          approver_id,
+          user_profiles!approval_ledger_approver_id_fkey (
+            e_sig
+          )
+        `)
+        .eq('request_type', 'Petty Cash')
+        .eq('request_id', selectedRequest.id)
+        .eq('action', 'Approved')
+        .order('sequence', { ascending: true });
+
+      if (ledgerError) throw ledgerError;
+
+      if (!ledgerData || ledgerData.length === 0) {
+        alert('No approval records found for this request.');
+        return;
+      }
+
+      const firstApprover = ledgerData[0];
+
+      const totalExpenses = (selectedRequest.expense_items || []).reduce((sum, item) => sum + item.amount, 0);
+      const cashAdvanceReceived = selectedRequest.petty_cash_advance || 0;
+      const balance = cashAdvanceReceived - totalExpenses;
+
+      const requestDateObj = new Date(selectedRequest.request_date);
+      const approvedDateObj = new Date(firstApprover.approval_date);
+      const preparedDateObj = new Date();
+
+      let linkedRequestData = null;
+      if (selectedRequest.linked_petty_cash_id) {
+        const { data: linkedData } = await supabase
+          .from('petty_cash_requests')
+          .select('pc_number, request_date, amount, purpose, payee, status')
+          .eq('id', selectedRequest.linked_petty_cash_id)
+          .maybeSingle();
+
+        if (linkedData) {
+          linkedRequestData = {
+            pcNumber: linkedData.pc_number,
+            requestDate: new Date(linkedData.request_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+            amount: linkedData.amount,
+            purpose: linkedData.purpose,
+            payee: linkedData.payee || 'N/A',
+            status: linkedData.status
+          };
+        }
+      }
+
+      const liquidationPdfBytes = await generateLiquidationForm({
+        pcNumber: selectedRequest.pc_number,
+        accountable: selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'Unknown',
+        requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        purpose: selectedRequest.purpose,
+        cashAdvanceAmount: cashAdvanceReceived,
+        expenseItems: selectedRequest.expense_items || [],
+        expenseTypeItems: selectedRequest.expense_type_items || [],
+        noOfPax: selectedRequest.no_of_pax || 0,
+        dateOfTransaction: selectedRequest.date_of_transactions
+          ? new Date(selectedRequest.date_of_transactions).toLocaleDateString()
+          : 'N/A',
+        company: companyData?.name || profile.company_name || 'Unknown',
+        department: selectedRequest.department || requestDepartment,
+        totalExpenses: totalExpenses,
+        cashAdvanceReceived: cashAdvanceReceived,
+        balance: balance,
+        preparedByName: selectedRequest.user_profiles?.full_name || 'Unknown',
+        preparedByEsig: selectedRequest.user_profiles?.e_sig || null,
+        preparedByDate: preparedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        approvedByName: firstApprover.approver_name,
+        approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+        approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+        linkedPettyCashRequest: linkedRequestData,
+      });
+
+      const liquidationPdfFileName = `liquidation_${selectedRequest.pc_number}_${Date.now()}.pdf`;
+      const liquidationPdfPath = `petty_cash/${selectedRequest.company_id || profile.company_id}/${liquidationPdfFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(liquidationPdfPath, liquidationPdfBytes, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { error: updatePdfError } = await supabase
+        .from('petty_cash_requests')
+        .update({ liquidation_pdf_path: liquidationPdfPath })
+        .eq('id', selectedRequest.id);
+
+      if (updatePdfError) throw updatePdfError;
+
+      alert('Liquidation form regenerated successfully!');
+      loadRequests();
+      setShowModal(false);
+    } catch (error: any) {
+      console.error('Error regenerating liquidation form:', error);
+      alert('Failed to regenerate liquidation form: ' + error.message);
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -874,6 +1019,31 @@ export function PettyCashApproval() {
                 requestType="Petty Cash"
                 requestId={selectedRequest.id}
               />
+
+              {selectedRequest.request_type === 'For Liquidation' && selectedRequest.status === 'approved' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-slate-700 mb-3">
+                    Regenerate the liquidation report with the latest data and signatures.
+                  </p>
+                  <button
+                    onClick={regenerateLiquidationForm}
+                    disabled={regenerating}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    {regenerating ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Regenerating...
+                      </>
+                    ) : (
+                      <>
+                        <Download size={18} />
+                        Regenerate Liquidation Report
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Comments</label>

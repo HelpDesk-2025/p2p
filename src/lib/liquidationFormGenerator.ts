@@ -14,6 +14,15 @@ interface ExpenseTypeItem {
   specify_value?: string;
 }
 
+interface LinkedPettyCashRequest {
+  pcNumber: string;
+  requestDate: string;
+  amount: number;
+  purpose: string;
+  payee: string;
+  status: string;
+}
+
 interface LiquidationFormData {
   pcNumber: string;
   accountable: string;
@@ -35,6 +44,7 @@ interface LiquidationFormData {
   approvedByName: string;
   approvedByEsig: string | null;
   approvedByDate: string;
+  linkedPettyCashRequest?: LinkedPettyCashRequest | null;
 }
 
 export async function generateLiquidationForm(data: LiquidationFormData): Promise<Uint8Array> {
@@ -123,6 +133,59 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   page.drawText('No. of Pax:', { x: leftCol, y: currentY, size: 10, font: boldFont });
   page.drawText(sanitizeText(data.noOfPax), { x: leftCol + 70, y: currentY, size: 10, font });
   currentY -= 25;
+
+  if (data.linkedPettyCashRequest) {
+    page.drawRectangle({
+      x: margin,
+      y: currentY - 55,
+      width: width - 2 * margin,
+      height: 60,
+      color: rgb(0.95, 0.98, 0.95),
+      borderColor: rgb(0.7, 0.85, 0.7),
+      borderWidth: 1,
+    });
+    currentY -= 8;
+
+    page.drawText('Linked Petty Cash Advance Request', {
+      x: leftCol + 5,
+      y: currentY,
+      size: 10,
+      font: boldFont,
+      color: rgb(0, 0.5, 0),
+    });
+    currentY -= 15;
+
+    const col1X = leftCol + 10;
+    const col2X = leftCol + 150;
+    const col3X = leftCol + 290;
+
+    page.drawText('PC Number:', { x: col1X, y: currentY, size: 8, font: boldFont });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.pcNumber), { x: col1X + 65, y: currentY, size: 8, font });
+
+    page.drawText('Request Date:', { x: col2X, y: currentY, size: 8, font: boldFont });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.requestDate), { x: col2X + 75, y: currentY, size: 8, font });
+    currentY -= 12;
+
+    page.drawText('Advance Amount:', { x: col1X, y: currentY, size: 8, font: boldFont });
+    page.drawText(`₱${sanitizeText(data.linkedPettyCashRequest.amount.toFixed(2))}`, { x: col1X + 95, y: currentY, size: 8, font });
+
+    page.drawText('Status:', { x: col2X, y: currentY, size: 8, font: boldFont });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.status), { x: col2X + 35, y: currentY, size: 8, font, color: rgb(0, 0.6, 0) });
+    currentY -= 12;
+
+    page.drawText('Purpose:', { x: col1X, y: currentY, size: 8, font: boldFont });
+    const purposeText = sanitizeText(data.linkedPettyCashRequest.purpose);
+    const maxPurposeLen = 60;
+    const displayPurpose = purposeText.length > maxPurposeLen
+      ? purposeText.substring(0, maxPurposeLen) + '...'
+      : purposeText;
+    page.drawText(displayPurpose, { x: col1X + 50, y: currentY, size: 8, font });
+    currentY -= 12;
+
+    page.drawText('Payee:', { x: col1X, y: currentY, size: 8, font: boldFont });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.payee), { x: col1X + 35, y: currentY, size: 8, font });
+    currentY -= 20;
+  }
 
   page.drawText('EXPENSE ITEMS', {
     x: leftCol,
@@ -281,7 +344,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     try {
       const esigImageBytes = Uint8Array.from(atob(data.preparedByEsig.split(',')[1]), c => c.charCodeAt(0));
       const esigImage = await pdfDoc.embedPng(esigImageBytes);
-      const esigDims = esigImage.scale(0.15);
+      const esigDims = esigImage.scale(0.3);
       page.drawImage(esigImage, {
         x: sig1X + 10,
         y: currentY - sigHeight + 10,
@@ -316,7 +379,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     try {
       const esigImageBytes = Uint8Array.from(atob(data.approvedByEsig.split(',')[1]), c => c.charCodeAt(0));
       const esigImage = await pdfDoc.embedPng(esigImageBytes);
-      const esigDims = esigImage.scale(0.15);
+      const esigDims = esigImage.scale(0.3);
       page.drawImage(esigImage, {
         x: sig2X + 10,
         y: currentY - sigHeight + 10,
