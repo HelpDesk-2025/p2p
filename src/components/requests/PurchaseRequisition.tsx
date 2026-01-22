@@ -1616,15 +1616,15 @@ export function PurchaseRequisition() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
           <button
             onClick={handleNewRequest}
-            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">New Request</span>
             <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">New Request</span>
           </button>
         </div>
       </div>
