@@ -571,9 +571,9 @@ export function PettyCashApproval() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Petty Cash Approvals</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Approvals</h2>
         <p className="text-slate-600 mt-1">Review and approve petty cash requests</p>
       </div>
 
@@ -584,10 +584,11 @@ export function PettyCashApproval() {
             <p className="text-slate-600">No pending approvals</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full">
             <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('pc_number')}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
@@ -671,6 +672,7 @@ export function PettyCashApproval() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

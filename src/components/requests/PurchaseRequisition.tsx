@@ -1104,27 +1104,27 @@ export function PurchaseRequisition() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                 Document No.
               </label>
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-                <FileText size={18} className="text-slate-400" />
-                <span className="font-mono font-semibold text-slate-900">
+              <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                <span className="font-mono text-sm sm:text-base font-semibold text-slate-900">
                   {formData.document_no || 'Generating...'}
                 </span>
               </div>
             </div>
             {profile?.enable_multi_company_requests ? (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                   Company
                 </label>
                 <select
                   value={selectedCompanyId}
                   onChange={(e) => handleCompanyChange(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                  className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                   required
                 >
                   <option value="">Select Company</option>
@@ -1137,27 +1137,27 @@ export function PurchaseRequisition() {
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                   Department
                 </label>
                 <input
                   type="text"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   required
                 />
               </div>
             )}
             {profile?.enable_multi_company_requests && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                   Department
                 </label>
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
                   required
                   disabled={!selectedCompanyId}
                 >
@@ -1176,50 +1176,50 @@ export function PurchaseRequisition() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Description</label>
             <input
               type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Brief description of the requisition"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Purpose</label>
             <textarea
               value={formData.purpose}
               onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
               rows={3}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Detailed purpose and justification"
               required
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                 Date Required/Needed
               </label>
               <input
                 type="date"
                 value={formData.date_required}
                 onChange={(e) => setFormData({ ...formData, date_required: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                 Budget Status
               </label>
               <select
                 value={formData.is_budgeted ? 'budgeted' : 'non-budgeted'}
                 onChange={(e) => setFormData({ ...formData, is_budgeted: e.target.value === 'budgeted' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               >
                 <option value="budgeted">Budgeted</option>
                 <option value="non-budgeted">Non-budgeted</option>
@@ -1228,13 +1228,13 @@ export function PurchaseRequisition() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
               Purchase Type
             </label>
             <select
               value={formData.purchase_type}
               onChange={(e) => setFormData({ ...formData, purchase_type: e.target.value, pr_checklist_id: '', checklist_items: [] })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
               <option value="Purchase Order">Purchase Order</option>
               <option value="Non-Purchase Order">Non-Purchase Order</option>
@@ -1242,13 +1242,13 @@ export function PurchaseRequisition() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
               PR Checklist
             </label>
             <select
               value={formData.pr_checklist_id}
               onChange={(e) => handleChecklistChange(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
               <option value="">Select a checklist</option>
               {prChecklists.map((checklist) => (
@@ -1596,9 +1596,9 @@ export function PurchaseRequisition() {
                 }
               }}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+              {submitting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
               {submitting ? 'Submitting...' : 'Submit for Approval'}
             </button>
           </div>
@@ -1614,54 +1614,59 @@ export function PurchaseRequisition() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
-        <button
-          onClick={handleNewRequest}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          New Request
-        </button>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
+          <button
+            onClick={handleNewRequest}
+            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">New Request</span>
+            <span className="sm:hidden">New</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('document_no')} className="flex items-center gap-2 hover:text-slate-700">
-                    Document No. {getSortIcon('document_no')}
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort('document_no')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 text-xs sm:text-sm">
+                    <span className="hidden sm:inline">Document No.</span>
+                    <span className="sm:hidden">Doc #</span>
+                    {getSortIcon('document_no')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
                   <button onClick={() => handleSort('description')} className="flex items-center gap-2 hover:text-slate-700">
                     Description {getSortIcon('description')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 text-xs sm:text-sm">
                     Date {getSortIcon('request_date')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden lg:table-cell">
                   <button onClick={() => handleSort('purchase_type')} className="flex items-center gap-2 hover:text-slate-700">
                     Type {getSortIcon('purchase_type')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('total_amount')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort('total_amount')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 text-xs sm:text-sm">
                     Amount {getSortIcon('total_amount')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort('status')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 text-xs sm:text-sm">
                     Status {getSortIcon('status')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -1669,36 +1674,36 @@ export function PurchaseRequisition() {
             <tbody className="divide-y divide-slate-200">
               {sortedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">
                     No purchase requisitions found
                   </td>
                 </tr>
               ) : (
                 sortedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm font-mono font-medium text-slate-900">
                       {req.document_no || req.pr_number}
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-slate-600 max-w-xs truncate hidden md:table-cell">
                       {req.description || req.purpose}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(req.request_date).toLocaleString()}
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-slate-600">
+                      {new Date(req.request_date).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
                       {req.purchase_type || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm font-medium text-slate-900">
                       ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
                       >
                         {req.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
                       <button
                         onClick={() => {
                           setViewingRequest(req);
@@ -1706,8 +1711,8 @@ export function PurchaseRequisition() {
                         }}
                         className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                       >
-                        <Eye size={16} />
-                        View
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">View</span>
                       </button>
                     </td>
                   </tr>

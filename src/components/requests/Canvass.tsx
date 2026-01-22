@@ -1865,76 +1865,83 @@ export function Canvass() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Canvass Requests</h2>
-        <button
-          onClick={() => {
-            loadAvailablePRs();
-            setShowPRSelection(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          New Request
-        </button>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Canvass Requests</h2>
+          <button
+            onClick={() => {
+              loadAvailablePRs();
+              setShowPRSelection(true);
+            }}
+            className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">New Request</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('canvass_number')} className="flex items-center gap-2 hover:text-slate-700">
-                  Canvass Number {getSortIcon('canvass_number')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
-                  Date {getSortIcon('request_date')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('required_date')} className="flex items-center gap-2 hover:text-slate-700">
-                  Required Date {getSortIcon('required_date')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
-                  Status {getSortIcon('status')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {sortedRequests.length === 0 ? (
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b">
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No canvass requests found</td>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('canvass_number')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    <span className="sm:hidden">CVS #</span>
+                    <span className="hidden sm:inline">Canvass Number</span>
+                    {getSortIcon('canvass_number')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    Date {getSortIcon('request_date')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
+                  <button onClick={() => handleSort('required_date')} className="flex items-center gap-2 hover:text-slate-700">
+                    Required Date {getSortIcon('required_date')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('status')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    Status {getSortIcon('status')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
               </tr>
-            ) : (
-              sortedRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.canvass_number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.request_date).toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{new Date(req.required_date).toLocaleString()}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>{req.status}</span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <button
-                      onClick={() => handleViewRequest(req)}
-                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                    >
-                      <Eye size={16} />
-                      View
-                    </button>
-                  </td>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {sortedRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">No canvass requests found</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                sortedRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium text-slate-900">{req.canvass_number}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600">{new Date(req.request_date).toLocaleString()}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 hidden md:table-cell">{new Date(req.required_date).toLocaleString()}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>{req.status}</span>
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm">
+                      <button
+                        onClick={() => handleViewRequest(req)}
+                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">View</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showViewModal && viewingRequest && (

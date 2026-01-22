@@ -632,9 +632,9 @@ export function CashAdvanceApproval() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Cash Advance Approvals</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Cash Advance Approvals</h2>
         <p className="text-slate-600 mt-1">Review and approve cash advance requests</p>
       </div>
 
@@ -645,19 +645,21 @@ export function CashAdvanceApproval() {
             <p className="text-slate-600">No pending approvals</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                <tr>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('ca_number')}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
                   >
-                    CA Number
+                    <span className="sm:hidden">CA#</span>
+                    <span className="hidden sm:inline">CA Number</span>
                     {getSortIcon('ca_number')}
                   </button>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('requester')}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
@@ -666,7 +668,7 @@ export function CashAdvanceApproval() {
                     {getSortIcon('requester')}
                   </button>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <th className="hidden lg:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('department')}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
@@ -675,7 +677,7 @@ export function CashAdvanceApproval() {
                     {getSortIcon('department')}
                   </button>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('amount')}
                     className="flex items-center gap-1 hover:text-slate-900 transition-colors"
@@ -684,10 +686,10 @@ export function CashAdvanceApproval() {
                     {getSortIcon('amount')}
                   </button>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <th className="hidden md:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Approval Level
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -695,43 +697,44 @@ export function CashAdvanceApproval() {
             <tbody className="divide-y divide-slate-100">
               {sortedRequests.map((request) => (
                 <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-mono font-semibold text-slate-900">{request.ca_number}</span>
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                    <span className="font-mono font-semibold text-xs sm:text-sm text-slate-900">{request.ca_number}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-slate-900">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                    <div className="text-xs sm:text-sm font-medium text-slate-900">
                       {request.user_profiles?.full_name}
                     </div>
-                    <div className="text-xs text-slate-500">{request.user_profiles?.email}</div>
+                    <div className="text-xs text-slate-500 hidden sm:block">{request.user_profiles?.email}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-slate-700">
+                  <td className="hidden lg:table-cell px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                    <span className="text-xs sm:text-sm text-slate-700">
                       {request.department || request.user_profiles?.department || 'N/A'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-slate-900">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                    <span className="text-xs sm:text-sm font-semibold text-slate-900">
                       ₱{request.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold">
+                  <td className="hidden md:table-cell px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold">
                       Level {request.current_approval_level + 1}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
                     <button
                       onClick={() => handleViewRequest(request)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      className="flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs sm:text-sm"
                     >
-                      <Eye size={16} />
-                      Review
+                      <Eye className="w-4 h-4 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Review</span>
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
@@ -751,8 +754,8 @@ export function CashAdvanceApproval() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="text-sm font-semibold text-slate-700">CA Number</label>
                   <p className="text-slate-900 font-mono">{selectedRequest.ca_number}</p>
@@ -916,17 +919,17 @@ export function CashAdvanceApproval() {
                 <button
                   onClick={() => handleAction('approved')}
                   disabled={loading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
-                  {approving ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
+                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {approving ? 'Approving...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleAction('rejected')}
                   disabled={loading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
-                  {rejecting ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
+                  {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {rejecting ? 'Rejecting...' : 'Reject'}
                 </button>
               </div>

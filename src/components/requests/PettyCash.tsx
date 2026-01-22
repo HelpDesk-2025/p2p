@@ -1911,130 +1911,137 @@ export function PettyCash() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Petty Cash Requests</h2>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setExpenseItems([{ date: '', description: '', amount: 0 }]);
-            setFormData({
-              document_no: '',
-              payee: '',
-              purpose: '',
-              amount: 0,
-              date_needed: '',
-              date_of_transactions: '',
-              budgeted: true,
-              payment_mode_id: '',
-              request_type: 'For Cash Advance',
-              no_of_pax: 0,
-            });
-            generateDocumentNo();
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          New Request
-        </button>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Requests</h2>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setExpenseItems([{ date: '', description: '', amount: 0 }]);
+              setFormData({
+                document_no: '',
+                payee: '',
+                purpose: '',
+                amount: 0,
+                date_needed: '',
+                date_of_transactions: '',
+                budgeted: true,
+                payment_mode_id: '',
+                request_type: 'For Cash Advance',
+                no_of_pax: 0,
+              });
+              generateDocumentNo();
+            }}
+            className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">New Request</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('pc_number')} className="flex items-center gap-2 hover:text-slate-700">
-                  PC Number {getSortIcon('pc_number')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
-                  Date {getSortIcon('request_date')}
-                </button>
-              </th>
-              {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
-                <>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Company
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Department
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b">
+              <tr>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('pc_number')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    <span className="sm:hidden">PC #</span>
+                    <span className="hidden sm:inline">PC Number</span>
+                    {getSortIcon('pc_number')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    Date {getSortIcon('request_date')}
+                  </button>
+                </th>
+                {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
+                  <>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
+                      Company
+                    </th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
+                      Department
                   </th>
                 </>
               )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('purpose')} className="flex items-center gap-2 hover:text-slate-700">
-                  Purpose {getSortIcon('purpose')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('amount')} className="flex items-center gap-2 hover:text-slate-700">
-                  Amount {getSortIcon('amount')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
-                  Status {getSortIcon('status')}
-                </button>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {sortedRequests.length === 0 ? (
-              <tr>
-                <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-6 py-8 text-center text-slate-500">
-                  No petty cash requests found
-                </td>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
+                  <button onClick={() => handleSort('purpose')} className="flex items-center gap-2 hover:text-slate-700">
+                    Purpose {getSortIcon('purpose')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('amount')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    Amount {getSortIcon('amount')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  <button onClick={() => handleSort('status')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                    Status {getSortIcon('status')}
+                  </button>
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Actions
+                </th>
               </tr>
-            ) : (
-              sortedRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.pc_number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {new Date(req.request_date).toLocaleString()}
-                  </td>
-                  {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
-                    <>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {(req as any).companies?.name || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {req.department || 'N/A'}
-                      </td>
-                    </>
-                  )}
-                  <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
-                    {req.purpose}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900 text-right font-mono">
-                    {formatCurrency(req.amount)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
-                      {req.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <button
-                      onClick={() => {
-                        setViewingRequest(req);
-                        setShowViewModal(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                    >
-                      <Eye size={16} />
-                      View
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {sortedRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">
+                    No petty cash requests found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                sortedRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium text-slate-900">{req.pc_number}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600">
+                      {new Date(req.request_date).toLocaleString()}
+                    </td>
+                    {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
+                      <>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
+                          {(req as any).companies?.name || 'N/A'}
+                        </td>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
+                          {req.department || 'N/A'}
+                        </td>
+                      </>
+                    )}
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate hidden md:table-cell">
+                      {req.purpose}
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium text-slate-900 text-right font-mono">
+                      {formatCurrency(req.amount)}
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm">
+                      <button
+                        onClick={() => {
+                          setViewingRequest(req);
+                          setShowViewModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">View</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showViewModal && viewingRequest && (

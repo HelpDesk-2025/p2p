@@ -132,13 +132,13 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-600 mt-1">Welcome back, {profile?.full_name}</p>
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-slate-600 mt-1 text-sm sm:text-base">Welcome back, {profile?.full_name}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
         <StatCard
           title="Pending"
           value={stats.statusCounts.pending}
@@ -159,10 +159,10 @@ export function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">My Requests</h2>
-          <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4">My Requests</h2>
+          <div className="space-y-2 sm:space-y-3">
             <RequestTypeCard
               icon={FileText}
               label="Purchase Requisitions"
@@ -188,11 +188,11 @@ export function Dashboard() {
         </div>
 
         {(profile?.role === 'approver' || profile?.role === 'admin' || profile?.role === 'procurement') && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4">
               Pending Approvals
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <RequestTypeCard
                 icon={FileText}
                 label="Purchase Requisitions"
@@ -246,14 +246,14 @@ function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-600">{title}</p>
-          <p className="text-3xl font-bold text-slate-900 mt-2">{value}</p>
+          <p className="text-xs sm:text-sm font-medium text-slate-600">{title}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1 sm:mt-2">{value}</p>
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
-          <Icon size={24} />
+        <div className={`p-2 sm:p-3 rounded-lg ${colorClasses[color]}`}>
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
       </div>
     </div>
@@ -269,14 +269,14 @@ interface RequestTypeCardProps {
 
 function RequestTypeCard({ icon: Icon, label, count, alert }: RequestTypeCardProps) {
   return (
-    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-      <div className="flex items-center gap-3">
-        <Icon size={20} className="text-slate-600" />
-        <span className="text-sm font-medium text-slate-700">{label}</span>
+    <div className="flex items-center justify-between p-2.5 sm:p-3 bg-slate-50 rounded-lg">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 flex-shrink-0" />
+        <span className="text-xs sm:text-sm font-medium text-slate-700">{label}</span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-lg font-semibold text-slate-900">{count}</span>
-        {alert && <AlertCircle size={16} className="text-orange-500" />}
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <span className="text-base sm:text-lg font-semibold text-slate-900">{count}</span>
+        {alert && <AlertCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />}
       </div>
     </div>
   );

@@ -1071,21 +1071,23 @@ export function CashAdvance() {
 
   if (showForm) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Cash Advance Request' : 'New Cash Advance Request'}</h2>
-          <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-4 py-2 text-slate-600">
-            Cancel
-          </button>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{editingRequest ? 'Edit Cash Advance Request' : 'New Cash Advance Request'}</h2>
+            <button onClick={() => { setShowForm(false); setEditingRequest(null); }} className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base text-slate-600">
+              Cancel
+            </button>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-                <FileText size={18} className="text-slate-400" />
-                <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+              <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Document No.</label>
+              <div className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                <span className="font-mono text-sm sm:text-base font-semibold text-slate-900">{formData.document_no}</span>
               </div>
             </div>
 
@@ -1374,44 +1376,49 @@ export function CashAdvance() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Cash Advance Requests</h2>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            generateDocumentNo();
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          Create Request
-        </button>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Cash Advance Requests</h2>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              generateDocumentNo();
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Create Request</span>
+            <span className="sm:hidden">New</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
         <table className="w-full">
           <thead className="bg-slate-50 border-b">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 <button
                   onClick={() => handleSort('ca_number')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
                 >
-                  CA Number
+                  <span className="hidden sm:inline">CA Number</span>
+                  <span className="sm:hidden">CA #</span>
                   {getSortIcon('ca_number')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 <button
                   onClick={() => handleSort('request_date')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
                 >
                   Date
                   {getSortIcon('request_date')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
                 <button
                   onClick={() => handleSort('purpose')}
                   className="flex items-center gap-1 hover:text-slate-700 transition-colors"
@@ -1420,25 +1427,25 @@ export function CashAdvance() {
                   {getSortIcon('purpose')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 <button
                   onClick={() => handleSort('amount')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
                 >
                   Amount
                   {getSortIcon('amount')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 <button
                   onClick={() => handleSort('status')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
                 >
                   Status
                   {getSortIcon('status')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
                 Actions
               </th>
             </tr>
@@ -1446,29 +1453,29 @@ export function CashAdvance() {
           <tbody className="divide-y divide-slate-200">
             {sortedRequests.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                <td colSpan={6} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">
                   No cash advance requests found
                 </td>
               </tr>
             ) : (
               sortedRequests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900">{req.ca_number}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">
-                    {new Date(req.request_date).toLocaleString()}
+                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium text-slate-900">{req.ca_number}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-slate-600">
+                    {new Date(req.request_date).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-slate-600 max-w-xs truncate hidden md:table-cell">
                     {req.purpose}
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-900 text-right">
+                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 text-right">
                     ₱{req.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
                       {req.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm">
                     <button
                       onClick={() => {
                         setViewingRequest(req);
@@ -1476,8 +1483,8 @@ export function CashAdvance() {
                       }}
                       className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
-                      <Eye size={16} />
-                      View
+                      <Eye className="w-4 h-4" />
+                      <span className="hidden sm:inline">View</span>
                     </button>
                   </td>
                 </tr>
@@ -1485,6 +1492,7 @@ export function CashAdvance() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showViewModal && viewingRequest && (

@@ -113,27 +113,25 @@ export function ApprovalLedger() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900">Approval Ledger</h2>
-          <p className="text-slate-600 mt-1">Complete audit trail of all approval activities</p>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Approval Ledger</h2>
+        <p className="text-slate-600 mt-1 text-sm sm:text-base">Complete audit trail of all approval activities</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter size={20} className="text-slate-500" />
-          <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+          <h3 className="text-base sm:text-lg font-semibold text-slate-900">Filters</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Request Type</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Request Type</label>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Types</option>
               <option value="Purchase Requisition">Purchase Requisition</option>
@@ -144,11 +142,11 @@ export function ApprovalLedger() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Action</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Action</label>
             <select
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Actions</option>
               <option value="Submitted">Submitted</option>
@@ -159,33 +157,33 @@ export function ApprovalLedger() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Date From</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Date From</label>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Date To</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Date To</label>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Search</label>
             <input
               type="text"
               placeholder="Request #, Approver..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
