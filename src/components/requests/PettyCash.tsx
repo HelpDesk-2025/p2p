@@ -536,8 +536,8 @@ export function PettyCash() {
     // For Liquidation: validate expense items instead of regular amount
     if (formData.request_type === 'For Liquidation') {
       const totalExpenditures = calculateTotalExpenditures();
-      if (totalExpenditures > 5000) {
-        alert('Total expenditures cannot exceed ₱5,000.00');
+      if (totalExpenditures > 10000) {
+        alert('Total expenditures cannot exceed ₱10,000.00');
         return;
       }
       if (totalExpenditures === 0) {
@@ -1697,8 +1697,8 @@ export function PettyCash() {
                   </tfoot>
                 </table>
               </div>
-              {calculateTotalExpenditures() > 5000 && (
-                <p className="mt-2 text-sm text-red-600">Total expenditures cannot exceed ₱5,000.00</p>
+              {calculateTotalExpenditures() > 10000 && (
+                <p className="mt-2 text-sm text-red-600">Total expenditures cannot exceed ₱10,000.00</p>
               )}
             </div>
           ) : (
