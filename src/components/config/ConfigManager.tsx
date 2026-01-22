@@ -1747,7 +1747,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
     name: '',
     api_id: '',
     president_min_amount: '0',
-    accounting_notification_email: ''
+    accounting_notification_email: '',
+    procurement_notification_email: ''
   });
   const [departments, setDepartments] = useState<any[]>([]);
   const [showDepartments, setShowDepartments] = useState<string | null>(null);
@@ -1759,7 +1760,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           name: formData.name,
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
-          accounting_notification_email: formData.accounting_notification_email || null
+          accounting_notification_email: formData.accounting_notification_email || null,
+          procurement_notification_email: formData.procurement_notification_email || null
         }).eq('id', editingId);
         if (error) throw error;
       } else {
@@ -1767,14 +1769,15 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           name: formData.name,
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
-          accounting_notification_email: formData.accounting_notification_email || null
+          accounting_notification_email: formData.accounting_notification_email || null,
+          procurement_notification_email: formData.procurement_notification_email || null
         };
         const { error } = await supabase.from('companies').insert(payload);
         if (error) throw error;
       }
       setShowForm(false);
       setEditingId(null);
-      setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '' });
+      setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '', procurement_notification_email: '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -1787,7 +1790,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
       name: company.name,
       api_id: company.api_id || '',
       president_min_amount: company.president_min_amount?.toString() || '0',
-      accounting_notification_email: company.accounting_notification_email || ''
+      accounting_notification_email: company.accounting_notification_email || '',
+      procurement_notification_email: company.procurement_notification_email || ''
     });
     setShowForm(true);
   };
@@ -1795,7 +1799,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '' });
+    setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '', procurement_notification_email: '' });
   };
 
   const handleDelete = async (id: string) => {
@@ -1911,6 +1915,18 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
               />
               <p className="text-xs text-slate-500">Email address to notify when requests are posted to MSBC</p>
             </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Procurement Notification Email</label>
+              <input
+                type="email"
+                placeholder="procurement@example.com"
+                value={formData.procurement_notification_email}
+                onChange={(e) => setFormData({ ...formData, procurement_notification_email: e.target.value })}
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+              <p className="text-xs text-slate-500">Email address to notify when Purchase Order PRs are ready for canvass</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
@@ -1952,6 +1968,12 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
                       <div className="text-sm">
                         <span className="font-semibold text-slate-700">Accounting Email:</span>
                         <span className="ml-2 text-slate-600">{company.accounting_notification_email}</span>
+                      </div>
+                    )}
+                    {company.procurement_notification_email && (
+                      <div className="text-sm">
+                        <span className="font-semibold text-slate-700">Procurement Email:</span>
+                        <span className="ml-2 text-slate-600">{company.procurement_notification_email}</span>
                       </div>
                     )}
                   </div>
