@@ -920,17 +920,17 @@ export function PRApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
                   <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
+                    <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                           <FileText className="text-red-600" size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900">Merged Attachments</p>
                           <p className="text-xs text-slate-600">All checklist attachments in one PDF</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
                         <button
                           onClick={async () => {
                             try {
@@ -940,7 +940,7 @@ export function PRApproval() {
                               alert('Error viewing PDF');
                             }
                           }}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2"
                         >
                           <Eye size={16} />
                           View PDF
@@ -959,7 +959,7 @@ export function PRApproval() {
                               alert('Error downloading PDF');
                             }
                           }}
-                          className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
                         >
                           <Download size={16} />
                           Download
@@ -974,17 +974,17 @@ export function PRApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Legacy Attachments</label>
                   <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
+                    <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                           <FileText className="text-red-600" size={24} />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900">Merged Attachments</p>
                           <p className="text-xs text-slate-600">All checklist attachments in one PDF</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
                         <button
                           onClick={() => {
                             const blob = fetch(selectedRequest.merged_pdf!)
@@ -994,7 +994,7 @@ export function PRApproval() {
                                 window.open(url, '_blank');
                               });
                           }}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2"
                         >
                           <Eye size={16} />
                           View PDF
@@ -1002,8 +1002,9 @@ export function PRApproval() {
                         <a
                           href={selectedRequest.merged_pdf}
                           download={`PR_${selectedRequest.pr_number}_Attachments.pdf`}
-                          className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold"
+                          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
                         >
+                          <Download size={16} />
                           Download
                         </a>
                       </div>
