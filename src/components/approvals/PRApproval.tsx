@@ -550,106 +550,175 @@ export function PRApproval() {
             <p className="text-slate-600">No pending approvals</p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                <tr>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('document_no')}
-                      className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                    >
-                      <span className="sm:hidden">Doc No.</span>
-                      <span className="hidden sm:inline">Document No.</span>
-                      {getSortIcon('document_no')}
-                    </button>
-                  </th>
-                  <th className="hidden md:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('pr_number')}
-                      className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                    >
-                      PR Number
-                      {getSortIcon('pr_number')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('requester')}
-                      className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                    >
-                      Requester
-                      {getSortIcon('requester')}
-                    </button>
-                  </th>
-                  <th className="hidden lg:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('department')}
-                      className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                    >
-                      Department
-                      {getSortIcon('department')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('total_amount')}
-                      className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                    >
-                      Amount
-                      {getSortIcon('total_amount')}
-                    </button>
-                  </th>
-                  <th className="hidden md:table-cell px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Approval Level
-                  </th>
-                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+          <>
+            {/* Mobile Card Layout */}
+            <div className="lg:hidden">
+              <div className="divide-y divide-slate-200">
                 {sortedRequests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <span className="font-mono font-semibold text-xs sm:text-sm text-slate-900">{request.document_no}</span>
-                    </td>
-                    <td className="hidden md:table-cell px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <span className="font-mono text-xs sm:text-sm text-slate-700">{request.pr_number}</span>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm font-medium text-slate-900">
-                        {request.user_profiles?.full_name}
+                  <div
+                    key={request.id}
+                    className="p-4 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="space-y-3">
+                      {/* Header: Document No and Approval Level */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                            Document No.
+                          </div>
+                          <div className="font-mono font-bold text-base text-slate-900 truncate">
+                            {request.document_no}
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap">
+                          Level {request.current_approval_level + 1}
+                        </span>
                       </div>
-                      <div className="text-xs text-slate-500 hidden sm:block">{request.user_profiles?.email}</div>
-                    </td>
-                    <td className="hidden lg:table-cell px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <span className="text-xs sm:text-sm text-slate-700">{request.department}</span>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <span className="text-xs sm:text-sm font-semibold text-slate-900">
-                        ₱{request.total_amount.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="hidden md:table-cell px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold">
-                        Level {request.current_approval_level + 1}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap">
+
+                      {/* Requester Info */}
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                          Requester
+                        </div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          {request.user_profiles?.full_name}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {request.user_profiles?.email}
+                        </div>
+                      </div>
+
+                      {/* Info Grid: Department and Amount */}
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <div className="text-xs font-medium text-slate-500 mb-1">Department</div>
+                          <div className="text-sm text-slate-900 truncate">
+                            {request.department}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium text-slate-500 mb-1">Amount</div>
+                          <div className="text-sm font-bold text-slate-900">
+                            ₱{request.total_amount.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Button */}
                       <button
                         onClick={() => handleViewRequest(request)}
-                        className="flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs sm:text-sm"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                       >
-                        <Eye className="w-4 h-4 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Review</span>
+                        <Eye className="w-4 h-4" />
+                        Review Request
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSort('document_no')}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        Document No.
+                        {getSortIcon('document_no')}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSort('pr_number')}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        PR Number
+                        {getSortIcon('pr_number')}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSort('requester')}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        Requester
+                        {getSortIcon('requester')}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSort('department')}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        Department
+                        {getSortIcon('department')}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSort('total_amount')}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        Amount
+                        {getSortIcon('total_amount')}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Approval Level
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sortedRequests.map((request) => (
+                    <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-mono font-semibold text-sm text-slate-900">{request.document_no}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-mono text-sm text-slate-700">{request.pr_number}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-slate-900">
+                          {request.user_profiles?.full_name}
+                        </div>
+                        <div className="text-xs text-slate-500">{request.user_profiles?.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-slate-700">{request.department}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-semibold text-slate-900">
+                          ₱{request.total_amount.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold">
+                          Level {request.current_approval_level + 1}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleViewRequest(request)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
