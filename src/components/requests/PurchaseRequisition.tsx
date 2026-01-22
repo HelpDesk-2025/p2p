@@ -1324,118 +1324,250 @@ export function PurchaseRequisition() {
 
               <div className="space-y-3">
                 {formData.items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-lg"
-                  >
-                    <div className="col-span-2 relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">
-                        Item Name
-                      </label>
-                      <input
-                        type="text"
-                        value={itemSearchTerms[index] !== undefined ? itemSearchTerms[index] : (item.item_description || item.description)}
-                        onChange={(e) => {
-                          const newSearchTerms = [...itemSearchTerms];
-                          newSearchTerms[index] = e.target.value;
-                          setItemSearchTerms(newSearchTerms);
-                          setShowItemDropdown(index);
-                        }}
-                        onFocus={() => setShowItemDropdown(index)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        placeholder={loadingItems ? 'Loading items...' : 'Search items...'}
-                        disabled={loadingItems}
-                      />
-                      {showItemDropdown === index && !loadingItems && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                          {getFilteredItems(index).length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-slate-500">
-                              No items found
-                            </div>
-                          ) : (
-                            getFilteredItems(index).map((item) => (
-                              <div
-                                key={item.number}
-                                onClick={() => {
-                                  const newItems = [...formData.items];
-                                  newItems[index] = {
-                                    ...newItems[index],
-                                    description: item.displayName,
-                                    item_description: item.displayName,
-                                    item_number: item.number
-                                  };
-                                  setFormData({ ...formData, items: newItems });
+                  <div key={index}>
+                    {/* Mobile Card Layout (< 1024px) */}
+                    <div className="lg:hidden bg-white border-2 border-slate-200 rounded-xl p-4 space-y-4 shadow-sm hover:shadow-md transition-shadow">
+                      {/* Card Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                        <h4 className="text-base font-bold text-slate-900">Item #{index + 1}</h4>
+                        <button
+                          onClick={() => removeItem(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove item"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
 
-                                  const newSearchTerms = [...itemSearchTerms];
-                                  newSearchTerms[index] = item.displayName;
-                                  setItemSearchTerms(newSearchTerms);
-                                  setShowItemDropdown(null);
-                                }}
-                                className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
-                              >
-                                <div className="font-medium text-slate-900">{item.displayName}</div>
-                                <div className="text-xs text-slate-500">{item.number}</div>
+                      {/* Item Name Field */}
+                      <div className="relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Item Name
+                        </label>
+                        <input
+                          type="text"
+                          value={itemSearchTerms[index] !== undefined ? itemSearchTerms[index] : (item.item_description || item.description)}
+                          onChange={(e) => {
+                            const newSearchTerms = [...itemSearchTerms];
+                            newSearchTerms[index] = e.target.value;
+                            setItemSearchTerms(newSearchTerms);
+                            setShowItemDropdown(index);
+                          }}
+                          onFocus={() => setShowItemDropdown(index)}
+                          className="w-full px-4 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          placeholder={loadingItems ? 'Loading items...' : 'Search items...'}
+                          disabled={loadingItems}
+                        />
+                        {showItemDropdown === index && !loadingItems && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {getFilteredItems(index).length === 0 ? (
+                              <div className="px-4 py-3 text-sm text-slate-500">
+                                No items found
                               </div>
-                            ))
-                          )}
+                            ) : (
+                              getFilteredItems(index).map((item) => (
+                                <div
+                                  key={item.number}
+                                  onClick={() => {
+                                    const newItems = [...formData.items];
+                                    newItems[index] = {
+                                      ...newItems[index],
+                                      description: item.displayName,
+                                      item_description: item.displayName,
+                                      item_number: item.number
+                                    };
+                                    setFormData({ ...formData, items: newItems });
+
+                                    const newSearchTerms = [...itemSearchTerms];
+                                    newSearchTerms[index] = item.displayName;
+                                    setItemSearchTerms(newSearchTerms);
+                                    setShowItemDropdown(null);
+                                  }}
+                                  className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                                >
+                                  <div className="font-medium text-slate-900">{item.displayName}</div>
+                                  <div className="text-xs text-slate-500">{item.number}</div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Description Field */}
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={item.item_notes || ''}
+                          onChange={(e) => updateItem(index, 'item_notes', e.target.value)}
+                          className="w-full px-4 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          placeholder="Additional description..."
+                        />
+                      </div>
+
+                      {/* Quantity and Unit in 2-column grid */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">
+                            Quantity
+                          </label>
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                            className="w-full px-4 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          />
                         </div>
-                      )}
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-slate-600 mb-1">
-                        Description
-                      </label>
-                      <input
-                        type="text"
-                        value={item.item_notes || ''}
-                        onChange={(e) => updateItem(index, 'item_notes', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        placeholder="Additional description..."
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className="block text-xs font-medium text-slate-600 mb-1">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
-                      <input
-                        type="text"
-                        value={item.unit}
-                        onChange={(e) => updateItem(index, 'unit', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Unit Price</label>
-                      <input
-                        type="number"
-                        value={item.unit_price}
-                        onChange={(e) => updateItem(index, 'unit_price', Number(e.target.value))}
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Estimated Total Amount</label>
-                      <div className="w-full px-3 py-2 text-sm bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-medium">
-                        ₱{item.total_price.toFixed(2)}
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Unit</label>
+                          <input
+                            type="text"
+                            value={item.unit}
+                            onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                            className="w-full px-4 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Unit Price Field */}
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Unit Price</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 font-semibold text-base">₱</span>
+                          <input
+                            type="number"
+                            value={item.unit_price}
+                            onChange={(e) => updateItem(index, 'unit_price', Number(e.target.value))}
+                            className="w-full pl-10 pr-4 py-3 text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            step="0.01"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Total Amount Display */}
+                      <div className="pt-3 border-t border-slate-200">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Total Amount</label>
+                        <div className="w-full px-4 py-3 text-lg bg-gradient-to-r from-blue-50 to-slate-50 border-2 border-blue-200 rounded-lg text-slate-900 font-bold">
+                          ₱{item.total_price.toFixed(2)}
+                        </div>
                       </div>
                     </div>
-                    <div className="col-span-1">
-                      <button
-                        onClick={() => removeItem(index)}
-                        className="w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+
+                    {/* Desktop Grid Layout (>= 1024px) */}
+                    <div className="hidden lg:grid grid-cols-12 gap-2 items-end p-3 bg-slate-50 rounded-lg">
+                      <div className="col-span-2 relative" ref={(el) => (itemDropdownRefs.current[index] = el)}>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          Item Name
+                        </label>
+                        <input
+                          type="text"
+                          value={itemSearchTerms[index] !== undefined ? itemSearchTerms[index] : (item.item_description || item.description)}
+                          onChange={(e) => {
+                            const newSearchTerms = [...itemSearchTerms];
+                            newSearchTerms[index] = e.target.value;
+                            setItemSearchTerms(newSearchTerms);
+                            setShowItemDropdown(index);
+                          }}
+                          onFocus={() => setShowItemDropdown(index)}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          placeholder={loadingItems ? 'Loading items...' : 'Search items...'}
+                          disabled={loadingItems}
+                        />
+                        {showItemDropdown === index && !loadingItems && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {getFilteredItems(index).length === 0 ? (
+                              <div className="px-4 py-3 text-sm text-slate-500">
+                                No items found
+                              </div>
+                            ) : (
+                              getFilteredItems(index).map((item) => (
+                                <div
+                                  key={item.number}
+                                  onClick={() => {
+                                    const newItems = [...formData.items];
+                                    newItems[index] = {
+                                      ...newItems[index],
+                                      description: item.displayName,
+                                      item_description: item.displayName,
+                                      item_number: item.number
+                                    };
+                                    setFormData({ ...formData, items: newItems });
+
+                                    const newSearchTerms = [...itemSearchTerms];
+                                    newSearchTerms[index] = item.displayName;
+                                    setItemSearchTerms(newSearchTerms);
+                                    setShowItemDropdown(null);
+                                  }}
+                                  className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                                >
+                                  <div className="font-medium text-slate-900">{item.displayName}</div>
+                                  <div className="text-xs text-slate-500">{item.number}</div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={item.item_notes || ''}
+                          onChange={(e) => updateItem(index, 'item_notes', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          placeholder="Additional description..."
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="block text-xs font-medium text-slate-600 mb-1">
+                          Quantity
+                        </label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Unit</label>
+                        <input
+                          type="text"
+                          value={item.unit}
+                          onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Unit Price</label>
+                        <input
+                          type="number"
+                          value={item.unit_price}
+                          onChange={(e) => updateItem(index, 'unit_price', Number(e.target.value))}
+                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          step="0.01"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-slate-600 mb-1">Estimated Total Amount</label>
+                        <div className="w-full px-3 py-2 text-sm bg-slate-100 border border-slate-300 rounded-lg text-slate-700 font-medium">
+                          ₱{item.total_price.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="col-span-1">
+                        <button
+                          onClick={() => removeItem(index)}
+                          className="w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
