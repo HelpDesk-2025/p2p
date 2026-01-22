@@ -521,7 +521,7 @@ export function ProcurementChecking() {
       {showViewModal && viewingRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Purchase Requisition Details</h3>
                 <p className="text-sm text-slate-600 mt-1">{viewingRequest.document_no || viewingRequest.pr_number}</p>
@@ -538,7 +538,7 @@ export function ProcurementChecking() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {smeRequestStatus && (
                 <div className={`border rounded-lg p-4 ${
                   smeRequestStatus.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
@@ -573,7 +573,7 @@ export function ProcurementChecking() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Document No.</label>
                   <p className="text-slate-900 font-mono">{viewingRequest.document_no || viewingRequest.pr_number}</p>
@@ -632,7 +632,7 @@ export function ProcurementChecking() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Merged Attachment</label>
                   <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <div className="p-3 bg-blue-100 rounded-lg">
                           <FileText size={24} className="text-blue-600" />
@@ -642,17 +642,17 @@ export function ProcurementChecking() {
                           <p className="text-xs text-slate-600 mt-1">All attachments combined</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <button
                           onClick={() => previewMergedPDF(viewingRequest.merged_pdf_path!)}
-                          className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
                         >
                           <ExternalLink size={16} />
                           Preview
                         </button>
                         <button
                           onClick={() => downloadMergedPDF(viewingRequest.merged_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                         >
                           <Download size={16} />
                           Download
@@ -673,7 +673,8 @@ export function ProcurementChecking() {
                   <div>
                     <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
                     <div className="border border-slate-200 rounded-lg overflow-hidden">
-                      <table className="w-full">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Item Name</th>
@@ -697,41 +698,45 @@ export function ProcurementChecking() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
             </div>
 
-            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="border-t border-slate-200 px-4 sm:px-6 py-4 bg-slate-50">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+                  <button
+                    onClick={handleOpenSmeModal}
+                    disabled={!!smeRequestStatus}
+                    className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={smeRequestStatus ? `SME request already exists (${smeRequestStatus.status})` : 'Request Subject Matter Expert'}
+                  >
+                    <UserCheck size={20} />
+                    <span className="hidden sm:inline">Subject Matter Expert</span>
+                    <span className="sm:hidden">SME Request</span>
+                  </button>
+                  <button
+                    onClick={handleReadyForCanvass}
+                    className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                  >
+                    <ClipboardList size={20} />
+                    Ready for Canvass
+                  </button>
+                </div>
                 <button
-                  onClick={handleOpenSmeModal}
-                  disabled={!!smeRequestStatus}
-                  className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={smeRequestStatus ? `SME request already exists (${smeRequestStatus.status})` : 'Request Subject Matter Expert'}
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setViewingRequest(null);
+                    setSmeRequestStatus(null);
+                  }}
+                  className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
                 >
-                  <UserCheck size={20} />
-                  Subject Matter Expert
-                </button>
-                <button
-                  onClick={handleReadyForCanvass}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                >
-                  <ClipboardList size={20} />
-                  Ready for Canvass
+                  Close
                 </button>
               </div>
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  setViewingRequest(null);
-                  setSmeRequestStatus(null);
-                }}
-                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>
