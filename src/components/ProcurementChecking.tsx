@@ -198,6 +198,44 @@ export function ProcurementChecking() {
 
       if (error) throw error;
 
+      // Send email notification to procurement if purchase_type is "Purchase Order"
+      if (viewingRequest.purchase_type === 'Purchase Order' && viewingRequest.company_id) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('procurement_notification_email, name')
+          .eq('id', viewingRequest.company_id)
+          .single();
+
+        if (companyData?.procurement_notification_email) {
+          try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            await fetch(`${supabaseUrl}/functions/v1/send-approval-email`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: companyData.procurement_notification_email,
+                subject: `Purchase Requisition Ready for Canvass - ${viewingRequest.document_no || viewingRequest.pr_number}`,
+                recipientName: 'Procurement Team',
+                requestType: 'Purchase Requisition',
+                documentNo: viewingRequest.document_no || viewingRequest.pr_number,
+                requesterName: viewingRequest.user_profiles?.full_name || 'N/A',
+                department: viewingRequest.department || 'N/A',
+                totalAmount: viewingRequest.total_amount || 0,
+                action: 'Ready for Canvass',
+                actionBy: profile?.full_name || 'System',
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send procurement notification email:', emailError);
+          }
+        }
+      }
+
       alert('Purchase Requisition marked as ready for canvass successfully!');
       setShowViewModal(false);
       setViewingRequest(null);

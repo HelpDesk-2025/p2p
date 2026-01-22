@@ -126,6 +126,51 @@ export function SmeApproval() {
 
       if (prError) throw prError;
 
+      // Send email notification to procurement if purchase_type is "Purchase Order"
+      const { data: prData } = await supabase
+        .from('purchase_requisitions')
+        .select('purchase_type, company_id, document_no, pr_number, requester_name, department, total_amount')
+        .eq('id', viewingRequest.pr_id)
+        .single();
+
+      if (prData?.purchase_type === 'Purchase Order' && prData?.company_id) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('procurement_notification_email, name')
+          .eq('id', prData.company_id)
+          .single();
+
+        if (companyData?.procurement_notification_email) {
+          try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            await fetch(`${supabaseUrl}/functions/v1/send-approval-email`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: companyData.procurement_notification_email,
+                subject: `Purchase Requisition Ready for Canvass - ${prData.document_no || prData.pr_number}`,
+                recipientName: 'Procurement Team',
+                requestType: 'Purchase Requisition',
+                documentNo: prData.document_no || prData.pr_number,
+                requesterName: prData.requester_name || 'N/A',
+                department: prData.department || 'N/A',
+                totalAmount: prData.total_amount || 0,
+                action: 'Ready for Canvass',
+                actionBy: profile.full_name,
+                comments: comments.trim(),
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send procurement notification email:', emailError);
+          }
+        }
+      }
+
       alert('Purchase Requisition marked as ready for canvass successfully!');
       setShowViewModal(false);
       setViewingRequest(null);
