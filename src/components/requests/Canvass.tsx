@@ -174,7 +174,7 @@ export function Canvass() {
   const [isHorizontalLayout, setIsHorizontalLayout] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [withholdingTaxRates, setWithholdingTaxRates] = useState<{ id: string; name: string; rate: number }[]>([]);
+  const [withholdingTaxRates, setWithholdingTaxRates] = useState<{ id: string; name: string; rate: number; description?: string }[]>([]);
   const [formData, setFormData] = useState({
     document_no: '',
     required_date: '',
@@ -316,7 +316,7 @@ export function Canvass() {
   const loadWithholdingTaxRates = async () => {
     const { data } = await supabase
       .from('withholding_tax_rates')
-      .select('id, name, rate')
+      .select('id, name, rate, description')
       .eq('is_active', true)
       .order('name');
 
@@ -1605,7 +1605,7 @@ export function Canvass() {
                               <option value="">Select Rate</option>
                               {withholdingTaxRates.map((rate) => (
                                 <option key={rate.id} value={rate.id}>
-                                  {rate.name} ({rate.rate}%)
+                                  {rate.name}{rate.description ? ` - ${rate.description}` : ''} ({rate.rate}%)
                                 </option>
                               ))}
                             </select>
