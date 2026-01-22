@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle, XCircle } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
@@ -918,6 +918,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                   </div>
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Approver Type</th>
+                <th className="px-4 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">E-Sig</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -925,7 +926,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             <tbody className="divide-y divide-slate-100">
               {filteredAndSortedData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center">
+                  <td colSpan={9} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-500">
                       <AlertCircle size={48} className="mb-3 text-slate-400" />
                       <p className="text-lg font-semibold">No users found</p>
@@ -968,6 +969,17 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                         </span>
                       ) : (
                         <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-center">
+                      {user.e_sig ? (
+                        <div className="inline-flex items-center justify-center w-8 h-8 bg-green-100 rounded-full" title="E-Signature uploaded">
+                          <CheckCircle size={18} className="text-green-600" />
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 rounded-full" title="No e-signature">
+                          <XCircle size={18} className="text-slate-400" />
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm">
@@ -1041,6 +1053,17 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                 {user.approver_type && (
                   <span className="px-2.5 py-1 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 rounded-lg text-xs font-semibold">
                     {user.approver_type}
+                  </span>
+                )}
+                {user.e_sig ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-800 rounded-lg text-xs font-semibold">
+                    <CheckCircle size={14} />
+                    E-Sig
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-semibold">
+                    <XCircle size={14} />
+                    No E-Sig
                   </span>
                 )}
                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${user.is_active ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800'}`}>
