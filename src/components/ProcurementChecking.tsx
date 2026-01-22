@@ -350,7 +350,8 @@ export function ProcurementChecking() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -435,6 +436,86 @@ export function ProcurementChecking() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {requests.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center text-slate-500">
+            No approved purchase order requests found
+          </div>
+        ) : (
+          requests.map((req) => (
+            <div
+              key={req.id}
+              className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+            >
+              <div className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-slate-500">Document No.</span>
+                      <span
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
+                      >
+                        {req.status}
+                      </span>
+                    </div>
+                    <p className="text-base font-mono font-bold text-slate-900 break-all">
+                      {req.document_no || req.pr_number}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs font-medium text-slate-500">Company</span>
+                    <p className="text-sm text-slate-900 mt-0.5">{req.companies?.name || 'N/A'}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-xs font-medium text-slate-500">Requester</span>
+                      <p className="text-sm text-slate-900 mt-0.5 truncate">{req.user_profiles?.full_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-slate-500">Department</span>
+                      <p className="text-sm text-slate-900 mt-0.5 truncate">{req.department}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-medium text-slate-500">Description</span>
+                    <p className="text-sm text-slate-900 mt-0.5 line-clamp-2">
+                      {req.description || req.purpose}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-medium text-slate-500">Request Date</span>
+                    <p className="text-sm text-slate-900 mt-0.5">
+                      {new Date(req.request_date).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
+                <button
+                  onClick={() => {
+                    setViewingRequest(req);
+                    setShowViewModal(true);
+                    checkSmeRequestStatus(req.id);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition"
+                >
+                  <Eye size={18} />
+                  View Details
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {showViewModal && viewingRequest && (
