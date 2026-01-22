@@ -167,7 +167,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     currentY -= 12;
 
     page.drawText('Advance Amount:', { x: col1X, y: currentY, size: 8, font: boldFont });
-    page.drawText(`₱${sanitizeText(data.linkedPettyCashRequest.amount.toFixed(2))}`, { x: col1X + 95, y: currentY, size: 8, font });
+    page.drawText(`PHP ${sanitizeText(data.linkedPettyCashRequest.amount.toFixed(2))}`, { x: col1X + 95, y: currentY, size: 8, font });
 
     page.drawText('Status:', { x: col2X, y: currentY, size: 8, font: boldFont });
     page.drawText(sanitizeText(data.linkedPettyCashRequest.status), { x: col2X + 35, y: currentY, size: 8, font, color: rgb(0, 0.6, 0) });
