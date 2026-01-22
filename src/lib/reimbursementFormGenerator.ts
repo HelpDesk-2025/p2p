@@ -209,7 +209,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   const amountColX = width - margin - 100;
 
   drawText('Date', dateColX, expenseY, 9, true);
-  drawText('Supplier Name/Vendor Name', descColX, expenseY, 9, true);
+  drawText('Supplier Name & Particulars', descColX, expenseY, 9, true);
   drawText('Amount', amountColX, expenseY, 9, true);
   expenseY -= 15;
 
