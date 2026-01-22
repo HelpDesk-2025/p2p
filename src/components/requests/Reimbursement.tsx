@@ -1228,7 +1228,7 @@ export function Reimbursement() {
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name/Vendor Name</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Supplier Name & Particulars</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-slate-600">Amount</th>
                     <th className="px-4 py-2 w-12"></th>
                   </tr>
