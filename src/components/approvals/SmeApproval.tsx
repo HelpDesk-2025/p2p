@@ -220,75 +220,77 @@ export function SmeApproval() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">SME Approvals</h2>
-          <p className="text-sm text-slate-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">SME Approvals</h2>
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             Subject Matter Expert requests requiring your review
           </p>
         </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('document_no')}
-                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 transition-colors text-xs sm:text-sm"
                   >
-                    Document No.
+                    <span className="hidden sm:inline">Document No.</span>
+                    <span className="sm:hidden">Doc #</span>
                     {getSortIcon('document_no')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
                   <button
                     onClick={() => handleSort('requester')}
-                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-2 hover:text-slate-700 transition-colors"
                   >
                     Requester
                     {getSortIcon('requester')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden lg:table-cell">
                   <button
                     onClick={() => handleSort('department')}
-                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-2 hover:text-slate-700 transition-colors"
                   >
                     Department
                     {getSortIcon('department')}
                   </button>
                 </th>
                 {profile?.role === 'admin' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
                     Assigned SME
                   </th>
                 )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort('purpose')}
-                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 transition-colors text-xs sm:text-sm"
                   >
                     Purpose
                     {getSortIcon('purpose')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">
                   <button
                     onClick={() => handleSort('created_at')}
-                    className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-2 hover:text-slate-700 transition-colors"
                   >
-                    Request Date
+                    <span className="hidden lg:inline">Request Date</span>
+                    <span className="lg:hidden">Date</span>
                     {getSortIcon('created_at')}
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -296,41 +298,42 @@ export function SmeApproval() {
             <tbody className="divide-y divide-slate-200">
               {sortedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={profile?.role === 'admin' ? 8 : 7} className="px-6 py-8 text-center text-slate-500">
+                  <td colSpan={profile?.role === 'admin' ? 8 : 7} className="px-3 py-8 sm:px-6 text-center text-slate-500 text-sm">
                     No SME requests found
                   </td>
                 </tr>
               ) : (
                 sortedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-medium text-slate-900">
                       {req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden md:table-cell">
                       {req.requester?.full_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
                       {req.purchase_requisitions?.department}
                     </td>
                     {profile?.role === 'admin' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                      <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden xl:table-cell">
                         {req.sme_user?.full_name}
                       </td>
                     )}
-                    <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 text-xs sm:text-sm text-slate-600 max-w-[120px] sm:max-w-xs truncate">
                       {req.purpose}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(req.created_at).toLocaleString()}
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden sm:table-cell">
+                      <span className="hidden lg:inline">{new Date(req.created_at).toLocaleString()}</span>
+                      <span className="lg:hidden">{new Date(req.created_at).toLocaleDateString()}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap hidden md:table-cell">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
                       >
                         {req.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                       <button
                         onClick={() => {
                           setViewingRequest(req);
@@ -339,8 +342,8 @@ export function SmeApproval() {
                         }}
                         className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                       >
-                        <Eye size={16} />
-                        View
+                        <Eye size={16} className="sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">View</span>
                       </button>
                     </td>
                   </tr>
@@ -352,12 +355,12 @@ export function SmeApproval() {
       </div>
 
       {showViewModal && viewingRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">SME Request Details</h3>
-                <p className="text-sm text-slate-600 mt-1">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900">SME Request Details</h3>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1 font-mono">
                   {viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number}
                 </p>
               </div>
@@ -369,92 +372,92 @@ export function SmeApproval() {
                 }}
                 className="p-2 hover:bg-slate-100 rounded-lg transition"
               >
-                <X size={20} />
+                <X size={18} className="sm:w-5 sm:h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <User size={20} className="text-blue-600 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Request from Procurement</h4>
-                    <p className="text-sm text-blue-800">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <User size={18} className="sm:w-5 sm:h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Request from Procurement</h4>
+                    <p className="text-xs sm:text-sm text-blue-800">
                       <span className="font-medium">{viewingRequest.requester?.full_name}</span> is seeking {profile?.role === 'admin' ? <><span className="font-medium">{viewingRequest.sme_user?.full_name}</span>'s</> : 'your'} expertise for this Purchase Requisition.
                     </p>
-                    <div className="mt-3 bg-white border border-blue-200 rounded-lg p-3">
+                    <div className="mt-2 sm:mt-3 bg-white border border-blue-200 rounded-lg p-2 sm:p-3">
                       <p className="text-xs font-medium text-blue-700 mb-1">Purpose:</p>
-                      <p className="text-sm text-slate-900">{viewingRequest.purpose}</p>
+                      <p className="text-xs sm:text-sm text-slate-900 break-words">{viewingRequest.purpose}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Document No.</label>
-                  <p className="text-slate-900 font-mono">
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Document No.</label>
+                  <p className="text-sm sm:text-base text-slate-900 font-mono break-all">
                     {viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Company</label>
-                  <p className="text-slate-900">{viewingRequest.purchase_requisitions?.companies?.name || 'N/A'}</p>
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Company</label>
+                  <p className="text-sm sm:text-base text-slate-900">{viewingRequest.purchase_requisitions?.companies?.name || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Department</label>
-                  <p className="text-slate-900">{viewingRequest.purchase_requisitions?.department}</p>
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Department</label>
+                  <p className="text-sm sm:text-base text-slate-900">{viewingRequest.purchase_requisitions?.department}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Request Date</label>
-                  <p className="text-slate-900">
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Request Date</label>
+                  <p className="text-sm sm:text-base text-slate-900">
                     {new Date(viewingRequest.purchase_requisitions?.request_date).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Total Amount</label>
-                  <p className="text-slate-900 font-semibold">
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Total Amount</label>
+                  <p className="text-sm sm:text-base text-slate-900 font-semibold">
                     ₱{viewingRequest.purchase_requisitions?.total_amount.toLocaleString()}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Status</label>
-                  <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Status</label>
+                  <span className={`inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
                     {viewingRequest.status}
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">PR Description</label>
-                <p className="text-slate-900">{viewingRequest.purchase_requisitions?.description}</p>
+                <label className="text-xs sm:text-sm font-semibold text-slate-700">PR Description</label>
+                <p className="text-sm sm:text-base text-slate-900 break-words">{viewingRequest.purchase_requisitions?.description}</p>
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-slate-700">PR Purpose</label>
-                <p className="text-slate-900">{viewingRequest.purchase_requisitions?.purpose}</p>
+                <label className="text-xs sm:text-sm font-semibold text-slate-700">PR Purpose</label>
+                <p className="text-sm sm:text-base text-slate-900 break-words">{viewingRequest.purchase_requisitions?.purpose}</p>
               </div>
 
               {viewingRequest.purchase_requisitions?.merged_pdf_path && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Merged PDF Document</label>
-                  <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-blue-100 rounded-lg">
-                          <FileText size={24} className="text-blue-600" />
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700 mb-2 sm:mb-3 block">Merged PDF Document</label>
+                  <div className="border border-slate-200 rounded-lg p-3 sm:p-4 bg-slate-50">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="p-2 sm:p-3 bg-blue-100 rounded-lg flex-shrink-0">
+                          <FileText size={20} className="sm:w-6 sm:h-6 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">Merged PDF Document</p>
-                          <p className="text-xs text-slate-600 mt-1">All attachments combined</p>
+                          <p className="text-xs sm:text-sm font-semibold text-slate-900">Merged PDF Document</p>
+                          <p className="text-xs text-slate-600 mt-0.5 sm:mt-1">All attachments combined</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => previewMergedPDF(viewingRequest.purchase_requisitions!.merged_pdf_path!)}
-                          className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+                          className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition text-xs sm:text-sm flex-1 sm:flex-initial"
                         >
-                          <ExternalLink size={16} />
+                          <ExternalLink size={14} className="sm:w-4 sm:h-4" />
                           Preview
                         </button>
                         <button
@@ -462,9 +465,9 @@ export function SmeApproval() {
                             viewingRequest.purchase_requisitions!.merged_pdf_path!,
                             viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number || 'document'
                           )}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                          className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs sm:text-sm flex-1 sm:flex-initial"
                         >
-                          <Download size={16} />
+                          <Download size={14} className="sm:w-4 sm:h-4" />
                           Download
                         </button>
                       </div>
@@ -475,35 +478,37 @@ export function SmeApproval() {
 
               {viewingRequest.purchase_requisitions?.items && viewingRequest.purchase_requisitions.items.length > 0 && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Items</label>
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700 mb-2 sm:mb-3 block">Items</label>
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {viewingRequest.purchase_requisitions.items.map((item: any, index: number) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">
-                              {item.item_description || item.description || 'N/A'}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.quantity}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.unit}</td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-3 py-2 sm:px-4 text-left text-xs font-semibold text-slate-700">Description</th>
+                            <th className="px-3 py-2 sm:px-4 text-left text-xs font-semibold text-slate-700">Qty</th>
+                            <th className="px-3 py-2 sm:px-4 text-left text-xs font-semibold text-slate-700">Unit</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {viewingRequest.purchase_requisitions.items.map((item: any, index: number) => (
+                            <tr key={index}>
+                              <td className="px-3 py-2 sm:px-4 text-xs sm:text-sm text-slate-900">
+                                {item.item_description || item.description || 'N/A'}
+                              </td>
+                              <td className="px-3 py-2 sm:px-4 text-xs sm:text-sm text-slate-700">{item.quantity}</td>
+                              <td className="px-3 py-2 sm:px-4 text-xs sm:text-sm text-slate-700">{item.unit}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
 
               {viewingRequest.status === 'pending' && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-2">
                     Comments *
                   </label>
                   <textarea
@@ -511,30 +516,30 @@ export function SmeApproval() {
                     onChange={(e) => setComments(e.target.value)}
                     rows={4}
                     placeholder="Add your comments or recommendations..."
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 sm:px-4 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               )}
 
               {viewingRequest.sme_comments && viewingRequest.status !== 'pending' && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-2 block">Your Comments</label>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                    <p className="text-sm text-slate-900">{viewingRequest.sme_comments}</p>
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700 mb-2 block">Your Comments</label>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4">
+                    <p className="text-xs sm:text-sm text-slate-900 break-words">{viewingRequest.sme_comments}</p>
                   </div>
                 </div>
               )}
             </div>
 
             {viewingRequest.status === 'pending' && (
-              <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">
+              <div className="border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0">
                 <button
                   onClick={handleReadyForCanvass}
                   disabled={actionLoading || !comments.trim()}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                   title={!comments.trim() ? 'Please provide comments before marking as ready for canvass' : ''}
                 >
-                  <ClipboardList size={20} />
+                  <ClipboardList size={18} className="sm:w-5 sm:h-5" />
                   {actionLoading ? 'Processing...' : 'Ready for Canvass'}
                 </button>
                 <button
@@ -543,7 +548,7 @@ export function SmeApproval() {
                     setViewingRequest(null);
                     setComments('');
                   }}
-                  className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+                  className="px-4 py-2 sm:px-6 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition text-sm sm:text-base"
                 >
                   Close
                 </button>
@@ -551,14 +556,14 @@ export function SmeApproval() {
             )}
 
             {viewingRequest.status !== 'pending' && (
-              <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-end">
+              <div className="border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 bg-slate-50 flex items-center justify-end">
                 <button
                   onClick={() => {
                     setShowViewModal(false);
                     setViewingRequest(null);
                     setComments('');
                   }}
-                  className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
+                  className="px-4 py-2 sm:px-6 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition text-sm sm:text-base"
                 >
                   Close
                 </button>
