@@ -1246,12 +1246,12 @@ export function Canvass() {
               })()}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Canvass Document No.</label>
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
+                <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
                   <FileText size={18} className="text-slate-400" />
-                  <span className="font-mono font-semibold text-slate-900">{formData.document_no}</span>
+                  <span className="font-mono font-semibold text-slate-900 text-sm sm:text-base">{formData.document_no}</span>
                 </div>
               </div>
 
@@ -1261,30 +1261,32 @@ export function Canvass() {
                   type="date"
                   value={formData.required_date}
                   onChange={(e) => setFormData({ ...formData, required_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                   required
                 />
               </div>
 
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-slate-900">Quotations (atleast 1)</h3>
-                  <div className="flex items-center gap-2">
+              <div className="border-t pt-4 sm:pt-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">Quotations (atleast 1)</h3>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setIsHorizontalLayout(!isHorizontalLayout)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-600 text-white text-sm rounded-lg hover:bg-slate-700 transition"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-600 text-white text-sm rounded-lg hover:bg-slate-700 transition"
                       title={isHorizontalLayout ? "Switch to Vertical Layout" : "Switch to Horizontal Layout"}
                     >
                       {isHorizontalLayout ? (
                         <>
                           <LayoutList size={16} />
-                          <span>Vertical</span>
+                          <span className="hidden sm:inline">Vertical</span>
+                          <span className="sm:hidden">Vertical Layout</span>
                         </>
                       ) : (
                         <>
                           <LayoutGrid size={16} />
-                          <span>Horizontal</span>
+                          <span className="hidden sm:inline">Horizontal</span>
+                          <span className="sm:hidden">Horizontal Layout</span>
                         </>
                       )}
                     </button>
@@ -1293,10 +1295,11 @@ export function Canvass() {
                       onClick={() => {
                         setQuotations(addItemToAllQuotations(quotations));
                       }}
-                      className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                      className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
                     >
                       <Plus size={16} />
-                      Add Item Row to All Quotations
+                      <span className="hidden sm:inline">Add Item Row to All Quotations</span>
+                      <span className="sm:hidden">Add Item Row</span>
                     </button>
                   </div>
                 </div>
@@ -1726,7 +1729,7 @@ export function Canvass() {
 
                       <div className="border-t pt-3 mt-3">
                         <h5 className="font-semibold text-slate-900 mb-2 text-sm">Vendor Details</h5>
-                        <div className={`grid gap-2 ${isHorizontalLayout ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        <div className={`grid gap-2 ${isHorizontalLayout ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
                           <div>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Registered Name</label>
                             <input
@@ -1745,7 +1748,7 @@ export function Canvass() {
                               className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-700 cursor-not-allowed"
                             />
                           </div>
-                          <div className={isHorizontalLayout ? '' : 'col-span-2'}>
+                          <div className={isHorizontalLayout ? '' : 'sm:col-span-2'}>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Complete Address</label>
                             <textarea
                               value={quotation.complete_address}
@@ -1819,7 +1822,7 @@ export function Canvass() {
                               className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
-                          <div className={isHorizontalLayout ? '' : 'col-span-2'}>
+                          <div className={isHorizontalLayout ? '' : 'sm:col-span-2'}>
                             <label className="block text-xs font-medium text-slate-700 mb-1">Other Information</label>
                             <textarea
                               value={quotation.other_information}
@@ -1840,9 +1843,9 @@ export function Canvass() {
               </div>
 
               {/* Recommendation Section */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h4 className="text-lg font-bold text-slate-900 mb-4">Recommended Quotation</h4>
-                <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+                <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-3 sm:mb-4">Recommended Quotation</h4>
+                <div className="space-y-3 sm:space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Select Recommended Quotation <span className="text-red-500">*</span>
@@ -1850,21 +1853,23 @@ export function Canvass() {
                     <div className="space-y-2">
                       {quotations.map((quotation, idx) => (
                         quotation.vendor_name && quotation.vendor_name.trim() !== '' && (
-                          <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                          <div key={idx} className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-white rounded-lg border border-slate-200">
                             <input
                               type="radio"
                               id={`quotation-${idx}`}
                               name="recommended-quotation"
                               checked={recommendedQuotationIndex === idx}
                               onChange={() => setRecommendedQuotationIndex(idx)}
-                              className="mt-1 w-4 h-4 text-blue-600 border-slate-300 focus:ring-2 focus:ring-blue-500"
+                              className="mt-1 w-4 h-4 text-blue-600 border-slate-300 focus:ring-2 focus:ring-blue-500 flex-shrink-0"
                             />
                             <label htmlFor={`quotation-${idx}`} className="flex-1 cursor-pointer">
-                              <div className="font-semibold text-slate-900">Quotation {idx + 1}: {quotation.vendor_name}</div>
-                              <div className="text-sm text-slate-600 mt-1">
-                                Net Payable: ₱{quotation.net_payable.toFixed(2)} |
-                                Quoted Amount: ₱{quotation.quoted_amount.toFixed(2)} |
-                                Items: {quotation.items.length}
+                              <div className="font-semibold text-slate-900 text-sm sm:text-base">Quotation {idx + 1}: {quotation.vendor_name}</div>
+                              <div className="text-xs sm:text-sm text-slate-600 mt-1 space-y-0.5 sm:space-y-0">
+                                <div className="sm:inline">Net Payable: ₱{quotation.net_payable.toFixed(2)}</div>
+                                <span className="hidden sm:inline"> | </span>
+                                <div className="sm:inline">Quoted Amount: ₱{quotation.quoted_amount.toFixed(2)}</div>
+                                <span className="hidden sm:inline"> | </span>
+                                <div className="sm:inline">Items: {quotation.items.length}</div>
                               </div>
                             </label>
                           </div>
@@ -1882,13 +1887,13 @@ export function Canvass() {
                       onChange={(e) => setRecommendationRemarks(e.target.value)}
                       placeholder="Provide detailed remarks explaining why you recommend this quotation..."
                       rows={4}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm sm:text-base"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 justify-end pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end pt-4 border-t">
                 <button
                   onClick={() => {
                     if (confirm('Are you sure you want to submit this canvass request for approval?')) {
@@ -1896,7 +1901,7 @@ export function Canvass() {
                     }
                   }}
                   disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
                 >
                   {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                   {submitting ? 'Submitting...' : 'Submit for Approval'}
