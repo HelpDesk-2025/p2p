@@ -42,6 +42,7 @@ export function ApprovalFlowSetupConfig() {
     user_id: "",
     days_to_approve: "3"
   });
+  const [userSearchQuery, setUserSearchQuery] = useState("");
 
   // Filter and sorting states
   const [searchQuery, setSearchQuery] = useState("");
@@ -248,6 +249,7 @@ export function ApprovalFlowSetupConfig() {
 
       setAddingStepToWorkflow(null);
       setNewStepData({ user_id: "", days_to_approve: "3" });
+      setUserSearchQuery("");
       loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -288,6 +290,7 @@ export function ApprovalFlowSetupConfig() {
       setEditingStepId(null);
       setAddingStepToWorkflow(null);
       setNewStepData({ user_id: "", days_to_approve: "3" });
+      setUserSearchQuery("");
       loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -391,6 +394,22 @@ export function ApprovalFlowSetupConfig() {
       setSortOrder("asc");
     }
   };
+
+  const filteredAndSortedUsers = users
+    .filter((user) => {
+      if (!userSearchQuery) return true;
+      const searchLower = userSearchQuery.toLowerCase();
+      return (
+        user.full_name?.toLowerCase().includes(searchLower) ||
+        user.email?.toLowerCase().includes(searchLower) ||
+        user.company?.toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      const nameA = (a.full_name || "").toLowerCase();
+      const nameB = (b.full_name || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -576,18 +595,29 @@ export function ApprovalFlowSetupConfig() {
                           <h5 className="text-xs font-bold text-slate-900 mb-1">Add New Step</h5>
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-700">Select User (All Companies)</label>
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              value={userSearchQuery}
+                              onChange={(e) => setUserSearchQuery(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-1"
+                            />
                             <select
                               value={newStepData.user_id}
                               onChange={(e) => setNewStepData({ ...newStepData, user_id: e.target.value })}
                               className={`w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg ${colors.ring}`}
+                              size={5}
                             >
                               <option value="">Select User</option>
-                              {users.map((user) => (
+                              {filteredAndSortedUsers.map((user) => (
                                 <option key={user.id} value={user.id}>
                                   {user.full_name} - {user.company} ({user.email})
                                 </option>
                               ))}
                             </select>
+                            {filteredAndSortedUsers.length === 0 && userSearchQuery && (
+                              <p className="text-xs text-slate-500 mt-1">No users found</p>
+                            )}
                           </div>
 
                           <div className="space-y-1">
@@ -612,6 +642,7 @@ export function ApprovalFlowSetupConfig() {
                               onClick={() => {
                                 setAddingStepToWorkflow(null);
                                 setNewStepData({ user_id: "", days_to_approve: "3" });
+                                setUserSearchQuery("");
                               }}
                               className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-all"
                             >
@@ -626,18 +657,29 @@ export function ApprovalFlowSetupConfig() {
                           <h5 className="text-xs font-bold text-slate-900 mb-1">Edit Step</h5>
                           <div className="space-y-1">
                             <label className="text-xs font-semibold text-slate-700">Select User (All Companies)</label>
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              value={userSearchQuery}
+                              onChange={(e) => setUserSearchQuery(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-1"
+                            />
                             <select
                               value={newStepData.user_id}
                               onChange={(e) => setNewStepData({ ...newStepData, user_id: e.target.value })}
                               className={`w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg ${colors.ring}`}
+                              size={5}
                             >
                               <option value="">Select User</option>
-                              {users.map((user) => (
+                              {filteredAndSortedUsers.map((user) => (
                                 <option key={user.id} value={user.id}>
                                   {user.full_name} - {user.company} ({user.email})
                                 </option>
                               ))}
                             </select>
+                            {filteredAndSortedUsers.length === 0 && userSearchQuery && (
+                              <p className="text-xs text-slate-500 mt-1">No users found</p>
+                            )}
                           </div>
 
                           <div className="space-y-1">
@@ -663,6 +705,7 @@ export function ApprovalFlowSetupConfig() {
                                 setEditingStepId(null);
                                 setAddingStepToWorkflow(null);
                                 setNewStepData({ user_id: "", days_to_approve: "3" });
+                                setUserSearchQuery("");
                               }}
                               className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-all"
                             >
