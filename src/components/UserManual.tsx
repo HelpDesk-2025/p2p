@@ -184,7 +184,7 @@ export function UserManual() {
             'Select "For Liquidation" as request type',
             'Select an approved petty cash advance to liquidate from the dropdown',
             'Upload receipts (PDF or image files)',
-            'Add expense items with date, supplier/vendor name, and amount',
+            'Add expense items with date, supplier & particulars, and amount',
             'Click "Add Item" to add multiple expenses',
             'Review the calculation showing Total Expenditures, Less Petty Cash Advance, and Excess/Over amount',
             'Select expense types if needed',
