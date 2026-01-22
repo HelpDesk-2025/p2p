@@ -2305,28 +2305,30 @@ export function PettyCash() {
                       </button>
                     </div>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-slate-300">
-                    <p className="text-sm text-slate-700 mb-2">
-                      Regenerate the liquidation report with the latest data and signatures.
-                    </p>
-                    <button
-                      onClick={regenerateLiquidationForm}
-                      disabled={regenerating}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
-                      {regenerating ? (
-                        <>
-                          <Loader2 size={18} className="animate-spin" />
-                          Regenerating...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw size={18} />
-                          Regenerate Liquidation Report
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  {profile?.role === 'admin' && (
+                    <div className="bg-white p-3 rounded-lg border border-slate-300">
+                      <p className="text-sm text-slate-700 mb-2">
+                        Regenerate the liquidation report with the latest data and signatures.
+                      </p>
+                      <button
+                        onClick={regenerateLiquidationForm}
+                        disabled={regenerating}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      >
+                        {regenerating ? (
+                          <>
+                            <Loader2 size={18} className="animate-spin" />
+                            Regenerating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw size={18} />
+                            Regenerate Liquidation Report
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
