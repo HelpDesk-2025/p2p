@@ -156,21 +156,22 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     currentY -= 18;
 
     const col1X = leftCol + 10;
-    const col2X = leftCol + 150;
-    const col3X = leftCol + 290;
+    const col1ValueX = col1X + 110;
+    const col2X = leftCol + 280;
+    const col2ValueX = col2X + 90;
 
     page.drawText('PC Number:', { x: col1X, y: currentY, size: 8, font: boldFont });
-    page.drawText(sanitizeText(data.linkedPettyCashRequest.pcNumber), { x: col1X + 65, y: currentY, size: 8, font });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.pcNumber), { x: col1ValueX, y: currentY, size: 8, font });
 
     page.drawText('Request Date:', { x: col2X, y: currentY, size: 8, font: boldFont });
-    page.drawText(sanitizeText(data.linkedPettyCashRequest.requestDate), { x: col2X + 75, y: currentY, size: 8, font });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.requestDate), { x: col2ValueX, y: currentY, size: 8, font });
     currentY -= 14;
 
     page.drawText('Advance Amount:', { x: col1X, y: currentY, size: 8, font: boldFont });
-    page.drawText(`PHP ${sanitizeText(data.linkedPettyCashRequest.amount.toFixed(2))}`, { x: col1X + 95, y: currentY, size: 8, font });
+    page.drawText(`PHP ${sanitizeText(data.linkedPettyCashRequest.amount.toFixed(2))}`, { x: col1ValueX, y: currentY, size: 8, font });
 
     page.drawText('Status:', { x: col2X, y: currentY, size: 8, font: boldFont });
-    page.drawText(sanitizeText(data.linkedPettyCashRequest.status), { x: col2X + 35, y: currentY, size: 8, font, color: rgb(0, 0.6, 0) });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.status), { x: col2ValueX, y: currentY, size: 8, font, color: rgb(0, 0.6, 0) });
     currentY -= 14;
 
     page.drawText('Purpose:', { x: col1X, y: currentY, size: 8, font: boldFont });
@@ -179,11 +180,11 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     const displayPurpose = purposeText.length > maxPurposeLen
       ? purposeText.substring(0, maxPurposeLen) + '...'
       : purposeText;
-    page.drawText(displayPurpose, { x: col1X + 50, y: currentY, size: 8, font });
+    page.drawText(displayPurpose, { x: col1ValueX, y: currentY, size: 8, font });
     currentY -= 14;
 
     page.drawText('Payee:', { x: col1X, y: currentY, size: 8, font: boldFont });
-    page.drawText(sanitizeText(data.linkedPettyCashRequest.payee), { x: col1X + 35, y: currentY, size: 8, font });
+    page.drawText(sanitizeText(data.linkedPettyCashRequest.payee), { x: col1ValueX, y: currentY, size: 8, font });
     currentY -= 25;
   }
 
