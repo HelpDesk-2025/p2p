@@ -762,32 +762,38 @@ export function PettyCashApproval() {
               {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Attached Reimbursement/Liquidation Form
+                    {selectedRequest.request_type === 'For Cash Advance'
+                      ? 'Supporting Documents'
+                      : selectedRequest.request_type === 'For Reimbursement'
+                      ? 'Attached Receipts'
+                      : 'Attached Liquidation Form'}
                   </label>
-                  {selectedRequest.attachments.map((attachment: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
-                      <div className="flex items-center gap-2">
-                        <Paperclip size={18} className="text-blue-600" />
-                        <span className="text-sm text-slate-700">{attachment.file_name}</span>
+                  <div className="space-y-2">
+                    {selectedRequest.attachments.map((attachment: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                        <div className="flex items-center gap-2">
+                          <Paperclip size={18} className="text-blue-600" />
+                          <span className="text-sm text-slate-700">{attachment.file_name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => previewAttachment(attachment.file_path)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                          >
+                            <Eye size={16} />
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => downloadAttachment(attachment.file_path, attachment.file_name)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                          >
+                            <Download size={16} />
+                            Download
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => previewAttachment(attachment.file_path)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
-                        >
-                          <Eye size={16} />
-                          Preview
-                        </button>
-                        <button
-                          onClick={() => downloadAttachment(attachment.file_path, attachment.file_name)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-                        >
-                          <Download size={16} />
-                          Download
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
