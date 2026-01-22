@@ -781,47 +781,49 @@ export function PettyCashApproval() {
               )}
 
               {selectedRequest.expense_items && selectedRequest.expense_items.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-3">
                     Expense Itemization
                   </label>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-slate-300 rounded-lg">
+                  <div className="overflow-x-auto border border-slate-300 rounded-lg">
+                    <table className="min-w-full bg-white">
                       <thead className="bg-slate-100">
                         <tr>
                           <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Date</th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Description</th>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Supplier Name/Vendor Name</th>
                           <th className="px-4 py-2 text-right text-sm font-semibold text-slate-700 border-b">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedRequest.expense_items.map((item, index) => (
-                          <tr key={index} className="border-b last:border-b-0 hover:bg-slate-50">
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.date || 'N/A'}</td>
+                          <tr key={index} className="border-b hover:bg-slate-50">
+                            <td className="px-4 py-2 text-sm text-slate-700">
+                              {item.date ? new Date(item.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                            </td>
                             <td className="px-4 py-2 text-sm text-slate-700">{item.description}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">₱{item.amount.toLocaleString()}</td>
+                            <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">₱{item.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                           </tr>
                         ))}
-                        <tr className="bg-slate-50 font-semibold">
+                        <tr className="bg-slate-50 font-semibold border-t-2 border-slate-300">
                           <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">Total Expenditures:</td>
                           <td className="px-4 py-3 text-sm text-slate-900 text-right">
-                            ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}
+                            ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
-                        <tr className="bg-slate-100">
-                          <td colSpan={2} className="px-4 py-2 text-sm text-slate-700 text-right">Less: Petty Cash Advance</td>
+                        <tr className="bg-white">
+                          <td colSpan={2} className="px-4 py-2 text-sm text-slate-700 text-right">Less: Petty Cash Advance:</td>
                           <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">
-                            ₱{selectedRequest.amount.toLocaleString()}
+                            ₱{(selectedRequest.petty_cash_advance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
-                        <tr className={`font-bold ${selectedRequest.amount - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) > 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <tr className={`font-bold ${(selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
                           <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">
-                            {selectedRequest.amount - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) > 0
+                            {(selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) >= 0
                               ? 'Excess for Deposit:'
                               : 'Over for Reimbursement:'}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-900 text-right">
-                            ₱{Math.abs(selectedRequest.amount - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0)).toLocaleString()}
+                            ₱{Math.abs((selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
                       </tbody>
