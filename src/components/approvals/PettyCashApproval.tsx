@@ -814,7 +814,7 @@ export function PettyCashApproval() {
                       <thead className="bg-slate-100">
                         <tr>
                           <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Date</th>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Supplier Name/Vendor Name</th>
+                          <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 border-b">Supplier Name & Particulars</th>
                           <th className="px-4 py-2 text-right text-sm font-semibold text-slate-700 border-b">Amount</th>
                         </tr>
                       </thead>
