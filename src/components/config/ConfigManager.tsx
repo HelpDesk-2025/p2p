@@ -564,61 +564,61 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       </div>
 
       {showForm && (
-        <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8 mb-8 space-y-6">
+        <div className="bg-gradient-to-br from-white to-slate-50 rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 p-4 sm:p-6 lg:p-8 mb-4 sm:mb-8 space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-slate-900">
+            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">
               {editingId ? "Edit User Profile" : "Add New User"}
             </h3>
             <button
               onClick={handleCancel}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
+              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
             >
-              <X size={24} />
+              <X size={20} className="sm:w-6 sm:h-6" />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Full Name *</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Full Name *</label>
               <input
                 type="text"
                 placeholder="Enter full name"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Email Address *</label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Email Address *</label>
               <input
                 type="email"
                 placeholder="user@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
             {!editingId && (
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Password *</label>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700">Password *</label>
                 <input
                   type="password"
                   placeholder="Enter password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Company</label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Company</label>
               <select
                 value={formData.company}
                 onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="">Select Company</option>
                 {companies.map((company) => (
@@ -629,12 +629,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Department</label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Department</label>
               <select
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
                 disabled={!formData.company}
               >
                 <option value="">Select Department</option>
@@ -652,12 +652,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Role</label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Role</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="">Select Role</option>
                 {roles.map((role) => (
@@ -668,12 +668,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Approver Type</label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Approver Type</label>
               <select
                 value={formData.approver_type}
                 onChange={(e) => setFormData({ ...formData, approver_type: e.target.value })}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="">None</option>
                 <option value="Procurement Head">Procurement Head</option>
@@ -684,9 +684,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Account Status</label>
-              <div className="flex items-center gap-3 mt-2">
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Account Status</label>
+              <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-2">
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -694,8 +694,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  <span className={`ml-3 text-sm font-semibold ${formData.is_active ? 'text-green-700' : 'text-slate-600'}`}>
+                  <div className="w-10 h-5 sm:w-11 sm:h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                  <span className={`ml-2 sm:ml-3 text-xs sm:text-sm font-semibold ${formData.is_active ? 'text-green-700' : 'text-slate-600'}`}>
                     {formData.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </label>
@@ -707,9 +707,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-700">Multi-Company Access</label>
-              <div className="flex items-center gap-3 mt-2">
+            <div className="space-y-1.5 sm:space-y-2">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Multi-Company Access</label>
+              <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-2">
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -717,8 +717,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     onChange={(e) => setFormData({ ...formData, enable_multi_company_requests: e.target.checked })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  <span className={`ml-3 text-sm font-semibold ${formData.enable_multi_company_requests ? 'text-blue-700' : 'text-slate-600'}`}>
+                  <div className="w-10 h-5 sm:w-11 sm:h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 sm:after:h-5 sm:after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <span className={`ml-2 sm:ml-3 text-xs sm:text-sm font-semibold ${formData.enable_multi_company_requests ? 'text-blue-700' : 'text-slate-600'}`}>
                     {formData.enable_multi_company_requests ? 'Enabled' : 'Disabled'}
                   </span>
                 </label>
@@ -731,9 +731,9 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
 
             {formData.enable_multi_company_requests && (
-              <div className="col-span-2 space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Allowed Companies *</label>
-                <div className="border border-slate-300 rounded-xl p-3 bg-white max-h-48 overflow-y-auto">
+              <div className="md:col-span-2 space-y-1.5 sm:space-y-2">
+                <label className="block text-xs sm:text-sm font-semibold text-slate-700">Allowed Companies *</label>
+                <div className="border border-slate-300 rounded-lg sm:rounded-xl p-2 sm:p-3 bg-white max-h-48 overflow-y-auto">
                   {companies.length === 0 ? (
                     <p className="text-sm text-slate-500 text-center py-2">No companies available</p>
                   ) : (
@@ -770,13 +770,13 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </div>
             )}
 
-            <div className="col-span-2 space-y-3">
-              <label className="block text-sm font-semibold text-slate-700">E-Signature</label>
+            <div className="md:col-span-2 space-y-2 sm:space-y-3">
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">E-Signature</label>
               <div className="relative">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all group">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Upload className="w-8 h-8 mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                    <p className="mb-1 text-sm text-slate-600 font-medium">
+                <label className="flex flex-col items-center justify-center w-full h-28 sm:h-32 border-2 border-dashed border-slate-300 rounded-lg sm:rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all group">
+                  <div className="flex flex-col items-center justify-center pt-4 pb-5 sm:pt-5 sm:pb-6">
+                    <Upload className="w-6 h-6 sm:w-8 sm:h-8 mb-1.5 sm:mb-2 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                    <p className="mb-1 text-xs sm:text-sm text-slate-600 font-medium">
                       <span className="text-blue-600">Click to upload</span> or drag and drop
                     </p>
                     <p className="text-xs text-slate-500">Image files only (max 10KB)</p>
@@ -791,18 +791,18 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </div>
               {formData.e_sig && (
                 <div className="relative group">
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl border-2 border-blue-200">
-                    <div className="flex items-center justify-center w-20 h-20 bg-white rounded-lg border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg sm:rounded-xl border-2 border-blue-200">
+                    <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg border border-slate-200 shadow-sm flex-shrink-0">
                       <img
                         src={formData.e_sig}
                         alt="E-Signature"
-                        className="max-h-16 max-w-16 object-contain"
+                        className="max-h-12 max-w-12 sm:max-h-16 sm:max-w-16 object-contain"
                       />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                        <ImageIcon size={16} className="text-blue-600" />
-                        Signature uploaded
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-900 flex items-center gap-1.5 sm:gap-2">
+                        <ImageIcon size={14} className="sm:w-4 sm:h-4 text-blue-600" />
+                        <span className="truncate">Signature uploaded</span>
                       </p>
                       {formData.e_sig !== originalESig ? (
                         <p className="text-xs text-orange-600 mt-1 font-medium">Click "Update User" to save changes</p>
@@ -813,10 +813,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, e_sig: '' })}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                       title="Remove signature"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                     </button>
                   </div>
                 </div>
@@ -824,17 +824,17 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-200">
             <button
               onClick={editingId ? handleUpdate : handleAdd}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30"
             >
-              <Save size={18} />
+              <Save size={16} className="sm:w-[18px] sm:h-[18px]" />
               {editingId ? "Update User" : "Create User"}
             </button>
             <button
               onClick={handleCancel}
-              className="px-6 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all"
+              className="px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-slate-300 text-slate-700 font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:bg-slate-50 transition-all"
             >
               Cancel
             </button>
