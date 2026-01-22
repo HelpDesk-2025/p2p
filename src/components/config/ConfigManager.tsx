@@ -433,21 +433,24 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900">User Management</h2>
-          <p className="text-slate-600 mt-1">Manage user profiles, roles, and permissions</p>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-4 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <div>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">User Management</h2>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">Manage user profiles, roles, and permissions</p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingId(null);
+              setShowForm(true);
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30 transition-all text-sm sm:text-base"
+          >
+            <Plus size={18} className="sm:w-5 sm:h-5" />
+            <span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Add User</span>
+          </button>
         </div>
-        <button
-          onClick={() => {
-            setEditingId(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30 transition-all"
-        >
-          <Plus size={20} />
-          Add User
-        </button>
       </div>
 
       {inactiveCount > 0 && (
@@ -465,26 +468,26 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-6">
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Filter & Search</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 sm:p-6 mb-4 sm:mb-6">
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-3 sm:mb-4">Filter & Search</h3>
+        <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Search</label>
             <input
               type="text"
               placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Company</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Company</label>
             <select
               value={filterCompany}
               onChange={(e) => setFilterCompany(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             >
               <option value="">All Companies</option>
               {companies.map((company) => (
@@ -496,11 +499,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Department</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Department</label>
             <select
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             >
               <option value="">All Departments</option>
               {Array.from(new Set(allDepartments.map(dept => dept.name))).sort().map((deptName) => (
@@ -512,11 +515,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Role</label>
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             >
               <option value="">All Roles</option>
               {roles.map((role) => (
@@ -528,11 +531,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Status</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             >
               <option value="all">All Status</option>
               <option value="active">Active Only</option>
@@ -549,13 +552,13 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                 setFilterRole('');
                 setFilterStatus('all');
               }}
-              className="w-full px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-all"
+              className="w-full px-3 py-2 text-sm sm:text-base bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-all"
             >
               Clear Filters
             </button>
           </div>
         </div>
-        <div className="mt-4 text-sm text-slate-600">
+        <div className="mt-3 sm:mt-4 text-xs sm:text-sm text-slate-600">
           Showing {filteredAndSortedData.length} of {data.length} users
         </div>
       </div>
@@ -839,10 +842,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900">All Users</h3>
-          <p className="text-sm text-slate-600 mt-0.5">{data.length} total users</p>
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200">
+          <h3 className="text-base sm:text-lg font-bold text-slate-900">All Users</h3>
+          <p className="text-xs sm:text-sm text-slate-600 mt-0.5">{data.length} total users</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -932,60 +936,120 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               ) : (
                 filteredAndSortedData.map((user) => (
                   <tr key={user.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
-                  <td className="px-4 py-4 text-sm">
-                    <div className="max-w-[150px] truncate font-semibold text-slate-900" title={user.full_name}>
-                      {user.full_name}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <div className="max-w-[180px] truncate text-slate-600" title={user.email}>
-                      {user.email}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <div className="max-w-[120px] truncate text-slate-600" title={user.company || '-'}>
-                      {user.company || <span className="text-slate-400">-</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <div className="max-w-[120px] truncate text-slate-600" title={user.department || '-'}>
-                      {user.department || <span className="text-slate-400">-</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <span className="capitalize px-3 py-1.5 bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 rounded-lg text-xs font-semibold whitespace-nowrap shadow-sm">
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    {user.approver_type ? (
-                      <span className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap inline-block shadow-sm">
-                        {user.approver_type}
+                    <td className="px-4 py-4 text-sm">
+                      <div className="max-w-[150px] truncate font-semibold text-slate-900" title={user.full_name}>
+                        {user.full_name}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <div className="max-w-[180px] truncate text-slate-600" title={user.email}>
+                        {user.email}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <div className="max-w-[120px] truncate text-slate-600" title={user.company || '-'}>
+                        {user.company || <span className="text-slate-400">-</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <div className="max-w-[120px] truncate text-slate-600" title={user.department || '-'}>
+                        {user.department || <span className="text-slate-400">-</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <span className="capitalize px-3 py-1.5 bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 rounded-lg text-xs font-semibold whitespace-nowrap shadow-sm">
+                        {user.role}
                       </span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm ${user.is_active ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800'}`}>
-                      {user.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-sm">
-                    <button
-                      onClick={() => handleEdit(user)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all group"
-                      title="Edit"
-                    >
-                      <Edit size={18} className="group-hover:scale-110 transition-transform" />
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {user.approver_type ? (
+                        <span className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap inline-block shadow-sm">
+                          {user.approver_type}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm ${user.is_active ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800'}`}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      <button
+                        onClick={() => handleEdit(user)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all group"
+                        title="Edit"
+                      >
+                        <Edit size={18} className="group-hover:scale-110 transition-transform" />
+                      </button>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filteredAndSortedData.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <div className="flex flex-col items-center justify-center text-slate-500">
+              <AlertCircle size={40} className="mb-2 text-slate-400" />
+              <p className="text-base font-semibold">No users found</p>
+              <p className="text-xs mt-1 text-center">Try adjusting your filters or search terms</p>
+            </div>
+          </div>
+        ) : (
+          filteredAndSortedData.map((user) => (
+            <div key={user.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-slate-900 text-sm truncate">{user.full_name}</h4>
+                  <p className="text-xs text-slate-600 truncate mt-0.5">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => handleEdit(user)}
+                  className="ml-2 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all flex-shrink-0"
+                  title="Edit"
+                >
+                  <Edit size={16} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {user.company && (
+                  <div>
+                    <p className="text-xs text-slate-500">Company</p>
+                    <p className="text-xs font-medium text-slate-900 truncate">{user.company}</p>
+                  </div>
+                )}
+                {user.department && (
+                  <div>
+                    <p className="text-xs text-slate-500">Department</p>
+                    <p className="text-xs font-medium text-slate-900 truncate">{user.department}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="capitalize px-2.5 py-1 bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 rounded-lg text-xs font-semibold">
+                  {user.role}
+                </span>
+                {user.approver_type && (
+                  <span className="px-2.5 py-1 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 rounded-lg text-xs font-semibold">
+                    {user.approver_type}
+                  </span>
+                )}
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${user.is_active ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' : 'bg-gradient-to-r from-red-100 to-red-200 text-red-800'}`}>
+                  {user.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
