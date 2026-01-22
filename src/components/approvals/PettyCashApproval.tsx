@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 
 interface ExpenseItem {
   date: string;
@@ -357,6 +358,91 @@ export function PettyCashApproval() {
           );
         }
       } else if (action === 'approved' && isLastApproval) {
+        if (selectedRequest.request_type === 'For Liquidation') {
+          try {
+            const { data: ledgerData, error: ledgerError } = await supabase
+              .from('approval_ledger')
+              .select(`
+                approver_name,
+                approval_date,
+                approver_id,
+                user_profiles!approval_ledger_approver_id_fkey (
+                  e_sig
+                )
+              `)
+              .eq('request_type', 'Petty Cash')
+              .eq('request_id', selectedRequest.id)
+              .eq('action', 'Approved')
+              .order('sequence', { ascending: true });
+
+            if (ledgerError) throw ledgerError;
+
+            if (ledgerData && ledgerData.length > 0) {
+              const firstApprover = ledgerData[0];
+
+              const { data: companyData } = await supabase
+                .from('companies')
+                .select('name')
+                .eq('id', selectedRequest.company_id || profile.company_id)
+                .single();
+
+              const totalExpenses = (selectedRequest.expense_items || []).reduce((sum, item) => sum + item.amount, 0);
+              const cashAdvanceReceived = selectedRequest.petty_cash_advance || 0;
+              const balance = cashAdvanceReceived - totalExpenses;
+
+              const requestDateObj = new Date(selectedRequest.request_date);
+              const approvedDateObj = new Date(firstApprover.approval_date);
+              const preparedDateObj = new Date();
+
+              const liquidationPdfBytes = await generateLiquidationForm({
+                pcNumber: selectedRequest.pc_number,
+                accountable: selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'Unknown',
+                requestDate: requestDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                purpose: selectedRequest.purpose,
+                cashAdvanceAmount: cashAdvanceReceived,
+                expenseItems: selectedRequest.expense_items || [],
+                expenseTypeItems: selectedRequest.expense_type_items || [],
+                noOfPax: selectedRequest.no_of_pax || 0,
+                dateOfTransaction: selectedRequest.date_of_transactions
+                  ? new Date(selectedRequest.date_of_transactions).toLocaleDateString()
+                  : 'N/A',
+                company: companyData?.name || profile.company_name || 'Unknown',
+                department: selectedRequest.department || requestDepartment,
+                totalExpenses: totalExpenses,
+                cashAdvanceReceived: cashAdvanceReceived,
+                balance: balance,
+                preparedByName: selectedRequest.user_profiles?.full_name || 'Unknown',
+                preparedByEsig: null,
+                preparedByDate: preparedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                approvedByName: firstApprover.approver_name,
+                approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+                approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+              });
+
+              const liquidationPdfFileName = `liquidation_${selectedRequest.pc_number}_${Date.now()}.pdf`;
+              const liquidationPdfPath = `petty_cash/${selectedRequest.company_id || profile.company_id}/${liquidationPdfFileName}`;
+
+              const { error: uploadError } = await supabase.storage
+                .from('attachments')
+                .upload(liquidationPdfPath, liquidationPdfBytes, {
+                  contentType: 'application/pdf',
+                  upsert: false
+                });
+
+              if (uploadError) throw uploadError;
+
+              const { error: updatePdfError } = await supabase
+                .from('petty_cash_requests')
+                .update({ liquidation_pdf_path: liquidationPdfPath })
+                .eq('id', selectedRequest.id);
+
+              if (updatePdfError) throw updatePdfError;
+            }
+          } catch (error: any) {
+            console.error('Error generating liquidation PDF:', error);
+          }
+        }
+
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
           selectedRequest.user_profiles?.full_name || 'User',

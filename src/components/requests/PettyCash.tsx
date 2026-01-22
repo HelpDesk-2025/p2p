@@ -54,6 +54,7 @@ interface PettyCashReq {
   received_at?: string;
   received_by?: string;
   approved_petty_cash_pdf_path?: string;
+  liquidation_pdf_path?: string;
   request_type?: string;
   expense_items?: ExpenseItem[];
   expense_type_items?: ExpenseTypeItem[];
@@ -2026,6 +2027,36 @@ export function PettyCash() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {viewingRequest.status === 'approved' && viewingRequest.request_type === 'For Liquidation' && viewingRequest.liquidation_pdf_path && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    Liquidation Report
+                  </label>
+                  <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                    <div className="flex items-center gap-2">
+                      <FileText size={18} className="text-purple-600" />
+                      <span className="text-sm text-slate-700">Liquidation Report - {viewingRequest.pc_number}.pdf</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => previewApprovedPettyCash(viewingRequest.liquidation_pdf_path!)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                      >
+                        <Eye size={16} />
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => downloadApprovedPettyCash(viewingRequest.liquidation_pdf_path!, `Liquidation_${viewingRequest.pc_number}`)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition"
+                      >
+                        <Download size={16} />
+                        Download
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
