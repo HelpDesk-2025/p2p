@@ -89,7 +89,14 @@ function generateEmailHTML(data: EmailRequest): string {
             </div>
           ` : ''}
 
-          <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px;">Please log in to the system to review and take action on this request.</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://procure-to-pay-web-a-cw8j.bolt.host/"
+               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              Access the System
+            </a>
+          </div>
+
+          <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 14px; text-align: center;">Please log in to the system to review and take action on this request.</p>
         </div>
         
         <div style="background: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
