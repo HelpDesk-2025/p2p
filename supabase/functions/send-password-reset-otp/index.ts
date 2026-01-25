@@ -206,11 +206,14 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if user exists (case-insensitive)
-    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
-    const userExists = userData?.users.some(u => u.email?.toLowerCase() === email.toLowerCase());
+    // Check if user exists by querying the user_profiles table
+    const { data: userProfile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('id, email')
+      .ilike('email', email)
+      .maybeSingle();
 
-    if (!userExists) {
+    if (!userProfile) {
       return new Response(
         JSON.stringify({ success: false, error: 'No account found with this email address' }),
         {
