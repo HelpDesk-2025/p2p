@@ -588,7 +588,7 @@ export function PRApproval() {
                         </div>
                       </div>
 
-                      {/* Info Grid: Department and Amount */}
+                      {/* Info Grid: Department, Payee and Amount */}
                       <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
                         <div>
                           <div className="text-xs font-medium text-slate-500 mb-1">Department</div>
@@ -596,6 +596,14 @@ export function PRApproval() {
                             {request.department}
                           </div>
                         </div>
+                        {request.payee && (
+                          <div>
+                            <div className="text-xs font-medium text-slate-500 mb-1">Payee</div>
+                            <div className="text-sm text-slate-900 truncate">
+                              {request.payee}
+                            </div>
+                          </div>
+                        )}
                         <div>
                           <div className="text-xs font-medium text-slate-500 mb-1">Amount</div>
                           <div className="text-sm font-bold text-slate-900">
@@ -661,6 +669,15 @@ export function PRApproval() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                       <button
+                        onClick={() => handleSort('payee')}
+                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
+                      >
+                        Payee
+                        {getSortIcon('payee')}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <button
                         onClick={() => handleSort('total_amount')}
                         className="flex items-center gap-1 hover:text-slate-900 transition-colors"
                       >
@@ -693,6 +710,9 @@ export function PRApproval() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{request.department}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-slate-700">{request.payee || '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-semibold text-slate-900">
