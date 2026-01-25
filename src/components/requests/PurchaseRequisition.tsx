@@ -1839,6 +1839,16 @@ export function PurchaseRequisition() {
                       </div>
                     </div>
 
+                    {/* Payee */}
+                    {req.payee && (
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="text-xs font-medium text-slate-500 mb-1">Payee</div>
+                        <div className="text-sm text-slate-900">
+                          {req.payee}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Amount */}
                     <div className="pt-2 border-t border-slate-100">
                       <div className="text-xs font-medium text-slate-500 mb-1">Total Amount</div>
@@ -1892,6 +1902,11 @@ export function PurchaseRequisition() {
                   </button>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <button onClick={() => handleSort('payee')} className="flex items-center gap-2 hover:text-slate-700">
+                    Payee {getSortIcon('payee')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   <button onClick={() => handleSort('total_amount')} className="flex items-center gap-2 hover:text-slate-700">
                     Amount {getSortIcon('total_amount')}
                   </button>
@@ -1909,7 +1924,7 @@ export function PurchaseRequisition() {
             <tbody className="divide-y divide-slate-200">
               {sortedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-500">
                     No purchase requisitions found
                   </td>
                 </tr>
@@ -1927,6 +1942,9 @@ export function PurchaseRequisition() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
                       {req.purchase_type || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
+                      {req.payee || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
                       ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
