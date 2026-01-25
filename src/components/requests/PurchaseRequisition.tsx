@@ -564,6 +564,12 @@ export function PurchaseRequisition() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
+    // Validate payee for Non-Purchase Order
+    if (formData.purchase_type === 'Non-Purchase Order' && status === 'pending' && !formData.payee.trim()) {
+      alert('Please enter a payee for Non-Purchase Order requests.');
+      return;
+    }
+
     // Validate required checklist attachments
     const missingRequiredAttachments = formData.checklist_items.filter(
       item => item.is_required && !item.file && !item.fileName
@@ -935,6 +941,12 @@ export function PurchaseRequisition() {
   };
 
   const handleSubmitDraft = async (request: PurchaseReq) => {
+    // Validate payee for Non-Purchase Order
+    if (request.purchase_type === 'Non-Purchase Order' && !request.payee?.trim()) {
+      alert('Please enter a payee for Non-Purchase Order requests.');
+      return;
+    }
+
     // Validate required checklist attachments from saved draft
     const checklistItems = (request as any).checklist_items || [];
     const missingRequired = checklistItems.filter((item: any) => item.is_required && !item.fileName);
@@ -1589,7 +1601,7 @@ export function PurchaseRequisition() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative" ref={vendorDropdownRef}>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Payee
+                    Payee <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
