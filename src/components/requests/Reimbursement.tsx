@@ -90,12 +90,6 @@ export function Reimbursement() {
   }, [profile]);
 
   useEffect(() => {
-    if (selectedCompanyId && !formData.document_no) {
-      generateDocumentNo();
-    }
-  }, [selectedCompanyId]);
-
-  useEffect(() => {
     if (requestType === 'Liquidation') {
       loadApprovedRequestsForLiquidation();
     } else {

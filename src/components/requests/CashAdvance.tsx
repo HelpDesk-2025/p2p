@@ -111,9 +111,6 @@ export function CashAdvance() {
   useEffect(() => {
     if (selectedCompanyId) {
       loadVendors();
-      if (!formData.document_no) {
-        generateDocumentNo();
-      }
     }
   }, [selectedCompanyId]);
 

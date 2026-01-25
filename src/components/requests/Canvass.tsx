@@ -271,12 +271,6 @@ export function Canvass() {
   }, [profile]);
 
   useEffect(() => {
-    if (selectedCompanyId && !formData.document_no) {
-      generateDocumentNo();
-    }
-  }, [selectedCompanyId]);
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.vendor-dropdown-container')) {

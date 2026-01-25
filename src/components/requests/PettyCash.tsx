@@ -228,12 +228,6 @@ export function PettyCash() {
   }, [profile]);
 
   useEffect(() => {
-    if (selectedCompanyId && !formData.document_no) {
-      generateDocumentNo();
-    }
-  }, [selectedCompanyId]);
-
-  useEffect(() => {
     if (formData.request_type === 'For Liquidation') {
       loadApprovedPettyCashForLiquidation();
     } else {
