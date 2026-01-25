@@ -30,11 +30,31 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify OTP
+    // Get user by email from user_profiles (case-insensitive)
+    const { data: userProfile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('id, email')
+      .ilike('email', email)
+      .maybeSingle();
+
+    if (!userProfile) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'User not found' }),
+        {
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
+    // Verify OTP (use the actual email from the database for exact match)
     const { data: otpData, error: otpError } = await supabase
       .from('password_reset_otps')
       .select('*')
-      .eq('email', email)
+      .ilike('email', email)
       .eq('otp_code', otpCode)
       .eq('used', false)
       .gt('expires_at', new Date().toISOString())
@@ -61,26 +81,9 @@ Deno.serve(async (req: Request) => {
       .update({ used: true })
       .eq('id', otpData.id);
 
-    // Get user by email
-    const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
-    const user = userData?.users.find(u => u.email === email);
-
-    if (!user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'User not found' }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
     // Update user password
     const { error: updateError } = await supabase.auth.admin.updateUserById(
-      user.id,
+      userProfile.id,
       { password: newPassword }
     );
 
