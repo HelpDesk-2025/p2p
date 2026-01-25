@@ -206,9 +206,9 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if user exists
+    // Check if user exists (case-insensitive)
     const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
-    const userExists = userData?.users.some(u => u.email === email);
+    const userExists = userData?.users.some(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (!userExists) {
       return new Response(
