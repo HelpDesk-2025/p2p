@@ -1273,33 +1273,45 @@ export function PurchaseRequisition() {
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Description</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+              Description <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Brief description of the requisition"
+              maxLength={80}
               required
             />
+            <p className="text-xs text-slate-500 mt-1">
+              {formData.description.length}/80 characters
+            </p>
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Purpose</label>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+              Purpose <span className="text-red-500">*</span>
+            </label>
             <textarea
               value={formData.purpose}
               onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
               rows={3}
               className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="Detailed purpose and justification"
+              maxLength={200}
               required
             />
+            <p className="text-xs text-slate-500 mt-1">
+              {formData.purpose.length}/200 characters
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-                Date Required/Needed
+                Date Required/Needed <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
