@@ -559,9 +559,36 @@ export function PurchaseRequisition() {
   };
 
   const handlePreviewSubmit = () => {
+    // Validate basic required fields
+    if (!formData.description.trim()) {
+      alert('Please enter a description.');
+      return;
+    }
+
+    if (!formData.department.trim() && !selectedDepartment) {
+      alert('Please select a department.');
+      return;
+    }
+
+    if (!formData.date_required) {
+      alert('Please select a date required.');
+      return;
+    }
+
+    if (!formData.purpose.trim()) {
+      alert('Please enter a purpose.');
+      return;
+    }
+
     // Validate payee for Non-Purchase Order
     if (formData.purchase_type === 'Non-Purchase Order' && !formData.payee.trim()) {
       alert('Please enter a payee for Non-Purchase Order requests.');
+      return;
+    }
+
+    // Validate amount for Non-Purchase Order
+    if (formData.purchase_type === 'Non-Purchase Order' && (!formData.amount_net_vat || parseFloat(formData.amount_net_vat) <= 0)) {
+      alert('Please enter a valid amount for Non-Purchase Order requests.');
       return;
     }
 
@@ -609,6 +636,7 @@ export function PurchaseRequisition() {
     }
 
     // All validations passed, show preview
+    console.log('All validations passed, showing preview modal');
     setShowPreviewModal(true);
   };
 
