@@ -1188,23 +1188,30 @@ export function CashAdvance() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Purpose <span className="text-red-500">*</span>
+            </label>
             <textarea
               value={formData.purpose}
               onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
               rows={3}
+              maxLength={200}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
+            <p className="text-xs text-slate-500 mt-1">{formData.purpose.length}/200 characters</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date Needed</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Date Needed <span className="text-red-500">*</span>
+            </label>
             <input
               type="date"
               value={formData.date_needed}
               onChange={(e) => setFormData({ ...formData, date_needed: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              required
             />
           </div>
 
