@@ -638,7 +638,14 @@ export function PurchaseRequisition() {
 
     // All validations passed, show preview
     console.log('All validations passed, showing preview modal');
+    console.log('Current showPreviewModal state:', showPreviewModal);
     setShowPreviewModal(true);
+    console.log('Set showPreviewModal to true');
+
+    // Force check after state update
+    setTimeout(() => {
+      console.log('After state update, showPreviewModal:', showPreviewModal);
+    }, 100);
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
@@ -1812,7 +1819,10 @@ export function PurchaseRequisition() {
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button
-              onClick={handlePreviewSubmit}
+              onClick={() => {
+                console.log('Button clicked!');
+                handlePreviewSubmit();
+              }}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -2315,9 +2325,11 @@ export function PurchaseRequisition() {
         </div>
       )}
 
-      {showPreviewModal && createPortal(
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => e.target === e.currentTarget && setShowPreviewModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      {(() => {
+        console.log('Render check - showPreviewModal:', showPreviewModal);
+        return showPreviewModal && createPortal(
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => e.target === e.currentTarget && setShowPreviewModal(false)}>
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-slate-200">
               <h3 className="text-2xl font-bold text-slate-900">Review Your Purchase Requisition</h3>
               <p className="text-slate-600 mt-1">Please review the details before submitting</p>
@@ -2487,7 +2499,8 @@ export function PurchaseRequisition() {
           </div>
         </div>,
         document.body
-      )}
+        );
+      })()}
     </div>
   );
 }
