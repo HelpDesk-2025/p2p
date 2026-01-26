@@ -33,8 +33,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
+        // Force logout on session expiration or token refresh failure
+        if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+          setUser(null);
+          setProfile(null);
+          setPermissions(null);
+          setLoading(false);
+          return;
+        }
+
         setUser(session?.user ?? null);
         if (session?.user) {
           await loadProfile(session.user.id);
@@ -46,7 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })();
     });
 
-    return () => subscription.unsubscribe();
+    // Periodic session validation (every 30 seconds)
+    const sessionCheckInterval = setInterval(async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        setUser(null);
+        setProfile(null);
+        setPermissions(null);
+      }
+    }, 30000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(sessionCheckInterval);
+    };
   }, []);
 
   const loadProfile = async (userId: string) => {
