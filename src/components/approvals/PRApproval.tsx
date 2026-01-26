@@ -819,7 +819,7 @@ export function PRApproval() {
                   {selectedRequest.amount_net_vat !== undefined && (
                     <div>
                       <label className="text-sm font-semibold text-slate-700">Amount to be paid</label>
-                      <p className="text-slate-900 font-bold">₱{selectedRequest.amount_net_vat.toFixed(2).toLocaleString()}</p>
+                      <p className="text-slate-900 font-bold">₱{selectedRequest.amount_net_vat.toLocaleString()}</p>
                     </div>
                   )}
                 </div>
