@@ -1831,6 +1831,184 @@ export function PurchaseRequisition() {
             </button>
           </div>
         </div>
+
+        {/* Preview Modal */}
+        {(() => {
+          console.log('Render check - showPreviewModal:', showPreviewModal);
+          return showPreviewModal && createPortal(
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => e.target === e.currentTarget && setShowPreviewModal(false)}>
+              <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6 border-b border-slate-200">
+                <h3 className="text-2xl font-bold text-slate-900">Review Your Purchase Requisition</h3>
+                <p className="text-slate-600 mt-1">Please review the details before submitting</p>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
+                    <p className="text-slate-900 font-semibold">{formData.document_no}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                    <p className="text-slate-900 font-semibold">{profile?.enable_multi_company_requests ? selectedDepartment : formData.department}</p>
+                  </div>
+                  {profile?.enable_multi_company_requests && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+                      <p className="text-slate-900 font-semibold">{companies.find(c => c.id === selectedCompanyId)?.name}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Date Required</label>
+                    <p className="text-slate-900 font-semibold">{new Date(formData.date_required).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Type</label>
+                    <p className="text-slate-900 font-semibold">{formData.purchase_type}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Budgeted</label>
+                    <p className="text-slate-900 font-semibold">{formData.is_budgeted ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                  <p className="text-slate-900">{formData.description}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
+                  <p className="text-slate-900">{formData.purpose}</p>
+                </div>
+
+                {formData.purchase_type === 'Purchase Order' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Items</label>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Description</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Qty</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Unit</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-700">Unit Price</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-slate-700">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {formData.items.filter(item => item.total_price > 0).map((item, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 text-sm text-slate-900">
+                                {item.description}
+                                {item.item_notes && (
+                                  <div className="text-xs text-slate-500 mt-1">{item.item_notes}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-slate-900">{item.quantity}</td>
+                              <td className="px-4 py-2 text-sm text-slate-900">{item.unit}</td>
+                              <td className="px-4 py-2 text-sm text-slate-900 text-right">₱{item.unit_price.toFixed(2)}</td>
+                              <td className="px-4 py-2 text-sm text-slate-900 text-right font-semibold">₱{item.total_price.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
+                      <p className="text-slate-900 font-semibold">{formData.payee}</p>
+                    </div>
+                    {formData.payee_number && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Payee Number</label>
+                        <p className="text-slate-900 font-semibold">{formData.payee_number}</p>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Amount (Net VAT)</label>
+                      <p className="text-slate-900 font-semibold">₱{parseFloat(formData.amount_net_vat || '0').toFixed(2)}</p>
+                    </div>
+                    {selectedPaymentMode && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Payment Details</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {formData.payment_mode_lines.map((line, index) => (
+                            <div key={index}>
+                              <label className="block text-xs font-medium text-slate-600 mb-1">{line.name}</label>
+                              <p className="text-slate-900">{line.value}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {formData.checklist_items.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Attachments</label>
+                    <div className="space-y-2">
+                      {formData.checklist_items.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{item.item_name}</p>
+                            {item.description && <p className="text-xs text-slate-600">{item.description}</p>}
+                          </div>
+                          <div className="text-sm text-slate-700">
+                            {item.file ? item.file.name : item.fileName || 'Not uploaded'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-slate-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-slate-700">Total Amount:</span>
+                    <span className="text-2xl font-bold text-slate-900">₱{calculateTotal().toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  disabled={loading}
+                  className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition disabled:opacity-50"
+                >
+                  Back to Edit
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPreviewModal(false);
+                    handleSubmit('pending');
+                  }}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      Confirm & Submit
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+          );
+        })()}
       </div>
     );
   }
@@ -2324,183 +2502,6 @@ export function PurchaseRequisition() {
           </div>
         </div>
       )}
-
-      {(() => {
-        console.log('Render check - showPreviewModal:', showPreviewModal);
-        return showPreviewModal && createPortal(
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={(e) => e.target === e.currentTarget && setShowPreviewModal(false)}>
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-200">
-              <h3 className="text-2xl font-bold text-slate-900">Review Your Purchase Requisition</h3>
-              <p className="text-slate-600 mt-1">Please review the details before submitting</p>
-            </div>
-
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Document No.</label>
-                  <p className="text-slate-900 font-semibold">{formData.document_no}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
-                  <p className="text-slate-900 font-semibold">{profile?.enable_multi_company_requests ? selectedDepartment : formData.department}</p>
-                </div>
-                {profile?.enable_multi_company_requests && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
-                    <p className="text-slate-900 font-semibold">{companies.find(c => c.id === selectedCompanyId)?.name}</p>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Date Required</label>
-                  <p className="text-slate-900 font-semibold">{new Date(formData.date_required).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Type</label>
-                  <p className="text-slate-900 font-semibold">{formData.purchase_type}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Budgeted</label>
-                  <p className="text-slate-900 font-semibold">{formData.is_budgeted ? 'Yes' : 'No'}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <p className="text-slate-900">{formData.description}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
-                <p className="text-slate-900">{formData.purpose}</p>
-              </div>
-
-              {formData.purchase_type === 'Purchase Order' ? (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Items</label>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Qty</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Unit</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-slate-700">Unit Price</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-slate-700">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {formData.items.filter(item => item.total_price > 0).map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm text-slate-900">
-                              {item.description}
-                              {item.item_notes && (
-                                <div className="text-xs text-slate-500 mt-1">{item.item_notes}</div>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.quantity}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.unit}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 text-right">₱{item.unit_price.toFixed(2)}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 text-right font-semibold">₱{item.total_price.toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
-                    <p className="text-slate-900 font-semibold">{formData.payee}</p>
-                  </div>
-                  {formData.payee_number && (
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Payee Number</label>
-                      <p className="text-slate-900 font-semibold">{formData.payee_number}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Amount (Net VAT)</label>
-                    <p className="text-slate-900 font-semibold">₱{parseFloat(formData.amount_net_vat || '0').toFixed(2)}</p>
-                  </div>
-                  {selectedPaymentMode && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Payment Details</label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {formData.payment_mode_lines.map((line, index) => (
-                          <div key={index}>
-                            <label className="block text-xs font-medium text-slate-600 mb-1">{line.name}</label>
-                            <p className="text-slate-900">{line.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {formData.checklist_items.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Attachments</label>
-                  <div className="space-y-2">
-                    {formData.checklist_items.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">{item.item_name}</p>
-                          {item.description && <p className="text-xs text-slate-600">{item.description}</p>}
-                        </div>
-                        <div className="text-sm text-slate-700">
-                          {item.file ? item.file.name : item.fileName || 'Not uploaded'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-slate-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-slate-700">Total Amount:</span>
-                  <span className="text-2xl font-bold text-slate-900">₱{calculateTotal().toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
-              <button
-                onClick={() => setShowPreviewModal(false)}
-                disabled={loading}
-                className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition disabled:opacity-50"
-              >
-                Back to Edit
-              </button>
-              <button
-                onClick={() => {
-                  setShowPreviewModal(false);
-                  handleSubmit('pending');
-                }}
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    Confirm & Submit
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-        );
-      })()}
     </div>
   );
 }
