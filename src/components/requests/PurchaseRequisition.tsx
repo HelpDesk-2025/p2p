@@ -2470,35 +2470,35 @@ export function PurchaseRequisition() {
                   </>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && viewingRequest.purchase_type !== 'Purchase Order' && (
+                  <button
+                    onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
+                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Download size={18} />
+                    Download RFP
+                  </button>
+                )}
+                {viewingRequest.status === 'approved' && profile?.role === 'admin' && (
                   <>
-                    <button
-                      onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.document_no || viewingRequest.pr_number)}
-                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                      <Download size={18} />
-                      Download RFP
-                    </button>
-                    {profile?.role === 'admin' && (
+                    {viewingRequest.purchase_type !== 'Purchase Order' && (
                       <button
                         onClick={() => handleRegenerateRFP(viewingRequest)}
                         disabled={loading}
                         className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                        Regenerate RFP
+                        {viewingRequest.rfp_pdf_path ? 'Regenerate' : 'Generate'} RFP
                       </button>
                     )}
+                    <button
+                      onClick={() => handleRepostToMSBC(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Repost to MSBC
+                    </button>
                   </>
-                )}
-                {viewingRequest.status === 'approved' && profile?.role === 'admin' && (
-                  <button
-                    onClick={() => handleRepostToMSBC(viewingRequest)}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send size={18} />
-                    Repost to MSBC
-                  </button>
                 )}
               </div>
               <button
