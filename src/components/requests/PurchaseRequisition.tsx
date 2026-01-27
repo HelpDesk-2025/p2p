@@ -1003,6 +1003,87 @@ export function PurchaseRequisition() {
     }
   };
 
+  const handleRegenerateMergedPDF = async (request: PurchaseReq) => {
+    if (!confirm('Are you sure you want to regenerate the merged document? This will replace the existing document.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Download all attachment files from storage
+      const attachmentPaths = request.checklist_items
+        .filter(item => item.attachment_path)
+        .map(item => item.attachment_path!);
+
+      if (attachmentPaths.length === 0) {
+        alert('No attachments found to merge.');
+        return;
+      }
+
+      const files: File[] = [];
+      for (const path of attachmentPaths) {
+        const { data, error } = await supabase.storage
+          .from('attachments')
+          .download(path);
+
+        if (error) {
+          console.error(`Error downloading ${path}:`, error);
+          continue;
+        }
+
+        if (data) {
+          const fileName = path.split('/').pop() || 'attachment';
+          const file = new File([data], fileName, { type: data.type });
+          files.push(file);
+        }
+      }
+
+      if (files.length === 0) {
+        alert('Failed to download attachments.');
+        return;
+      }
+
+      // Merge files to PDF
+      const mergedPdfBlob = await mergeFilesToPDFBlob(files);
+      const timestamp = Date.now();
+      const mergedFileName = `merged_${timestamp}.pdf`;
+      const mergedFilePath = `${profile?.id}/${mergedFileName}`;
+
+      // Delete old merged PDF if it exists
+      if (request.merged_pdf_path) {
+        await supabase.storage.from('attachments').remove([request.merged_pdf_path]);
+      }
+
+      // Upload new merged PDF
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(mergedFilePath, mergedPdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Update the request with the new merged PDF path
+      const { error: updateError } = await supabase
+        .from('purchase_requisitions')
+        .update({ merged_pdf_path: mergedFilePath })
+        .eq('id', request.id);
+
+      if (updateError) throw updateError;
+
+      alert('Document regenerated successfully!');
+
+      // Reload requests to get updated data
+      await loadRequests();
+    } catch (error) {
+      console.error('Error regenerating merged PDF:', error);
+      alert('Failed to regenerate document: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const downloadRFP = async (rfpPath: string, prNumber: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -2488,16 +2569,28 @@ export function PurchaseRequisition() {
                         Regenerate RFP
                       </button>
                     )}
-                    {profile?.role === 'admin' && (
+                  </>
+                )}
+                {viewingRequest.status === 'approved' && profile?.role === 'admin' && (
+                  <>
+                    {viewingRequest.merged_pdf_path && (
                       <button
-                        onClick={() => handleRepostToMSBC(viewingRequest)}
+                        onClick={() => handleRegenerateMergedPDF(viewingRequest)}
                         disabled={loading}
-                        className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Send size={18} />
-                        Repost to MSBC
+                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        Regenerate Document
                       </button>
                     )}
+                    <button
+                      onClick={() => handleRepostToMSBC(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send size={18} />
+                      Repost to MSBC
+                    </button>
                   </>
                 )}
               </div>
