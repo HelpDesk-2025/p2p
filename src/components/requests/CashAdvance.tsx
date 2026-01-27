@@ -857,39 +857,12 @@ export function CashAdvance() {
         .eq('full_name', request.payee)
         .maybeSingle();
 
-      const { data: ledgerData } = await supabase
-        .from('approval_ledger')
-        .select('approver_name, approver_id, approval_date, sequence, action')
-        .eq('request_id', request.id)
-        .eq('request_type', 'Cash Advance')
-        .neq('action', 'Submitted')
-        .order('sequence', { ascending: true });
-
-      const approvalRecords = await Promise.all(
-        (ledgerData || []).map(async (entry) => {
-          if (!entry.approver_id) {
-            return {
-              approver_name: entry.approver_name,
-              approver_esig: null,
-              approval_date: entry.approval_date,
-              sequence: entry.sequence
-            };
-          }
-
-          const { data: approverData } = await supabase
-            .from('user_profiles')
-            .select('e_sig')
-            .eq('id', entry.approver_id)
-            .maybeSingle();
-
-          return {
-            approver_name: entry.approver_name,
-            approver_esig: approverData?.e_sig || null,
-            approval_date: entry.approval_date,
-            sequence: entry.sequence
-          };
-        })
-      );
+      // Use RPC function to get approval records (excludes for_checking approvers)
+      const { data: approvalRecords } = await supabase
+        .rpc('get_approval_records_with_signatures', {
+          p_request_id: request.id,
+          p_request_type: 'Cash Advance'
+        });
 
       // Generate Approved Cash Advance Form
       const approvedCaFormBytes = await generateCashAdvanceForm({
@@ -905,7 +878,7 @@ export function CashAdvance() {
         outstandingAsl: request.outstanding_asl || '',
         outstandingAslDate: request.outstanding_asl_date ? new Date(request.outstanding_asl_date).toLocaleDateString() : '',
         remarks: request.remarks || '',
-        approvals: approvalRecords
+        approvals: approvalRecords || []
       });
 
       // Get payment mode information

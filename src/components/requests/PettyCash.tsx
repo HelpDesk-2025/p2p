@@ -911,30 +911,20 @@ export function PettyCash() {
         throw new Error('Company information not found');
       }
 
-      // Get approval ledger entries to find first approver
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('approval_ledger')
-        .select(`
-          approver_name,
-          approval_date,
-          sequence,
-          approver_id,
-          user_profiles!approval_ledger_approver_id_fkey (
-            e_sig
-          )
-        `)
-        .eq('request_type', 'Petty Cash')
-        .eq('request_id', request.id)
-        .eq('action', 'Approved')
-        .order('sequence', { ascending: true });
+      // Use RPC function to get approval records (excludes for_checking approvers)
+      const { data: approvalRecords, error: ledgerError } = await supabase
+        .rpc('get_approval_records_with_signatures', {
+          p_request_id: request.id,
+          p_request_type: 'Petty Cash'
+        });
 
       if (ledgerError) throw ledgerError;
 
-      if (!ledgerData || ledgerData.length === 0) {
+      if (!approvalRecords || approvalRecords.length === 0) {
         throw new Error('No approval records found');
       }
 
-      const firstApprover = ledgerData[0];
+      const firstApprover = approvalRecords[0];
 
       // Get company name
       const { data: companyData } = await supabase
@@ -964,7 +954,7 @@ export function PettyCash() {
         department: request.department || profile.department || 'Unknown',
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
-        approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+        approvedByEsig: firstApprover.approver_esig || null,
         approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
           approvedDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         receivedByName: profile.full_name || 'Unknown',
@@ -1355,7 +1345,7 @@ export function PettyCash() {
         department: request.department || profile.department || 'Unknown',
         amount: request.amount,
         approvedByName: firstApprover.approver_name,
-        approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+        approvedByEsig: firstApprover.approver_esig || null,
         approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
           approvedDateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         receivedByName: profile.full_name || 'Unknown',

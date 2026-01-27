@@ -20,6 +20,7 @@ interface ApprovalStep {
   user_id: string | null;
   sequence: number;
   days_to_approve: number;
+  for_checking: boolean;
 }
 
 export function ApprovalFlowSetupConfig() {
@@ -40,7 +41,8 @@ export function ApprovalFlowSetupConfig() {
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [newStepData, setNewStepData] = useState({
     user_id: "",
-    days_to_approve: "3"
+    days_to_approve: "3",
+    for_checking: false
   });
   const [userSearchQuery, setUserSearchQuery] = useState("");
 
@@ -240,6 +242,7 @@ export function ApprovalFlowSetupConfig() {
         user_id: newStepData.user_id,
         sequence: nextSequence,
         days_to_approve: parseInt(newStepData.days_to_approve),
+        for_checking: newStepData.for_checking,
         is_required: true,
         is_active: true
       };
@@ -248,7 +251,7 @@ export function ApprovalFlowSetupConfig() {
       if (error) throw error;
 
       setAddingStepToWorkflow(null);
-      setNewStepData({ user_id: "", days_to_approve: "3" });
+      setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
       loadSetups();
     } catch (error: any) {
@@ -260,7 +263,8 @@ export function ApprovalFlowSetupConfig() {
     setEditingStepId(step.id);
     setNewStepData({
       user_id: step.user_id || "",
-      days_to_approve: step.days_to_approve.toString()
+      days_to_approve: step.days_to_approve.toString(),
+      for_checking: step.for_checking || false
     });
     setAddingStepToWorkflow(step.workflow_type);
   };
@@ -277,7 +281,8 @@ export function ApprovalFlowSetupConfig() {
       const payload = {
         approver_type: "Specific User",
         user_id: newStepData.user_id,
-        days_to_approve: parseInt(newStepData.days_to_approve)
+        days_to_approve: parseInt(newStepData.days_to_approve),
+        for_checking: newStepData.for_checking
       };
 
       const { error } = await supabase
@@ -289,7 +294,7 @@ export function ApprovalFlowSetupConfig() {
 
       setEditingStepId(null);
       setAddingStepToWorkflow(null);
-      setNewStepData({ user_id: "", days_to_approve: "3" });
+      setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
       loadSetups();
     } catch (error: any) {
@@ -631,6 +636,19 @@ export function ApprovalFlowSetupConfig() {
                             />
                           </div>
 
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="for-checking"
+                              checked={newStepData.for_checking}
+                              onChange={(e) => setNewStepData({ ...newStepData, for_checking: e.target.checked })}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="for-checking" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                              For Checking Only (Not a Signatory)
+                            </label>
+                          </div>
+
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleAddStep(workflowType)}
@@ -641,7 +659,7 @@ export function ApprovalFlowSetupConfig() {
                             <button
                               onClick={() => {
                                 setAddingStepToWorkflow(null);
-                                setNewStepData({ user_id: "", days_to_approve: "3" });
+                                setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
                                 setUserSearchQuery("");
                               }}
                               className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-all"
@@ -693,6 +711,19 @@ export function ApprovalFlowSetupConfig() {
                             />
                           </div>
 
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="for-checking"
+                              checked={newStepData.for_checking}
+                              onChange={(e) => setNewStepData({ ...newStepData, for_checking: e.target.checked })}
+                              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                            />
+                            <label htmlFor="for-checking" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                              For Checking Only (Not a Signatory)
+                            </label>
+                          </div>
+
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleUpdateStep(workflowType)}
@@ -704,7 +735,7 @@ export function ApprovalFlowSetupConfig() {
                               onClick={() => {
                                 setEditingStepId(null);
                                 setAddingStepToWorkflow(null);
-                                setNewStepData({ user_id: "", days_to_approve: "3" });
+                                setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
                                 setUserSearchQuery("");
                               }}
                               className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-all"

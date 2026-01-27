@@ -947,44 +947,20 @@ export function Reimbursement() {
         }
       }
 
-      // Get all approval records from the ledger (always use 'Reimbursement' since that's what we store)
-      const { data: approvalRecords, error: ledgerError } = await supabase
-        .from('approval_ledger')
-        .select('approver_name, approval_date, approver_id')
-        .eq('request_id', fullRequest.id)
-        .eq('request_type', 'Reimbursement')
-        .eq('action', 'Approved')
-        .order('sequence', { ascending: true });
+      // Use RPC function to get approval records (excludes for_checking approvers)
+      const { data: approvals, error: ledgerError } = await supabase
+        .rpc('get_approval_records_with_signatures', {
+          p_request_id: fullRequest.id,
+          p_request_type: 'Reimbursement'
+        });
 
       if (ledgerError) throw ledgerError;
-
-      // Get e-signatures for all approvers
-      const approverIds = (approvalRecords || []).map((record: any) => record.approver_id);
-      const { data: approverProfiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, e_sig')
-        .in('id', approverIds);
-
-      if (profilesError) throw profilesError;
 
       // Use the requester info from the fetched request
       const requesterData = {
         full_name: fullRequest.user_profiles?.full_name || 'Unknown',
         e_sig: fullRequest.user_profiles?.e_sig || null
       };
-
-      // Create a map of approver IDs to their e-signatures
-      const esigMap = new Map<string, string | null>();
-      (approverProfiles || []).forEach((profile: any) => {
-        esigMap.set(profile.id, profile.e_sig);
-      });
-
-      // Prepare approval records with esig
-      const approvals = (approvalRecords || []).map((record: any) => ({
-        approver_name: record.approver_name,
-        approver_esig: esigMap.get(record.approver_id) || null,
-        approval_date: record.approval_date,
-      }));
 
       // Calculate net amount
       const netAmount = fullRequest.amount - (fullRequest.cash_advance || 0);
