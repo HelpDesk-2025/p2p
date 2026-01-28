@@ -283,7 +283,6 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       // Check current user
       const { data: { user } } = await supabase.auth.getUser();
       console.log('Current user ID:', user?.id);
-      console.log('Current user role:', currentUser?.role);
       console.log('Attempting to delete signature:', formData.e_sig);
 
       // If it's a storage path (not a data URL), delete from storage
@@ -353,7 +352,6 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       const filePath = `signatures/${editingId}_${timestamp}_${sanitizedFileName}`;
 
       console.log('Uploading signature to:', filePath);
-      console.log('Current user uploading:', currentUser?.id, currentUser?.role);
 
       const { data, error } = await supabase.storage
         .from('attachments')
@@ -368,14 +366,6 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       }
 
       console.log('Upload successful:', data);
-
-      // Check who owns the file
-      const { data: fileInfo } = await supabase.storage
-        .from('attachments')
-        .list('signatures', {
-          search: `${editingId}_${timestamp}`
-        });
-      console.log('Uploaded file info:', fileInfo);
 
       // Store the path instead of base64 data
       setFormData({ ...formData, e_sig: data.path });
