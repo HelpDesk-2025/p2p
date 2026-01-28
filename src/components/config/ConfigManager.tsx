@@ -280,9 +280,16 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     if (!formData.e_sig) return;
 
     try {
-      // Check current user
+      // Check current user and their role
       const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user?.id)
+        .single();
+
       console.log('Current user ID:', user?.id);
+      console.log('Current user role:', profile?.role);
       console.log('Attempting to delete signature:', formData.e_sig);
 
       // If it's a storage path (not a data URL), delete from storage
@@ -297,16 +304,33 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
         if (error) {
           console.error('Error deleting from storage:', error);
+          console.error('Full error details:', JSON.stringify(error, null, 2));
           alert('Error deleting signature from storage: ' + error.message);
           return; // Don't clear the field if deletion failed
         } else {
           console.log('Signature deleted from storage successfully');
-          alert('Signature deleted successfully!');
         }
       }
 
-      // Clear the signature field
+      // Clear the signature field in the form
       setFormData({ ...formData, e_sig: '' });
+
+      // Also clear it in the database
+      if (editingId) {
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({ e_sig: null })
+          .eq('id', editingId);
+
+        if (updateError) {
+          console.error('Error clearing signature in database:', updateError);
+          alert('Signature deleted from storage but failed to update database: ' + updateError.message);
+        } else {
+          console.log('Signature cleared from database');
+          alert('Signature deleted successfully!');
+          loadData(); // Reload to show updated data
+        }
+      }
     } catch (error: any) {
       console.error('Error in handleDeleteSignature:', error);
       alert('Error deleting signature: ' + (error.message || 'Unknown error'));
