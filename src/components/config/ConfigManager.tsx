@@ -386,16 +386,26 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
       if (error) {
         console.error('Storage upload error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         throw new Error(`Upload failed: ${error.message || 'Unknown error'}`);
       }
 
       console.log('Upload successful:', data);
+      console.log('File path from response:', data?.path);
+
+      if (!data || !data.path) {
+        console.error('No path in upload response:', data);
+        throw new Error('Upload succeeded but no path was returned');
+      }
 
       // Store the path instead of base64 data
-      setFormData({ ...formData, e_sig: data.path });
+      console.log('Setting e_sig to:', data.path);
+      setFormData(prev => ({ ...prev, e_sig: data.path }));
+      console.log('FormData updated successfully');
       alert('Signature uploaded successfully! Click "Update User" to save.');
     } catch (error: any) {
       console.error('Error uploading signature:', error);
+      console.error('Error stack:', error?.stack);
       alert('Error uploading signature: ' + (error.message || 'Unknown error'));
       e.target.value = '';
     }
