@@ -44,14 +44,18 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   const sanitizeText = (text: string): string => {
     if (!text) return '';
 
+    // Convert to string if needed
+    const str = String(text);
+
     // First normalize Unicode characters to their closest ASCII equivalents
-    let sanitized = text
+    let sanitized = str
       .normalize('NFD') // Decompose combined characters
       .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
       .replace(/\r\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\n/g, ' ')
-      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, ''); // Remove control chars
+      .replace(/\t/g, ' ')
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, ''); // Remove ALL control chars including 0x0A
 
     // Replace common problematic characters with safe alternatives
     sanitized = sanitized
@@ -64,7 +68,10 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
     // Remove any remaining characters outside WinAnsi safe range
     // Safe range: printable ASCII (0x20-0x7E) and safe Latin-1 (0xA0-0xFF)
-    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
+
+    // Clean up multiple spaces
+    sanitized = sanitized.replace(/\s+/g, ' ').trim();
 
     return sanitized;
   };
@@ -346,14 +353,18 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   const sanitizeText = (text: string): string => {
     if (!text) return '';
 
+    // Convert to string if needed
+    const str = String(text);
+
     // First normalize Unicode characters to their closest ASCII equivalents
-    let sanitized = text
+    let sanitized = str
       .normalize('NFD') // Decompose combined characters
       .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
       .replace(/\r\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\n/g, ' ')
-      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, ''); // Remove control chars
+      .replace(/\t/g, ' ')
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, ''); // Remove ALL control chars including 0x0A
 
     // Replace common problematic characters with safe alternatives
     sanitized = sanitized
@@ -366,7 +377,10 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     // Remove any remaining characters outside WinAnsi safe range
     // Safe range: printable ASCII (0x20-0x7E) and safe Latin-1 (0xA0-0xFF)
-    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
+
+    // Clean up multiple spaces
+    sanitized = sanitized.replace(/\s+/g, ' ').trim();
 
     return sanitized;
   };

@@ -39,7 +39,7 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
 
   const sanitizeText = (text: string | number | null | undefined): string => {
     if (text === null || text === undefined) return '';
-    const str = typeof text === 'number' ? text.toString() : text;
+    const str = typeof text === 'number' ? text.toString() : String(text);
     if (!str) return '';
 
     // First normalize Unicode characters to their closest ASCII equivalents
@@ -49,7 +49,8 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
       .replace(/\r\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\n/g, ' ')
-      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, ''); // Remove control chars
+      .replace(/\t/g, ' ')
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, ''); // Remove ALL control chars including 0x0A
 
     // Replace common problematic characters with safe alternatives
     sanitized = sanitized
@@ -61,7 +62,10 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
       .replace(/€/g, 'EUR').replace(/£/g, 'GBP').replace(/¥/g, 'JPY'); // Currency
 
     // Remove any remaining characters outside WinAnsi safe range
-    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
+
+    // Clean up multiple spaces
+    sanitized = sanitized.replace(/\s+/g, ' ').trim();
 
     return sanitized;
   };
