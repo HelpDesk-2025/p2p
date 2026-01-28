@@ -108,7 +108,7 @@ export function PettyCashApproval() {
       .from('petty_cash_requests')
       .select(`
         *,
-        user_profiles:requester_id (full_name, email, company_id, department, e_sig),
+        user_profiles:requester_id (full_name, email, company_id, department, signature_path, e_sig),
         companies!petty_cash_requests_company_id_fkey (id, name)
       `)
       .eq('status', 'pending')
@@ -395,6 +395,7 @@ export function PettyCashApproval() {
                 approval_date,
                 approver_id,
                 user_profiles!approval_ledger_approver_id_fkey (
+                  signature_path,
                   e_sig
                 )
               `)
@@ -460,10 +461,10 @@ export function PettyCashApproval() {
                 cashAdvanceReceived: cashAdvanceReceived,
                 balance: balance,
                 preparedByName: selectedRequest.user_profiles?.full_name || 'Unknown',
-                preparedByEsig: selectedRequest.user_profiles?.e_sig || null,
+                preparedByEsig: selectedRequest.user_profiles?.signature_path || selectedRequest.user_profiles?.e_sig || null,
                 preparedByDate: preparedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
                 approvedByName: firstApprover.approver_name,
-                approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+                approvedByEsig: firstApprover.user_profiles?.signature_path || firstApprover.user_profiles?.e_sig || null,
                 approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
                 linkedPettyCashRequest: linkedRequestData,
               });

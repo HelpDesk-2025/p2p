@@ -1005,7 +1005,7 @@ export async function generateAndUploadCanvassRFP(
       .from('canvass_requests')
       .select(`
         *,
-        requester:user_profiles!requester_id(full_name, e_sig),
+        requester:user_profiles!requester_id(full_name, signature_path, e_sig),
         company:companies!company_id(name),
         pr:purchase_requisitions!pr_id(purpose, required_date, is_budgeted)
       `)
@@ -1079,7 +1079,7 @@ export async function generateAndUploadCanvassRFP(
       paymentMode: '',
       paymentModeLines: [],
       requestorName: sanitizeForPDF(canvass.requester?.full_name || ''),
-      requestorEsig: canvass.requester?.e_sig || null,
+      requestorEsig: canvass.requester?.signature_path || canvass.requester?.e_sig || null,
       approvals: (approvals || []).map((a: any) => {
         const approvalDate = new Date(a.approval_date);
         return {
@@ -1283,7 +1283,7 @@ export async function generateAndUploadRFP(
     // All request types now have company_id
     const selectQuery = `
       *,
-      requester:user_profiles!requester_id(full_name, e_sig),
+      requester:user_profiles!requester_id(full_name, signature_path, e_sig),
       company:companies!company_id(name),
       payment_mode:payment_modes!payment_mode_id(mode_name, line_names)
     `;
@@ -1381,7 +1381,7 @@ export async function generateAndUploadRFP(
       paymentMode: sanitizeForPDF(request.payment_mode?.mode_name || ''),
       paymentModeLines,
       requestorName: sanitizeForPDF(request.requester?.full_name || ''),
-      requestorEsig: request.requester?.e_sig || null,
+      requestorEsig: request.requester?.signature_path || request.requester?.e_sig || null,
       approvals: (approvals || []).map((a: any) => {
         console.log('Processing approval:', {
           raw: a,
