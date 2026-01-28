@@ -280,19 +280,29 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     if (!formData.e_sig) return;
 
     try {
+      // Check current user
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user ID:', user?.id);
+      console.log('Current user role:', currentUser?.role);
+      console.log('Attempting to delete signature:', formData.e_sig);
+
       // If it's a storage path (not a data URL), delete from storage
       if (!formData.e_sig.startsWith('data:') && !formData.e_sig.startsWith('http')) {
-        console.log('Deleting signature from storage:', formData.e_sig);
+        console.log('Calling storage.remove for path:', formData.e_sig);
 
-        const { error } = await supabase.storage
+        const { data, error } = await supabase.storage
           .from('attachments')
           .remove([formData.e_sig]);
 
+        console.log('Storage remove response:', { data, error });
+
         if (error) {
           console.error('Error deleting from storage:', error);
-          // Continue anyway to allow clearing the field
+          alert('Error deleting signature from storage: ' + error.message);
+          return; // Don't clear the field if deletion failed
         } else {
           console.log('Signature deleted from storage successfully');
+          alert('Signature deleted successfully!');
         }
       }
 
@@ -331,7 +341,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       // Delete old signature if exists
       if (formData.e_sig && !formData.e_sig.startsWith('data:') && !formData.e_sig.startsWith('http')) {
         console.log('Deleting old signature:', formData.e_sig);
-        await supabase.storage.from('attachments').remove([formData.e_sig]);
+        const { error: deleteError } = await supabase.storage.from('attachments').remove([formData.e_sig]);
+        if (deleteError) {
+          console.error('Error deleting old signature:', deleteError);
+        }
       }
 
       // Upload to storage instead of storing in metadata
@@ -340,6 +353,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       const filePath = `signatures/${editingId}_${timestamp}_${sanitizedFileName}`;
 
       console.log('Uploading signature to:', filePath);
+      console.log('Current user uploading:', currentUser?.id, currentUser?.role);
 
       const { data, error } = await supabase.storage
         .from('attachments')
@@ -354,6 +368,14 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       }
 
       console.log('Upload successful:', data);
+
+      // Check who owns the file
+      const { data: fileInfo } = await supabase.storage
+        .from('attachments')
+        .list('signatures', {
+          search: `${editingId}_${timestamp}`
+        });
+      console.log('Uploaded file info:', fileInfo);
 
       // Store the path instead of base64 data
       setFormData({ ...formData, e_sig: data.path });
