@@ -725,19 +725,72 @@ export function PurchaseRequisition() {
         const mergedFileName = `merged_${timestamp}.pdf`;
         const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
 
-        const { data, error: uploadError } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, mergedPdfBlob, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: 'application/pdf'
+        console.log('Uploading merged PDF:', {
+          filePath,
+          size: `${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB`,
+          type: mergedPdfBlob.type
+        });
+
+        // Retry logic for network errors
+        let uploadAttempts = 0;
+        const maxAttempts = 3;
+        let data = null;
+        let uploadError = null;
+
+        while (uploadAttempts < maxAttempts) {
+          uploadAttempts++;
+          console.log(`Upload attempt ${uploadAttempts} of ${maxAttempts}`);
+
+          const result = await supabase.storage
+            .from('attachments')
+            .upload(filePath, mergedPdfBlob, {
+              cacheControl: '3600',
+              upsert: true, // Allow overwriting in case of retry
+              contentType: 'application/pdf'
+            });
+
+          data = result.data;
+          uploadError = result.error;
+
+          if (!uploadError) {
+            console.log('Upload successful:', data);
+            break;
+          }
+
+          console.error(`Upload attempt ${uploadAttempts} failed:`, {
+            message: uploadError.message,
+            name: uploadError.name
           });
 
+          // If it's a "Failed to fetch" error and we have attempts left, wait and retry
+          if ((uploadError.message.includes('Failed to fetch') || uploadError.message.includes('NetworkError')) && uploadAttempts < maxAttempts) {
+            console.log(`Retrying in 2 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+
+          // Other errors, don't retry
+          if (!uploadError.message.includes('Failed to fetch') && !uploadError.message.includes('NetworkError')) {
+            break;
+          }
+        }
+
         if (uploadError) {
-          console.error('Upload error:', uploadError);
+          console.error('Final upload error after retries:', {
+            message: uploadError.message,
+            name: uploadError.name,
+            stack: uploadError.stack,
+            attempts: uploadAttempts
+          });
+
           if (uploadError.message.includes('413') || uploadError.message.includes('431')) {
             throw new Error(`File is too large to upload. Please reduce the number or size of attachments.`);
           }
+
+          if (uploadError.message.includes('Failed to fetch') || uploadError.message.includes('NetworkError')) {
+            throw new Error(`Network error while uploading attachments after ${uploadAttempts} attempts. Please check your internet connection and try again. If the problem persists, contact support.`);
+          }
+
           throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
         }
 
