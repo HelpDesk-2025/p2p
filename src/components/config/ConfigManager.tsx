@@ -230,22 +230,23 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             company_id: companyId,
             department: formData.department || null,
             role: formData.role,
-            approver_type: formData.approver_type || null,
-            e_sig: formData.e_sig || null
+            approver_type: formData.approver_type || null
+            // NOTE: e_sig removed - now stored in user_profiles.signature_path instead
           }
         }
       });
 
       if (authError) throw authError;
 
-      // Update the user profile with additional fields
+      // Update the user profile with additional fields including signature
       if (authData.user) {
         const { error: updateError } = await supabase
           .from('user_profiles')
           .update({
             is_active: formData.is_active,
             enable_multi_company_requests: formData.enable_multi_company_requests,
-            allowed_companies: formData.allowed_companies
+            allowed_companies: formData.allowed_companies,
+            signature_path: formData.e_sig || null  // Store signature path in database
           })
           .eq('id', authData.user.id);
 
@@ -275,7 +276,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -285,17 +286,36 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       return;
     }
 
-    if (file.size > 10240) {
-      alert('File size must be 10KB or less');
+    // Increased limit to 100KB for signature images
+    if (file.size > 102400) {
+      alert('File size must be 100KB or less');
       e.target.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData({ ...formData, e_sig: reader.result as string });
-    };
-    reader.readAsDataURL(file);
+    try {
+      // Upload to storage instead of storing in metadata
+      const timestamp = Date.now();
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `signatures/${editingId || 'temp'}_${timestamp}_${sanitizedFileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Store the path instead of base64 data
+      setFormData({ ...formData, e_sig: data.path });
+      alert('Signature uploaded successfully!');
+    } catch (error: any) {
+      console.error('Error uploading signature:', error);
+      alert('Error uploading signature: ' + error.message);
+      e.target.value = '';
+    }
   };
 
   const handleUpdate = async () => {
@@ -319,7 +339,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: formData.department || null,
         role: formData.role,
         approver_type: formData.approver_type || null,
-        e_sig: formData.e_sig || null,
+        signature_path: formData.e_sig || null,  // Now stores path instead of base64
         is_active: formData.is_active,
         enable_multi_company_requests: formData.enable_multi_company_requests,
         allowed_companies: formData.allowed_companies
