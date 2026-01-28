@@ -199,13 +199,13 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       approver_type: user.approver_type || '',
       sequence: user.sequence?.toString() || '',
       days_of_approval: user.days_of_approval?.toString() || '',
-      e_sig: user.signature_path || user.e_sig || '',  // Read from new column, fallback to old
+      e_sig: user.e_sig || '',
       is_active: user.is_active ?? false,
       enable_multi_company_requests: user.enable_multi_company_requests ?? false,
       allowed_companies: user.allowed_companies || []
     };
     console.log('Setting form data:', formDataToSet);
-    setOriginalESig(user.signature_path || user.e_sig || '');  // Read from new column, fallback to old
+    setOriginalESig(user.e_sig || '');
     setFormData(formDataToSet);
     setShowForm(true);
   };
@@ -230,23 +230,22 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             company_id: companyId,
             department: formData.department || null,
             role: formData.role,
-            approver_type: formData.approver_type || null
-            // NOTE: e_sig removed - now stored in user_profiles.signature_path instead
+            approver_type: formData.approver_type || null,
+            e_sig: formData.e_sig || null
           }
         }
       });
 
       if (authError) throw authError;
 
-      // Update the user profile with additional fields including signature
+      // Update the user profile with additional fields
       if (authData.user) {
         const { error: updateError } = await supabase
           .from('user_profiles')
           .update({
             is_active: formData.is_active,
             enable_multi_company_requests: formData.enable_multi_company_requests,
-            allowed_companies: formData.allowed_companies,
-            signature_path: formData.e_sig || null  // Store signature path in database
+            allowed_companies: formData.allowed_companies
           })
           .eq('id', authData.user.id);
 
@@ -276,68 +275,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     }
   };
 
-  const handleDeleteSignature = async () => {
-    if (!formData.e_sig) return;
-
-    try {
-      // Check current user and their role
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('role')
-        .eq('id', user?.id)
-        .single();
-
-      console.log('Current user ID:', user?.id);
-      console.log('Current user role:', profile?.role);
-      console.log('Attempting to delete signature:', formData.e_sig);
-
-      // If it's a storage path (not a data URL), delete from storage
-      if (!formData.e_sig.startsWith('data:') && !formData.e_sig.startsWith('http')) {
-        console.log('Calling storage.remove for path:', formData.e_sig);
-
-        const { data, error } = await supabase.storage
-          .from('attachments')
-          .remove([formData.e_sig]);
-
-        console.log('Storage remove response:', { data, error });
-
-        if (error) {
-          console.error('Error deleting from storage:', error);
-          console.error('Full error details:', JSON.stringify(error, null, 2));
-          alert('Error deleting signature from storage: ' + error.message);
-          return; // Don't clear the field if deletion failed
-        } else {
-          console.log('Signature deleted from storage successfully');
-        }
-      }
-
-      // Clear the signature field in the form
-      setFormData({ ...formData, e_sig: '' });
-
-      // Also clear it in the database
-      if (editingId) {
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update({ signature_path: null, e_sig: null })  // Clear both old and new columns
-          .eq('id', editingId);
-
-        if (updateError) {
-          console.error('Error clearing signature in database:', updateError);
-          alert('Signature deleted from storage but failed to update database: ' + updateError.message);
-        } else {
-          console.log('Signature cleared from database');
-          alert('Signature deleted successfully!');
-          reload(); // Reload to show updated data
-        }
-      }
-    } catch (error: any) {
-      console.error('Error in handleDeleteSignature:', error);
-      alert('Error deleting signature: ' + (error.message || 'Unknown error'));
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -347,68 +285,17 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       return;
     }
 
-    // Increased limit to 100KB for signature images
-    if (file.size > 102400) {
-      alert('File size must be 100KB or less');
+    if (file.size > 10240) {
+      alert('File size must be 10KB or less');
       e.target.value = '';
       return;
     }
 
-    try {
-      if (!editingId) {
-        alert('Please save the user first before uploading a signature');
-        e.target.value = '';
-        return;
-      }
-
-      // Delete old signature if exists
-      if (formData.e_sig && !formData.e_sig.startsWith('data:') && !formData.e_sig.startsWith('http')) {
-        console.log('Deleting old signature:', formData.e_sig);
-        const { error: deleteError } = await supabase.storage.from('attachments').remove([formData.e_sig]);
-        if (deleteError) {
-          console.error('Error deleting old signature:', deleteError);
-        }
-      }
-
-      // Upload to storage instead of storing in metadata
-      const timestamp = Date.now();
-      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filePath = `signatures/${editingId}_${timestamp}_${sanitizedFileName}`;
-
-      console.log('Uploading signature to:', filePath);
-
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (error) {
-        console.error('Storage upload error:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        throw new Error(`Upload failed: ${error.message || 'Unknown error'}`);
-      }
-
-      console.log('Upload successful:', data);
-      console.log('File path from response:', data?.path);
-
-      if (!data || !data.path) {
-        console.error('No path in upload response:', data);
-        throw new Error('Upload succeeded but no path was returned');
-      }
-
-      // Store the path instead of base64 data
-      console.log('Setting e_sig to:', data.path);
-      setFormData(prev => ({ ...prev, e_sig: data.path }));
-      console.log('FormData updated successfully');
-      alert('Signature uploaded successfully! Click "Update User" to save.');
-    } catch (error: any) {
-      console.error('Error uploading signature:', error);
-      console.error('Error stack:', error?.stack);
-      alert('Error uploading signature: ' + (error.message || 'Unknown error'));
-      e.target.value = '';
-    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData({ ...formData, e_sig: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUpdate = async () => {
@@ -432,7 +319,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: formData.department || null,
         role: formData.role,
         approver_type: formData.approver_type || null,
-        signature_path: formData.e_sig || null,  // Now stores path instead of base64
+        e_sig: formData.e_sig || null,
         is_active: formData.is_active,
         enable_multi_company_requests: formData.enable_multi_company_requests,
         allowed_companies: formData.allowed_companies
@@ -892,7 +779,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     <p className="mb-1 text-xs sm:text-sm text-slate-600 font-medium">
                       <span className="text-blue-600">Click to upload</span> or drag and drop
                     </p>
-                    <p className="text-xs text-slate-500">Image files only (max 100KB)</p>
+                    <p className="text-xs text-slate-500">Image files only (max 10KB)</p>
                   </div>
                   <input
                     type="file"
@@ -907,10 +794,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                   <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg sm:rounded-xl border-2 border-blue-200">
                     <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg border border-slate-200 shadow-sm flex-shrink-0">
                       <img
-                        src={formData.e_sig.startsWith('data:') || formData.e_sig.startsWith('http')
-                          ? formData.e_sig
-                          : `${supabase.storage.from('attachments').getPublicUrl(formData.e_sig).data.publicUrl}`
-                        }
+                        src={formData.e_sig}
                         alt="E-Signature"
                         className="max-h-12 max-w-12 sm:max-h-16 sm:max-w-16 object-contain"
                       />
@@ -928,7 +812,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     </div>
                     <button
                       type="button"
-                      onClick={handleDeleteSignature}
+                      onClick={() => setFormData({ ...formData, e_sig: '' })}
                       className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                       title="Remove signature"
                     >

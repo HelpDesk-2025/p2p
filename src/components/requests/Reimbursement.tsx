@@ -385,12 +385,12 @@ export function Reimbursement() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadAttachments = async (requestId: string) => {
+  const uploadAttachments = async (requestId: string, companyId: string) => {
     const uploadedPaths: Attachment[] = [];
 
     for (const file of attachments) {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${requestId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const fileName = `reimbursement/${companyId}/${requestId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('attachments')
@@ -504,9 +504,11 @@ export function Reimbursement() {
         let mergedPdfPath: string | null = null;
         if (attachments.length > 0) {
           setUploadingFiles(true);
-          uploadedAttachments = await uploadAttachments(editingRequest.id);
+          const requestCompanyId = editingRequest.company_id || profile?.company_id;
+          if (!requestCompanyId) throw new Error('Company ID is required');
+          uploadedAttachments = await uploadAttachments(editingRequest.id, requestCompanyId);
           // Merge attachments into a single PDF
-          mergedPdfPath = await mergeAndUploadAttachmentsPDF(editingRequest.id, attachments);
+          mergedPdfPath = await mergeAndUploadAttachmentsPDF(editingRequest.id, requestCompanyId, attachments);
         }
 
         const { data, error } = await supabase
@@ -565,10 +567,11 @@ export function Reimbursement() {
         // Upload attachments after creating the request
         if (attachments.length > 0) {
           setUploadingFiles(true);
-          const uploadedAttachments = await uploadAttachments(insertedRequest.id);
+          if (!companyId) throw new Error('Company ID is required');
+          const uploadedAttachments = await uploadAttachments(insertedRequest.id, companyId);
 
           // Merge attachments into a single PDF
-          const mergedPdfPath = await mergeAndUploadAttachmentsPDF(insertedRequest.id, attachments);
+          const mergedPdfPath = await mergeAndUploadAttachmentsPDF(insertedRequest.id, companyId, attachments);
 
           // Update the request with attachment paths and merged PDF
           await supabase

@@ -713,67 +713,35 @@ export function PurchaseRequisition() {
 
       let mergedPdfPath = editingRequest?.merged_pdf_path || null;
       if (filesToUpload.length > 0 && profile?.id) {
-        try {
-          const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
+        const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
-          // Check file size - use conservative limit to avoid HTTP header size issues
-          // Reduced to 5MB to prevent 431 errors (Request Header Fields Too Large)
-          const maxSizeInBytes = 5 * 1024 * 1024; // 5MB to avoid HTTP header size issues
-          if (mergedPdfBlob.size > maxSizeInBytes) {
-            console.warn(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Skipping merge to avoid upload issues. Request will proceed without merged PDF.`);
-            alert(`Warning: Attached files are too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). The maximum size for merged attachments is 5MB. Your request will be submitted without a merged PDF. Please upload individual files smaller than 5MB total, or contact support.`);
-            mergedPdfPath = null;
-          } else {
-            const timestamp = Date.now();
-            const mergedFileName = `merged_${timestamp}.pdf`;
-            const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
-
-            console.log('Uploading merged PDF:', {
-              filePath,
-              size: `${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB`,
-              type: mergedPdfBlob.type
-            });
-
-            const { data, error: uploadError } = await supabase.storage
-              .from('attachments')
-              .upload(filePath, mergedPdfBlob, {
-                cacheControl: '3600',
-                upsert: true,
-                contentType: 'application/pdf'
-              });
-
-            if (uploadError) {
-              console.error('Upload error:', {
-                message: uploadError.message,
-                name: uploadError.name
-              });
-
-              // If header size error, file too large, or other size-related error, skip merge and continue
-              if (uploadError.message.includes('header') ||
-                  uploadError.message.includes('413') ||
-                  uploadError.message.includes('431') ||
-                  uploadError.message.includes('Exceeded maximum') ||
-                  uploadError.message.includes('too large')) {
-                console.warn('Upload failed due to size constraints. Request will proceed without merged PDF.');
-                alert('Warning: File upload failed due to size limitations (HTTP 431 - Request Header Fields Too Large). Your request will be submitted without a merged PDF. To resolve this, please try uploading smaller files (total under 5MB) or contact support for assistance.');
-                mergedPdfPath = null;
-              } else {
-                // For other errors, also just skip the merge and continue
-                console.warn('Upload failed, continuing without merged PDF:', uploadError.message);
-                alert(`Warning: File upload failed (${uploadError.message}). Your request will be submitted without a merged PDF. Please contact support if this issue persists.`);
-                mergedPdfPath = null;
-              }
-            } else {
-              console.log('Upload successful:', data);
-              mergedPdfPath = data.path;
-            }
-          }
-        } catch (mergeError: any) {
-          console.error('Error during PDF merge/upload:', mergeError);
-          // If merge or upload fails, log it but continue without merged PDF
-          console.warn('Request will proceed without merged PDF due to error:', mergeError.message);
-          mergedPdfPath = null;
+        // Check file size (50MB limit for Supabase Storage)
+        const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
+        if (mergedPdfBlob.size > maxSizeInBytes) {
+          throw new Error(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 50MB. Please reduce the number or size of attachments.`);
         }
+
+        const timestamp = Date.now();
+        const mergedFileName = `merged_${timestamp}.pdf`;
+        const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
+
+        const { data, error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, mergedPdfBlob, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'application/pdf'
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          if (uploadError.message.includes('413') || uploadError.message.includes('431')) {
+            throw new Error(`File is too large to upload. Please reduce the number or size of attachments.`);
+          }
+          throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
+        }
+
+        mergedPdfPath = data.path;
       }
 
       const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
