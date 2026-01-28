@@ -717,9 +717,11 @@ export function PurchaseRequisition() {
           const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
           // Check file size - use conservative limit to avoid HTTP header size issues
-          const maxSizeInBytes = 10 * 1024 * 1024; // 10MB to avoid HTTP header size issues in WebContainer
+          // Reduced to 5MB to prevent 431 errors (Request Header Fields Too Large)
+          const maxSizeInBytes = 5 * 1024 * 1024; // 5MB to avoid HTTP header size issues
           if (mergedPdfBlob.size > maxSizeInBytes) {
             console.warn(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Skipping merge to avoid upload issues. Request will proceed without merged PDF.`);
+            alert(`Warning: Attached files are too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). The maximum size for merged attachments is 5MB. Your request will be submitted without a merged PDF. Please upload individual files smaller than 5MB total, or contact support.`);
             mergedPdfPath = null;
           } else {
             const timestamp = Date.now();
@@ -753,10 +755,12 @@ export function PurchaseRequisition() {
                   uploadError.message.includes('Exceeded maximum') ||
                   uploadError.message.includes('too large')) {
                 console.warn('Upload failed due to size constraints. Request will proceed without merged PDF.');
+                alert('Warning: File upload failed due to size limitations (HTTP 431 - Request Header Fields Too Large). Your request will be submitted without a merged PDF. To resolve this, please try uploading smaller files (total under 5MB) or contact support for assistance.');
                 mergedPdfPath = null;
               } else {
                 // For other errors, also just skip the merge and continue
                 console.warn('Upload failed, continuing without merged PDF:', uploadError.message);
+                alert(`Warning: File upload failed (${uploadError.message}). Your request will be submitted without a merged PDF. Please contact support if this issue persists.`);
                 mergedPdfPath = null;
               }
             } else {
