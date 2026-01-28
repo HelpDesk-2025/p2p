@@ -961,10 +961,13 @@ export function PRApproval() {
                         <button
                           onClick={async () => {
                             try {
+                              console.log('Creating signed URL for:', selectedRequest.merged_pdf_path);
                               const signedUrl = await createSignedUrl(selectedRequest.merged_pdf_path!, 300);
+                              console.log('Signed URL created:', signedUrl);
                               window.open(signedUrl, '_blank');
                             } catch (error) {
-                              alert('Error viewing PDF');
+                              console.error('Error viewing PDF:', error);
+                              alert('Error viewing PDF: ' + (error as Error).message);
                             }
                           }}
                           className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2"
@@ -975,7 +978,9 @@ export function PRApproval() {
                         <button
                           onClick={async () => {
                             try {
+                              console.log('Downloading file from:', selectedRequest.merged_pdf_path);
                               const blob = await downloadAttachment(selectedRequest.merged_pdf_path!);
+                              console.log('File downloaded, size:', blob.size);
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
                               a.href = url;
@@ -983,7 +988,8 @@ export function PRApproval() {
                               a.click();
                               URL.revokeObjectURL(url);
                             } catch (error) {
-                              alert('Error downloading PDF');
+                              console.error('Error downloading PDF:', error);
+                              alert('Error downloading PDF: ' + (error as Error).message);
                             }
                           }}
                           className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
@@ -1040,11 +1046,19 @@ export function PRApproval() {
                 </div>
               )}
 
+              {(!selectedRequest.merged_pdf_path && !selectedRequest.merged_pdf && selectedRequest.pr_checklists?.item_name) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 font-semibold mb-2">Attachments Status</p>
+                  <p className="text-sm text-amber-700">
+                    This request has a PR checklist ({selectedRequest.pr_checklists.item_name}) but no merged PDF is available.
+                    The requester may need to re-upload attachments or contact support.
+                  </p>
+                </div>
+              )}
+
               {selectedRequest.checklist_items && selectedRequest.checklist_items.length > 0 && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">
-                    {selectedRequest.merged_pdf_path || selectedRequest.merged_pdf ? 'Checklist Items' : 'Uploaded Attachments'}
-                  </label>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Checklist Items</label>
                   <div className="space-y-2">
                     {selectedRequest.checklist_items.map((item: any, index: number) => (
                       <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
@@ -1073,9 +1087,13 @@ export function PRApproval() {
                       </div>
                     ))}
                   </div>
-                  {!selectedRequest.merged_pdf_path && !selectedRequest.merged_pdf && (
+                  {(selectedRequest.merged_pdf_path || selectedRequest.merged_pdf) ? (
                     <p className="text-xs text-slate-600 mt-3 italic">
-                      Note: Individual attachment files are stored with the request but could not be merged into a single PDF due to size constraints.
+                      All attachments have been merged into a single PDF available in the Attachments section above.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-600 mt-3 italic">
+                      Note: Attachments could not be merged into a PDF. Please contact the requester for individual files if needed.
                     </p>
                   )}
                 </div>
