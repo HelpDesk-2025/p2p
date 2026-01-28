@@ -84,6 +84,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Update the file owner in the storage.objects table
+    const { error: ownerError } = await supabaseAdmin
+      .from('storage.objects')
+      .update({ owner: user.id, owner_id: user.id })
+      .eq('bucket_id', 'attachments')
+      .eq('name', filePath);
+
+    if (ownerError) {
+      console.error('Error setting owner:', ownerError);
+      // Don't fail the upload if owner update fails
+    }
+
     return new Response(
       JSON.stringify({ path: data.path }),
       {
