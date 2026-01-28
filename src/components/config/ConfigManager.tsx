@@ -276,6 +276,34 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     }
   };
 
+  const handleDeleteSignature = async () => {
+    if (!formData.e_sig) return;
+
+    try {
+      // If it's a storage path (not a data URL), delete from storage
+      if (!formData.e_sig.startsWith('data:') && !formData.e_sig.startsWith('http')) {
+        console.log('Deleting signature from storage:', formData.e_sig);
+
+        const { error } = await supabase.storage
+          .from('attachments')
+          .remove([formData.e_sig]);
+
+        if (error) {
+          console.error('Error deleting from storage:', error);
+          // Continue anyway to allow clearing the field
+        } else {
+          console.log('Signature deleted from storage successfully');
+        }
+      }
+
+      // Clear the signature field
+      setFormData({ ...formData, e_sig: '' });
+    } catch (error: any) {
+      console.error('Error in handleDeleteSignature:', error);
+      alert('Error deleting signature: ' + (error.message || 'Unknown error'));
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -298,6 +326,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         alert('Please save the user first before uploading a signature');
         e.target.value = '';
         return;
+      }
+
+      // Delete old signature if exists
+      if (formData.e_sig && !formData.e_sig.startsWith('data:') && !formData.e_sig.startsWith('http')) {
+        console.log('Deleting old signature:', formData.e_sig);
+        await supabase.storage.from('attachments').remove([formData.e_sig]);
       }
 
       // Upload to storage instead of storing in metadata
@@ -848,7 +882,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, e_sig: '' })}
+                      onClick={handleDeleteSignature}
                       className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                       title="Remove signature"
                     >
