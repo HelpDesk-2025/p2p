@@ -45,11 +45,29 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   const sanitizeText = (text: string): string => {
     if (!text) return '';
-    return text
+
+    // First normalize Unicode characters to their closest ASCII equivalents
+    let sanitized = text
+      .normalize('NFD') // Decompose combined characters
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
       .replace(/\r\n/g, ' ')
       .replace(/\r/g, ' ')
       .replace(/\n/g, ' ')
-      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+      .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, ''); // Remove control chars
+
+    // Replace common problematic characters with safe alternatives
+    sanitized = sanitized
+      .replace(/[""]/g, '"') // Smart quotes
+      .replace(/['']/g, "'") // Smart apostrophes
+      .replace(/[–—]/g, '-') // En dash, em dash
+      .replace(/…/g, '...') // Ellipsis
+      .replace(/™/g, '(TM)').replace(/®/g, '(R)').replace(/©/g, '(C)') // Symbols
+      .replace(/€/g, 'EUR').replace(/£/g, 'GBP').replace(/¥/g, 'JPY'); // Currency
+
+    // Remove any remaining characters outside WinAnsi safe range
+    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
+
+    return sanitized;
   };
 
   const drawText = (text: string, x: number, y: number, size = 10, isBold = false) => {
