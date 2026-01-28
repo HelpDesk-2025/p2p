@@ -453,9 +453,12 @@ export function CashAdvance() {
           const fileName = `CA_${formData.document_no}_attachments_${Date.now()}.pdf`;
           const filePath = `cash_advance/${formData.document_no}/${fileName}`;
 
+          // Convert blob to ArrayBuffer for more efficient upload
+          const arrayBuffer = await mergedPdfBlob.arrayBuffer();
+
           const { error: uploadError } = await supabase.storage
             .from('attachments')
-            .upload(filePath, mergedPdfBlob, {
+            .upload(filePath, arrayBuffer, {
               contentType: 'application/pdf',
               upsert: true,
             });

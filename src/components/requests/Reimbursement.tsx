@@ -423,9 +423,13 @@ export function Reimbursement() {
 
       // Upload merged PDF
       const mergedFileName = `${requestId}/merged_attachments_${Date.now()}.pdf`;
+
+      // Convert blob to ArrayBuffer for more efficient upload
+      const arrayBuffer = await mergedPdfBlob.arrayBuffer();
+
       const { error: uploadError } = await supabase.storage
         .from('attachments')
-        .upload(mergedFileName, mergedPdfBlob, {
+        .upload(mergedFileName, arrayBuffer, {
           contentType: 'application/pdf',
           upsert: true
         });

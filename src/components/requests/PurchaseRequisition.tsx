@@ -725,9 +725,12 @@ export function PurchaseRequisition() {
         const mergedFileName = `merged_${timestamp}.pdf`;
         const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
 
+        // Convert blob to ArrayBuffer for more efficient upload
+        const arrayBuffer = await mergedPdfBlob.arrayBuffer();
+
         const { data, error: uploadError } = await supabase.storage
           .from('attachments')
-          .upload(filePath, mergedPdfBlob, {
+          .upload(filePath, arrayBuffer, {
             cacheControl: '3600',
             upsert: false,
             contentType: 'application/pdf'
