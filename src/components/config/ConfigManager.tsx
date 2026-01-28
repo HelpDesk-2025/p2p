@@ -328,7 +328,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         } else {
           console.log('Signature cleared from database');
           alert('Signature deleted successfully!');
-          loadData(); // Reload to show updated data
+          reload(); // Reload to show updated data
         }
       }
     } catch (error: any) {
