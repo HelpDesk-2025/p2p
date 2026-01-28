@@ -109,48 +109,38 @@ export async function uploadLargeFile(
   contentType: string = 'application/pdf'
 ): Promise<{ path: string }> {
   try {
-    // Get file size based on data type
-    const fileSize = fileData instanceof Blob ? fileData.size : fileData.byteLength;
-
-    // Use standard upload for files smaller than 6MB
-    if (fileSize < 6 * 1024 * 1024) {
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, fileData, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType
-        });
-
-      if (error) throw error;
-      return { path: data.path };
-    }
-
-    // For larger files, use direct fetch with minimal headers
+    // Get the current session
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('No active session');
     }
 
-    const supabaseUrl = supabase.storage.from('attachments').getPublicUrl('').data.publicUrl.split('/object/public/attachments')[0];
-    const uploadUrl = `${supabaseUrl}/object/attachments/${filePath}`;
+    // Convert ArrayBuffer to Blob if needed
+    const blob = fileData instanceof Blob ? fileData : new Blob([fileData], { type: contentType });
 
-    const response = await fetch(uploadUrl, {
+    // Use edge function for upload to avoid header size issues
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-large-file`;
+
+    const formData = new FormData();
+    formData.append('file', blob);
+    formData.append('filePath', filePath);
+    formData.append('contentType', contentType);
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': contentType,
-        'x-upsert': 'false'
+        'Authorization': `Bearer ${session.access_token}`
       },
-      body: fileData
+      body: formData
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${response.status} ${errorText}`);
+      const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(errorData.error || `Upload failed: ${response.status}`);
     }
 
-    return { path: filePath };
+    const result = await response.json();
+    return { path: result.path };
   } catch (error) {
     console.error('Error uploading large file:', error);
     throw error;
