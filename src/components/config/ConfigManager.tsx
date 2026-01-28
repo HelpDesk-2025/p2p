@@ -199,13 +199,13 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       approver_type: user.approver_type || '',
       sequence: user.sequence?.toString() || '',
       days_of_approval: user.days_of_approval?.toString() || '',
-      e_sig: user.e_sig || '',
+      e_sig: user.signature_path || user.e_sig || '',  // Read from new column, fallback to old
       is_active: user.is_active ?? false,
       enable_multi_company_requests: user.enable_multi_company_requests ?? false,
       allowed_companies: user.allowed_companies || []
     };
     console.log('Setting form data:', formDataToSet);
-    setOriginalESig(user.e_sig || '');
+    setOriginalESig(user.signature_path || user.e_sig || '');  // Read from new column, fallback to old
     setFormData(formDataToSet);
     setShowForm(true);
   };
@@ -319,7 +319,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       if (editingId) {
         const { error: updateError } = await supabase
           .from('user_profiles')
-          .update({ e_sig: null })
+          .update({ signature_path: null, e_sig: null })  // Clear both old and new columns
           .eq('id', editingId);
 
         if (updateError) {
