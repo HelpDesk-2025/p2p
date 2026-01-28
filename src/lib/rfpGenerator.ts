@@ -2,6 +2,35 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { supabase } from './supabase';
 import { mergeRFPWithAttachments } from './pdfMerger';
 
+// Global sanitization function for text that will be used in PDFs
+function sanitizeForPDF(text: string | null | undefined): string {
+  if (!text) return '';
+
+  const str = String(text);
+
+  let sanitized = str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\r/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+
+  sanitized = sanitized
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/™/g, '(TM)').replace(/®/g, '(R)').replace(/©/g, '(C)')
+    .replace(/€/g, 'EUR').replace(/£/g, 'GBP').replace(/¥/g, 'JPY');
+
+  sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
+  sanitized = sanitized.replace(/\s+/g, ' ').trim();
+
+  return sanitized;
+}
+
 interface PaymentModeLine {
   label: string;
   value: string;
@@ -1028,16 +1057,16 @@ export async function generateAndUploadCanvassRFP(
     }));
 
     const rfpData: RFPData = {
-      companyName: canvass.company?.name || 'Company Name',
+      companyName: sanitizeForPDF(canvass.company?.name || 'Company Name'),
       requestType: 'Canvass',
-      documentNumber: canvassNumber,
+      documentNumber: sanitizeForPDF(canvassNumber),
       dateOfRequest: new Date(canvass.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       }),
-      payee: winningVendor,
-      purpose: canvass.pr?.purpose || '',
+      payee: sanitizeForPDF(winningVendor),
+      purpose: sanitizeForPDF(canvass.pr?.purpose || ''),
       dateNeeded: canvass.pr?.required_date
         ? new Date(canvass.pr.required_date).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -1049,12 +1078,12 @@ export async function generateAndUploadCanvassRFP(
       budgeted: canvass.pr?.is_budgeted !== false,
       paymentMode: '',
       paymentModeLines: [],
-      requestorName: canvass.requester?.full_name || '',
+      requestorName: sanitizeForPDF(canvass.requester?.full_name || ''),
       requestorEsig: canvass.requester?.e_sig || null,
       approvals: (approvals || []).map((a: any) => {
         const approvalDate = new Date(a.approval_date);
         return {
-          approver_name: a.approver?.full_name || '',
+          approver_name: sanitizeForPDF(a.approver?.full_name || ''),
           approver_esig: a.approver?.e_sig || null,
           approval_date: approvalDate.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -1076,7 +1105,7 @@ export async function generateAndUploadCanvassRFP(
 
     // Prepare Canvass Sheet data
     const canvassSheetData: CanvassSheetData = {
-      companyName: canvass.company?.name || 'Company Name',
+      companyName: sanitizeForPDF(canvass.company?.name || 'Company Name'),
       companyAddress: '',
       vatTin: '',
       date: new Date(canvass.request_date).toLocaleDateString('en-US', {
@@ -1084,21 +1113,21 @@ export async function generateAndUploadCanvassRFP(
         day: '2-digit',
         year: 'numeric'
       }),
-      requestFor: canvass.pr?.purpose || '',
+      requestFor: sanitizeForPDF(canvass.pr?.purpose || ''),
       items: (() => {
         // If suppliers have items with descriptions, use the first supplier's items as the canonical list
         if (canvass.suppliers?.[0]?.items && canvass.suppliers[0].items.length > 0) {
           return canvass.suppliers[0].items.map((item: any) => ({
-            description: item.description || '',
+            description: sanitizeForPDF(item.description || ''),
             quantity: item.quantity || 0,
-            unit: item.uom || item.unit || ''
+            unit: sanitizeForPDF(item.uom || item.unit || '')
           }));
         }
         // Otherwise fall back to canvass.items
         return (canvass.items || []).map((item: any) => ({
-          description: item.description || '',
+          description: sanitizeForPDF(item.description || ''),
           quantity: item.quantity || canvass.suppliers?.[0]?.quantity || 0,
-          unit: item.unit || item.uom || ''
+          unit: sanitizeForPDF(item.unit || item.uom || '')
         }));
       })(),
       suppliers: (canvass.suppliers || []).map((supplier: any, supplierIndex: number) => {
@@ -1121,7 +1150,7 @@ export async function generateAndUploadCanvassRFP(
         const isWinner = supplierIndex === (canvass.recommended_quotation_index || 0);
 
         return {
-          name: supplier.vendor_name || supplier.name || '',
+          name: sanitizeForPDF(supplier.vendor_name || supplier.name || ''),
           quotations,
           invoiceAvailability: supplier.invoice_availability ? 'Yes' : 'No',
           delivery: supplier.delivery ? 'Yes' : 'No',
@@ -1134,14 +1163,14 @@ export async function generateAndUploadCanvassRFP(
           vat12,
           ewt,
           netPayable,
-          registeredName: supplier.registered_name || supplier.vendor_name || '',
-          address: supplier.complete_address || supplier.address || '',
-          tin: supplier.tin || '',
-          contactPerson: supplier.contact_person || '',
-          contactNo: supplier.contact_no || '',
-          email: supplier.email_address || supplier.email || '',
-          bankAccount: supplier.bank_account_no || '',
-          depositoryBank: supplier.depository_bank || '',
+          registeredName: sanitizeForPDF(supplier.registered_name || supplier.vendor_name || ''),
+          address: sanitizeForPDF(supplier.complete_address || supplier.address || ''),
+          tin: sanitizeForPDF(supplier.tin || ''),
+          contactPerson: sanitizeForPDF(supplier.contact_person || ''),
+          contactNo: sanitizeForPDF(supplier.contact_no || ''),
+          email: sanitizeForPDF(supplier.email_address || supplier.email || ''),
+          bankAccount: sanitizeForPDF(supplier.bank_account_no || ''),
+          depositoryBank: sanitizeForPDF(supplier.depository_bank || ''),
           isWinner,
           quotationFilePath: supplier.quotation_file_path || null
         };
@@ -1149,7 +1178,7 @@ export async function generateAndUploadCanvassRFP(
       approvals: (approvals || []).map((a: any) => {
         const approvalDate = new Date(a.approval_date);
         return {
-          approver_name: a.approver?.full_name || '',
+          approver_name: sanitizeForPDF(a.approver?.full_name || ''),
           approver_esig: a.approver?.e_sig || null,
           approval_date: approvalDate.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -1313,13 +1342,13 @@ export async function generateAndUploadRFP(
     if (requestType === 'purchase_requisition' && request.payment_mode_lines && Array.isArray(request.payment_mode_lines)) {
       // Map the PR payment_mode_lines structure to RFP structure
       paymentModeLines.push(...request.payment_mode_lines.map((line: any) => ({
-        label: line.name || line.label || '',
-        value: line.value || ''
+        label: sanitizeForPDF(line.name || line.label || ''),
+        value: sanitizeForPDF(line.value || '')
       })));
     } else if (request.payment_mode?.line_names && Array.isArray(request.payment_mode.line_names)) {
       for (const lineName of request.payment_mode.line_names) {
         paymentModeLines.push({
-          label: lineName,
+          label: sanitizeForPDF(lineName),
           value: '' // Values would come from request data if stored
         });
       }
@@ -1329,17 +1358,17 @@ export async function generateAndUploadRFP(
 
     // Prepare RFP data - handle different field names between PR and others
     const rfpData: RFPData = {
-      companyName: request.company?.name || 'Company Name',
+      companyName: sanitizeForPDF(request.company?.name || 'Company Name'),
       requestType: requestType === 'purchase_requisition' ? 'Purchase Requisition' :
                    requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement',
-      documentNumber: requestNumber,
+      documentNumber: sanitizeForPDF(requestNumber),
       dateOfRequest: new Date(request.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       }),
-      payee: request.payee || '',
-      purpose: request.purpose || request.description || '',
+      payee: sanitizeForPDF(request.payee || ''),
+      purpose: sanitizeForPDF(request.purpose || request.description || ''),
       dateNeeded: (request.date_needed || request.date_required || request.required_date)
         ? new Date(request.date_needed || request.date_required || request.required_date).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -1349,9 +1378,9 @@ export async function generateAndUploadRFP(
         : '',
       amount: parseFloat(request.amount || request.total_amount || request.amount_net_vat) || 0,
       budgeted: requestType === 'purchase_requisition' ? (request.is_budgeted !== false) : (request.budgeted !== false),
-      paymentMode: request.payment_mode?.mode_name || '',
+      paymentMode: sanitizeForPDF(request.payment_mode?.mode_name || ''),
       paymentModeLines,
-      requestorName: request.requester?.full_name || '',
+      requestorName: sanitizeForPDF(request.requester?.full_name || ''),
       requestorEsig: request.requester?.e_sig || null,
       approvals: (approvals || []).map((a: any) => {
         console.log('Processing approval:', {
@@ -1363,7 +1392,7 @@ export async function generateAndUploadRFP(
         });
         const approvalDate = new Date(a.approval_date);
         return {
-          approver_name: a.approver?.full_name || '',
+          approver_name: sanitizeForPDF(a.approver?.full_name || ''),
           approver_esig: a.approver?.e_sig || null,
           approval_date: approvalDate.toLocaleDateString('en-US', {
             year: 'numeric',
