@@ -707,52 +707,42 @@ export function PurchaseRequisition() {
         fileName: item.fileName || ''
       }));
 
-      // Upload individual attachment files instead of merging them during submission
-      const uploadedAttachments: Array<{id: string, fileName: string, filePath: string}> = [];
+      const filesToUpload = formData.checklist_items
+        .filter(item => item.file)
+        .map(item => item.file!);
 
-      for (let i = 0; i < formData.checklist_items.length; i++) {
-        const item = formData.checklist_items[i];
-        if (item.file && profile?.id) {
-          // Check individual file size (10MB limit per file)
-          const maxSizeInBytes = 10 * 1024 * 1024; // 10MB per file
-          if (item.file.size > maxSizeInBytes) {
-            throw new Error(`File "${item.fileName}" is too large (${(item.file.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size per file is 10MB.`);
-          }
+      let mergedPdfPath = editingRequest?.merged_pdf_path || null;
+      if (filesToUpload.length > 0 && profile?.id) {
+        const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
-          const timestamp = Date.now();
-          const randomStr = Math.random().toString(36).substring(7);
-          const safeFileName = item.fileName?.replace(/[^a-zA-Z0-9.-]/g, '_') || `file_${randomStr}`;
-          const filePath = `purchase-requisitions/${profile.id}/${timestamp}_${randomStr}_${safeFileName}`;
+        // Check file size (50MB limit for Supabase Storage)
+        const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
+        if (mergedPdfBlob.size > maxSizeInBytes) {
+          throw new Error(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 50MB. Please reduce the number or size of attachments.`);
+        }
 
-          const { data, error: uploadError } = await supabase.storage
-            .from('attachments')
-            .upload(filePath, item.file, {
-              cacheControl: '3600',
-              upsert: false
-            });
+        const timestamp = Date.now();
+        const mergedFileName = `merged_${timestamp}.pdf`;
+        const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
 
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
-            throw new Error(`Failed to upload file "${item.fileName}": ${uploadError.message}`);
-          }
-
-          uploadedAttachments.push({
-            id: item.id,
-            fileName: item.fileName || safeFileName,
-            filePath: data.path
+        const { data, error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, mergedPdfBlob, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: 'application/pdf'
           });
 
-          // Small delay between uploads to avoid rate limiting
-          if (i < formData.checklist_items.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          if (uploadError.message.includes('413') || uploadError.message.includes('431')) {
+            throw new Error(`File is too large to upload. Please reduce the number or size of attachments.`);
           }
+          throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
         }
-      }
 
-      // Store attachment paths - merged PDF will be generated on-demand when viewing
-      const attachmentPaths = uploadedAttachments.length > 0
-        ? uploadedAttachments
-        : editingRequest?.attachment_paths || null;
+        mergedPdfPath = data.path;
+      }
 
       const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
       const requestDepartment = profile?.enable_multi_company_requests ? selectedDepartment : formData.department;
@@ -770,7 +760,7 @@ export function PurchaseRequisition() {
         status,
         pr_checklist_id: formData.pr_checklist_id || null,
         checklist_items: checklistItemsWithoutFiles,
-        attachment_paths: attachmentPaths,
+        merged_pdf_path: mergedPdfPath,
       };
 
       if (formData.purchase_type === 'Purchase Order') {
