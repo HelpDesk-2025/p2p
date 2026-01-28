@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
-import { uploadAttachments } from '../../lib/storageHelper';
+import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { regenerateRFP } from '../../lib/rfpGenerator';
@@ -728,23 +728,16 @@ export function PurchaseRequisition() {
         // Convert blob to ArrayBuffer for more efficient upload
         const arrayBuffer = await mergedPdfBlob.arrayBuffer();
 
-        const { data, error: uploadError } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, arrayBuffer, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: 'application/pdf'
-          });
-
-        if (uploadError) {
+        try {
+          const { path } = await uploadLargeFile(filePath, arrayBuffer, 'application/pdf');
+          mergedPdfPath = path;
+        } catch (uploadError: any) {
           console.error('Upload error:', uploadError);
-          if (uploadError.message.includes('413') || uploadError.message.includes('431')) {
+          if (uploadError.message?.includes('413') || uploadError.message?.includes('431')) {
             throw new Error(`File is too large to upload. Please reduce the number or size of attachments.`);
           }
-          throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
+          throw new Error(`Failed to upload merged PDF: ${uploadError.message || uploadError}`);
         }
-
-        mergedPdfPath = data.path;
       }
 
       const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;

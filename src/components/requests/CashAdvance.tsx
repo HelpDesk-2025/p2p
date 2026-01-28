@@ -5,6 +5,7 @@ import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loade
 import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
+import { uploadLargeFile } from '../../lib/storageHelper';
 
 interface PaymentModeLine {
   name: string;
@@ -456,15 +457,13 @@ export function CashAdvance() {
           // Convert blob to ArrayBuffer for more efficient upload
           const arrayBuffer = await mergedPdfBlob.arrayBuffer();
 
-          const { error: uploadError } = await supabase.storage
-            .from('attachments')
-            .upload(filePath, arrayBuffer, {
-              contentType: 'application/pdf',
-              upsert: true,
-            });
-
-          if (uploadError) throw uploadError;
-          attachmentsPdfPath = filePath;
+          try {
+            const { path } = await uploadLargeFile(filePath, arrayBuffer, 'application/pdf');
+            attachmentsPdfPath = path;
+          } catch (uploadError: any) {
+            console.error('Upload error:', uploadError);
+            throw new Error(`Failed to upload merged PDF: ${uploadError.message || uploadError}`);
+          }
 
           attachmentMetadata = attachments.map(file => ({
             name: file.name,

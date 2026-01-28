@@ -102,3 +102,57 @@ export async function convertFileToBlob(file: File): Promise<Blob> {
     reader.readAsArrayBuffer(file);
   });
 }
+
+export async function uploadLargeFile(
+  filePath: string,
+  fileData: ArrayBuffer | Blob,
+  contentType: string = 'application/pdf'
+): Promise<{ path: string }> {
+  try {
+    // Get file size based on data type
+    const fileSize = fileData instanceof Blob ? fileData.size : fileData.byteLength;
+
+    // Use standard upload for files smaller than 6MB
+    if (fileSize < 6 * 1024 * 1024) {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .upload(filePath, fileData, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType
+        });
+
+      if (error) throw error;
+      return { path: data.path };
+    }
+
+    // For larger files, use direct fetch with minimal headers
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    const supabaseUrl = supabase.storage.from('attachments').getPublicUrl('').data.publicUrl.split('/object/public/attachments')[0];
+    const uploadUrl = `${supabaseUrl}/object/attachments/${filePath}`;
+
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': contentType,
+        'x-upsert': 'false'
+      },
+      body: fileData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} ${errorText}`);
+    }
+
+    return { path: filePath };
+  } catch (error) {
+    console.error('Error uploading large file:', error);
+    throw error;
+  }
+}
