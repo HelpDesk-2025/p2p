@@ -294,10 +294,18 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     }
 
     try {
+      if (!editingId) {
+        alert('Please save the user first before uploading a signature');
+        e.target.value = '';
+        return;
+      }
+
       // Upload to storage instead of storing in metadata
       const timestamp = Date.now();
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filePath = `signatures/${editingId || 'temp'}_${timestamp}_${sanitizedFileName}`;
+      const filePath = `signatures/${editingId}_${timestamp}_${sanitizedFileName}`;
+
+      console.log('Uploading signature to:', filePath);
 
       const { data, error } = await supabase.storage
         .from('attachments')
@@ -306,14 +314,19 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           upsert: true
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Storage upload error:', error);
+        throw new Error(`Upload failed: ${error.message || 'Unknown error'}`);
+      }
+
+      console.log('Upload successful:', data);
 
       // Store the path instead of base64 data
       setFormData({ ...formData, e_sig: data.path });
-      alert('Signature uploaded successfully!');
+      alert('Signature uploaded successfully! Click "Update User" to save.');
     } catch (error: any) {
       console.error('Error uploading signature:', error);
-      alert('Error uploading signature: ' + error.message);
+      alert('Error uploading signature: ' + (error.message || 'Unknown error'));
       e.target.value = '';
     }
   };
@@ -799,7 +812,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     <p className="mb-1 text-xs sm:text-sm text-slate-600 font-medium">
                       <span className="text-blue-600">Click to upload</span> or drag and drop
                     </p>
-                    <p className="text-xs text-slate-500">Image files only (max 10KB)</p>
+                    <p className="text-xs text-slate-500">Image files only (max 100KB)</p>
                   </div>
                   <input
                     type="file"
@@ -814,7 +827,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                   <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg sm:rounded-xl border-2 border-blue-200">
                     <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-lg border border-slate-200 shadow-sm flex-shrink-0">
                       <img
-                        src={formData.e_sig}
+                        src={formData.e_sig.startsWith('data:') || formData.e_sig.startsWith('http')
+                          ? formData.e_sig
+                          : `${supabase.storage.from('attachments').getPublicUrl(formData.e_sig).data.publicUrl}`
+                        }
                         alt="E-Signature"
                         className="max-h-12 max-w-12 sm:max-h-16 sm:max-w-16 object-contain"
                       />
