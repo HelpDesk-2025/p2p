@@ -159,6 +159,13 @@ export function PRApproval() {
   };
 
   const handleViewRequest = async (request: PurchaseReq) => {
+    console.log('PR Request Data:', {
+      id: request.id,
+      document_no: request.document_no,
+      checklist_items: request.checklist_items,
+      merged_pdf_path: request.merged_pdf_path,
+      merged_pdf: request.merged_pdf
+    });
     setSelectedRequest(request);
     setShowModal(true);
     setComments('');
@@ -1030,6 +1037,47 @@ export function PRApproval() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {selectedRequest.checklist_items && selectedRequest.checklist_items.length > 0 && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-3 block">
+                    {selectedRequest.merged_pdf_path || selectedRequest.merged_pdf ? 'Checklist Items' : 'Uploaded Attachments'}
+                  </label>
+                  <div className="space-y-2">
+                    {selectedRequest.checklist_items.map((item: any, index: number) => (
+                      <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-900">{item.item_name}</p>
+                            {item.description && (
+                              <p className="text-xs text-slate-600 mt-1">{item.description}</p>
+                            )}
+                            {item.fileName && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <FileText size={14} className="text-blue-600 flex-shrink-0" />
+                                <p className="text-xs text-slate-700 font-medium">{item.fileName}</p>
+                              </div>
+                            )}
+                            {!item.fileName && item.is_required && (
+                              <p className="text-xs text-amber-600 mt-2">No file uploaded</p>
+                            )}
+                          </div>
+                          {item.is_required && (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded flex-shrink-0">
+                              Required
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!selectedRequest.merged_pdf_path && !selectedRequest.merged_pdf && (
+                    <p className="text-xs text-slate-600 mt-3 italic">
+                      Note: Individual attachment files are stored with the request but could not be merged into a single PDF due to size constraints.
+                    </p>
+                  )}
                 </div>
               )}
 
