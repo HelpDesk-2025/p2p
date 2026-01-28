@@ -715,6 +715,12 @@ export function PurchaseRequisition() {
       if (filesToUpload.length > 0 && profile?.id) {
         const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
+        // Check file size (50MB limit for Supabase Storage)
+        const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
+        if (mergedPdfBlob.size > maxSizeInBytes) {
+          throw new Error(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 50MB. Please reduce the number or size of attachments.`);
+        }
+
         const timestamp = Date.now();
         const mergedFileName = `merged_${timestamp}.pdf`;
         const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
@@ -728,6 +734,10 @@ export function PurchaseRequisition() {
           });
 
         if (uploadError) {
+          console.error('Upload error:', uploadError);
+          if (uploadError.message.includes('413') || uploadError.message.includes('431')) {
+            throw new Error(`File is too large to upload. Please reduce the number or size of attachments.`);
+          }
           throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
         }
 
