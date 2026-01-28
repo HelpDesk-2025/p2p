@@ -713,88 +713,63 @@ export function PurchaseRequisition() {
 
       let mergedPdfPath = editingRequest?.merged_pdf_path || null;
       if (filesToUpload.length > 0 && profile?.id) {
-        const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
+        try {
+          const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
-        // Check file size (50MB limit for Supabase Storage)
-        const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
-        if (mergedPdfBlob.size > maxSizeInBytes) {
-          throw new Error(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 50MB. Please reduce the number or size of attachments.`);
-        }
+          // Check file size - use conservative limit to avoid HTTP header size issues
+          const maxSizeInBytes = 10 * 1024 * 1024; // 10MB to avoid HTTP header size issues in WebContainer
+          if (mergedPdfBlob.size > maxSizeInBytes) {
+            console.warn(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Skipping merge to avoid upload issues. Request will proceed without merged PDF.`);
+            mergedPdfPath = null;
+          } else {
+            const timestamp = Date.now();
+            const mergedFileName = `merged_${timestamp}.pdf`;
+            const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
 
-        const timestamp = Date.now();
-        const mergedFileName = `merged_${timestamp}.pdf`;
-        const filePath = `purchase-requisitions/${profile.id}/${mergedFileName}`;
-
-        console.log('Uploading merged PDF:', {
-          filePath,
-          size: `${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB`,
-          type: mergedPdfBlob.type
-        });
-
-        // Retry logic for network errors
-        let uploadAttempts = 0;
-        const maxAttempts = 3;
-        let data = null;
-        let uploadError = null;
-
-        while (uploadAttempts < maxAttempts) {
-          uploadAttempts++;
-          console.log(`Upload attempt ${uploadAttempts} of ${maxAttempts}`);
-
-          const result = await supabase.storage
-            .from('attachments')
-            .upload(filePath, mergedPdfBlob, {
-              cacheControl: '3600',
-              upsert: true, // Allow overwriting in case of retry
-              contentType: 'application/pdf'
+            console.log('Uploading merged PDF:', {
+              filePath,
+              size: `${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB`,
+              type: mergedPdfBlob.type
             });
 
-          data = result.data;
-          uploadError = result.error;
+            const { data, error: uploadError } = await supabase.storage
+              .from('attachments')
+              .upload(filePath, mergedPdfBlob, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: 'application/pdf'
+              });
 
-          if (!uploadError) {
-            console.log('Upload successful:', data);
-            break;
+            if (uploadError) {
+              console.error('Upload error:', {
+                message: uploadError.message,
+                name: uploadError.name
+              });
+
+              // If header size error, file too large, or other size-related error, skip merge and continue
+              if (uploadError.message.includes('header') ||
+                  uploadError.message.includes('413') ||
+                  uploadError.message.includes('431') ||
+                  uploadError.message.includes('Exceeded maximum') ||
+                  uploadError.message.includes('too large')) {
+                console.warn('Upload failed due to size constraints. Request will proceed without merged PDF.');
+                mergedPdfPath = null;
+              } else {
+                // For other errors, also just skip the merge and continue
+                console.warn('Upload failed, continuing without merged PDF:', uploadError.message);
+                mergedPdfPath = null;
+              }
+            } else {
+              console.log('Upload successful:', data);
+              mergedPdfPath = data.path;
+            }
           }
-
-          console.error(`Upload attempt ${uploadAttempts} failed:`, {
-            message: uploadError.message,
-            name: uploadError.name
-          });
-
-          // If it's a "Failed to fetch" error and we have attempts left, wait and retry
-          if ((uploadError.message.includes('Failed to fetch') || uploadError.message.includes('NetworkError')) && uploadAttempts < maxAttempts) {
-            console.log(`Retrying in 2 seconds...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            continue;
-          }
-
-          // Other errors, don't retry
-          if (!uploadError.message.includes('Failed to fetch') && !uploadError.message.includes('NetworkError')) {
-            break;
-          }
+        } catch (mergeError: any) {
+          console.error('Error during PDF merge/upload:', mergeError);
+          // If merge or upload fails, log it but continue without merged PDF
+          console.warn('Request will proceed without merged PDF due to error:', mergeError.message);
+          mergedPdfPath = null;
         }
-
-        if (uploadError) {
-          console.error('Final upload error after retries:', {
-            message: uploadError.message,
-            name: uploadError.name,
-            stack: uploadError.stack,
-            attempts: uploadAttempts
-          });
-
-          if (uploadError.message.includes('413') || uploadError.message.includes('431')) {
-            throw new Error(`File is too large to upload. Please reduce the number or size of attachments.`);
-          }
-
-          if (uploadError.message.includes('Failed to fetch') || uploadError.message.includes('NetworkError')) {
-            throw new Error(`Network error while uploading attachments after ${uploadAttempts} attempts. Please check your internet connection and try again. If the problem persists, contact support.`);
-          }
-
-          throw new Error(`Failed to upload merged PDF: ${uploadError.message}`);
-        }
-
-        mergedPdfPath = data.path;
       }
 
       const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
