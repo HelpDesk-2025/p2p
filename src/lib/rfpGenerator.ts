@@ -491,7 +491,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
   const allSupplierLines: string[][] = [];
 
   data.suppliers.forEach((supplier) => {
-    const supplierName = supplier.name || 'N/A';
+    const supplierName = sanitizeText(supplier.name || 'N/A');
     const displayText = supplier.isWinner ? `${supplierName} - AWARDED` : supplierName;
 
     const nameLines: string[] = [];
