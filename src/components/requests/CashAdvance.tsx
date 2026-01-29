@@ -1374,62 +1374,63 @@ export function CashAdvance() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b">
+        <div className="overflow-auto flex-1">
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
             <tr>
-              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button
                   onClick={() => handleSort('ca_number')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                 >
-                  <span className="hidden sm:inline">CA Number</span>
-                  <span className="sm:hidden">CA #</span>
+                  CA No.
                   {getSortIcon('ca_number')}
                 </button>
               </th>
-              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button
                   onClick={() => handleSort('request_date')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                 >
                   Date
                   {getSortIcon('request_date')}
                 </button>
               </th>
-              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
+              <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button
                   onClick={() => handleSort('purpose')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                 >
                   Purpose
                   {getSortIcon('purpose')}
                 </button>
               </th>
-              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button
                   onClick={() => handleSort('amount')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                 >
                   Amount
                   {getSortIcon('amount')}
                 </button>
               </th>
-              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
+              <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                 <button
                   onClick={() => handleSort('status')}
-                  className="flex items-center gap-1 hover:text-slate-700 transition-colors text-xs sm:text-sm"
+                  className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors w-full"
                 >
                   Status
                   {getSortIcon('status')}
                 </button>
               </th>
-              <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                Actions
+              <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Action
+                </span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-100">
             {sortedRequests.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">
@@ -1437,33 +1438,47 @@ export function CashAdvance() {
                 </td>
               </tr>
             ) : (
-              sortedRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium text-slate-900">{req.ca_number}</td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-slate-600">
-                    {new Date(req.request_date).toLocaleDateString()}
+              sortedRequests.map((req, index) => (
+                <tr key={req.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                  <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                    <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.ca_number}>
+                      {req.ca_number}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-slate-600 max-w-xs truncate hidden md:table-cell">
-                    {req.purpose}
+                  <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                    <span className="text-sm text-slate-700">
+                      {new Date(req.request_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-medium text-slate-900 text-right">
-                    ₱{req.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <td className="px-3 xl:px-4 py-3">
+                    <span className="text-sm text-slate-700 truncate block max-w-[200px]" title={req.purpose}>
+                      {req.purpose}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
+                  <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                    <span className="text-sm font-bold text-slate-900">
+                      ₱{req.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </td>
+                  <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
                       {req.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm">
+                  <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                     <button
                       onClick={() => {
                         setViewingRequest(req);
                         setShowViewModal(true);
                       }}
-                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                      title="View Request"
                     >
                       <Eye className="w-4 h-4" />
-                      <span className="hidden sm:inline">View</span>
                     </button>
                   </td>
                 </tr>

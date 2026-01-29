@@ -2054,154 +2054,53 @@ export function PurchaseRequisition() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {/* Mobile Card Layout */}
-        <div className="lg:hidden">
-          {sortedRequests.length === 0 ? (
-            <div className="px-6 py-12 text-center text-sm text-slate-500">
-              No purchase requisitions found
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-200">
-              {sortedRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    setViewingRequest(req);
-                    setShowViewModal(true);
-                  }}
-                >
-                  <div className="space-y-3">
-                    {/* Header: Document No and Status */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                          Document No.
-                        </div>
-                        <div className="font-mono font-bold text-base text-slate-900 truncate">
-                          {req.document_no || req.pr_number}
-                        </div>
-                      </div>
-                      <span
-                        className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(req.status)}`}
-                      >
-                        {req.status}
-                      </span>
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                        Description
-                      </div>
-                      <div className="text-sm text-slate-700 line-clamp-2">
-                        {req.description || req.purpose}
-                      </div>
-                    </div>
-
-                    {/* Info Grid: Date and Type */}
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                      <div>
-                        <div className="text-xs font-medium text-slate-500 mb-1">Date</div>
-                        <div className="text-sm text-slate-900">
-                          {new Date(req.request_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium text-slate-500 mb-1">Type</div>
-                        <div className="text-sm text-slate-900 truncate">
-                          {req.purchase_type === 'Purchase Order' ? 'PO' : 'Non-PO'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payee */}
-                    {req.payee && (
-                      <div className="pt-2 border-t border-slate-100">
-                        <div className="text-xs font-medium text-slate-500 mb-1">Payee</div>
-                        <div className="text-sm text-slate-900">
-                          {req.payee}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Amount */}
-                    <div className="pt-2 border-t border-slate-100">
-                      <div className="text-xs font-medium text-slate-500 mb-1">Total Amount</div>
-                      <div className="text-lg font-bold text-slate-900">
-                        ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-
-                    {/* Action Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setViewingRequest(req);
-                        setShowViewModal(true);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Desktop Table Layout */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+        <div className="overflow-auto flex-1">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('document_no')} className="flex items-center gap-2 hover:text-slate-700">
-                    Document No. {getSortIcon('document_no')}
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('document_no')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                    Doc No. {getSortIcon('document_no')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('description')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('description')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Description {getSortIcon('description')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Date {getSortIcon('request_date')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('purchase_type')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('purchase_type')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Type {getSortIcon('purchase_type')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('payee')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('payee')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Payee {getSortIcon('payee')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('total_amount')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('total_amount')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Amount {getSortIcon('total_amount')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  <button onClick={() => handleSort('status')} className="flex items-center gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('status')} className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors w-full">
                     Status {getSortIcon('status')}
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Actions
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Action
+                  </span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-100">
               {sortedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-500">
@@ -2209,43 +2108,57 @@ export function PurchaseRequisition() {
                   </td>
                 </tr>
               ) : (
-                sortedRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
-                      {req.document_no || req.pr_number}
+                sortedRequests.map((req, index) => (
+                  <tr key={req.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.document_no || req.pr_number}>
+                        {req.document_no || req.pr_number}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">
-                      {req.description || req.purpose}
+                    <td className="px-3 xl:px-4 py-3">
+                      <span className="text-sm text-slate-700 truncate block max-w-[250px]" title={req.description || req.purpose}>
+                        {req.description || req.purpose}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                      {new Date(req.request_date).toLocaleDateString()}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-slate-700">
+                        {new Date(req.request_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                      {req.purchase_type || 'N/A'}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-100 text-blue-700 text-xs font-medium" title={req.purchase_type || 'N/A'}>
+                        {req.purchase_type || 'N/A'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">
-                      {req.payee || '-'}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={req.payee || '-'}>
+                        {req.payee || '-'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">
-                      ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-bold text-slate-900">
+                        ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
-                      >
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
                         {req.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button
                         onClick={() => {
                           setViewingRequest(req);
                           setShowViewModal(true);
                         }}
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        title="View Request"
                       >
                         <Eye className="w-4 h-4" />
-                        View
                       </button>
                     </td>
                   </tr>

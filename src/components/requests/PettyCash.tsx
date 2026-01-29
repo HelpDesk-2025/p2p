@@ -1937,53 +1937,57 @@ export function PettyCash() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b">
+        <div className="overflow-auto flex-1">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
               <tr>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => handleSort('pc_number')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
-                    <span className="sm:hidden">PC #</span>
-                    <span className="hidden sm:inline">PC Number</span>
-                    {getSortIcon('pc_number')}
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('pc_number')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                    PC No. {getSortIcon('pc_number')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('request_date')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Date {getSortIcon('request_date')}
                   </button>
                 </th>
                 {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
                   <>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
-                      Company
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Company
+                      </span>
                     </th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden lg:table-cell">
-                      Department
-                  </th>
-                </>
-              )}
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase hidden md:table-cell">
-                  <button onClick={() => handleSort('purpose')} className="flex items-center gap-2 hover:text-slate-700">
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Department
+                      </span>
+                    </th>
+                  </>
+                )}
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('purpose')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Purpose {getSortIcon('purpose')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-right text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => handleSort('amount')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('amount')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Amount {getSortIcon('amount')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  <button onClick={() => handleSort('status')} className="flex items-center gap-1 sm:gap-2 hover:text-slate-700">
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('status')} className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors w-full">
                     Status {getSortIcon('status')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                  Actions
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Action
+                  </span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-100">
               {sortedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">
@@ -1991,43 +1995,61 @@ export function PettyCash() {
                   </td>
                 </tr>
               ) : (
-                sortedRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium text-slate-900">{req.pc_number}</td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600">
-                      {new Date(req.request_date).toLocaleString()}
+                sortedRequests.map((req, index) => (
+                  <tr key={req.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.pc_number}>
+                        {req.pc_number}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-slate-700">
+                        {new Date(req.request_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
                     </td>
                     {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
                       <>
-                        <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
-                          {(req as any).companies?.name || 'N/A'}
+                        <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={(req as any).companies?.name || 'N/A'}>
+                            {(req as any).companies?.name || 'N/A'}
+                          </span>
                         </td>
-                        <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
-                          {req.department || 'N/A'}
+                        <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium max-w-[140px] truncate" title={req.department || 'N/A'}>
+                            {req.department || 'N/A'}
+                          </span>
                         </td>
                       </>
                     )}
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate hidden md:table-cell">
-                      {req.purpose}
+                    <td className="px-3 xl:px-4 py-3">
+                      <span className="text-sm text-slate-700 truncate block max-w-[200px]" title={req.purpose}>
+                        {req.purpose}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm font-medium text-slate-900 text-right font-mono">
-                      {formatCurrency(req.amount)}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-bold text-slate-900">
+                        {formatCurrency(req.amount)}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
                         {req.status}
                       </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-xs sm:text-sm">
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button
                         onClick={() => {
                           setViewingRequest(req);
                           setShowViewModal(true);
                         }}
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        title="View Request"
                       >
                         <Eye className="w-4 h-4" />
-                        <span className="hidden sm:inline">View</span>
                       </button>
                     </td>
                   </tr>
