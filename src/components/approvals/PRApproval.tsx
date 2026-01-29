@@ -639,153 +639,144 @@ export function PRApproval() {
             </div>
 
             {/* Desktop Table Layout */}
-            <div className="hidden lg:block overflow-hidden flex-1 flex flex-col">
-              {/* Sticky Table Header */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
-                    <tr>
-                      <th className="w-[11%] px-3 xl:px-4 py-3.5 text-left">
-                        <button
-                          onClick={() => handleSort('document_no')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
-                        >
-                          Doc No.
-                          {getSortIcon('document_no')}
-                        </button>
-                      </th>
-                      <th className="w-[20%] px-3 xl:px-4 py-3.5 text-left">
-                        <button
-                          onClick={() => handleSort('requester')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
-                        >
-                          Requester
-                          {getSortIcon('requester')}
-                        </button>
-                      </th>
-                      <th className="w-[13%] px-3 xl:px-4 py-3.5 text-left">
-                        <button
-                          onClick={() => handleSort('department')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
-                        >
-                          Department
-                          {getSortIcon('department')}
-                        </button>
-                      </th>
-                      <th className="w-[16%] px-3 xl:px-4 py-3.5 text-left">
-                        <button
-                          onClick={() => handleSort('payee')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
-                        >
-                          Payee
-                          {getSortIcon('payee')}
-                        </button>
-                      </th>
-                      <th className="w-[12%] px-3 xl:px-4 py-3.5 text-left">
-                        <button
-                          onClick={() => handleSort('request_date')}
-                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
-                        >
-                          Date
-                          {getSortIcon('request_date')}
-                        </button>
-                      </th>
-                      <th className="w-[13%] px-3 xl:px-4 py-3.5 text-right">
-                        <button
-                          onClick={() => handleSort('total_amount')}
-                          className="flex items-center gap-1.5 justify-end text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors ml-auto"
-                        >
-                          Amount
-                          {getSortIcon('total_amount')}
-                        </button>
-                      </th>
-                      <th className="w-[8%] px-3 xl:px-4 py-3.5 text-center">
-                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Level
-                        </span>
-                      </th>
-                      <th className="w-[7%] px-3 xl:px-4 py-3.5 text-center">
-                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                          Action
-                        </span>
-                      </th>
-                    </tr>
-                  </thead>
-                </table>
-              </div>
-
-              {/* Scrollable Table Body */}
-              <div className="overflow-y-auto flex-1">
-                <table className="w-full">
-                  <tbody className="divide-y divide-slate-100">
-                    {sortedRequests.map((request, index) => (
-                      <tr
-                        key={request.id}
-                        className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+            <div className="hidden lg:block overflow-auto flex-1">
+              <table className="w-full border-collapse">
+                <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+                  <tr>
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort('document_no')}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                       >
-                        <td className="w-[11%] px-3 xl:px-4 py-3">
-                          <div className="flex flex-col">
-                            <span className="font-mono font-bold text-sm text-slate-900 truncate" title={request.document_no}>
-                              {request.document_no}
-                            </span>
-                            <span className="font-mono text-xs text-slate-500 truncate" title={request.pr_number}>
-                              {request.pr_number}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="w-[20%] px-3 xl:px-4 py-3">
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-semibold text-slate-900 truncate" title={request.user_profiles?.full_name}>
-                              {request.user_profiles?.full_name}
-                            </span>
-                            <span className="text-xs text-slate-500 truncate" title={request.user_profiles?.email}>
-                              {request.user_profiles?.email}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="w-[13%] px-3 xl:px-4 py-3">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium truncate max-w-full" title={request.department}>
-                            {request.department}
+                        Doc No.
+                        {getSortIcon('document_no')}
+                      </button>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort('requester')}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                      >
+                        Requester
+                        {getSortIcon('requester')}
+                      </button>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort('department')}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                      >
+                        Department
+                        {getSortIcon('department')}
+                      </button>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort('payee')}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                      >
+                        Payee
+                        {getSortIcon('payee')}
+                      </button>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort('request_date')}
+                        className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                      >
+                        Date
+                        {getSortIcon('request_date')}
+                      </button>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => handleSort('total_amount')}
+                        className="flex items-center gap-1.5 justify-end text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors ml-auto"
+                      >
+                        Amount
+                        {getSortIcon('total_amount')}
+                      </button>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Level
+                      </span>
+                    </th>
+                    <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Action
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sortedRequests.map((request, index) => (
+                    <tr
+                      key={request.id}
+                      className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    >
+                      <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-col min-w-[120px]">
+                          <span className="font-mono font-bold text-sm text-slate-900 truncate" title={request.document_no}>
+                            {request.document_no}
                           </span>
-                        </td>
-                        <td className="w-[16%] px-3 xl:px-4 py-3">
-                          <span className="text-sm text-slate-900 font-medium truncate block" title={request.payee || 'N/A'}>
-                            {request.payee || <span className="text-slate-400 italic">N/A</span>}
+                          <span className="font-mono text-xs text-slate-500 truncate" title={request.pr_number}>
+                            {request.pr_number}
                           </span>
-                        </td>
-                        <td className="w-[12%] px-3 xl:px-4 py-3">
-                          <span className="text-sm text-slate-700">
-                            {new Date(request.request_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
+                        </div>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3">
+                        <div className="flex flex-col min-w-[180px] max-w-[250px]">
+                          <span className="text-sm font-semibold text-slate-900 truncate" title={request.user_profiles?.full_name}>
+                            {request.user_profiles?.full_name}
                           </span>
-                        </td>
-                        <td className="w-[13%] px-3 xl:px-4 py-3 text-right">
-                          <span className="text-sm font-bold text-slate-900">
-                            ₱{request.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <span className="text-xs text-slate-500 truncate" title={request.user_profiles?.email}>
+                            {request.user_profiles?.email}
                           </span>
-                        </td>
-                        <td className="w-[8%] px-3 xl:px-4 py-3 text-center">
-                          <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
-                            L{request.current_approval_level + 1}
-                          </span>
-                        </td>
-                        <td className="w-[7%] px-3 xl:px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleViewRequest(request)}
-                            className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
-                            title="Review Request"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium max-w-[140px] truncate" title={request.department}>
+                          {request.department}
+                        </span>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3">
+                        <span className="text-sm text-slate-900 font-medium truncate block max-w-[160px]" title={request.payee || 'N/A'}>
+                          {request.payee || <span className="text-slate-400 italic">N/A</span>}
+                        </span>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                        <span className="text-sm text-slate-700">
+                          {new Date(request.request_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3 text-right whitespace-nowrap">
+                        <span className="text-sm font-bold text-slate-900">
+                          ₱{request.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
+                          L{request.current_approval_level + 1}
+                        </span>
+                      </td>
+                      <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                        <button
+                          onClick={() => handleViewRequest(request)}
+                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          title="Review Request"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}
