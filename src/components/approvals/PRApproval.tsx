@@ -256,6 +256,10 @@ export function PRApproval() {
         aVal = a.department;
         bVal = b.department;
         break;
+      case 'payee':
+        aVal = a.payee || '';
+        bVal = b.payee || '';
+        break;
       case 'total_amount':
         aVal = a.total_amount;
         bVal = b.total_amount;
@@ -537,13 +541,21 @@ export function PRApproval() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Purchase Requisition Approvals</h2>
-        <p className="text-slate-600 mt-1">Review and approve purchase requisitions</p>
+    <div className="space-y-4 lg:space-y-6 h-full">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 lg:p-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-xl lg:text-2xl font-bold text-slate-900">Purchase Requisition Approvals</h2>
+            <p className="text-slate-600 mt-1 text-sm lg:text-base">Review and approve purchase requisitions</p>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
+            <span className="text-sm font-medium text-slate-600">Pending:</span>
+            <span className="text-lg font-bold text-blue-600">{requests.length}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {requests.length === 0 ? (
           <div className="p-12 text-center">
             <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />
@@ -627,116 +639,153 @@ export function PRApproval() {
             </div>
 
             {/* Desktop Table Layout */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      <button
-                        onClick={() => handleSort('document_no')}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        Document No.
-                        {getSortIcon('document_no')}
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      <button
-                        onClick={() => handleSort('pr_number')}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        PR Number
-                        {getSortIcon('pr_number')}
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      <button
-                        onClick={() => handleSort('requester')}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        Requester
-                        {getSortIcon('requester')}
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      <button
-                        onClick={() => handleSort('department')}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        Department
-                        {getSortIcon('department')}
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      <button
-                        onClick={() => handleSort('payee')}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        Payee
-                        {getSortIcon('payee')}
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      <button
-                        onClick={() => handleSort('total_amount')}
-                        className="flex items-center gap-1 hover:text-slate-900 transition-colors"
-                      >
-                        Amount
-                        {getSortIcon('total_amount')}
-                      </button>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Approval Level
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {sortedRequests.map((request) => (
-                    <tr key={request.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-mono font-semibold text-sm text-slate-900">{request.document_no}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-mono text-sm text-slate-700">{request.pr_number}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-slate-900">
-                          {request.user_profiles?.full_name}
-                        </div>
-                        <div className="text-xs text-slate-500">{request.user_profiles?.email}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{request.department}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{request.payee || '-'}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-slate-900">
-                          ₱{request.total_amount.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold">
-                          Level {request.current_approval_level + 1}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+            <div className="hidden lg:block overflow-hidden flex-1 flex flex-col">
+              {/* Sticky Table Header */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+                    <tr>
+                      <th className="w-[11%] px-3 xl:px-4 py-3.5 text-left">
                         <button
-                          onClick={() => handleViewRequest(request)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                          onClick={() => handleSort('document_no')}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                         >
-                          <Eye className="w-4 h-4" />
-                          Review
+                          Doc No.
+                          {getSortIcon('document_no')}
                         </button>
-                      </td>
+                      </th>
+                      <th className="w-[20%] px-3 xl:px-4 py-3.5 text-left">
+                        <button
+                          onClick={() => handleSort('requester')}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                        >
+                          Requester
+                          {getSortIcon('requester')}
+                        </button>
+                      </th>
+                      <th className="w-[13%] px-3 xl:px-4 py-3.5 text-left">
+                        <button
+                          onClick={() => handleSort('department')}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                        >
+                          Department
+                          {getSortIcon('department')}
+                        </button>
+                      </th>
+                      <th className="w-[16%] px-3 xl:px-4 py-3.5 text-left">
+                        <button
+                          onClick={() => handleSort('payee')}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                        >
+                          Payee
+                          {getSortIcon('payee')}
+                        </button>
+                      </th>
+                      <th className="w-[12%] px-3 xl:px-4 py-3.5 text-left">
+                        <button
+                          onClick={() => handleSort('request_date')}
+                          className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                        >
+                          Date
+                          {getSortIcon('request_date')}
+                        </button>
+                      </th>
+                      <th className="w-[13%] px-3 xl:px-4 py-3.5 text-right">
+                        <button
+                          onClick={() => handleSort('total_amount')}
+                          className="flex items-center gap-1.5 justify-end text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors ml-auto"
+                        >
+                          Amount
+                          {getSortIcon('total_amount')}
+                        </button>
+                      </th>
+                      <th className="w-[8%] px-3 xl:px-4 py-3.5 text-center">
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          Level
+                        </span>
+                      </th>
+                      <th className="w-[7%] px-3 xl:px-4 py-3.5 text-center">
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          Action
+                        </span>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                </table>
+              </div>
+
+              {/* Scrollable Table Body */}
+              <div className="overflow-y-auto flex-1">
+                <table className="w-full">
+                  <tbody className="divide-y divide-slate-100">
+                    {sortedRequests.map((request, index) => (
+                      <tr
+                        key={request.id}
+                        className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                      >
+                        <td className="w-[11%] px-3 xl:px-4 py-3">
+                          <div className="flex flex-col">
+                            <span className="font-mono font-bold text-sm text-slate-900 truncate" title={request.document_no}>
+                              {request.document_no}
+                            </span>
+                            <span className="font-mono text-xs text-slate-500 truncate" title={request.pr_number}>
+                              {request.pr_number}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="w-[20%] px-3 xl:px-4 py-3">
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-semibold text-slate-900 truncate" title={request.user_profiles?.full_name}>
+                              {request.user_profiles?.full_name}
+                            </span>
+                            <span className="text-xs text-slate-500 truncate" title={request.user_profiles?.email}>
+                              {request.user_profiles?.email}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="w-[13%] px-3 xl:px-4 py-3">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium truncate max-w-full" title={request.department}>
+                            {request.department}
+                          </span>
+                        </td>
+                        <td className="w-[16%] px-3 xl:px-4 py-3">
+                          <span className="text-sm text-slate-900 font-medium truncate block" title={request.payee || 'N/A'}>
+                            {request.payee || <span className="text-slate-400 italic">N/A</span>}
+                          </span>
+                        </td>
+                        <td className="w-[12%] px-3 xl:px-4 py-3">
+                          <span className="text-sm text-slate-700">
+                            {new Date(request.request_date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </td>
+                        <td className="w-[13%] px-3 xl:px-4 py-3 text-right">
+                          <span className="text-sm font-bold text-slate-900">
+                            ₱{request.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                        <td className="w-[8%] px-3 xl:px-4 py-3 text-center">
+                          <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
+                            L{request.current_approval_level + 1}
+                          </span>
+                        </td>
+                        <td className="w-[7%] px-3 xl:px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleViewRequest(request)}
+                            className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                            title="Review Request"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}
