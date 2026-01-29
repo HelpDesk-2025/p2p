@@ -276,71 +276,75 @@ export function SmeApproval() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+        <div className="overflow-auto flex-1">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
               <tr>
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
                     onClick={() => handleSort('document_no')}
-                    className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 transition-colors text-xs sm:text-sm"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                   >
-                    <span className="hidden sm:inline">Document No.</span>
-                    <span className="sm:hidden">Doc #</span>
+                    Doc No.
                     {getSortIcon('document_no')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
                     onClick={() => handleSort('requester')}
-                    className="flex items-center gap-2 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                   >
                     Requester
                     {getSortIcon('requester')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden lg:table-cell">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
                     onClick={() => handleSort('department')}
-                    className="flex items-center gap-2 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                   >
                     Department
                     {getSortIcon('department')}
                   </button>
                 </th>
                 {profile?.role === 'admin' && (
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
-                    Assigned SME
+                  <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Assigned SME
+                    </span>
                   </th>
                 )}
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
                     onClick={() => handleSort('purpose')}
-                    className="flex items-center gap-1 sm:gap-2 hover:text-slate-700 transition-colors text-xs sm:text-sm"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                   >
                     Purpose
                     {getSortIcon('purpose')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
                     onClick={() => handleSort('created_at')}
-                    className="flex items-center gap-2 hover:text-slate-700 transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                   >
-                    <span className="hidden lg:inline">Request Date</span>
-                    <span className="lg:hidden">Date</span>
+                    Date
                     {getSortIcon('created_at')}
                   </button>
                 </th>
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
-                  Status
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Status
+                  </span>
                 </th>
-                <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Actions
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Action
+                  </span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-100">
               {sortedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={profile?.role === 'admin' ? 8 : 7} className="px-3 py-8 sm:px-6 text-center text-slate-500 text-sm">
@@ -348,47 +352,63 @@ export function SmeApproval() {
                   </td>
                 </tr>
               ) : (
-                sortedRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-mono font-medium text-slate-900">
-                      {req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}
+                sortedRequests.map((req, index) => (
+                  <tr
+                    key={req.id}
+                    className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                  >
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}>
+                        {req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden md:table-cell">
-                      {req.requester?.full_name}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm font-semibold text-slate-900 truncate block max-w-[180px]" title={req.requester?.full_name}>
+                        {req.requester?.full_name}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden lg:table-cell">
-                      {req.purchase_requisitions?.department}
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium max-w-[140px] truncate" title={req.purchase_requisitions?.department}>
+                        {req.purchase_requisitions?.department}
+                      </span>
                     </td>
                     {profile?.role === 'admin' && (
-                      <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden xl:table-cell">
-                        {req.sme_user?.full_name}
+                      <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                        <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={req.sme_user?.full_name}>
+                          {req.sme_user?.full_name}
+                        </span>
                       </td>
                     )}
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 text-xs sm:text-sm text-slate-600 max-w-[120px] sm:max-w-xs truncate">
-                      {req.purpose}
+                    <td className="px-3 xl:px-4 py-3">
+                      <span className="text-sm text-slate-700 truncate block max-w-[200px]" title={req.purpose}>
+                        {req.purpose}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-600 hidden sm:table-cell">
-                      <span className="hidden lg:inline">{new Date(req.created_at).toLocaleString()}</span>
-                      <span className="lg:hidden">{new Date(req.created_at).toLocaleDateString()}</span>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-slate-700">
+                        {new Date(req.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap hidden md:table-cell">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
-                      >
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
                         {req.status}
                       </span>
                     </td>
-                    <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button
                         onClick={() => {
                           setViewingRequest(req);
                           setShowViewModal(true);
                           setComments(req.sme_comments || '');
                         }}
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        title="View Request"
                       >
-                        <Eye size={16} className="sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">View</span>
+                        <Eye className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
