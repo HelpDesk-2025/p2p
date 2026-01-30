@@ -6,22 +6,31 @@ import { getUserPermissions, UserPermissions } from '../lib/permissions';
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  actualProfile: UserProfile | null;
   permissions: UserPermissions | null;
   loading: boolean;
+  isImpersonating: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, department: string, companyId: string, companyName: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  impersonateUser: (userId: string) => Promise<void>;
+  stopImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [actualProfile, setActualProfile] = useState<UserProfile | null>(null);
+  const [impersonatedProfile, setImpersonatedProfile] = useState<UserProfile | null>(null);
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Use impersonated profile if available, otherwise use actual profile
+  const profile = impersonatedProfile || actualProfile;
+  const isImpersonating = impersonatedProfile !== null;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Force logout on session expiration or token refresh failure
         if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
           setUser(null);
-          setProfile(null);
+          setActualProfile(null);
+          setImpersonatedProfile(null);
           setPermissions(null);
           setLoading(false);
           return;
@@ -48,7 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           await loadProfile(session.user.id);
         } else {
-          setProfile(null);
+          setActualProfile(null);
+          setImpersonatedProfile(null);
           setPermissions(null);
           setLoading(false);
         }
@@ -60,7 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error || !session) {
         setUser(null);
-        setProfile(null);
+        setActualProfile(null);
+        setImpersonatedProfile(null);
         setPermissions(null);
       }
     }, 30000);
@@ -84,17 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Check if profile is inactive and sign out if so
       if (data && !data.is_active) {
         await supabase.auth.signOut();
-        setProfile(null);
+        setActualProfile(null);
         setUser(null);
         setPermissions(null);
         setLoading(false);
         return;
       }
 
-      setProfile(data);
+      setActualProfile(data);
 
-      // Load user permissions
-      const userPermissions = await getUserPermissions(userId);
+      // Load user permissions (use impersonated profile if available)
+      const profileToUse = impersonatedProfile || data;
+      const userPermissions = profileToUse ? await getUserPermissions(profileToUse.id) : null;
       setPermissions(userPermissions);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -170,13 +183,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Sign out error:', error);
     } finally {
       setUser(null);
-      setProfile(null);
+      setActualProfile(null);
+      setImpersonatedProfile(null);
       setPermissions(null);
     }
   };
 
+  const impersonateUser = async (userId: string) => {
+    // Only admins can impersonate
+    if (actualProfile?.role !== 'admin') {
+      throw new Error('Only administrators can impersonate users');
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error('User not found');
+
+      setImpersonatedProfile(data);
+
+      // Load permissions for impersonated user
+      const userPermissions = await getUserPermissions(userId);
+      setPermissions(userPermissions);
+    } catch (error) {
+      console.error('Error impersonating user:', error);
+      throw error;
+    }
+  };
+
+  const stopImpersonation = () => {
+    setImpersonatedProfile(null);
+    // Reload actual user's permissions
+    if (actualProfile) {
+      getUserPermissions(actualProfile.id).then(setPermissions);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, permissions, loading, signIn, signUp, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      actualProfile,
+      permissions,
+      loading,
+      isImpersonating,
+      signIn,
+      signUp,
+      signOut,
+      resetPassword,
+      updatePassword,
+      impersonateUser,
+      stopImpersonation
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission, MODULE_PERMISSIONS } from '../lib/permissions';
+import { ImpersonationBanner } from './ImpersonationBanner';
 import {
   LayoutDashboard,
   FileText,
@@ -54,6 +55,8 @@ export type ViewType =
   | 'config-vendors-items'
   | 'config-expense-types'
   | 'config-roles-permissions'
+  | 'config-impersonation'
+  | 'config-withholding-tax-rates'
   | 'change-password'
   | 'user-manual';
 
@@ -170,6 +173,7 @@ const menuItems: MenuItem[] = [
 const configItems: MenuItem[] = [
   { id: 'config-approvers', label: 'Approvers', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-users', label: 'Users', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
+  { id: 'config-impersonation', label: 'View as User', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
   { id: 'config-checklists', label: 'PR Checklists', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-holidays', label: 'Holidays', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
@@ -367,6 +371,8 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
             <div className="flex-1" />
           </div>
         </header>
+
+        <ImpersonationBanner />
 
         <main className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden">{children}</main>
       </div>

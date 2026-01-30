@@ -5,8 +5,9 @@ import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
 import { RolesPermissionsConfig } from './RolesPermissionsConfig';
+import { ImpersonationConfig } from './ImpersonationConfig';
 
-type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates';
+type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation';
 
 interface ConfigManagerProps {
   type: ConfigType;
@@ -94,6 +95,8 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         return <ExpenseTypesConfig data={data} reload={loadData} />;
       case 'withholding-tax-rates':
         return <WithholdingTaxRatesConfig data={data} reload={loadData} />;
+      case 'impersonation':
+        return <ImpersonationConfig />;
       default:
         return <div>Select a configuration type</div>;
     }

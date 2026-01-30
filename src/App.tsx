@@ -114,6 +114,8 @@ function AppContent() {
         return <ConfigManager type="withholding-tax-rates" />;
       case 'config-roles-permissions':
         return <ConfigManager type="roles-permissions" />;
+      case 'config-impersonation':
+        return <ConfigManager type="impersonation" />;
       case 'change-password':
         return <ChangePassword />;
       default:
