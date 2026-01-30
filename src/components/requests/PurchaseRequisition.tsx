@@ -2055,51 +2055,51 @@ export function PurchaseRequisition() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Mobile Card View */}
-        <div className="lg:hidden">
+        <div className="lg:hidden w-full">
           {sortedRequests.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-slate-500">
               No purchase requisitions found
             </div>
           ) : (
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-slate-200 w-full">
               {sortedRequests.map((req) => (
                 <div
                   key={req.id}
-                  className="p-4 hover:bg-slate-50 transition-colors"
+                  className="p-4 hover:bg-slate-50 transition-colors w-full"
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-3 w-full overflow-hidden">
                     {/* Header: Document No and Status */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 w-full min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
                           Document No.
                         </div>
-                        <div className="font-mono font-bold text-base text-slate-900 truncate">
+                        <div className="font-mono font-bold text-sm text-slate-900 truncate">
                           {req.document_no || req.pr_number}
                         </div>
                       </div>
                       <span
-                        className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(req.status)}`}
+                        className={`flex-shrink-0 px-2.5 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(req.status)}`}
                       >
                         {req.status}
                       </span>
                     </div>
 
                     {/* Description */}
-                    <div>
+                    <div className="w-full min-w-0">
                       <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
                         Description
                       </div>
-                      <div className="text-sm text-slate-700 line-clamp-2">
+                      <div className="text-sm text-slate-700 line-clamp-2 break-words">
                         {req.description || req.purpose}
                       </div>
                     </div>
 
                     {/* Info Grid: Date and Type */}
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                      <div>
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 w-full">
+                      <div className="min-w-0 overflow-hidden">
                         <div className="text-xs font-medium text-slate-500 mb-1">Date</div>
-                        <div className="text-sm text-slate-900">
+                        <div className="text-sm text-slate-900 truncate">
                           {new Date(req.request_date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -2107,7 +2107,7 @@ export function PurchaseRequisition() {
                           })}
                         </div>
                       </div>
-                      <div>
+                      <div className="min-w-0 overflow-hidden">
                         <div className="text-xs font-medium text-slate-500 mb-1">Type</div>
                         <div className="text-sm text-slate-900 truncate">
                           {req.purchase_type === 'Purchase Order' ? 'PO' : 'Non-PO'}
@@ -2117,7 +2117,7 @@ export function PurchaseRequisition() {
 
                     {/* Payee */}
                     {req.payee && (
-                      <div className="pt-2 border-t border-slate-100">
+                      <div className="pt-2 border-t border-slate-100 w-full min-w-0">
                         <div className="text-xs font-medium text-slate-500 mb-1">Payee</div>
                         <div className="text-sm text-slate-900 truncate">
                           {req.payee}
@@ -2126,9 +2126,9 @@ export function PurchaseRequisition() {
                     )}
 
                     {/* Amount */}
-                    <div className="pt-2 border-t border-slate-100">
+                    <div className="pt-2 border-t border-slate-100 w-full min-w-0">
                       <div className="text-xs font-medium text-slate-500 mb-1">Total Amount</div>
-                      <div className="text-lg font-bold text-slate-900">
+                      <div className="text-lg font-bold text-slate-900 break-all">
                         ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -2141,8 +2141,8 @@ export function PurchaseRequisition() {
                       }}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
                     >
-                      <Eye className="w-4 h-4" />
-                      View Details
+                      <Eye className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">View Details</span>
                     </button>
                   </div>
                 </div>
