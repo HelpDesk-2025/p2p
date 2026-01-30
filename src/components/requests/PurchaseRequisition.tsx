@@ -2038,8 +2038,8 @@ export function PurchaseRequisition() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 w-full max-w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
           <button
@@ -2053,9 +2053,9 @@ export function PurchaseRequisition() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
         {/* Mobile Card View */}
-        <div className="lg:hidden w-full">
+        <div className="lg:hidden w-full max-w-full overflow-x-hidden">
           {sortedRequests.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-slate-500">
               No purchase requisitions found

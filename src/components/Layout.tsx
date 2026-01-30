@@ -205,7 +205,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const procurementItems = filteredMenuItems.filter((item) => item.group === 'procurement');
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-slate-200">
@@ -355,12 +355,12 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
         </div>
       </aside>
 
-      <div className="flex-1 lg:ml-64">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="flex-1 lg:ml-64 w-full max-w-full overflow-x-hidden">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-40 w-full">
+          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between w-full max-w-full">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100"
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0"
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -368,7 +368,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden">{children}</main>
       </div>
 
       {mobileMenuOpen && (
