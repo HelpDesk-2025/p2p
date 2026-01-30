@@ -61,7 +61,7 @@ function AppContent() {
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onViewChange={setCurrentView} />;
       case 'user-manual':
         return <UserManual />;
       case 'pr-request':

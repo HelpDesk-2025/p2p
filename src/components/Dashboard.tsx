@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { ViewType } from './Layout';
 import {
   FileText,
   Search,
@@ -35,7 +36,11 @@ interface DashboardStats {
   };
 }
 
-export function Dashboard() {
+interface DashboardProps {
+  onViewChange?: (view: ViewType) => void;
+}
+
+export function Dashboard({ onViewChange }: DashboardProps) {
   const { profile } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     myRequests: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 },
@@ -198,30 +203,35 @@ export function Dashboard() {
                 label="Purchase Requisitions"
                 count={stats.pendingApprovals.pr}
                 alert={stats.pendingApprovals.pr > 0}
+                onClick={() => onViewChange?.('pr-approval')}
               />
               <RequestTypeCard
                 icon={Search}
                 label="Canvass"
                 count={stats.pendingApprovals.canvass}
                 alert={stats.pendingApprovals.canvass > 0}
+                onClick={() => onViewChange?.('canvass-approval')}
               />
               <RequestTypeCard
                 icon={Wallet}
                 label="Petty Cash"
                 count={stats.pendingApprovals.pettyCash}
                 alert={stats.pendingApprovals.pettyCash > 0}
+                onClick={() => onViewChange?.('petty-cash-approval')}
               />
               <RequestTypeCard
                 icon={Banknote}
                 label="Cash Advance"
                 count={stats.pendingApprovals.cashAdvance}
                 alert={stats.pendingApprovals.cashAdvance > 0}
+                onClick={() => onViewChange?.('cash-advance-approval')}
               />
               <RequestTypeCard
                 icon={Receipt}
                 label="Reimbursement"
                 count={stats.pendingApprovals.reimbursement}
                 alert={stats.pendingApprovals.reimbursement > 0}
+                onClick={() => onViewChange?.('reimbursement-approval')}
               />
             </div>
           </div>
@@ -265,11 +275,16 @@ interface RequestTypeCardProps {
   label: string;
   count: number;
   alert?: boolean;
+  onClick?: () => void;
 }
 
-function RequestTypeCard({ icon: Icon, label, count, alert }: RequestTypeCardProps) {
+function RequestTypeCard({ icon: Icon, label, count, alert, onClick }: RequestTypeCardProps) {
+  const className = `flex items-center justify-between p-2.5 sm:p-3 bg-slate-50 rounded-lg ${
+    onClick ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''
+  }`;
+
   return (
-    <div className="flex items-center justify-between p-2.5 sm:p-3 bg-slate-50 rounded-lg">
+    <div className={className} onClick={onClick}>
       <div className="flex items-center gap-2 sm:gap-3">
         <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 flex-shrink-0" />
         <span className="text-xs sm:text-sm font-medium text-slate-700">{label}</span>
