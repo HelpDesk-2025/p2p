@@ -134,6 +134,9 @@ export function PRApproval() {
 
         if (!currentStep) return null;
 
+        // Skip steps marked for checking only (those belong to Procurement Checking module)
+        if (currentStep.for_checking) return null;
+
         let isCurrentApprover = false;
 
         if (currentStep.user_id) {
@@ -197,6 +200,9 @@ export function PRApproval() {
     }
 
     if (!currentApproverStep) return false;
+
+    // Cannot approve steps marked for checking (those are for Procurement Checking module)
+    if (currentApproverStep.for_checking) return false;
 
     if (currentApproverStep.user_id) {
       return currentApproverStep.user_id === profile.id;

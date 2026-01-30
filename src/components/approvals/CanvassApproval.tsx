@@ -147,6 +147,12 @@ export function CanvassApproval() {
             return null;
           }
 
+          // Skip steps marked for checking only (those belong to Procurement Checking module)
+          if (currentStep.for_checking) {
+            console.log('⏭️ Skipping for_checking step');
+            return null;
+          }
+
           console.log('👤 Current step:', currentStep.approver_type, 'user_id:', currentStep.user_id);
 
           let isCurrentApprover = false;
@@ -274,6 +280,9 @@ export function CanvassApproval() {
     }
 
     if (!currentApproverStep) return false;
+
+    // Cannot approve steps marked for checking (those are for Procurement Checking module)
+    if (currentApproverStep.for_checking) return false;
 
     if (currentApproverStep.user_id) {
       return currentApproverStep.user_id === profile.id;

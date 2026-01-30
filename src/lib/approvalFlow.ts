@@ -122,7 +122,6 @@ export async function getApprovalFlow(
         .eq('approval_flow_setup_id', departmentSetup.id)
         .eq('workflow_type', workflowType)
         .eq('is_active', true)
-        .eq('for_checking', false)
         .order('sequence', { ascending: true });
 
       if (flowsError) {
@@ -171,7 +170,6 @@ export async function getApprovalFlow(
       .eq('approval_flow_setup_id', companySetup.id)
       .eq('workflow_type', workflowType)
       .eq('is_active', true)
-      .eq('for_checking', false)
       .order('sequence', { ascending: true });
 
     if (flowsError) {

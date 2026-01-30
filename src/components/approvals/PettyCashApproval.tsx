@@ -154,6 +154,9 @@ export function PettyCashApproval() {
 
         if (!currentStep) return null;
 
+        // Skip steps marked for checking only (those belong to Procurement Checking module)
+        if (currentStep.for_checking) return null;
+
         let isCurrentApprover = false;
         const requestDepartment = req.department || req.user_profiles?.department;
 
@@ -219,6 +222,9 @@ export function PettyCashApproval() {
     }
 
     if (!currentApproverStep) return false;
+
+    // Cannot approve steps marked for checking (those are for Procurement Checking module)
+    if (currentApproverStep.for_checking) return false;
 
     if (currentApproverStep.user_id) {
       return currentApproverStep.user_id === profile.id;
