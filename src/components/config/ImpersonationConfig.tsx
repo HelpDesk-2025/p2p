@@ -67,10 +67,10 @@ export function ImpersonationConfig() {
     }
   };
 
-  const roles = Array.from(new Set(users.map(u => u.role))).sort();
+  const roles = Array.from(new Set(users.map(u => u.role).filter(Boolean))).sort();
   const companies = Array.from(new Set(users.map(u => ({ id: u.company_id, name: u.company_name }))))
-    .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .filter((v, i, a) => v.id && v.name && a.findIndex(t => t.id === v.id) === i)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   if (loading) {
     return (
