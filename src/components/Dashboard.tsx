@@ -41,7 +41,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onViewChange }: DashboardProps) {
-  const { profile } = useAuth();
+  const { profile, isImpersonating } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     myRequests: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 },
     pendingApprovals: { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 },
@@ -90,17 +90,51 @@ export function Dashboard({ onViewChange }: DashboardProps) {
 
       let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 };
       if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement') {
-        const { data: countsData } = await supabase.rpc('get_user_pending_approval_counts');
+        // When impersonating, use manual counting since RPC uses auth.uid()
+        if (isImpersonating) {
+          // Manually count pending approvals using the get_approval_records function
+          const { data: prApprovals } = await supabase.rpc('get_approval_records', {
+            p_request_type: 'Purchase Requisition',
+            p_user_id: profile.id
+          });
+          const { data: canvassApprovals } = await supabase.rpc('get_approval_records', {
+            p_request_type: 'Canvass',
+            p_user_id: profile.id
+          });
+          const { data: pcApprovals } = await supabase.rpc('get_approval_records', {
+            p_request_type: 'Petty Cash',
+            p_user_id: profile.id
+          });
+          const { data: reimbApprovals } = await supabase.rpc('get_approval_records', {
+            p_request_type: 'Reimbursement',
+            p_user_id: profile.id
+          });
+          const { data: caApprovals } = await supabase.rpc('get_approval_records', {
+            p_request_type: 'Cash Advance',
+            p_user_id: profile.id
+          });
 
-        if (countsData && countsData.length > 0) {
-          const counts = countsData[0];
           pendingApprovals = {
-            pr: counts.purchase_requisition_count || 0,
-            canvass: counts.canvass_request_count || 0,
-            pettyCash: counts.petty_cash_request_count || 0,
-            reimbursement: counts.reimbursement_request_count || 0,
-            cashAdvance: counts.cash_advance_request_count || 0,
+            pr: prApprovals?.filter((r: any) => r.status === 'pending').length || 0,
+            canvass: canvassApprovals?.filter((r: any) => r.status === 'pending').length || 0,
+            pettyCash: pcApprovals?.filter((r: any) => r.status === 'pending').length || 0,
+            reimbursement: reimbApprovals?.filter((r: any) => r.status === 'pending').length || 0,
+            cashAdvance: caApprovals?.filter((r: any) => r.status === 'pending').length || 0,
           };
+        } else {
+          // Use RPC function for non-impersonated users
+          const { data: countsData } = await supabase.rpc('get_user_pending_approval_counts');
+
+          if (countsData && countsData.length > 0) {
+            const counts = countsData[0];
+            pendingApprovals = {
+              pr: counts.purchase_requisition_count || 0,
+              canvass: counts.canvass_request_count || 0,
+              pettyCash: counts.petty_cash_request_count || 0,
+              reimbursement: counts.reimbursement_request_count || 0,
+              cashAdvance: counts.cash_advance_request_count || 0,
+            };
+          }
         }
       }
 
