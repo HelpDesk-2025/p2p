@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ViewType } from './Layout';
+import { getApprovalFlow, getNextApprover, filterApprovalFlowsForRequester } from '../lib/approvalFlow';
 import {
   FileText,
   Search,
@@ -92,34 +93,67 @@ export function Dashboard({ onViewChange }: DashboardProps) {
       if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement') {
         // When impersonating, use manual counting since RPC uses auth.uid()
         if (isImpersonating) {
-          // Manually count pending approvals using the get_approval_records function
-          const { data: prApprovals } = await supabase.rpc('get_approval_records', {
-            p_request_type: 'Purchase Requisition',
-            p_user_id: profile.id
-          });
-          const { data: canvassApprovals } = await supabase.rpc('get_approval_records', {
-            p_request_type: 'Canvass',
-            p_user_id: profile.id
-          });
-          const { data: pcApprovals } = await supabase.rpc('get_approval_records', {
-            p_request_type: 'Petty Cash',
-            p_user_id: profile.id
-          });
-          const { data: reimbApprovals } = await supabase.rpc('get_approval_records', {
-            p_request_type: 'Reimbursement',
-            p_user_id: profile.id
-          });
-          const { data: caApprovals } = await supabase.rpc('get_approval_records', {
-            p_request_type: 'Cash Advance',
-            p_user_id: profile.id
-          });
+          // Manually count pending approvals by checking approval flows
+          const countApprovals = async (requestType: string, tableName: string) => {
+            const { data: requests } = await supabase
+              .from(tableName)
+              .select('*')
+              .eq('status', 'pending');
+
+            if (!requests) return 0;
+
+            let count = 0;
+            for (const req of requests) {
+              const companyId = req.company_id || profile.company_id;
+              if (!companyId) continue;
+
+              const rawFlows = await getApprovalFlow(
+                companyId,
+                req.department,
+                requestType,
+                req.is_budgeted || req.budgeted || false,
+                req.total_amount || req.amount || 0
+              );
+
+              const flows = await filterApprovalFlowsForRequester(
+                rawFlows,
+                req.requester_id,
+                req.department,
+                companyId
+              );
+
+              const currentStep = await getNextApprover(flows, req.current_approval_level);
+
+              if (!currentStep || currentStep.for_checking) continue;
+
+              let isCurrentApprover = false;
+
+              if (currentStep.user_id) {
+                isCurrentApprover = currentStep.user_id === profile.id;
+              } else {
+                const approverType = currentStep.approver_type;
+
+                if (approverType === 'Department Head' && profile.role === 'approver') {
+                  isCurrentApprover = req.department === profile.department;
+                } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
+                  isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
+                } else if (approverType === 'President') {
+                  isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+                }
+              }
+
+              if (isCurrentApprover) count++;
+            }
+
+            return count;
+          };
 
           pendingApprovals = {
-            pr: prApprovals?.filter((r: any) => r.status === 'pending').length || 0,
-            canvass: canvassApprovals?.filter((r: any) => r.status === 'pending').length || 0,
-            pettyCash: pcApprovals?.filter((r: any) => r.status === 'pending').length || 0,
-            reimbursement: reimbApprovals?.filter((r: any) => r.status === 'pending').length || 0,
-            cashAdvance: caApprovals?.filter((r: any) => r.status === 'pending').length || 0,
+            pr: await countApprovals('Purchase Requisition', 'purchase_requisitions'),
+            canvass: await countApprovals('Canvass', 'canvass_requests'),
+            pettyCash: await countApprovals('Petty Cash', 'petty_cash_requests'),
+            reimbursement: await countApprovals('Reimbursement', 'reimbursement_requests'),
+            cashAdvance: await countApprovals('Cash Advance', 'cash_advance_requests'),
           };
         } else {
           // Use RPC function for non-impersonated users
