@@ -2054,7 +2054,105 @@ export function PurchaseRequisition() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-auto flex-1">
+        {/* Mobile Card View */}
+        <div className="lg:hidden">
+          {sortedRequests.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-slate-500">
+              No purchase requisitions found
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-200">
+              {sortedRequests.map((req) => (
+                <div
+                  key={req.id}
+                  className="p-4 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="space-y-3">
+                    {/* Header: Document No and Status */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                          Document No.
+                        </div>
+                        <div className="font-mono font-bold text-base text-slate-900 truncate">
+                          {req.document_no || req.pr_number}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(req.status)}`}
+                      >
+                        {req.status}
+                      </span>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                        Description
+                      </div>
+                      <div className="text-sm text-slate-700 line-clamp-2">
+                        {req.description || req.purpose}
+                      </div>
+                    </div>
+
+                    {/* Info Grid: Date and Type */}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 mb-1">Date</div>
+                        <div className="text-sm text-slate-900">
+                          {new Date(req.request_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-slate-500 mb-1">Type</div>
+                        <div className="text-sm text-slate-900 truncate">
+                          {req.purchase_type === 'Purchase Order' ? 'PO' : 'Non-PO'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payee */}
+                    {req.payee && (
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="text-xs font-medium text-slate-500 mb-1">Payee</div>
+                        <div className="text-sm text-slate-900 truncate">
+                          {req.payee}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Amount */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="text-xs font-medium text-slate-500 mb-1">Total Amount</div>
+                      <div className="text-lg font-bold text-slate-900">
+                        ₱{req.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <button
+                      onClick={() => {
+                        setViewingRequest(req);
+                        setShowViewModal(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-auto flex-1">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
               <tr>
