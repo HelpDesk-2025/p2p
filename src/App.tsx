@@ -17,6 +17,7 @@ import { CashAdvanceApproval } from './components/approvals/CashAdvanceApproval'
 import { ReimbursementApproval } from './components/approvals/ReimbursementApproval';
 import { SmeApproval } from './components/approvals/SmeApproval';
 import { ConfigManager } from './components/config/ConfigManager';
+import { ConfigMenu } from './components/config/ConfigMenu';
 import { ApprovalLedger } from './components/ApprovalLedger';
 import { ProcurementChecking } from './components/ProcurementChecking';
 import { UserManual } from './components/UserManual';
@@ -90,6 +91,8 @@ function AppContent() {
         return <ProcurementChecking />;
       case 'approval-ledger':
         return <ApprovalLedger />;
+      case 'config-menu':
+        return <ConfigMenu onViewChange={setCurrentView} />;
       case 'config-users':
         return <ConfigManager type="users" />;
       case 'config-checklists':
