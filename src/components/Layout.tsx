@@ -210,7 +210,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-full flex flex-col overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-slate-200 flex-shrink-0">
             <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">Point to Point</h1>
@@ -359,7 +359,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col w-full min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col w-full min-w-0 overflow-hidden lg:ml-64">
         <header className="bg-white border-b border-slate-200 sticky top-0 z-40 w-full flex-shrink-0">
           <div className="px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
             <button
