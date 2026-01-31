@@ -43,7 +43,6 @@ export type ViewType =
   | 'sme-approval'
   | 'procurement-checking'
   | 'approval-ledger'
-  | 'config-menu'
   | 'config-approvers'
   | 'config-users'
   | 'config-checklists'
@@ -306,51 +305,34 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
             {filteredConfigItems.length > 0 && (
               <div className="mt-6">
-                {/* Mobile: Navigate to config menu */}
                 <button
-                  onClick={() => {
-                    onViewChange('config-menu');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="lg:hidden w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                  onClick={() => setConfigOpen(!configOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
                 >
                   <div className="flex items-center gap-3">
                     <Settings size={20} />
                     Configuration
                   </div>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform ${configOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
-
-                {/* Desktop: Dropdown menu */}
-                <div className="hidden lg:block">
-                  <button
-                    onClick={() => setConfigOpen(!configOpen)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Settings size={20} />
-                      Configuration
-                    </div>
-                    <ChevronDown
-                      size={16}
-                      className={`transition-transform ${configOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                  {configOpen && (
-                    <div className="mt-1 space-y-1 ml-4">
-                      {filteredConfigItems.map((item) => (
-                        <NavItem
-                          key={item.id}
-                          item={item}
-                          active={currentView === item.id}
-                          onClick={() => {
-                            onViewChange(item.id);
-                            setMobileMenuOpen(false);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {configOpen && (
+                  <div className="mt-1 space-y-1 ml-4">
+                    {filteredConfigItems.map((item) => (
+                      <NavItem
+                        key={item.id}
+                        item={item}
+                        active={currentView === item.id}
+                        onClick={() => {
+                          onViewChange(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </nav>
