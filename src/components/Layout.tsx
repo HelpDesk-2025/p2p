@@ -209,16 +209,16 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const procurementItems = filteredMenuItems.filter((item) => item.group === 'procurement');
 
   return (
-    <div className="min-h-screen bg-slate-50 flex overflow-x-hidden">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-full flex flex-col">
-          <div className="p-6 border-b border-slate-200">
-            <h1 className="text-xl font-bold text-slate-900">Point to Point</h1>
-            <p className="text-sm text-slate-600 mt-1">{profile?.full_name}</p>
-            <p className="text-xs text-slate-500 capitalize">{profile?.role}</p>
+    <div className="min-h-screen bg-slate-50 flex overflow-hidden">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-full flex flex-col overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-slate-200 flex-shrink-0">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">Point to Point</h1>
+            <p className="text-sm text-slate-600 mt-1 truncate">{profile?.full_name}</p>
+            <p className="text-xs text-slate-500 capitalize truncate">{profile?.role}</p>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-4">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4">
             <div className="space-y-1">
               <NavItem
                 item={filteredMenuItems.find((item) => item.id === 'dashboard')!}
@@ -337,7 +337,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
             )}
           </nav>
 
-          <div className="p-4 border-t border-slate-200 space-y-2">
+          <div className="p-4 border-t border-slate-200 space-y-2 flex-shrink-0">
             {filteredMenuItems.find((item) => item.id === 'change-password') && (
               <NavItem
                 item={filteredMenuItems.find((item) => item.id === 'change-password')!}
@@ -359,12 +359,12 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
         </div>
       </aside>
 
-      <div className="flex-1 lg:ml-64 w-full max-w-full overflow-x-hidden">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-40 w-full">
-          <div className="px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between w-full max-w-full">
+      <div className="flex-1 flex flex-col w-full min-w-0 overflow-hidden">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-40 w-full flex-shrink-0">
+          <div className="px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0"
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0 -ml-2"
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -374,7 +374,9 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
         <ImpersonationBanner />
 
-        <main className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
+          <div className="p-4 sm:p-6 lg:p-8 w-full">{children}</div>
+        </main>
       </div>
 
       {mobileMenuOpen && (

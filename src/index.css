@@ -3,7 +3,45 @@
 @tailwind utilities;
 
 @layer base {
-  html, body {
-    @apply overflow-x-hidden;
+  html, body, #root {
+    @apply h-full w-full overflow-x-hidden;
+    @apply m-0 p-0;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar utilities */
+  .scrollbar-thin::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
