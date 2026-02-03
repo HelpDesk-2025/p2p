@@ -147,12 +147,6 @@ export function CanvassApproval() {
             return null;
           }
 
-          // Skip steps marked for checking only (those belong to Procurement Checking module)
-          if (currentStep.for_checking) {
-            console.log('⏭️ Skipping for_checking step');
-            return null;
-          }
-
           console.log('👤 Current step:', currentStep.approver_type, 'user_id:', currentStep.user_id);
 
           let isCurrentApprover = false;
