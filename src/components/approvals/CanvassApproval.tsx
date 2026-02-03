@@ -281,9 +281,6 @@ export function CanvassApproval() {
 
     if (!currentApproverStep) return false;
 
-    // Cannot approve steps marked for checking (those are for Procurement Checking module)
-    if (currentApproverStep.for_checking) return false;
-
     if (currentApproverStep.user_id) {
       return currentApproverStep.user_id === profile.id;
     }
