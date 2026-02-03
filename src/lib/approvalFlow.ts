@@ -12,6 +12,7 @@ export interface ApprovalFlow {
   workflow_type: number;
   user_id: string | null;
   approval_flow_setup_id: string;
+  for_checking?: boolean;
 }
 
 export interface ApprovalFlowSetup {
@@ -260,7 +261,8 @@ export async function createApprovalLedgerEntry(
   approverType: string,
   action: string,
   comments: string,
-  sequence: number
+  sequence: number,
+  forChecking: boolean = false
 ): Promise<void> {
   try {
     const { error } = await supabase.from('approval_ledger').insert({
@@ -274,6 +276,7 @@ export async function createApprovalLedgerEntry(
       comments: comments,
       sequence: sequence,
       approval_date: new Date().toISOString(),
+      for_checking: forChecking,
     });
 
     if (error) throw error;

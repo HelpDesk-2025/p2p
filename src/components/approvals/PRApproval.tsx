@@ -340,7 +340,8 @@ export function PRApproval() {
           currentApproverStep?.approver_type || 'Approver',
           'Rejected',
           comments,
-          currentLevel + 1
+          currentLevel + 1,
+          currentApproverStep?.for_checking || false
         );
 
         // Create auto-rejected entries for all remaining approvers
@@ -409,7 +410,8 @@ export function PRApproval() {
           currentApproverStep?.approver_type || 'Approver',
           'Approved',
           comments,
-          currentLevel + 1
+          currentLevel + 1,
+          currentApproverStep?.for_checking || false
         );
 
         // Generate RFP PDF if this is the final approval (AFTER ledger entry)
