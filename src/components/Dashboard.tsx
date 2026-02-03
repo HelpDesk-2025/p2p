@@ -124,23 +124,30 @@ export function Dashboard({ onViewChange }: DashboardProps) {
 
               const currentStep = await getNextApprover(flows, req.current_approval_level);
 
-              if (!currentStep || currentStep.for_checking) continue;
+              if (!currentStep) continue;
 
-              let isCurrentApprover = false;
+              // Get the current sequence
+              const currentSequence = currentStep.sequence;
 
-              if (currentStep.user_id) {
-                isCurrentApprover = currentStep.user_id === profile.id;
-              } else {
-                const approverType = currentStep.approver_type;
+              // Check if user matches ANY approval flow at this sequence
+              const isCurrentApprover = flows.some(flow => {
+                if (flow.sequence !== currentSequence) return false;
 
-                if (approverType === 'Department Head' && profile.role === 'approver') {
-                  isCurrentApprover = req.department === profile.department;
-                } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-                  isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-                } else if (approverType === 'President') {
-                  isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+                if (flow.user_id) {
+                  return flow.user_id === profile.id;
+                } else {
+                  const approverType = flow.approver_type;
+
+                  if (approverType === 'Department Head' && profile.role === 'approver') {
+                    return req.department === profile.department;
+                  } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
+                    return profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
+                  } else if (approverType === 'President') {
+                    return profile.role === 'approver' || profile.role === 'admin';
+                  }
                 }
-              }
+                return false;
+              });
 
               if (isCurrentApprover) count++;
             }

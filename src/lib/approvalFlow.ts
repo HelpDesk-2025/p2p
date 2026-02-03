@@ -245,11 +245,19 @@ export async function getNextApprover(
   approvalFlows: ApprovalFlow[],
   currentLevel: number
 ): Promise<ApprovalFlow | null> {
-  if (currentLevel >= approvalFlows.length) {
+  // Get unique sequences from approval flows
+  const uniqueSequences = [...new Set(approvalFlows.map(f => f.sequence))].sort((a, b) => a - b);
+
+  // Check if currentLevel is valid
+  if (currentLevel >= uniqueSequences.length) {
     return null;
   }
 
-  return approvalFlows[currentLevel];
+  // Get the target sequence at this level
+  const targetSequence = uniqueSequences[currentLevel];
+
+  // Return the first flow at this sequence (if multiple approvers exist at same sequence, they're all valid)
+  return approvalFlows.find(f => f.sequence === targetSequence) || null;
 }
 
 export async function createApprovalLedgerEntry(
