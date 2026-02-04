@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDow
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
+import Pagination from '../Pagination';
 
 interface CanvassReq {
   id: string;
@@ -76,6 +77,8 @@ export function CanvassApproval() {
   const [previousRecommendations, setPreviousRecommendations] = useState<ApproverRecommendation[]>([]);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
   useEffect(() => {
     loadRequests();
@@ -359,6 +362,20 @@ export function CanvassApproval() {
     if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = sortedRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const handleAction = async (action: 'approved' | 'rejected') => {
     if (!selectedRequest || !profile?.company_id) return;
@@ -652,7 +669,7 @@ export function CanvassApproval() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sortedRequests.map((request, index) => (
+                {paginatedRequests.map((request, index) => (
                   <tr
                     key={request.id}
                     className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
@@ -700,6 +717,16 @@ export function CanvassApproval() {
                 ))}
               </tbody>
             </table>
+            {requests.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                totalItems={sortedRequests.length}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            )}
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForReque
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { uploadLargeFile } from '../../lib/storageHelper';
+import Pagination from '../Pagination';
 
 interface PaymentModeLine {
   name: string;
@@ -79,6 +80,8 @@ export function CashAdvance() {
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
   // Multi-company support
   const [companies, setCompanies] = useState<any[]>([]);
@@ -796,6 +799,20 @@ export function CashAdvance() {
     return 0;
   });
 
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = sortedRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   const downloadRFP = async (rfpPath: string, caNumber: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -1446,14 +1463,14 @@ export function CashAdvance() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {sortedRequests.length === 0 ? (
+            {paginatedRequests.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">
                   No cash advance requests found
                 </td>
               </tr>
             ) : (
-              sortedRequests.map((req, index) => (
+              paginatedRequests.map((req, index) => (
                 <tr key={req.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
                   <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                     <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.ca_number}>
@@ -1502,6 +1519,16 @@ export function CashAdvance() {
           </tbody>
         </table>
         </div>
+        {sortedRequests.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={sortedRequests.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
 
       {showViewModal && viewingRequest && (

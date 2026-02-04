@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import Pagination from '../Pagination';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -88,6 +89,10 @@ export function PurchaseRequisition() {
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
   // Multi-company support
   const [companies, setCompanies] = useState<any[]>([]);
@@ -1202,6 +1207,21 @@ export function PurchaseRequisition() {
     return 0;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = sortedRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   if (showForm) {
     return (
       <div className="space-y-6">
@@ -2070,13 +2090,13 @@ export function PurchaseRequisition() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
         {/* Mobile Card View */}
         <div className="lg:hidden w-full max-w-full overflow-x-hidden">
-          {sortedRequests.length === 0 ? (
+          {paginatedRequests.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-slate-500">
               No purchase requisitions found
             </div>
           ) : (
             <div className="divide-y divide-slate-200 w-full">
-              {sortedRequests.map((req) => (
+              {paginatedRequests.map((req) => (
                 <div
                   key={req.id}
                   className="p-4 hover:bg-slate-50 transition-colors w-full"
@@ -2213,14 +2233,14 @@ export function PurchaseRequisition() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {sortedRequests.length === 0 ? (
+              {paginatedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-500">
                     No purchase requisitions found
                   </td>
                 </tr>
               ) : (
-                sortedRequests.map((req, index) => (
+                paginatedRequests.map((req, index) => (
                   <tr key={req.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.document_no || req.pr_number}>
@@ -2279,6 +2299,18 @@ export function PurchaseRequisition() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {sortedRequests.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={sortedRequests.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
 
       {showViewModal && viewingRequest && (

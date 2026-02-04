@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, X, ClipboardList, FileText, User, Download, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import Pagination from '../Pagination';
 
 interface SmeRequest {
   id: string;
@@ -46,6 +47,8 @@ export function SmeApproval() {
   const [actionLoading, setActionLoading] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
   useEffect(() => {
     loadSmeRequests();
@@ -264,6 +267,20 @@ export function SmeApproval() {
     return 0;
   });
 
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = sortedRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
@@ -345,14 +362,14 @@ export function SmeApproval() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {sortedRequests.length === 0 ? (
+              {paginatedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={profile?.role === 'admin' ? 8 : 7} className="px-3 py-8 sm:px-6 text-center text-slate-500 text-sm">
                     No SME requests found
                   </td>
                 </tr>
               ) : (
-                sortedRequests.map((req, index) => (
+                paginatedRequests.map((req, index) => (
                   <tr
                     key={req.id}
                     className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
@@ -417,6 +434,16 @@ export function SmeApproval() {
             </tbody>
           </table>
         </div>
+        {sortedRequests.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={sortedRequests.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
 
       {showViewModal && viewingRequest && (

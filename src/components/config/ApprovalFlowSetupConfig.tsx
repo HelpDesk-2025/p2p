@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { Plus, Edit, Trash2, X, Search, Filter, ArrowUpDown } from "lucide-react";
+import Pagination from "../Pagination";
 
 interface ApprovalFlowSetup {
   id: string;
@@ -53,6 +54,10 @@ export function ApprovalFlowSetupConfig() {
   const [filterStatus, setFilterStatus] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "company" | "request_type" | "status">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadSetups();
@@ -421,7 +426,29 @@ export function ApprovalFlowSetupConfig() {
     setFilterCompany("");
     setFilterRequestType("");
     setFilterStatus("");
+    setCurrentPage(1);
   };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedSetups.length / itemsPerPage);
+  const paginatedSetups = filteredAndSortedSetups.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterCompany, filterRequestType, filterStatus, sortBy, sortOrder]);
 
   return (
     <div>
@@ -926,8 +953,8 @@ export function ApprovalFlowSetupConfig() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAndSortedSetups.length > 0 ? (
-                filteredAndSortedSetups.map((setup) => {
+              {paginatedSetups.length > 0 ? (
+                paginatedSetups.map((setup) => {
                   const setupSteps = steps.filter(s => s.approval_flow_setup_id === setup.id);
                   return (
                     <tr key={setup.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
@@ -990,6 +1017,14 @@ export function ApprovalFlowSetupConfig() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredAndSortedSetups.length}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       </div>
     </div>
   );

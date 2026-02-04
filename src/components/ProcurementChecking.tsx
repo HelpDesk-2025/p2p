@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, X, FileText, Download, UserCheck, ClipboardList, ExternalLink } from 'lucide-react';
+import Pagination from './Pagination';
 
 interface PurchaseReq {
   id: string;
@@ -63,6 +64,10 @@ export function ProcurementChecking() {
   const [submittingSme, setSubmittingSme] = useState(false);
   const [smeRequestStatus, setSmeRequestStatus] = useState<{status: string, sme_name: string} | null>(null);
   const smeUserDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadRequests();
@@ -377,6 +382,21 @@ export function ProcurementChecking() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  // Pagination logic
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = requests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -428,7 +448,7 @@ export function ProcurementChecking() {
                   </td>
                 </tr>
               ) : (
-                requests.map((req) => (
+                paginatedRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
                       {req.document_no || req.pr_number}
@@ -474,6 +494,16 @@ export function ProcurementChecking() {
             </tbody>
           </table>
         </div>
+        {requests.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={requests.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
 
       {/* Mobile Card View */}
@@ -483,7 +513,7 @@ export function ProcurementChecking() {
             No approved purchase order requests found
           </div>
         ) : (
-          requests.map((req) => (
+          paginatedRequests.map((req) => (
             <div
               key={req.id}
               className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
@@ -553,6 +583,18 @@ export function ProcurementChecking() {
               </div>
             </div>
           ))
+        )}
+        {requests.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              totalItems={requests.length}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          </div>
         )}
       </div>
 

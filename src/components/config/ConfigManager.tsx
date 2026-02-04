@@ -6,6 +6,7 @@ import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
 import { RolesPermissionsConfig } from './RolesPermissionsConfig';
 import { ImpersonationConfig } from './ImpersonationConfig';
+import Pagination from '../Pagination';
 
 type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation';
 
@@ -150,6 +151,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortField, setSortField] = useState<'full_name' | 'email' | 'company' | 'department' | 'role' | 'created_at'>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadCompaniesAndDepartments();
@@ -450,6 +453,26 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
       }
     });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredAndSortedData.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCompany, filterDepartment, filterRole, filterStatus]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const inactiveCount = data.filter(user => !user.is_active).length;
 
@@ -1073,7 +1096,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAndSortedData.length === 0 ? (
+              {paginatedUsers.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-500">
@@ -1084,7 +1107,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedData.map((user) => (
+                paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                     <td className="px-4 py-4 text-sm">
                       <div className="max-w-[150px] truncate font-semibold text-slate-900" title={user.full_name}>
@@ -1151,11 +1174,19 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredAndSortedData.length}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       </div>
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
-        {filteredAndSortedData.length === 0 ? (
+        {paginatedUsers.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
             <div className="flex flex-col items-center justify-center text-slate-500">
               <AlertCircle size={40} className="mb-2 text-slate-400" />
@@ -1164,7 +1195,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
           </div>
         ) : (
-          filteredAndSortedData.map((user) => (
+          paginatedUsers.map((user) => (
             <div key={user.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
@@ -1222,6 +1253,18 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
           ))
         )}
+      </div>
+
+      {/* Mobile Pagination */}
+      <div className="md:hidden mt-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredAndSortedData.length}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
       </div>
     </div>
   );

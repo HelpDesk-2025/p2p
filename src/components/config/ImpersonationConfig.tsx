@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, UserProfile } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, Search, User, Building, Briefcase } from 'lucide-react';
+import Pagination from '../Pagination';
 
 export function ImpersonationConfig() {
   const { impersonateUser, actualProfile } = useAuth();
@@ -11,6 +12,8 @@ export function ImpersonationConfig() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [selectedCompany, setSelectedCompany] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     loadUsers();
@@ -56,6 +59,7 @@ export function ImpersonationConfig() {
     }
 
     setFilteredUsers(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const handleImpersonate = async (userId: string) => {
@@ -65,6 +69,21 @@ export function ImpersonationConfig() {
     } catch (error: any) {
       alert(error.message || 'Failed to impersonate user');
     }
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
   };
 
   const roles = Array.from(new Set(users.map(u => u.role).filter(Boolean))).sort();
@@ -165,7 +184,7 @@ export function ImpersonationConfig() {
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((user) => (
+              paginatedUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <div>
@@ -207,10 +226,16 @@ export function ImpersonationConfig() {
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="text-sm text-slate-500">
-        Showing {filteredUsers.length} of {users.filter(u => u.id !== actualProfile?.id).length} users
+        {filteredUsers.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredUsers.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
     </div>
   );

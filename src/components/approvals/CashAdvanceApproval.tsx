@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
+import Pagination from '../Pagination';
 
 interface PaymentModeLine {
   name: string;
@@ -63,6 +64,8 @@ export function CashAdvanceApproval() {
   const [paymentModeName, setPaymentModeName] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
   useEffect(() => {
     loadRequests();
@@ -284,6 +287,20 @@ export function CashAdvanceApproval() {
     if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRequests = sortedRequests.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const downloadAttachments = async (pdfPath: string, caNumber: string) => {
     try {
@@ -660,6 +677,7 @@ export function CashAdvanceApproval() {
             <p className="text-slate-600">No pending approvals</p>
           </div>
         ) : (
+          <>
           <div className="overflow-auto flex-1">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
@@ -713,7 +731,7 @@ export function CashAdvanceApproval() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {sortedRequests.map((request, index) => (
+              {paginatedRequests.map((request, index) => (
                 <tr
                   key={request.id}
                   className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
@@ -762,6 +780,17 @@ export function CashAdvanceApproval() {
             </tbody>
           </table>
           </div>
+          {sortedRequests.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              totalItems={sortedRequests.length}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
+          </>
         )}
       </div>
 
