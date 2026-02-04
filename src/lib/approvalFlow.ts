@@ -206,31 +206,39 @@ export async function addExecutiveApprovalSteps(
       .single();
 
     if (requesterError) {
-      console.error('Error fetching requester profile:', requesterError);
+      console.error('❌ Error fetching requester profile:', requesterError);
       return approvalFlows;
     }
+
+    console.log('📋 Requester profile:', {
+      requester_type: requesterProfile.requester_type,
+      approver_email: requesterProfile.approver_email,
+      checker_email: requesterProfile.checker_email
+    });
 
     if (requesterProfile.requester_type !== 'Executive') {
-      console.log('ℹ️ Requester is not Executive, no additional steps needed');
+      console.log('ℹ️ Requester is not Executive, returning regular approval flows');
       return approvalFlows;
     }
 
-    console.log('✅ Requester is Executive, adding custom approval steps');
+    console.log('✅ Requester is Executive, building custom approval steps');
 
     const executiveFlows: ApprovalFlow[] = [];
     let sequence = 1;
 
     // Add Approver Email as Step 1
     if (requesterProfile.approver_email) {
+      console.log('🔍 Looking for approver with email:', requesterProfile.approver_email);
       const { data: approverUser, error: approverError } = await supabase
         .from('user_profiles')
-        .select('id, full_name')
+        .select('id, full_name, email')
         .eq('email', requesterProfile.approver_email)
         .maybeSingle();
 
       if (approverError) {
-        console.error('Error fetching approver user:', approverError);
+        console.error('❌ Error fetching approver user:', approverError);
       } else if (approverUser) {
+        console.log(`✅ Found approver: ${approverUser.full_name} (${approverUser.email})`);
         console.log(`📝 Adding Step ${sequence}: ${approverUser.full_name} (Approver)`);
         executiveFlows.push({
           id: `executive-approver-${requesterId}`,
@@ -247,20 +255,26 @@ export async function addExecutiveApprovalSteps(
           for_checking: false
         });
         sequence++;
+      } else {
+        console.warn('⚠️ No user found with approver email:', requesterProfile.approver_email);
       }
+    } else {
+      console.log('ℹ️ No approver email set for this Executive user');
     }
 
     // Add Checker Email as Step 2 (if it exists)
     if (requesterProfile.checker_email) {
+      console.log('🔍 Looking for checker with email:', requesterProfile.checker_email);
       const { data: checkerUser, error: checkerError } = await supabase
         .from('user_profiles')
-        .select('id, full_name')
+        .select('id, full_name, email')
         .eq('email', requesterProfile.checker_email)
         .maybeSingle();
 
       if (checkerError) {
-        console.error('Error fetching checker user:', checkerError);
+        console.error('❌ Error fetching checker user:', checkerError);
       } else if (checkerUser) {
+        console.log(`✅ Found checker: ${checkerUser.full_name} (${checkerUser.email})`);
         console.log(`📝 Adding Step ${sequence}: ${checkerUser.full_name} (Checker)`);
         executiveFlows.push({
           id: `executive-checker-${requesterId}`,
@@ -277,12 +291,17 @@ export async function addExecutiveApprovalSteps(
           for_checking: false
         });
         sequence++;
+      } else {
+        console.warn('⚠️ No user found with checker email:', requesterProfile.checker_email);
       }
+    } else {
+      console.log('ℹ️ No checker email set for this Executive user');
     }
 
     // For Executive requestors, ONLY return their approver and checker
     // Do NOT include regular approval flow steps
-    console.log(`✅ Executive approval steps only: ${executiveFlows.length} steps`);
+    console.log(`✅ Returning ${executiveFlows.length} executive approval steps only`);
+    console.log('Executive flows:', executiveFlows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
     return executiveFlows;
   } catch (error) {
     console.error('Error adding executive approval steps:', error);
@@ -298,6 +317,7 @@ export async function filterApprovalFlowsForRequester(
 ): Promise<ApprovalFlow[]> {
   try {
     console.log('🔍 Filtering approval flows for requester:', requesterId);
+    console.log('📥 Input flows:', approvalFlows.length, approvalFlows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
 
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
@@ -332,6 +352,7 @@ export async function filterApprovalFlowsForRequester(
     }));
 
     console.log(`✅ Filtered approval flows: ${approvalFlows.length} → ${resequencedFlows.length} steps`);
+    console.log('📤 Output flows:', resequencedFlows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
 
     return resequencedFlows;
   } catch (error) {
