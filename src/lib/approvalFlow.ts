@@ -288,7 +288,7 @@ export async function addExecutiveApprovalSteps(
           workflow_type: 1,
           user_id: checkerUser.id,
           approval_flow_setup_id: 'executive-approval',
-          for_checking: false
+          for_checking: true
         });
         sequence++;
       } else {
