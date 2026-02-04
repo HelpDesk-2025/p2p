@@ -201,7 +201,7 @@ export async function addExecutiveApprovalSteps(
 
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
-      .select('requester_type, approver_email, checker_email')
+      .select('approver_type, approver_email, checker_email')
       .eq('id', requesterId)
       .single();
 
@@ -211,12 +211,12 @@ export async function addExecutiveApprovalSteps(
     }
 
     console.log('📋 Requester profile:', {
-      requester_type: requesterProfile.requester_type,
+      approver_type: requesterProfile.approver_type,
       approver_email: requesterProfile.approver_email,
       checker_email: requesterProfile.checker_email
     });
 
-    if (requesterProfile.requester_type !== 'Executive') {
+    if (requesterProfile.approver_type !== 'Executive') {
       console.log('ℹ️ Requester is not Executive, returning regular approval flows');
       return approvalFlows;
     }
