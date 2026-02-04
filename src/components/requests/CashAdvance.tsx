@@ -877,7 +877,8 @@ export function CashAdvance() {
       const { data: approvalRecords } = await supabase
         .rpc('get_approval_records_with_signatures', {
           p_request_id: request.id,
-          p_request_type: 'Cash Advance'
+          p_request_type: 'Cash Advance',
+          p_requester_id: request.requester_id
         });
 
       // Generate Approved Cash Advance Form

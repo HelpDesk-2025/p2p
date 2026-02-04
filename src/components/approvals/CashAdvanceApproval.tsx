@@ -409,7 +409,8 @@ export function CashAdvanceApproval() {
         const { data: approvalRecords, error: ledgerError } = await supabase
           .rpc('get_approval_records_with_signatures', {
             p_request_id: selectedRequest.id,
-            p_request_type: 'Cash Advance'
+            p_request_type: 'Cash Advance',
+            p_requester_id: selectedRequest.requester_id
           });
 
         if (ledgerError) {
