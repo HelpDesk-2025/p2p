@@ -672,18 +672,15 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Approver Type</label>
+              <label className="block text-xs sm:text-sm font-semibold text-slate-700">Requestor Type</label>
               <select
                 value={formData.approver_type}
                 onChange={(e) => setFormData({ ...formData, approver_type: e.target.value })}
                 className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="">None</option>
-                <option value="Procurement Head">Procurement Head</option>
-                <option value="Procurement">Procurement</option>
-                <option value="Department Head">Department Head</option>
-                <option value="President">President</option>
-                <option value="Requestor">Requestor</option>
+                <option value="Non-Executive">Non-Executive</option>
+                <option value="Executive">Executive</option>
               </select>
             </div>
 
@@ -920,7 +917,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Approver Type</th>
+                <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Requestor Type</th>
                 <th className="px-4 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">E-Sig</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
