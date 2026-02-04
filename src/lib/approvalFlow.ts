@@ -201,7 +201,7 @@ export async function addExecutiveApprovalSteps(
 
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
-      .select('approver_type, approver_email, checker_email')
+      .select('requester_type, approver_email, checker_email')
       .eq('id', requesterId)
       .single();
 
@@ -210,7 +210,7 @@ export async function addExecutiveApprovalSteps(
       return approvalFlows;
     }
 
-    if (requesterProfile.approver_type !== 'Executive') {
+    if (requesterProfile.requester_type !== 'Executive') {
       console.log('ℹ️ Requester is not Executive, no additional steps needed');
       return approvalFlows;
     }
@@ -280,16 +280,10 @@ export async function addExecutiveApprovalSteps(
       }
     }
 
-    // Add the rest of the approval flows with adjusted sequence numbers
-    const adjustedFlows = approvalFlows.map((flow) => ({
-      ...flow,
-      sequence: flow.sequence + (sequence - 1)
-    }));
-
-    const combinedFlows = [...executiveFlows, ...adjustedFlows];
-    console.log(`✅ Total approval steps: ${combinedFlows.length} (${executiveFlows.length} executive + ${adjustedFlows.length} regular)`);
-
-    return combinedFlows;
+    // For Executive requestors, ONLY return their approver and checker
+    // Do NOT include regular approval flow steps
+    console.log(`✅ Executive approval steps only: ${executiveFlows.length} steps`);
+    return executiveFlows;
   } catch (error) {
     console.error('Error adding executive approval steps:', error);
     return approvalFlows;
