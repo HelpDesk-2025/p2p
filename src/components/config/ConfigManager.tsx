@@ -138,6 +138,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const [departments, setDepartments] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [approverSearchTerm, setApproverSearchTerm] = useState('');
+  const [checkerSearchTerm, setCheckerSearchTerm] = useState('');
+  const [showApproverDropdown, setShowApproverDropdown] = useState(false);
+  const [showCheckerDropdown, setShowCheckerDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
@@ -166,15 +171,17 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
   const loadCompaniesAndDepartments = async () => {
     try {
-      const [companiesRes, departmentsRes, rolesRes] = await Promise.all([
+      const [companiesRes, departmentsRes, rolesRes, usersRes] = await Promise.all([
         supabase.from('companies').select('*').eq('is_active', true).order('name', { ascending: true }),
         supabase.from('departments').select('*').eq('is_active', true).order('name', { ascending: true }),
-        supabase.from('roles').select('*').eq('is_active', true).order('name', { ascending: true })
+        supabase.from('roles').select('*').eq('is_active', true).order('name', { ascending: true }),
+        supabase.from('user_profiles').select('id, full_name, email, company, department').eq('is_active', true).order('full_name', { ascending: true })
       ]);
 
       setCompanies(companiesRes.data || []);
       setAllDepartments(departmentsRes.data || []);
       setRoles(rolesRes.data || []);
+      setAllUsers(usersRes.data || []);
     } catch (error) {
       console.error('Error loading companies and departments:', error);
     }
@@ -698,26 +705,130 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 
             {formData.approver_type === 'Executive' && (
               <>
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-1.5 sm:space-y-2 relative">
                   <label className="block text-xs sm:text-sm font-semibold text-slate-700">Approver Email</label>
-                  <input
-                    type="email"
-                    value={formData.approver_email}
-                    onChange={(e) => setFormData({ ...formData, approver_email: e.target.value })}
-                    className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Enter approver email"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.approver_email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, approver_email: e.target.value });
+                        setApproverSearchTerm(e.target.value);
+                        setShowApproverDropdown(true);
+                      }}
+                      onFocus={() => setShowApproverDropdown(true)}
+                      className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Search user by name or email"
+                    />
+                    {showApproverDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {allUsers
+                          .filter(user => {
+                            const searchLower = formData.approver_email.toLowerCase();
+                            return (
+                              user.full_name?.toLowerCase().includes(searchLower) ||
+                              user.email?.toLowerCase().includes(searchLower) ||
+                              user.company?.toLowerCase().includes(searchLower)
+                            );
+                          })
+                          .map(user => (
+                            <div
+                              key={user.id}
+                              onClick={() => {
+                                setFormData({ ...formData, approver_email: user.email });
+                                setShowApproverDropdown(false);
+                              }}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                            >
+                              <div className="font-medium text-sm text-slate-800">{user.full_name}</div>
+                              <div className="text-xs text-slate-600">{user.email}</div>
+                              {user.company && (
+                                <div className="text-xs text-slate-500">{user.company} {user.department && `- ${user.department}`}</div>
+                              )}
+                            </div>
+                          ))}
+                        {allUsers.filter(user => {
+                          const searchLower = formData.approver_email.toLowerCase();
+                          return (
+                            user.full_name?.toLowerCase().includes(searchLower) ||
+                            user.email?.toLowerCase().includes(searchLower) ||
+                            user.company?.toLowerCase().includes(searchLower)
+                          );
+                        }).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-slate-500 text-center">No users found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {showApproverDropdown && (
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowApproverDropdown(false)}
+                    />
+                  )}
                 </div>
 
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-1.5 sm:space-y-2 relative">
                   <label className="block text-xs sm:text-sm font-semibold text-slate-700">Checker Email</label>
-                  <input
-                    type="email"
-                    value={formData.checker_email}
-                    onChange={(e) => setFormData({ ...formData, checker_email: e.target.value })}
-                    className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Enter checker email"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.checker_email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, checker_email: e.target.value });
+                        setCheckerSearchTerm(e.target.value);
+                        setShowCheckerDropdown(true);
+                      }}
+                      onFocus={() => setShowCheckerDropdown(true)}
+                      className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Search user by name or email"
+                    />
+                    {showCheckerDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {allUsers
+                          .filter(user => {
+                            const searchLower = formData.checker_email.toLowerCase();
+                            return (
+                              user.full_name?.toLowerCase().includes(searchLower) ||
+                              user.email?.toLowerCase().includes(searchLower) ||
+                              user.company?.toLowerCase().includes(searchLower)
+                            );
+                          })
+                          .map(user => (
+                            <div
+                              key={user.id}
+                              onClick={() => {
+                                setFormData({ ...formData, checker_email: user.email });
+                                setShowCheckerDropdown(false);
+                              }}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                            >
+                              <div className="font-medium text-sm text-slate-800">{user.full_name}</div>
+                              <div className="text-xs text-slate-600">{user.email}</div>
+                              {user.company && (
+                                <div className="text-xs text-slate-500">{user.company} {user.department && `- ${user.department}`}</div>
+                              )}
+                            </div>
+                          ))}
+                        {allUsers.filter(user => {
+                          const searchLower = formData.checker_email.toLowerCase();
+                          return (
+                            user.full_name?.toLowerCase().includes(searchLower) ||
+                            user.email?.toLowerCase().includes(searchLower) ||
+                            user.company?.toLowerCase().includes(searchLower)
+                          );
+                        }).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-slate-500 text-center">No users found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {showCheckerDropdown && (
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowCheckerDropdown(false)}
+                    />
+                  )}
                 </div>
               </>
             )}
