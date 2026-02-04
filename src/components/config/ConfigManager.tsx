@@ -1283,6 +1283,22 @@ function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void })
   const [newAttachment, setNewAttachment] = useState({ name: '', is_required: false });
   const [editingAttachmentIndex, setEditingAttachmentIndex] = useState<number | null>(null);
   const [editingAttachmentData, setEditingAttachmentData] = useState({ name: '', is_required: false });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = data.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const handleAdd = async () => {
     try {
@@ -1581,7 +1597,7 @@ function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void })
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {data.map((item) => (
+            {paginatedData.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4 text-sm">
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
@@ -1618,6 +1634,17 @@ function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void })
             ))}
           </tbody>
         </table>
+
+        {data.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={data.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
     </div>
   );
