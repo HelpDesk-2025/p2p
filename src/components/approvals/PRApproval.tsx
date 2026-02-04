@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
@@ -122,9 +122,16 @@ export function PRApproval() {
           req.total_amount
         );
 
+        // Inject executive approvers if requester is Executive type
+        const flowsWithExecutive = await addExecutiveApprovalSteps(
+          rawFlows,
+          req.requester_id,
+          prCompanyId
+        );
+
         // Filter out the requester from approval flows
         const flows = await filterApprovalFlowsForRequester(
-          rawFlows,
+          flowsWithExecutive,
           req.requester_id,
           req.department,
           prCompanyId
@@ -174,9 +181,16 @@ export function PRApproval() {
         request.total_amount
       );
 
+      // Inject executive approvers if requester is Executive type
+      const flowsWithExecutive = await addExecutiveApprovalSteps(
+        rawFlows,
+        request.requester_id,
+        prCompanyId
+      );
+
       // Filter out the requester from approval flows
       const flows = await filterApprovalFlowsForRequester(
-        rawFlows,
+        flowsWithExecutive,
         request.requester_id,
         request.department,
         prCompanyId
