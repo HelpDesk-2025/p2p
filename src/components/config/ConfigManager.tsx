@@ -124,6 +124,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     department: '',
     role: '',
     approver_type: '',
+    approver_email: '',
+    checker_email: '',
     sequence: '',
     days_of_approval: '',
     e_sig: '',
@@ -200,6 +202,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       department: user.department || '',
       role: user.role || 'standard',
       approver_type: user.approver_type || '',
+      approver_email: user.approver_email || '',
+      checker_email: user.checker_email || '',
       sequence: user.sequence?.toString() || '',
       days_of_approval: user.days_of_approval?.toString() || '',
       e_sig: user.e_sig || '',
@@ -234,6 +238,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             department: formData.department || null,
             role: formData.role,
             approver_type: formData.approver_type || null,
+            approver_email: formData.approver_email || null,
+            checker_email: formData.checker_email || null,
             e_sig: formData.e_sig || null
           }
         }
@@ -265,6 +271,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: '',
         role: 'standard',
         approver_type: '',
+        approver_email: '',
+        checker_email: '',
         sequence: '',
         days_of_approval: '',
         e_sig: '',
@@ -322,6 +330,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: formData.department || null,
         role: formData.role,
         approver_type: formData.approver_type || null,
+        approver_email: formData.approver_email || null,
+        checker_email: formData.checker_email || null,
         e_sig: formData.e_sig || null,
         is_active: formData.is_active,
         enable_multi_company_requests: formData.enable_multi_company_requests,
@@ -355,6 +365,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: '',
         role: 'standard',
         approver_type: '',
+        approver_email: '',
+        checker_email: '',
         sequence: '',
         days_of_approval: '',
         e_sig: '',
@@ -683,6 +695,32 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
                 <option value="Executive">Executive</option>
               </select>
             </div>
+
+            {formData.approver_type === 'Executive' && (
+              <>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700">Approver Email</label>
+                  <input
+                    type="email"
+                    value={formData.approver_email}
+                    onChange={(e) => setFormData({ ...formData, approver_email: e.target.value })}
+                    className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter approver email"
+                  />
+                </div>
+
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-700">Checker Email</label>
+                  <input
+                    type="email"
+                    value={formData.checker_email}
+                    onChange={(e) => setFormData({ ...formData, checker_email: e.target.value })}
+                    className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Enter checker email"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="space-y-1.5 sm:space-y-2">
               <label className="block text-xs sm:text-sm font-semibold text-slate-700">Account Status</label>
