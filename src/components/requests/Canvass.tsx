@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
@@ -640,9 +640,16 @@ export function Canvass() {
           totalAmount
         );
 
+        // Add executive approval steps if requester is Executive
+        let flowsWithExecutive = await addExecutiveApprovalSteps(
+          rawApprovalFlows,
+          profile.id,
+          selectedCompanyId
+        );
+
         // Filter out requester from approval flows
         const approvalFlows = await filterApprovalFlowsForRequester(
-          rawApprovalFlows,
+          flowsWithExecutive,
           profile.id,
           department,
           selectedCompanyId
@@ -750,9 +757,16 @@ export function Canvass() {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
       }
 
+      // Add executive approval steps if requester is Executive
+      let flowsWithExecutive = await addExecutiveApprovalSteps(
+        rawApprovalFlows,
+        profile.id,
+        request.company_id
+      );
+
       // Filter out requester from approval flows
       const approvalFlows = await filterApprovalFlowsForRequester(
-        rawApprovalFlows,
+        flowsWithExecutive,
         profile.id,
         department,
         request.company_id

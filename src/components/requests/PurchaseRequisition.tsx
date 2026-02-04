@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
 import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
@@ -831,9 +831,16 @@ export function PurchaseRequisition() {
             throw new Error('No approval flow configured for this request. Please contact administrator.');
           }
 
+          // Add executive approval steps if requester is Executive
+          let flowsWithExecutive = await addExecutiveApprovalSteps(
+            rawApprovalFlows,
+            profile.id,
+            requestCompanyId
+          );
+
           // Filter out requester from approval flows
           const approvalFlows = await filterApprovalFlowsForRequester(
-            rawApprovalFlows,
+            flowsWithExecutive,
             profile.id,
             requestDepartment,
             requestCompanyId
@@ -1072,9 +1079,16 @@ export function PurchaseRequisition() {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
       }
 
+      // Add executive approval steps if requester is Executive
+      let flowsWithExecutive = await addExecutiveApprovalSteps(
+        rawApprovalFlows,
+        profile.id,
+        requestCompanyId
+      );
+
       // Filter out requester from approval flows
       const approvalFlows = await filterApprovalFlowsForRequester(
-        rawApprovalFlows,
+        flowsWithExecutive,
         profile.id,
         request.department,
         requestCompanyId

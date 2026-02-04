@@ -191,6 +191,111 @@ export async function getApprovalFlow(
   }
 }
 
+export async function addExecutiveApprovalSteps(
+  approvalFlows: ApprovalFlow[],
+  requesterId: string,
+  companyId: string
+): Promise<ApprovalFlow[]> {
+  try {
+    console.log('🔍 Checking if requester is Executive:', requesterId);
+
+    const { data: requesterProfile, error: requesterError } = await supabase
+      .from('user_profiles')
+      .select('approver_type, approver_email, checker_email')
+      .eq('id', requesterId)
+      .single();
+
+    if (requesterError) {
+      console.error('Error fetching requester profile:', requesterError);
+      return approvalFlows;
+    }
+
+    if (requesterProfile.approver_type !== 'Executive') {
+      console.log('ℹ️ Requester is not Executive, no additional steps needed');
+      return approvalFlows;
+    }
+
+    console.log('✅ Requester is Executive, adding custom approval steps');
+
+    const executiveFlows: ApprovalFlow[] = [];
+    let sequence = 1;
+
+    // Add Approver Email as Step 1
+    if (requesterProfile.approver_email) {
+      const { data: approverUser, error: approverError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('email', requesterProfile.approver_email)
+        .maybeSingle();
+
+      if (approverError) {
+        console.error('Error fetching approver user:', approverError);
+      } else if (approverUser) {
+        console.log(`📝 Adding Step ${sequence}: ${approverUser.full_name} (Approver)`);
+        executiveFlows.push({
+          id: `executive-approver-${requesterId}`,
+          company_id: companyId,
+          department_id: null,
+          approver_type: `${approverUser.full_name} (Approver)`,
+          sequence: sequence,
+          days_to_approve: 3,
+          is_required: true,
+          is_active: true,
+          workflow_type: 1,
+          user_id: approverUser.id,
+          approval_flow_setup_id: 'executive-approval',
+          for_checking: false
+        });
+        sequence++;
+      }
+    }
+
+    // Add Checker Email as Step 2 (if it exists)
+    if (requesterProfile.checker_email) {
+      const { data: checkerUser, error: checkerError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('email', requesterProfile.checker_email)
+        .maybeSingle();
+
+      if (checkerError) {
+        console.error('Error fetching checker user:', checkerError);
+      } else if (checkerUser) {
+        console.log(`📝 Adding Step ${sequence}: ${checkerUser.full_name} (Checker)`);
+        executiveFlows.push({
+          id: `executive-checker-${requesterId}`,
+          company_id: companyId,
+          department_id: null,
+          approver_type: `${checkerUser.full_name} (Checker)`,
+          sequence: sequence,
+          days_to_approve: 3,
+          is_required: true,
+          is_active: true,
+          workflow_type: 1,
+          user_id: checkerUser.id,
+          approval_flow_setup_id: 'executive-approval',
+          for_checking: false
+        });
+        sequence++;
+      }
+    }
+
+    // Add the rest of the approval flows with adjusted sequence numbers
+    const adjustedFlows = approvalFlows.map((flow) => ({
+      ...flow,
+      sequence: flow.sequence + (sequence - 1)
+    }));
+
+    const combinedFlows = [...executiveFlows, ...adjustedFlows];
+    console.log(`✅ Total approval steps: ${combinedFlows.length} (${executiveFlows.length} executive + ${adjustedFlows.length} regular)`);
+
+    return combinedFlows;
+  } catch (error) {
+    console.error('Error adding executive approval steps:', error);
+    return approvalFlows;
+  }
+}
+
 export async function filterApprovalFlowsForRequester(
   approvalFlows: ApprovalFlow[],
   requesterId: string,
