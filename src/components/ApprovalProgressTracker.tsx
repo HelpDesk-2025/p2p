@@ -85,7 +85,7 @@ export function ApprovalProgressTracker({
         // Load approval flows for this request
         if (companyId) {
           try {
-            const { getApprovalFlow, filterApprovalFlowsForRequester } = await import('../lib/approvalFlow');
+            const { getApprovalFlow, filterApprovalFlowsForRequester, addExecutiveApprovalSteps } = await import('../lib/approvalFlow');
             // Handle both column names: is_budgeted (PR, Canvass) and budgeted (Petty Cash, Reimbursement, Cash Advance)
             const isBudgeted = data.is_budgeted !== undefined ? data.is_budgeted : (data.budgeted || false);
 
@@ -107,9 +107,18 @@ export function ApprovalProgressTracker({
 
             console.log('Raw flows loaded:', rawFlows?.length || 0);
 
+            // Check if requester is Executive and add custom approval steps
+            const flowsWithExecutive = await addExecutiveApprovalSteps(
+              rawFlows || [],
+              data.requester_id,
+              companyId
+            );
+
+            console.log('Flows after executive check:', flowsWithExecutive?.length || 0);
+
             // Filter out requester from approval flows
             const flows = await filterApprovalFlowsForRequester(
-              rawFlows || [],
+              flowsWithExecutive || [],
               data.requester_id,
               data.department || '',
               companyId
