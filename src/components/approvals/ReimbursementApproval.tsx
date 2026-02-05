@@ -752,7 +752,7 @@ export function ReimbursementApproval() {
         <p className="text-slate-600 mt-1">Review and approve reimbursement requests</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {requests.length === 0 ? (
           <div className="p-12 text-center">
             <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />

@@ -597,7 +597,7 @@ export function PRApproval() {
         ) : (
           <>
             {/* Mobile Card Layout */}
-            <div className="lg:hidden">
+            <div className="lg:hidden overflow-auto flex-1">
               <div className="divide-y divide-slate-200">
                 {paginatedRequests.map((request) => (
                   <div
