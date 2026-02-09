@@ -269,7 +269,7 @@ export function Dashboard({ onViewChange }: DashboardProps) {
           </div>
         </div>
 
-        {(profile?.role === 'approver' || profile?.role === 'admin' || profile?.role === 'procurement') && (
+        {(profile?.role === 'approver' || profile?.role === 'admin' || profile?.role === 'procurement' || profile?.role === 'accounting') && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
             <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4">
               Pending Approvals
