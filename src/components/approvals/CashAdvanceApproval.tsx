@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
@@ -66,6 +66,7 @@ export function CashAdvanceApproval() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
+  const [regeneratingRfp, setRegeneratingRfp] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -74,6 +75,10 @@ export function CashAdvanceApproval() {
   const loadRequests = async () => {
     if (!profile?.company_id && profile?.role !== 'admin') return;
 
+    // Admin users can see both pending and approved requests
+    // Non-admin users only see pending requests
+    const statusFilter = profile?.role === 'admin' ? ['pending', 'approved'] : ['pending'];
+
     const { data } = await supabase
       .from('cash_advance_requests')
       .select(`
@@ -81,7 +86,7 @@ export function CashAdvanceApproval() {
         user_profiles:requester_id (full_name, email, company_id, department),
         companies!cash_advance_requests_company_id_fkey (id, name)
       `)
-      .eq('status', 'pending')
+      .in('status', statusFilter)
       .order('created_at', { ascending: false });
 
     if (!data) {
@@ -664,6 +669,111 @@ export function CashAdvanceApproval() {
     }
   };
 
+  const handleRegenerateRFP = async () => {
+    if (!selectedRequest || !profile) return;
+
+    if (selectedRequest.status !== 'approved') {
+      alert('RFP can only be regenerated for approved requests.');
+      return;
+    }
+
+    if (profile.role !== 'admin') {
+      alert('Only admin users can regenerate RFPs.');
+      return;
+    }
+
+    const confirmMessage = 'Are you sure you want to regenerate the RFP for this Cash Advance? This will replace the existing RFP with updated signatures.';
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setRegeneratingRfp(true);
+
+    try {
+      const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+      const { generateRFP } = await import('../../lib/rfpGenerator');
+
+      const { data: companyData } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', selectedRequest.company_id || profile.company_id)
+        .single();
+
+      // Generate Cash Advance Form
+      console.log('Generating Cash Advance Form PDF...');
+      const caFormPdf = await generateCashAdvanceForm(selectedRequest.id);
+
+      // Generate RFP
+      console.log('Generating RFP PDF...');
+      const rfpPdf = await generateRFP({
+        companyName: companyData?.name || 'Unknown Company',
+        requestType: 'Cash Advance',
+        documentNumber: selectedRequest.ca_number,
+        dateOfRequest: new Date(selectedRequest.request_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }),
+        requestor: selectedRequest.user_profiles?.full_name || 'Unknown',
+        department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+        purpose: selectedRequest.purpose,
+        amount: selectedRequest.amount,
+        dateNeeded: selectedRequest.date_needed || 'N/A',
+        paymentMode: paymentModeName || 'N/A',
+        paymentModeLines: selectedRequest.payment_mode_lines || [],
+        requestorName: selectedRequest.user_profiles?.full_name || 'Unknown',
+        requestorEsig: null,
+        approvals: []
+      }, selectedRequest.id, 'Cash Advance', selectedRequest.requester_id);
+
+      // Merge PDFs
+      const { mergeRFPWithAttachments } = await import('../../lib/pdfMerger');
+      console.log('Merging PDFs...');
+      const mergedPdf = await mergeRFPWithAttachments(
+        rfpPdf,
+        caFormPdf,
+        selectedRequest.attachments_pdf_path || null
+      );
+
+      // Upload merged PDF
+      console.log('Uploading merged PDF...');
+      const timestamp = Date.now();
+      const mergedPdfPath = `cash-advance/${selectedRequest.ca_number}_merged_${timestamp}.pdf`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(mergedPdfPath, mergedPdf, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Update the request with new PDF paths
+      const { error: updateError } = await supabase
+        .from('cash_advance_requests')
+        .update({
+          merged_pdf_path: mergedPdfPath,
+          rfp_pdf_path: `cash-advance/${selectedRequest.ca_number}_rfp_${timestamp}.pdf`
+        })
+        .eq('id', selectedRequest.id);
+
+      if (updateError) throw updateError;
+
+      alert('RFP has been successfully regenerated with updated signatures!');
+
+      // Refresh the request data
+      setShowModal(false);
+      setSelectedRequest(null);
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error regenerating RFP:', error);
+      alert('Failed to regenerate RFP: ' + error.message);
+    } finally {
+      setRegeneratingRfp(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
@@ -964,7 +1074,7 @@ export function CashAdvanceApproval() {
                 />
               </div>
 
-              {!canApprove() && (
+              {!canApprove() && selectedRequest.status === 'pending' && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <p className="text-sm text-amber-800">
                     You are not authorized to approve this request at the current approval level.
@@ -972,23 +1082,44 @@ export function CashAdvanceApproval() {
                 </div>
               )}
 
+              {selectedRequest.status === 'approved' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800 font-semibold">
+                    This request has been fully approved.
+                  </p>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4 border-t border-slate-200">
-                <button
-                  onClick={() => handleAction('approved')}
-                  disabled={loading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                >
-                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {approving ? 'Approving...' : 'Approve'}
-                </button>
-                <button
-                  onClick={() => handleAction('rejected')}
-                  disabled={loading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                >
-                  {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {rejecting ? 'Rejecting...' : 'Reject'}
-                </button>
+                {selectedRequest.status === 'pending' ? (
+                  <>
+                    <button
+                      onClick={() => handleAction('approved')}
+                      disabled={loading || !canApprove()}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    >
+                      {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                      {approving ? 'Approving...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => handleAction('rejected')}
+                      disabled={loading || !canApprove()}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    >
+                      {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                      {rejecting ? 'Rejecting...' : 'Reject'}
+                    </button>
+                  </>
+                ) : selectedRequest.status === 'approved' && profile?.role === 'admin' ? (
+                  <button
+                    onClick={handleRegenerateRFP}
+                    disabled={regeneratingRfp}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  >
+                    {regeneratingRfp ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {regeneratingRfp ? 'Regenerating RFP...' : 'Regenerate RFP'}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
