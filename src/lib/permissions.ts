@@ -120,6 +120,12 @@ export const MODULE_PERMISSIONS = {
   SMTP: 'Configuration',
   ROLES_PERMISSIONS: 'Configuration',
 
+  // Accounting Configuration Modules
+  CONFIG_EXPENSE_TYPES: 'config_expense_types',
+  CONFIG_PAYMENT_MODES: 'config_payment_modes',
+  CONFIG_PR_CHECKLISTS: 'config_pr_checklists',
+  CONFIG_TAX_RATES: 'config_tax_rates',
+
   // Procurement
   PROCUREMENT_CHECKING: 'Procurement Checking',
   APPROVAL_LEDGER: 'Approval Ledger'

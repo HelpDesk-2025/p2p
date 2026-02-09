@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { hasPermission, MODULE_PERMISSIONS } from '../lib/permissions';
+import { hasPermission, hasAnyPermission, MODULE_PERMISSIONS } from '../lib/permissions';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import {
   LayoutDashboard,
@@ -64,7 +64,7 @@ interface MenuItem {
   id: ViewType;
   label: string;
   icon: any;
-  permission?: string;
+  permission?: string | string[];
   group?: string;
 }
 
@@ -174,16 +174,16 @@ const configItems: MenuItem[] = [
   { id: 'config-approvers', label: 'Approvers', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-users', label: 'Users', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
   { id: 'config-impersonation', label: 'View as User', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
-  { id: 'config-checklists', label: 'PR Checklists', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-checklists', label: 'PR Checklists', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_PR_CHECKLISTS] },
+  { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_PAYMENT_MODES] },
   { id: 'config-holidays', label: 'Holidays', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-companies', label: 'Companies', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-approval-flows', label: 'Approval Flows', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-number-series', label: 'Number Series', icon: Settings, permission: MODULE_PERMISSIONS.NUMBER_SERIES },
   { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
   { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, permission: MODULE_PERMISSIONS.SMTP },
-  { id: 'config-expense-types', label: 'Type of Expense', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-withholding-tax-rates', label: 'Withholding Tax Rates', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
+  { id: 'config-expense-types', label: 'Type of Expense', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_EXPENSE_TYPES] },
+  { id: 'config-withholding-tax-rates', label: 'Withholding Tax Rates', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_TAX_RATES] },
   { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
 ];
 
@@ -198,6 +198,9 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
   const canAccessItem = (item: MenuItem) => {
     if (!item.permission) return true;
+    if (Array.isArray(item.permission)) {
+      return hasAnyPermission(permissions, item.permission);
+    }
     return hasPermission(permissions, item.permission);
   };
 
