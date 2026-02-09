@@ -522,6 +522,9 @@ export function CashAdvanceApproval() {
           }
         }
 
+        // Filter out checkers for RFP (only include actual approvers, not for_checking)
+        const rfpApprovals = finalApprovalRecords.filter(record => !record.for_checking);
+
         const rfpBytes = await generateRFP({
           companyName: companyData?.name || 'N/A',
           requestType: 'Cash Advance',
@@ -535,7 +538,7 @@ export function CashAdvanceApproval() {
           paymentModeLines: paymentModeLines,
           requestorName: requestorData?.full_name || 'Unknown',
           requestorEsig: requestorData?.e_sig || null,
-          approvals: finalApprovalRecords
+          approvals: rfpApprovals
         });
 
         // Upload RFP separately
@@ -794,7 +797,33 @@ export function CashAdvanceApproval() {
         approvals: approvalRecordsWithSigs
       });
 
-      // Generate RFP (will internally use get_approval_records_with_signatures to exclude checkers)
+      // Get payment mode information for RFP
+      let paymentModeName = '';
+      const paymentModeLines: Array<{ label: string; value: string }> = [];
+
+      if (selectedRequest.payment_mode_id) {
+        const { data: paymentModeData } = await supabase
+          .from('payment_modes')
+          .select('mode_name')
+          .eq('id', selectedRequest.payment_mode_id)
+          .maybeSingle();
+
+        paymentModeName = paymentModeData?.mode_name || '';
+
+        if (selectedRequest.payment_mode_lines) {
+          selectedRequest.payment_mode_lines.forEach((line) => {
+            paymentModeLines.push({
+              label: line.name,
+              value: line.value
+            });
+          });
+        }
+      }
+
+      // Filter out checkers for RFP (only include actual approvers, not for_checking)
+      const rfpApprovals = approvalRecordsWithSigs.filter(record => !record.for_checking);
+
+      // Generate RFP with filtered approvals (excluding checkers)
       console.log('Generating RFP PDF...');
       const rfpPdf = await generateRFP({
         companyName: companyData?.name || 'Unknown Company',
@@ -805,17 +834,17 @@ export function CashAdvanceApproval() {
           month: '2-digit',
           day: '2-digit'
         }),
-        requestor: selectedRequest.user_profiles?.full_name || 'Unknown',
-        department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+        payee: selectedRequest.payee || 'Unknown',
         purpose: selectedRequest.purpose,
-        amount: selectedRequest.amount,
         dateNeeded: selectedRequest.date_needed || 'N/A',
+        amount: selectedRequest.amount,
+        budgeted: selectedRequest.budgeted,
         paymentMode: paymentModeName || 'N/A',
-        paymentModeLines: selectedRequest.payment_mode_lines || [],
-        requestorName: selectedRequest.user_profiles?.full_name || 'Unknown',
-        requestorEsig: null,
-        approvals: []
-      }, selectedRequest.id, 'Cash Advance', selectedRequest.requester_id);
+        paymentModeLines: paymentModeLines,
+        requestorName: requestorData?.full_name || 'Unknown',
+        requestorEsig: requestorData?.e_sig || null,
+        approvals: rfpApprovals
+      });
 
       // Merge PDFs
       const { mergeRFPWithAttachments } = await import('../../lib/pdfMerger');

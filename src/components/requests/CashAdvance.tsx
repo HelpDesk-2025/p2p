@@ -964,7 +964,10 @@ export function CashAdvance() {
         }
       }
 
-      // Generate RFP Form
+      // Filter out checkers for RFP (only include actual approvers, not for_checking)
+      const rfpApprovals = approvalRecordsWithSigs.filter(record => !record.for_checking);
+
+      // Generate RFP Form with filtered approvals
       const rfpBytes = await generateRFP({
         companyName: companyData?.name || 'N/A',
         requestType: 'Cash Advance',
@@ -978,7 +981,7 @@ export function CashAdvance() {
         paymentModeLines: paymentModeLines,
         requestorName: requestorData?.full_name || 'Unknown',
         requestorEsig: requestorData?.e_sig || null,
-        approvals: approvalRecords
+        approvals: rfpApprovals
       });
 
       // Prepare PDFs to merge: RFP + Approved CA Form + Attachments
