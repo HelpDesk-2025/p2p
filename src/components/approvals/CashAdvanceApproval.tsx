@@ -429,28 +429,51 @@ export function CashAdvanceApproval() {
         // Delay to ensure database transaction is fully committed including foreign key joins
         await new Promise(resolve => setTimeout(resolve, 3000));
 
-        // Use RPC function to bypass RLS and get all approval records with signatures
-        const { data: approvalRecords, error: ledgerError } = await supabase
-          .rpc('get_approval_records_with_signatures', {
-            p_request_id: selectedRequest.id,
-            p_request_type: 'Cash Advance',
-            p_requester_id: selectedRequest.requester_id
-          });
+        // Get ALL approval records (including checkers) for Cash Advance form
+        const { data: allApprovalRecords, error: ledgerError } = await supabase
+          .from('approval_ledger')
+          .select(`
+            approver_name,
+            approver_id,
+            approval_date,
+            sequence,
+            for_checking
+          `)
+          .eq('request_id', selectedRequest.id)
+          .eq('request_type', 'Cash Advance')
+          .eq('action', 'Approved')
+          .order('sequence', { ascending: true });
 
         if (ledgerError) {
           console.error('Error fetching approval records:', ledgerError);
         }
 
-        // Ensure we have an array to work with
-        const finalApprovalRecords = approvalRecords || [];
+        // Map approval records with e-signatures
+        const approvalRecordsWithSigs = await Promise.all(
+          (allApprovalRecords || []).map(async (record) => {
+            const { data: approverData } = await supabase
+              .from('user_profiles')
+              .select('e_sig')
+              .eq('id', record.approver_id)
+              .maybeSingle();
+
+            return {
+              approver_name: record.approver_name,
+              approver_esig: approverData?.e_sig || null,
+              approval_date: record.approval_date,
+              sequence: record.sequence,
+              for_checking: record.for_checking || false
+            };
+          })
+        );
 
         // Manually add current approver if not found (due to transaction timing)
-        const currentApproverInLedger = finalApprovalRecords.some(
+        const currentApproverInLedger = approvalRecordsWithSigs.some(
           record => record.approver_name === profile.full_name
         );
 
         if (!currentApproverInLedger) {
-          finalApprovalRecords.push({
+          approvalRecordsWithSigs.push({
             approver_name: profile.full_name || 'Unknown',
             approver_esig: profile.e_sig || null,
             approval_date: new Date().toISOString(),
@@ -458,6 +481,8 @@ export function CashAdvanceApproval() {
             for_checking: currentApproverStep?.for_checking || false
           });
         }
+
+        const finalApprovalRecords = approvalRecordsWithSigs;
 
         const approvedCaFormBytes = await generateCashAdvanceForm({
           caNumber: selectedRequest.ca_number,
@@ -701,11 +726,75 @@ export function CashAdvanceApproval() {
         .eq('id', selectedRequest.company_id || profile.company_id)
         .single();
 
-      // Generate Cash Advance Form
-      console.log('Generating Cash Advance Form PDF...');
-      const caFormPdf = await generateCashAdvanceForm(selectedRequest.id);
+      // Fetch requestor data
+      const { data: requestorData } = await supabase
+        .from('user_profiles')
+        .select('full_name, e_sig')
+        .eq('id', selectedRequest.requester_id)
+        .single();
 
-      // Generate RFP
+      // Fetch payee data
+      const { data: payeeData } = await supabase
+        .from('user_profiles')
+        .select('e_sig')
+        .eq('full_name', selectedRequest.payee)
+        .maybeSingle();
+
+      // Get ALL approval records (including checkers) for Cash Advance form
+      const { data: allApprovalRecords } = await supabase
+        .from('approval_ledger')
+        .select(`
+          approver_name,
+          approver_id,
+          approval_date,
+          sequence,
+          for_checking
+        `)
+        .eq('request_id', selectedRequest.id)
+        .eq('request_type', 'Cash Advance')
+        .eq('action', 'Approved')
+        .order('sequence', { ascending: true });
+
+      // Map approval records with e-signatures
+      const approvalRecordsWithSigs = await Promise.all(
+        (allApprovalRecords || []).map(async (record) => {
+          const { data: approverData } = await supabase
+            .from('user_profiles')
+            .select('e_sig')
+            .eq('id', record.approver_id)
+            .maybeSingle();
+
+          return {
+            approver_name: record.approver_name,
+            approver_esig: approverData?.e_sig || null,
+            approval_date: record.approval_date,
+            sequence: record.sequence,
+            for_checking: record.for_checking || false
+          };
+        })
+      );
+
+      // Generate Cash Advance Form with ALL approvers (including checkers)
+      console.log('Generating Cash Advance Form PDF...');
+      const caFormPdf = await generateCashAdvanceForm({
+        caNumber: selectedRequest.ca_number,
+        requestedBy: requestorData?.full_name || 'Unknown',
+        requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
+        amount: selectedRequest.amount,
+        company: companyData?.name || 'N/A',
+        department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+        purpose: selectedRequest.purpose,
+        payee: selectedRequest.payee || 'Unknown',
+        payeeEsig: payeeData?.e_sig || null,
+        outstandingAsl: selectedRequest.outstanding_asl || 'None',
+        outstandingAslDate: selectedRequest.outstanding_asl_date
+          ? new Date(selectedRequest.outstanding_asl_date).toLocaleDateString()
+          : new Date().toLocaleDateString(),
+        remarks: selectedRequest.remarks || 'OK',
+        approvals: approvalRecordsWithSigs
+      });
+
+      // Generate RFP (will internally use get_approval_records_with_signatures to exclude checkers)
       console.log('Generating RFP PDF...');
       const rfpPdf = await generateRFP({
         companyName: companyData?.name || 'Unknown Company',
