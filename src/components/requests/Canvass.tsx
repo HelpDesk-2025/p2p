@@ -2467,7 +2467,7 @@ export function Canvass() {
                       <Download size={18} />
                       Download CVS & RFP
                     </button>
-                    {(profile?.role === 'admin' || profile?.role === 'accounting') && (
+                    {profile?.role === 'admin' && (
                       <button
                         onClick={() => handleRepostToMSBC(viewingRequest)}
                         disabled={loading}

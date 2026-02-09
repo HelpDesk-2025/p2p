@@ -1121,7 +1121,7 @@ export function PRApproval() {
                 requestId={selectedRequest.id}
               />
 
-              {(profile?.role === 'admin' || profile?.role === 'accounting') && selectedRequest.status === 'approved' && (
+              {profile?.role === 'admin' && selectedRequest.status === 'approved' && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-3">Admin Actions</label>
                   <button

@@ -2445,7 +2445,7 @@ export function PettyCash() {
                       <Download size={18} />
                       Download Form
                     </button>
-                    {(profile?.role === 'admin' || profile?.role === 'accounting') && (
+                    {profile?.role === 'admin' && (
                       <button
                         onClick={() => handleRegenerateApprovedPettyCash(viewingRequest)}
                         disabled={loading}

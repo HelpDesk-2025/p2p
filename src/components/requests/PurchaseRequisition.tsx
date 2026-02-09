@@ -2541,7 +2541,7 @@ export function PurchaseRequisition() {
                     Download RFP
                   </button>
                 )}
-                {viewingRequest.status === 'approved' && (profile?.role === 'admin' || profile?.role === 'accounting') && (
+                {viewingRequest.status === 'approved' && profile?.role === 'admin' && (
                   <>
                     {viewingRequest.purchase_type !== 'Purchase Order' && (
                       <button
