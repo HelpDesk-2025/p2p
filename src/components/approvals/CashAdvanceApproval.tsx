@@ -1283,25 +1283,6 @@ export function CashAdvanceApproval() {
                       {rejecting ? 'Rejecting...' : 'Reject'}
                     </button>
                   </>
-                ) : selectedRequest.status === 'approved' && profile?.role === 'admin' ? (
-                  <>
-                    <button
-                      onClick={handleRegenerateRFP}
-                      disabled={regeneratingRfp || repostingToMsbc}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                    >
-                      {regeneratingRfp ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />}
-                      {regeneratingRfp ? 'Regenerating...' : 'Regenerate RFP'}
-                    </button>
-                    <button
-                      onClick={handleRepostToMsbc}
-                      disabled={regeneratingRfp || repostingToMsbc}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                    >
-                      {repostingToMsbc ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
-                      {repostingToMsbc ? 'Reposting...' : 'Repost to MSBC'}
-                    </button>
-                  </>
                 ) : null}
               </div>
             </div>
