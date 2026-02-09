@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
@@ -67,6 +67,7 @@ export function CashAdvanceApproval() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
   const [regeneratingRfp, setRegeneratingRfp] = useState(false);
+  const [repostingToMsbc, setRepostingToMsbc] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -774,6 +775,59 @@ export function CashAdvanceApproval() {
     }
   };
 
+  const handleRepostToMsbc = async () => {
+    if (!selectedRequest || !profile) return;
+
+    if (selectedRequest.status !== 'approved') {
+      alert('Only approved requests can be reposted to MSBC.');
+      return;
+    }
+
+    if (profile.role !== 'admin') {
+      alert('Only admin users can repost to MSBC.');
+      return;
+    }
+
+    const confirmMessage = 'Are you sure you want to repost this Cash Advance to MSBC? This will create a new entry in the MSBC system.';
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setRepostingToMsbc(true);
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-ca-to-msbc`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ requestId: selectedRequest.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to post to MSBC');
+      }
+
+      alert('Successfully reposted to MSBC: ' + (result.message || 'Success'));
+
+      // Refresh the request data
+      setShowModal(false);
+      setSelectedRequest(null);
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error reposting to MSBC:', error);
+      alert('Failed to repost to MSBC: ' + error.message);
+    } finally {
+      setRepostingToMsbc(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
@@ -1111,14 +1165,24 @@ export function CashAdvanceApproval() {
                     </button>
                   </>
                 ) : selectedRequest.status === 'approved' && profile?.role === 'admin' ? (
-                  <button
-                    onClick={handleRegenerateRFP}
-                    disabled={regeneratingRfp}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                  >
-                    {regeneratingRfp ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />}
-                    {regeneratingRfp ? 'Regenerating RFP...' : 'Regenerate RFP'}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleRegenerateRFP}
+                      disabled={regeneratingRfp || repostingToMsbc}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    >
+                      {regeneratingRfp ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />}
+                      {regeneratingRfp ? 'Regenerating...' : 'Regenerate RFP'}
+                    </button>
+                    <button
+                      onClick={handleRepostToMsbc}
+                      disabled={regeneratingRfp || repostingToMsbc}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    >
+                      {repostingToMsbc ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
+                      {repostingToMsbc ? 'Reposting...' : 'Repost to MSBC'}
+                    </button>
+                  </>
                 ) : null}
               </div>
             </div>
