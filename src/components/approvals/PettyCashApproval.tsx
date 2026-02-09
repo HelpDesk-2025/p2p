@@ -132,56 +132,61 @@ export function PettyCashApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the petty cash request's company_id to look up the correct approval flow
-        const pcCompanyId = req.company_id || req.user_profiles?.company_id;
-        if (!pcCompanyId) return null;
+        try {
+          // Use the petty cash request's company_id to look up the correct approval flow
+          const pcCompanyId = req.company_id || req.user_profiles?.company_id;
+          if (!pcCompanyId) return null;
 
-        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-        const rawFlows = await getApprovalFlow(
-          pcCompanyId,
-          req.department || req.user_profiles?.department || profile.department || '',
-          'Petty Cash',
-          false,
-          req.amount
-        );
+          const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+          const rawFlows = await getApprovalFlow(
+            pcCompanyId,
+            req.department || req.user_profiles?.department || profile.department || '',
+            'Petty Cash',
+            false,
+            req.amount
+          );
 
-        // Inject executive approvers if requester is Executive type
-        const flowsWithExecutive = await addExecutiveApprovalSteps(
-          rawFlows,
-          req.requester_id,
-          pcCompanyId
-        );
+          // Inject executive approvers if requester is Executive type
+          const flowsWithExecutive = await addExecutiveApprovalSteps(
+            rawFlows,
+            req.requester_id,
+            pcCompanyId
+          );
 
-        // Filter out the requester from approval flows
-        const flows = await filterApprovalFlowsForRequester(
-          flowsWithExecutive,
-          req.requester_id,
-          req.department || req.user_profiles?.department || '',
-          pcCompanyId
-        );
+          // Filter out the requester from approval flows
+          const flows = await filterApprovalFlowsForRequester(
+            flowsWithExecutive,
+            req.requester_id,
+            req.department || req.user_profiles?.department || '',
+            pcCompanyId
+          );
 
-        const currentStep = await getNextApprover(flows, req.current_approval_level);
+          const currentStep = await getNextApprover(flows, req.current_approval_level);
 
-        if (!currentStep) return null;
+          if (!currentStep) return null;
 
-        let isCurrentApprover = false;
-        const requestDepartment = req.department || req.user_profiles?.department;
+          let isCurrentApprover = false;
+          const requestDepartment = req.department || req.user_profiles?.department;
 
-        if (currentStep.user_id) {
-          isCurrentApprover = currentStep.user_id === profile.id;
-        } else {
-          const approverType = currentStep.approver_type;
+          if (currentStep.user_id) {
+            isCurrentApprover = currentStep.user_id === profile.id;
+          } else {
+            const approverType = currentStep.approver_type;
 
-          if (approverType === 'Department Head' && profile.role === 'approver') {
-            isCurrentApprover = requestDepartment === profile.department;
-          } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-            isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-          } else if (approverType === 'President') {
-            isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+            if (approverType === 'Department Head' && profile.role === 'approver') {
+              isCurrentApprover = requestDepartment === profile.department;
+            } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
+              isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
+            } else if (approverType === 'President') {
+              isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+            }
           }
-        }
 
-        return isCurrentApprover ? req : null;
+          return isCurrentApprover ? req : null;
+        } catch (error) {
+          console.error('Error checking approval flow for petty cash:', error);
+          return null;
+        }
       })
     );
 
@@ -197,34 +202,40 @@ export function PettyCashApproval() {
     // Use the petty cash request's company_id to look up the correct approval flow
     const pcCompanyId = request.company_id || request.user_profiles?.company_id;
     if (pcCompanyId) {
-      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-      const rawFlows = await getApprovalFlow(
-        pcCompanyId,
-        request.department || request.user_profiles?.department || profile.department || '',
-        'Petty Cash',
-        false,
-        request.amount
-      );
+      try {
+        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+        const rawFlows = await getApprovalFlow(
+          pcCompanyId,
+          request.department || request.user_profiles?.department || profile.department || '',
+          'Petty Cash',
+          false,
+          request.amount
+        );
 
-      // Inject executive approvers if requester is Executive type
-      const flowsWithExecutive = await addExecutiveApprovalSteps(
-        rawFlows,
-        request.requester_id,
-        pcCompanyId
-      );
+        // Inject executive approvers if requester is Executive type
+        const flowsWithExecutive = await addExecutiveApprovalSteps(
+          rawFlows,
+          request.requester_id,
+          pcCompanyId
+        );
 
-      // Filter out the requester from approval flows
-      const flows = await filterApprovalFlowsForRequester(
-        flowsWithExecutive,
-        request.requester_id,
-        request.department || request.user_profiles?.department || '',
-        pcCompanyId
-      );
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          flowsWithExecutive,
+          request.requester_id,
+          request.department || request.user_profiles?.department || '',
+          pcCompanyId
+        );
 
-      setApprovalFlows(flows);
+        setApprovalFlows(flows);
 
-      const currentStep = await getNextApprover(flows, request.current_approval_level);
-      setCurrentApproverStep(currentStep);
+        const currentStep = await getNextApprover(flows, request.current_approval_level);
+        setCurrentApproverStep(currentStep);
+      } catch (error) {
+        console.error('Error loading approval flow:', error);
+        setApprovalFlows([]);
+        setCurrentApproverStep(null);
+      }
     }
   };
 

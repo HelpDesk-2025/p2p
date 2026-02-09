@@ -107,22 +107,23 @@ export function Dashboard({ onViewChange }: DashboardProps) {
               const companyId = req.company_id || profile.company_id;
               if (!companyId) continue;
 
-              const rawFlows = await getApprovalFlow(
-                companyId,
-                req.department,
-                requestType,
-                req.is_budgeted || req.budgeted || false,
-                req.total_amount || req.amount || 0
-              );
+              try {
+                const rawFlows = await getApprovalFlow(
+                  companyId,
+                  req.department,
+                  requestType,
+                  req.is_budgeted || req.budgeted || false,
+                  req.total_amount || req.amount || 0
+                );
 
-              const flows = await filterApprovalFlowsForRequester(
-                rawFlows,
-                req.requester_id,
-                req.department,
-                companyId
-              );
+                const flows = await filterApprovalFlowsForRequester(
+                  rawFlows,
+                  req.requester_id,
+                  req.department,
+                  companyId
+                );
 
-              const currentStep = await getNextApprover(flows, req.current_approval_level);
+                const currentStep = await getNextApprover(flows, req.current_approval_level);
 
               if (!currentStep) continue;
 
@@ -152,6 +153,10 @@ export function Dashboard({ onViewChange }: DashboardProps) {
               });
 
               if (isCurrentApprover) count++;
+              } catch (error) {
+                console.error(`Error getting approval flow for ${requestType}:`, error);
+                continue;
+              }
             }
 
             return count;

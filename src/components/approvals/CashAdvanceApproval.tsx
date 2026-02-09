@@ -101,35 +101,36 @@ export function CashAdvanceApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the cash advance request's company_id to look up the correct approval flow
-        const caCompanyId = req.company_id || req.user_profiles?.company_id;
-        if (!caCompanyId) return null;
+        try {
+          // Use the cash advance request's company_id to look up the correct approval flow
+          const caCompanyId = req.company_id || req.user_profiles?.company_id;
+          if (!caCompanyId) return null;
 
-        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-        const rawFlows = await getApprovalFlow(
-          caCompanyId,
-          req.department || req.user_profiles?.department || profile.department || '',
-          'Cash Advance',
-          req.budgeted,
-          req.amount
-        );
+          const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+          const rawFlows = await getApprovalFlow(
+            caCompanyId,
+            req.department || req.user_profiles?.department || profile.department || '',
+            'Cash Advance',
+            req.budgeted,
+            req.amount
+          );
 
-        // Inject executive approvers if requester is Executive type
-        const flowsWithExecutive = await addExecutiveApprovalSteps(
-          rawFlows,
-          req.requester_id,
-          caCompanyId
-        );
+          // Inject executive approvers if requester is Executive type
+          const flowsWithExecutive = await addExecutiveApprovalSteps(
+            rawFlows,
+            req.requester_id,
+            caCompanyId
+          );
 
-        // Filter out the requester from approval flows
-        const flows = await filterApprovalFlowsForRequester(
-          flowsWithExecutive,
-          req.requester_id,
-          req.department || req.user_profiles?.department || '',
-          caCompanyId
-        );
+          // Filter out the requester from approval flows
+          const flows = await filterApprovalFlowsForRequester(
+            flowsWithExecutive,
+            req.requester_id,
+            req.department || req.user_profiles?.department || '',
+            caCompanyId
+          );
 
-        const currentStep = await getNextApprover(flows, req.current_approval_level);
+          const currentStep = await getNextApprover(flows, req.current_approval_level);
 
         if (!currentStep) return null;
 
@@ -151,6 +152,10 @@ export function CashAdvanceApproval() {
         }
 
         return isCurrentApprover ? req : null;
+        } catch (error) {
+          console.error('Error checking approval flow for cash advance:', error);
+          return null;
+        }
       })
     );
 

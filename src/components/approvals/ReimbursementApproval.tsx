@@ -99,35 +99,36 @@ export function ReimbursementApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the reimbursement request's company_id to look up the correct approval flow
-        const reimbCompanyId = req.company_id || req.user_profiles?.company_id;
-        if (!reimbCompanyId) return null;
+        try {
+          // Use the reimbursement request's company_id to look up the correct approval flow
+          const reimbCompanyId = req.company_id || req.user_profiles?.company_id;
+          if (!reimbCompanyId) return null;
 
-        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-        const rawFlows = await getApprovalFlow(
-          reimbCompanyId,
-          req.department || req.user_profiles?.department || profile.department || '',
-          'Reimbursement',
-          false,
-          req.amount
-        );
+          const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+          const rawFlows = await getApprovalFlow(
+            reimbCompanyId,
+            req.department || req.user_profiles?.department || profile.department || '',
+            'Reimbursement',
+            false,
+            req.amount
+          );
 
-        // Inject executive approvers if requester is Executive type
-        const flowsWithExecutive = await addExecutiveApprovalSteps(
-          rawFlows,
-          req.requester_id,
-          reimbCompanyId
-        );
+          // Inject executive approvers if requester is Executive type
+          const flowsWithExecutive = await addExecutiveApprovalSteps(
+            rawFlows,
+            req.requester_id,
+            reimbCompanyId
+          );
 
-        // Filter out the requester from approval flows
-        const flows = await filterApprovalFlowsForRequester(
-          flowsWithExecutive,
-          req.requester_id,
-          req.department || req.user_profiles?.department || '',
-          reimbCompanyId
-        );
+          // Filter out the requester from approval flows
+          const flows = await filterApprovalFlowsForRequester(
+            flowsWithExecutive,
+            req.requester_id,
+            req.department || req.user_profiles?.department || '',
+            reimbCompanyId
+          );
 
-        const currentStep = await getNextApprover(flows, req.current_approval_level);
+          const currentStep = await getNextApprover(flows, req.current_approval_level);
 
         if (!currentStep) return null;
 
@@ -149,6 +150,10 @@ export function ReimbursementApproval() {
         }
 
         return isCurrentApprover ? req : null;
+        } catch (error) {
+          console.error('Error checking approval flow for reimbursement:', error);
+          return null;
+        }
       })
     );
 
@@ -280,34 +285,40 @@ export function ReimbursementApproval() {
     // Use the reimbursement request's company_id to look up the correct approval flow
     const reimbCompanyId = request.company_id || request.user_profiles?.company_id;
     if (reimbCompanyId) {
-      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-      const rawFlows = await getApprovalFlow(
-        reimbCompanyId,
-        request.department || request.user_profiles?.department || profile.department || '',
-        'Reimbursement',
-        false,
-        request.amount
-      );
+      try {
+        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+        const rawFlows = await getApprovalFlow(
+          reimbCompanyId,
+          request.department || request.user_profiles?.department || profile.department || '',
+          'Reimbursement',
+          false,
+          request.amount
+        );
 
-      // Inject executive approvers if requester is Executive type
-      const flowsWithExecutive = await addExecutiveApprovalSteps(
-        rawFlows,
-        request.requester_id,
-        reimbCompanyId
-      );
+        // Inject executive approvers if requester is Executive type
+        const flowsWithExecutive = await addExecutiveApprovalSteps(
+          rawFlows,
+          request.requester_id,
+          reimbCompanyId
+        );
 
-      // Filter out the requester from approval flows
-      const flows = await filterApprovalFlowsForRequester(
-        flowsWithExecutive,
-        request.requester_id,
-        request.department || request.user_profiles?.department || '',
-        reimbCompanyId
-      );
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          flowsWithExecutive,
+          request.requester_id,
+          request.department || request.user_profiles?.department || '',
+          reimbCompanyId
+        );
 
-      setApprovalFlows(flows);
+        setApprovalFlows(flows);
 
-      const currentStep = await getNextApprover(flows, request.current_approval_level);
-      setCurrentApproverStep(currentStep);
+        const currentStep = await getNextApprover(flows, request.current_approval_level);
+        setCurrentApproverStep(currentStep);
+      } catch (error) {
+        console.error('Error loading approval flow:', error);
+        setApprovalFlows([]);
+        setCurrentApproverStep(null);
+      }
     }
   };
 
