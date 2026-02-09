@@ -514,6 +514,23 @@ export function RolesPermissionsConfig() {
     </div>
   );
 
+  const configSubPermissionLabels: Record<string, string> = {
+    'config_approvers': 'Approvers',
+    'config_users': 'Users',
+    'config_view_as_users': 'View as Users',
+    'config_pr_checklists': 'PR Checklists',
+    'config_payment_modes': 'Payment Modes',
+    'config_holidays': 'Holidays',
+    'config_companies': 'Companies',
+    'config_approval_flows': 'Approval Flows',
+    'config_number_series': 'Number Series',
+    'config_vendors_items': 'Vendors & Items',
+    'config_smtp_settings': 'SMTP Settings',
+    'config_expense_types': 'Type of Expense',
+    'config_tax_rates': 'Withholding Tax Rates',
+    'config_roles_permissions': 'Roles & Permission',
+  };
+
   const renderAssignTab = () => {
     const groupedPermissions = permissions.reduce((acc, permission) => {
       if (!acc[permission.module]) {
@@ -522,6 +539,10 @@ export function RolesPermissionsConfig() {
       acc[permission.module].push(permission);
       return acc;
     }, {} as Record<string, Permission[]>);
+
+    const mainConfigPermission = permissions.find(p => p.name === 'Configuration' && p.module === 'configuration');
+    const configSubPermissions = permissions.filter(p => p.name.startsWith('config_') && p.module === 'configuration');
+    const hasConfigPermission = selectedRole && mainConfigPermission ? hasPermission(selectedRole, mainConfigPermission.id) : false;
 
     return (
       <div className="space-y-4">
@@ -552,26 +573,54 @@ export function RolesPermissionsConfig() {
                   {module.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {perms.map((permission) => (
-                    <label
-                      key={permission.id}
-                      className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={hasPermission(selectedRole, permission.id)}
-                        onChange={() => handleTogglePermission(selectedRole, permission.id)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-slate-900">{permission.name}</div>
-                        {permission.description && (
-                          <div className="text-xs text-slate-500">{permission.description}</div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
+                  {perms.map((permission) => {
+                    if (permission.name.startsWith('config_')) return null;
+
+                    return (
+                      <label
+                        key={permission.id}
+                        className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={hasPermission(selectedRole, permission.id)}
+                          onChange={() => handleTogglePermission(selectedRole, permission.id)}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-slate-900">{permission.name}</div>
+                          {permission.description && (
+                            <div className="text-xs text-slate-500">{permission.description}</div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
+
+                {module === 'configuration' && hasConfigPermission && configSubPermissions.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <h5 className="font-medium text-slate-700 mb-3 text-sm">Configuration Sub-Permissions:</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {configSubPermissions.map((subPerm) => (
+                        <label
+                          key={subPerm.id}
+                          className="flex items-center gap-2 p-2 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={hasPermission(selectedRole, subPerm.id)}
+                            onChange={() => handleTogglePermission(selectedRole, subPerm.id)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="text-sm font-medium text-slate-700">
+                            {configSubPermissionLabels[subPerm.name] || subPerm.name}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -596,26 +645,59 @@ export function RolesPermissionsConfig() {
                         {module.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                       </td>
                     </tr>
-                    {perms.map((permission) => (
-                      <tr key={permission.id} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 text-sm text-slate-900">
-                          <div>{permission.name}</div>
-                          {permission.description && (
-                            <div className="text-xs text-slate-500">{permission.description}</div>
-                          )}
-                        </td>
-                        {roles.map((role) => (
-                          <td key={role.id} className="px-6 py-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={hasPermission(role.id, permission.id)}
-                              onChange={() => handleTogglePermission(role.id, permission.id)}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                            />
+                    {perms.map((permission) => {
+                      if (permission.name.startsWith('config_')) return null;
+
+                      return (
+                        <tr key={permission.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4 text-sm text-slate-900">
+                            <div>{permission.name}</div>
+                            {permission.description && (
+                              <div className="text-xs text-slate-500">{permission.description}</div>
+                            )}
                           </td>
+                          {roles.map((role) => (
+                            <td key={role.id} className="px-6 py-4 text-center">
+                              <input
+                                type="checkbox"
+                                checked={hasPermission(role.id, permission.id)}
+                                onChange={() => handleTogglePermission(role.id, permission.id)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                    {module === 'configuration' && configSubPermissions.length > 0 && (
+                      <>
+                        <tr className="bg-blue-50">
+                          <td colSpan={roles.length + 1} className="px-6 py-2 text-xs font-semibold text-blue-700">
+                            Configuration Sub-Permissions (Visible when Configuration is checked)
+                          </td>
+                        </tr>
+                        {configSubPermissions.map((subPerm) => (
+                          <tr key={subPerm.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-4 text-sm text-slate-900 pl-12">
+                              <div>{configSubPermissionLabels[subPerm.name] || subPerm.name}</div>
+                              {subPerm.description && (
+                                <div className="text-xs text-slate-500">{subPerm.description}</div>
+                              )}
+                            </td>
+                            {roles.map((role) => (
+                              <td key={role.id} className="px-6 py-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={hasPermission(role.id, subPerm.id)}
+                                  onChange={() => handleTogglePermission(role.id, subPerm.id)}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                                />
+                              </td>
+                            ))}
+                          </tr>
                         ))}
-                      </tr>
-                    ))}
+                      </>
+                    )}
                   </>
                 ))}
               </tbody>
