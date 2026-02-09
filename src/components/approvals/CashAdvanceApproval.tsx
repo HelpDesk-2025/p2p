@@ -76,10 +76,6 @@ export function CashAdvanceApproval() {
   const loadRequests = async () => {
     if (!profile?.company_id && profile?.role !== 'admin') return;
 
-    // Admin users can see both pending and approved requests
-    // Non-admin users only see pending requests
-    const statusFilter = profile?.role === 'admin' ? ['pending', 'approved'] : ['pending'];
-
     const { data } = await supabase
       .from('cash_advance_requests')
       .select(`
@@ -87,7 +83,7 @@ export function CashAdvanceApproval() {
         user_profiles:requester_id (full_name, email, company_id, department),
         companies!cash_advance_requests_company_id_fkey (id, name)
       `)
-      .in('status', statusFilter)
+      .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
     if (!data) {
