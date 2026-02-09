@@ -44,8 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
-        // Force logout on session expiration or token refresh failure
-        if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        console.log('Auth state change:', event, session ? 'has session' : 'no session');
+
+        // Handle session ending events
+        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
           setUser(null);
           setActualProfile(null);
           setImpersonatedProfile(null);
@@ -54,10 +56,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Handle token refresh failure - sign out
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('Token refresh failed - signing out');
+          await supabase.auth.signOut();
+          setUser(null);
+          setActualProfile(null);
+          setImpersonatedProfile(null);
+          setPermissions(null);
+          setLoading(false);
+          return;
+        }
+
+        // Update user state
         setUser(session?.user ?? null);
         if (session?.user) {
           await loadProfile(session.user.id);
         } else {
+          // No session - sign out completely
+          if (event !== 'INITIAL_SESSION') {
+            console.log('No session detected - signing out');
+            await supabase.auth.signOut();
+          }
           setActualProfile(null);
           setImpersonatedProfile(null);
           setPermissions(null);
@@ -69,11 +89,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Periodic session validation (every 30 seconds)
     const sessionCheckInterval = setInterval(async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
+
+      // If there's an error or no session, sign out
       if (error || !session) {
+        console.log('Session validation failed - signing out');
         setUser(null);
         setActualProfile(null);
         setImpersonatedProfile(null);
         setPermissions(null);
+        // Trigger sign out to clean up properly
+        await supabase.auth.signOut();
       }
     }, 30000);
 
