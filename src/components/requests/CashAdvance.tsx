@@ -1668,7 +1668,7 @@ export function CashAdvance() {
                       <Download size={18} />
                       Download Form
                     </button>
-                    {profile?.role === 'admin' && (
+                    {(profile?.role === 'admin' || profile?.role === 'accounting') && (
                       <button
                         onClick={() => regenerateApprovedForm(viewingRequest)}
                         disabled={regenerating}
@@ -1722,7 +1722,7 @@ export function CashAdvance() {
                           </p>
                         )}
                       </div>
-                      {profile?.role === 'admin' && (viewingRequest.msbc_sync_status === 'pending' || viewingRequest.msbc_sync_status === 'failed') && (
+                      {(profile?.role === 'admin' || profile?.role === 'accounting') && (viewingRequest.msbc_sync_status === 'pending' || viewingRequest.msbc_sync_status === 'failed') && (
                         <button
                           onClick={() => postToMsbc(viewingRequest)}
                           disabled={postingToMsbc}

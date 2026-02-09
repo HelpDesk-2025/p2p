@@ -1766,7 +1766,7 @@ export function Reimbursement() {
                       <Download size={18} />
                       Download Form
                     </button>
-                    {profile?.role === 'admin' && (
+                    {(profile?.role === 'admin' || profile?.role === 'accounting') && (
                       <button
                         onClick={() => regenerateReimbursementForm(viewingRequest)}
                         disabled={loading}
@@ -1778,7 +1778,7 @@ export function Reimbursement() {
                     )}
                   </>
                 )}
-                {viewingRequest.status === 'approved' && !viewingRequest.reimbursement_form_pdf_path && profile?.role === 'admin' && (
+                {viewingRequest.status === 'approved' && !viewingRequest.reimbursement_form_pdf_path && (profile?.role === 'admin' || profile?.role === 'accounting') && (
                   <button
                     onClick={() => regenerateReimbursementForm(viewingRequest)}
                     disabled={loading}
