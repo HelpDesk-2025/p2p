@@ -1056,7 +1056,9 @@ export function CashAdvance() {
       return;
     }
 
-    const confirmPost = confirm(`Post Cash Advance ${request.ca_number} to MSBC?`);
+    const isRepost = request.msbc_sync_status === 'synced';
+    const action = isRepost ? 'Repost' : 'Post';
+    const confirmPost = confirm(`${action} Cash Advance ${request.ca_number} to MSBC?`);
     if (!confirmPost) return;
 
     setPostingToMsbc(true);
@@ -1759,6 +1761,16 @@ export function CashAdvance() {
                         >
                           {postingToMsbc ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                           {postingToMsbc ? 'Posting...' : viewingRequest.msbc_sync_status === 'failed' ? 'Retry Post' : 'Post to MSBC'}
+                        </button>
+                      )}
+                      {profile?.role === 'admin' && viewingRequest.msbc_sync_status === 'synced' && (
+                        <button
+                          onClick={() => postToMsbc(viewingRequest)}
+                          disabled={postingToMsbc}
+                          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {postingToMsbc ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                          {postingToMsbc ? 'Reposting...' : 'Repost to MSBC'}
                         </button>
                       )}
                     </div>
