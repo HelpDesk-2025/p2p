@@ -5,6 +5,7 @@ interface ApprovalRecord {
   approver_esig: string | null;
   approval_date: string;
   sequence: number;
+  for_checking?: boolean;
 }
 
 interface CashAdvanceFormData {
@@ -321,11 +322,18 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
 
     drawText(recommendedByApprover.approver_name, recByX, approvalY - 30, 9, false);
+
+    // Add "For Checking Only" text if this is a checker
+    if (recommendedByApprover.for_checking) {
+      drawText('For Checking Only', recByX, approvalY - 42, 7, false);
+    }
+
     const recommendedByDate = new Date(recommendedByApprover.approval_date);
+    const dateYOffset = recommendedByApprover.for_checking ? -55 : -45;
     drawText(
       recommendedByDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
       recommendedByDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      recByX, approvalY - 45, 8, false
+      recByX, approvalY + dateYOffset, 8, false
     );
   }
 
@@ -348,11 +356,18 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
 
     drawText(approver1.approver_name, app1X, approvalY - 30, 9, false);
+
+    // Add "For Checking Only" text if this is a checker
+    if (approver1.for_checking) {
+      drawText('For Checking Only', app1X, approvalY - 42, 7, false);
+    }
+
     const approver1Date = new Date(approver1.approval_date);
+    const app1DateYOffset = approver1.for_checking ? -55 : -45;
     drawText(
       approver1Date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
       approver1Date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      app1X, approvalY - 45, 8, false
+      app1X, approvalY + app1DateYOffset, 8, false
     );
   }
 
@@ -374,11 +389,18 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
 
     drawText(approver2.approver_name, app2X, approvalY - 30, 9, false);
+
+    // Add "For Checking Only" text if this is a checker
+    if (approver2.for_checking) {
+      drawText('For Checking Only', app2X, approvalY - 42, 7, false);
+    }
+
     const approver2Date = new Date(approver2.approval_date);
+    const app2DateYOffset = approver2.for_checking ? -55 : -45;
     drawText(
       approver2Date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
       approver2Date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      app2X, approvalY - 45, 8, false
+      app2X, approvalY + app2DateYOffset, 8, false
     );
   }
 

@@ -454,7 +454,8 @@ export function CashAdvanceApproval() {
             approver_name: profile.full_name || 'Unknown',
             approver_esig: profile.e_sig || null,
             approval_date: new Date().toISOString(),
-            sequence: selectedRequest.current_approval_level + 1
+            sequence: selectedRequest.current_approval_level + 1,
+            for_checking: currentApproverStep?.for_checking || false
           });
         }
 
