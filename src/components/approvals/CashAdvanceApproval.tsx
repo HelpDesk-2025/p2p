@@ -549,7 +549,7 @@ export function CashAdvanceApproval() {
         current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
       };
 
-      if (action === 'approved' && isLastApproval) {
+      if (action === 'approved' && selectedRequest.current_approval_level === 0) {
         updateData.outstanding_asl = outstandingAsl;
         updateData.remarks = remarks;
       }
@@ -920,7 +920,7 @@ export function CashAdvanceApproval() {
                 requestId={selectedRequest.id}
               />
 
-              {selectedRequest.current_approval_level + 1 === approvalFlows.length && (
+              {selectedRequest.current_approval_level === 0 && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-4">
                   <h4 className="font-semibold text-slate-900">Accounting Department Information</h4>
                   <div className="grid grid-cols-2 gap-4">
