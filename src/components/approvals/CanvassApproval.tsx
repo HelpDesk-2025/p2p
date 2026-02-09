@@ -484,7 +484,8 @@ export function CanvassApproval() {
         currentApproverStep?.approver_type || 'Approver',
         action === 'approved' ? 'Approved' : 'Rejected',
         comments,
-        selectedRequest.current_approval_level + 1
+        selectedRequest.current_approval_level + 1,
+        currentApproverStep?.for_checking || false
       );
 
       if (action === 'rejected') {

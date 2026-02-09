@@ -376,7 +376,8 @@ export function PettyCashApproval() {
         currentApproverStep?.approver_type || 'Approver',
         action === 'approved' ? 'Approved' : 'Rejected',
         comments,
-        selectedRequest.current_approval_level + 1
+        selectedRequest.current_approval_level + 1,
+        currentApproverStep?.for_checking || false
       );
 
       const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A';
