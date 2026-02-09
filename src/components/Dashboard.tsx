@@ -90,7 +90,7 @@ export function Dashboard({ onViewChange }: DashboardProps) {
       };
 
       let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 };
-      if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement') {
+      if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement' || profile.role === 'accounting') {
         // When impersonating, use manual counting since RPC uses auth.uid()
         if (isImpersonating) {
           // Manually count pending approvals by checking approval flows
@@ -144,6 +144,8 @@ export function Dashboard({ onViewChange }: DashboardProps) {
                     return profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
                   } else if (approverType === 'President') {
                     return profile.role === 'approver' || profile.role === 'admin';
+                  } else if (approverType === 'Accounting' || approverType === 'Accounting Head') {
+                    return profile.role === 'accounting' || profile.role === 'approver' || profile.role === 'admin';
                   }
                 }
                 return false;
