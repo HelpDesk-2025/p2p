@@ -112,55 +112,60 @@ export function PRApproval() {
     // This allows cross-company approvals
     const requestsForCurrentUser = await Promise.all(
       data.map(async (req) => {
-        // Use the PR's company_id (not the requester's company) to look up the correct approval flow
-        // This allows requesters to create PRs for different companies they have access to
-        const prCompanyId = req.company_id || req.user_profiles?.company_id;
-        if (!prCompanyId) return null;
+        try {
+          // Use the PR's company_id (not the requester's company) to look up the correct approval flow
+          // This allows requesters to create PRs for different companies they have access to
+          const prCompanyId = req.company_id || req.user_profiles?.company_id;
+          if (!prCompanyId) return null;
 
-        const rawFlows = await getApprovalFlow(
-          prCompanyId,
-          req.department,
-          'Purchase Requisition',
-          req.is_budgeted,
-          req.total_amount
-        );
+          const rawFlows = await getApprovalFlow(
+            prCompanyId,
+            req.department,
+            'Purchase Requisition',
+            req.is_budgeted,
+            req.total_amount
+          );
 
-        // Inject executive approvers if requester is Executive type
-        const flowsWithExecutive = await addExecutiveApprovalSteps(
-          rawFlows,
-          req.requester_id,
-          prCompanyId
-        );
+          // Inject executive approvers if requester is Executive type
+          const flowsWithExecutive = await addExecutiveApprovalSteps(
+            rawFlows,
+            req.requester_id,
+            prCompanyId
+          );
 
-        // Filter out the requester from approval flows
-        const flows = await filterApprovalFlowsForRequester(
-          flowsWithExecutive,
-          req.requester_id,
-          req.department,
-          prCompanyId
-        );
+          // Filter out the requester from approval flows
+          const flows = await filterApprovalFlowsForRequester(
+            flowsWithExecutive,
+            req.requester_id,
+            req.department,
+            prCompanyId
+          );
 
-        const currentStep = await getNextApprover(flows, req.current_approval_level);
+          const currentStep = await getNextApprover(flows, req.current_approval_level);
 
-        if (!currentStep) return null;
+          if (!currentStep) return null;
 
-        let isCurrentApprover = false;
+          let isCurrentApprover = false;
 
-        if (currentStep.user_id) {
-          isCurrentApprover = currentStep.user_id === profile.id;
-        } else {
-          const approverType = currentStep.approver_type;
+          if (currentStep.user_id) {
+            isCurrentApprover = currentStep.user_id === profile.id;
+          } else {
+            const approverType = currentStep.approver_type;
 
-          if (approverType === 'Department Head' && profile.role === 'approver') {
-            isCurrentApprover = req.department === profile.department;
-          } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-            isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-          } else if (approverType === 'President') {
-            isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+            if (approverType === 'Department Head' && profile.role === 'approver') {
+              isCurrentApprover = req.department === profile.department;
+            } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
+              isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
+            } else if (approverType === 'President') {
+              isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
+            }
           }
-        }
 
-        return isCurrentApprover ? req : null;
+          return isCurrentApprover ? req : null;
+        } catch (error) {
+          console.error('Error checking approval flow for PR:', error);
+          return null;
+        }
       })
     );
 
@@ -176,33 +181,39 @@ export function PRApproval() {
     // Use the PR's company_id to look up the correct approval flow
     const prCompanyId = request.company_id || request.user_profiles?.company_id;
     if (prCompanyId) {
-      const rawFlows = await getApprovalFlow(
-        prCompanyId,
-        request.department,
-        'Purchase Requisition',
-        request.is_budgeted,
-        request.total_amount
-      );
+      try {
+        const rawFlows = await getApprovalFlow(
+          prCompanyId,
+          request.department,
+          'Purchase Requisition',
+          request.is_budgeted,
+          request.total_amount
+        );
 
-      // Inject executive approvers if requester is Executive type
-      const flowsWithExecutive = await addExecutiveApprovalSteps(
-        rawFlows,
-        request.requester_id,
-        prCompanyId
-      );
+        // Inject executive approvers if requester is Executive type
+        const flowsWithExecutive = await addExecutiveApprovalSteps(
+          rawFlows,
+          request.requester_id,
+          prCompanyId
+        );
 
-      // Filter out the requester from approval flows
-      const flows = await filterApprovalFlowsForRequester(
-        flowsWithExecutive,
-        request.requester_id,
-        request.department,
-        prCompanyId
-      );
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          flowsWithExecutive,
+          request.requester_id,
+          request.department,
+          prCompanyId
+        );
 
-      setApprovalFlows(flows);
+        setApprovalFlows(flows);
 
-      const currentStep = await getNextApprover(flows, request.current_approval_level);
-      setCurrentApproverStep(currentStep);
+        const currentStep = await getNextApprover(flows, request.current_approval_level);
+        setCurrentApproverStep(currentStep);
+      } catch (error) {
+        console.error('Error loading approval flow:', error);
+        setApprovalFlows([]);
+        setCurrentApproverStep(null);
+      }
     }
   };
 
