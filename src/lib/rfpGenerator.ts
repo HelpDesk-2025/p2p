@@ -1303,28 +1303,62 @@ export async function generateAndUploadRFP(
 
     console.log('Request data fetched:', request);
 
-    // Fetch approval records using RPC function to bypass RLS
+    // Determine expected number of approvals
+    const currentLevel = request.current_approval_level;
+    console.log('Current approval level:', currentLevel, 'Expected approvals:', currentLevel);
+
+    // Fetch approval records using RPC function to bypass RLS with retry logic
     const requestTypeName = requestType === 'purchase_requisition' ? 'Purchase Requisition' :
                            requestType === 'petty_cash' ? 'Petty Cash' : 'Reimbursement';
 
-    // Use RPC function to bypass RLS and get all approval records with signatures
-    const { data: approvalRecords, error: approvalsError } = await supabase
-      .rpc('get_approval_records_with_signatures', {
-        p_request_id: requestId,
-        p_request_type: requestTypeName,
-        p_requester_id: request.requester_id
-      });
+    let approvalRecords: any[] = [];
+    let retries = 0;
+    const maxRetries = 10;
+    const baseDelay = 1000; // Start with 1 second
 
-    if (approvalsError) {
-      console.error('Error fetching approvals:', approvalsError);
-      throw approvalsError;
+    console.log(`🔄 Fetching approval records. Expected: ${currentLevel} approvals`);
+
+    while (retries < maxRetries) {
+      // Use RPC function to bypass RLS and get all approval records with signatures
+      const { data, error: approvalsError } = await supabase
+        .rpc('get_approval_records_with_signatures', {
+          p_request_id: requestId,
+          p_request_type: requestTypeName,
+          p_requester_id: request.requester_id
+        });
+
+      if (approvalsError) {
+        console.error('Error fetching approvals:', approvalsError);
+        throw approvalsError;
+      }
+
+      approvalRecords = data || [];
+      console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${currentLevel})`);
+
+      // Check if we have all required approval records
+      if (approvalRecords.length >= currentLevel) {
+        console.log('✅ All expected approval records found!');
+        break;
+      }
+
+      // If we don't have enough records and we're not at max retries, wait and retry
+      if (retries < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(1.5, retries); // Exponential backoff
+        console.log(`⏳ Waiting ${delay}ms before retry ${retries + 2}...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+      } else {
+        // Last retry failed, log warning but proceed with what we have
+        console.warn(`⚠️ Could not fetch all approval records after ${maxRetries} attempts. Expected: ${currentLevel}, Got: ${approvalRecords.length}`);
+        console.warn('Proceeding with available records. This may result in incomplete signatures.');
+        break;
+      }
     }
 
-    console.log('Approvals fetched:', approvalRecords);
-    console.log('Number of approvals:', approvalRecords?.length || 0);
+    console.log('Final approval records count:', approvalRecords?.length || 0);
 
     if (!approvalRecords || approvalRecords.length === 0) {
-      console.warn('No approved approvals found in ledger for request:', requestId);
+      throw new Error(`No approved approvals found in ledger for request: ${requestId}. Cannot generate RFP without approvals.`);
     }
 
     // Transform RPC results to match expected format
