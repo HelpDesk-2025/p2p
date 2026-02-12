@@ -6,6 +6,7 @@ import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForReque
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
+import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 
 interface ReimbursementReq {
   id: string;
@@ -598,70 +599,13 @@ export function ReimbursementApproval() {
             }
           }
 
-          // Wait for and verify all approval records are in the ledger
-          // We need to wait for the database to fully commit all approval entries
-          let approvalRecords: any[] = [];
+          // Fetch approval records using enhanced retry logic
           const expectedApprovalCount = approvalFlows.length;
-          let retries = 0;
-          const maxRetries = 15; // Increased from 10
-
-          console.log(`Waiting for ${expectedApprovalCount} approval records...`);
-
-          while (retries < maxRetries) {
-            const { data, error } = await supabase
-              .from('approval_ledger')
-              .select('approver_name, approval_date, approver_id')
-              .eq('request_id', selectedRequest.id)
-              .eq('request_type', 'Reimbursement')
-              .eq('action', 'Approved')
-              .order('sequence', { ascending: true });
-
-            if (error) {
-              console.error('Error fetching approval records:', error);
-              throw error;
-            }
-
-            console.log(`Attempt ${retries + 1}: Found ${data?.length || 0} approval records`);
-
-            // Check if we have all expected approvals
-            if (data && data.length >= expectedApprovalCount) {
-              approvalRecords = data;
-              console.log('All approval records found!');
-              break;
-            }
-
-            // Wait 500ms before retrying (increased from 300ms)
-            await new Promise(resolve => setTimeout(resolve, 500));
-            retries++;
-          }
-
-          // If we still don't have enough records, log a warning and use what we have
-          if (approvalRecords.length < expectedApprovalCount) {
-            console.warn(`Only found ${approvalRecords.length} of ${expectedApprovalCount} expected approval records after ${retries} retries`);
-
-            // One final attempt to fetch the records
-            const { data: finalData, error: finalError } = await supabase
-              .from('approval_ledger')
-              .select('approver_name, approval_date, approver_id')
-              .eq('request_id', selectedRequest.id)
-              .eq('request_type', 'Reimbursement')
-              .eq('action', 'Approved')
-              .order('sequence', { ascending: true });
-
-            if (!finalError && finalData) {
-              approvalRecords = finalData;
-              console.log(`Final attempt: Found ${finalData.length} approval records`);
-            }
-          }
-
-          // Get e-signatures for all approvers
-          const approverIds = (approvalRecords || []).map((record: any) => record.approver_id);
-          const { data: approverProfiles, error: profilesError } = await supabase
-            .from('user_profiles')
-            .select('id, e_sig')
-            .in('id', approverIds);
-
-          if (profilesError) throw profilesError;
+          const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
+            selectedRequest.id,
+            'Reimbursement',
+            expectedApprovalCount
+          );
 
           // Use the requester info from the fetched request
           const requesterData = {
@@ -669,16 +613,10 @@ export function ReimbursementApproval() {
             e_sig: selectedRequest.user_profiles?.e_sig || null
           };
 
-          // Create a map of approver IDs to their e-signatures
-          const esigMap = new Map<string, string | null>();
-          (approverProfiles || []).forEach((profile: any) => {
-            esigMap.set(profile.id, profile.e_sig);
-          });
-
-          // Prepare approval records with esig
-          const approvals = (approvalRecords || []).map((record: any) => ({
+          // Prepare approval records with esig (already includes e-signatures from helper)
+          const approvals = approvalRecordsWithSigs.map((record: any) => ({
             approver_name: record.approver_name,
-            approver_esig: esigMap.get(record.approver_id) || null,
+            approver_esig: record.approver_esig || null,
             approval_date: record.approval_date,
           }));
 

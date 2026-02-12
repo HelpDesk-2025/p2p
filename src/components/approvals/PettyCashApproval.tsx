@@ -6,6 +6,7 @@ import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForReque
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import Pagination from '../Pagination';
+import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 
 interface ExpenseItem {
   date: string;
@@ -431,25 +432,22 @@ export function PettyCashApproval() {
       } else if (action === 'approved' && isLastApproval) {
         if (selectedRequest.request_type === 'For Liquidation') {
           try {
-            const { data: ledgerData, error: ledgerError } = await supabase
-              .from('approval_ledger')
-              .select(`
-                approver_name,
-                approval_date,
-                approver_id,
-                user_profiles!approval_ledger_approver_id_fkey (
-                  e_sig
-                )
-              `)
-              .eq('request_type', 'Petty Cash')
-              .eq('request_id', selectedRequest.id)
-              .eq('action', 'Approved')
-              .order('sequence', { ascending: true });
+            // Get approval records using enhanced retry logic
+            const ledgerDataRecords = await fetchApprovalRecordsWithRetry(
+              selectedRequest.id,
+              'Petty Cash',
+              selectedRequest.current_level || 1
+            );
 
-            if (ledgerError) throw ledgerError;
-
-            if (ledgerData && ledgerData.length > 0) {
-              const firstApprover = ledgerData[0];
+            if (ledgerDataRecords && ledgerDataRecords.length > 0) {
+              const firstApprover = {
+                approver_name: ledgerDataRecords[0].approver_name,
+                approval_date: ledgerDataRecords[0].approval_date,
+                approver_id: ledgerDataRecords[0].sequence, // Using sequence as placeholder
+                user_profiles: {
+                  e_sig: ledgerDataRecords[0].approver_esig
+                }
+              };
 
               const { data: companyData } = await supabase
                 .from('companies')

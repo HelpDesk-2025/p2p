@@ -146,3 +146,138 @@ export async function uploadLargeFile(
     throw error;
   }
 }
+
+export interface ApprovalRecordWithSignature {
+  approver_name: string;
+  approver_esig: string | null;
+  approval_date: string;
+  sequence: number;
+  for_checking?: boolean;
+}
+
+/**
+ * Fetch approval records with e-signatures using enhanced retry logic.
+ * This handles multi-company scenarios and timing issues with signature retrieval.
+ *
+ * @param requestId - The ID of the request
+ * @param requestType - The type of request (e.g., 'Cash Advance', 'Purchase Requisition')
+ * @param expectedCount - The number of approval records expected
+ * @returns Array of approval records with e-signatures
+ */
+export async function fetchApprovalRecordsWithRetry(
+  requestId: string,
+  requestType: string,
+  expectedCount: number
+): Promise<ApprovalRecordWithSignature[]> {
+  let retries = 0;
+  const maxRetries = 15; // Increased for multi-company scenarios
+  const baseDelay = 800; // Start with 800ms
+
+  console.log(`🔄 Fetching approval records for ${requestType}. Expected: ${expectedCount} approvals`);
+
+  while (retries < maxRetries) {
+    try {
+      // Fetch approval ledger records
+      const { data: allApprovalRecords, error: ledgerError } = await supabase
+        .from('approval_ledger')
+        .select(`
+          approver_name,
+          approver_id,
+          approval_date,
+          sequence,
+          for_checking
+        `)
+        .eq('request_id', requestId)
+        .eq('request_type', requestType)
+        .eq('action', 'Approved')
+        .order('sequence', { ascending: true });
+
+      if (ledgerError) {
+        console.error(`❌ Error fetching approval ledger on retry ${retries + 1}:`, ledgerError);
+
+        // Wait and retry instead of throwing immediately
+        if (retries < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(1.4, retries);
+          console.log(`⏳ Waiting ${delay.toFixed(0)}ms before retry ${retries + 2} after error...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          retries++;
+          continue;
+        } else {
+          // Only throw on last retry
+          throw ledgerError;
+        }
+      }
+
+      // Map approval records with e-signatures
+      const approvalRecordsWithSigs = await Promise.all(
+        (allApprovalRecords || []).map(async (record) => {
+          const { data: approverData } = await supabase
+            .from('user_profiles')
+            .select('e_sig')
+            .eq('id', record.approver_id)
+            .maybeSingle();
+
+          return {
+            approver_name: record.approver_name,
+            approver_esig: approverData?.e_sig || null,
+            approval_date: record.approval_date,
+            sequence: record.sequence,
+            for_checking: record.for_checking || false
+          };
+        })
+      );
+
+      console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecordsWithSigs.length} approval records (expected ${expectedCount})`);
+
+      // Log details of what we found
+      if (approvalRecordsWithSigs.length > 0) {
+        console.log('Approval records details:', approvalRecordsWithSigs.map((r) => ({
+          name: r.approver_name,
+          hasEsig: !!r.approver_esig,
+          sequence: r.sequence
+        })));
+      }
+
+      // Check if we have all required approval records AND all have signatures
+      const allHaveSignatures = approvalRecordsWithSigs.every((r) => r.approver_esig);
+
+      if (approvalRecordsWithSigs.length >= expectedCount) {
+        if (allHaveSignatures) {
+          console.log('✅ All expected approval records found with signatures!');
+          return approvalRecordsWithSigs;
+        } else {
+          console.log(`⚠️ Found ${approvalRecordsWithSigs.length} records but some missing signatures. Retrying...`);
+          const missingSignatures = approvalRecordsWithSigs.filter((r) => !r.approver_esig);
+          console.log('Records missing signatures:', missingSignatures.map((r) => r.approver_name));
+        }
+      }
+
+      // If we don't have enough records or missing signatures, wait and retry
+      if (retries < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(1.4, retries); // Slightly slower exponential backoff
+        console.log(`⏳ Waiting ${delay.toFixed(0)}ms before retry ${retries + 2}...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+      } else {
+        // Last retry failed, log warning but return what we have
+        console.warn(`⚠️ Could not fetch all approval records with signatures after ${maxRetries} attempts. Expected: ${expectedCount}, Got: ${approvalRecordsWithSigs.length}`);
+        console.warn('Returning available records. This may result in incomplete signatures.');
+        return approvalRecordsWithSigs;
+      }
+    } catch (error) {
+      console.error(`❌ Unexpected error on retry ${retries + 1}:`, error);
+
+      if (retries < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(1.4, retries);
+        console.log(`⏳ Waiting ${delay.toFixed(0)}ms before retry ${retries + 2}...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        retries++;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // This should never be reached, but TypeScript needs it
+  throw new Error('Failed to fetch approval records after maximum retries');
+}

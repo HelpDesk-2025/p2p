@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, 
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
+import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 
 interface PaymentModeLine {
   name: string;
@@ -427,45 +428,11 @@ export function CashAdvanceApproval() {
           .eq('full_name', selectedRequest.payee)
           .maybeSingle();
 
-        // Delay to ensure database transaction is fully committed including foreign key joins
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Get ALL approval records (including checkers) for Cash Advance form
-        const { data: allApprovalRecords, error: ledgerError } = await supabase
-          .from('approval_ledger')
-          .select(`
-            approver_name,
-            approver_id,
-            approval_date,
-            sequence,
-            for_checking
-          `)
-          .eq('request_id', selectedRequest.id)
-          .eq('request_type', 'Cash Advance')
-          .eq('action', 'Approved')
-          .order('sequence', { ascending: true });
-
-        if (ledgerError) {
-          console.error('Error fetching approval records:', ledgerError);
-        }
-
-        // Map approval records with e-signatures
-        const approvalRecordsWithSigs = await Promise.all(
-          (allApprovalRecords || []).map(async (record) => {
-            const { data: approverData } = await supabase
-              .from('user_profiles')
-              .select('e_sig')
-              .eq('id', record.approver_id)
-              .maybeSingle();
-
-            return {
-              approver_name: record.approver_name,
-              approver_esig: approverData?.e_sig || null,
-              approval_date: record.approval_date,
-              sequence: record.sequence,
-              for_checking: record.for_checking || false
-            };
-          })
+        // Get ALL approval records (including checkers) for Cash Advance form using enhanced retry logic
+        const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
+          selectedRequest.id,
+          'Cash Advance',
+          selectedRequest.current_level || 1
         );
 
         // Manually add current approver if not found (due to transaction timing)
@@ -744,38 +711,11 @@ export function CashAdvanceApproval() {
         .eq('full_name', selectedRequest.payee)
         .maybeSingle();
 
-      // Get ALL approval records (including checkers) for Cash Advance form
-      const { data: allApprovalRecords } = await supabase
-        .from('approval_ledger')
-        .select(`
-          approver_name,
-          approver_id,
-          approval_date,
-          sequence,
-          for_checking
-        `)
-        .eq('request_id', selectedRequest.id)
-        .eq('request_type', 'Cash Advance')
-        .eq('action', 'Approved')
-        .order('sequence', { ascending: true });
-
-      // Map approval records with e-signatures
-      const approvalRecordsWithSigs = await Promise.all(
-        (allApprovalRecords || []).map(async (record) => {
-          const { data: approverData } = await supabase
-            .from('user_profiles')
-            .select('e_sig')
-            .eq('id', record.approver_id)
-            .maybeSingle();
-
-          return {
-            approver_name: record.approver_name,
-            approver_esig: approverData?.e_sig || null,
-            approval_date: record.approval_date,
-            sequence: record.sequence,
-            for_checking: record.for_checking || false
-          };
-        })
+      // Get ALL approval records (including checkers) for Cash Advance form using enhanced retry logic
+      const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
+        selectedRequest.id,
+        'Cash Advance',
+        selectedRequest.current_level || 1
       );
 
       // Generate Cash Advance Form with ALL approvers (including checkers)

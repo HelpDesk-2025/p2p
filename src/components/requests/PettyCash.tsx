@@ -8,6 +8,7 @@ import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import { PDFDocument } from 'pdf-lib';
 import Pagination from '../Pagination';
+import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 
 interface PaymentMode {
   id: string;
@@ -1168,29 +1169,26 @@ export function PettyCash() {
 
       const requestDepartment = viewingRequest.department || profile.department || '';
 
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('approval_ledger')
-        .select(`
-          approver_name,
-          approval_date,
-          approver_id,
-          user_profiles!approval_ledger_approver_id_fkey (
-            e_sig
-          )
-        `)
-        .eq('request_type', 'Petty Cash')
-        .eq('request_id', viewingRequest.id)
-        .eq('action', 'Approved')
-        .order('sequence', { ascending: true });
-
-      if (ledgerError) throw ledgerError;
+      // Get approval records using enhanced retry logic
+      const ledgerData = await fetchApprovalRecordsWithRetry(
+        viewingRequest.id,
+        'Petty Cash',
+        viewingRequest.current_level || 1
+      );
 
       if (!ledgerData || ledgerData.length === 0) {
         alert('No approval records found for this request.');
         return;
       }
 
-      const firstApprover = ledgerData[0];
+      const firstApprover = {
+        approver_name: ledgerData[0].approver_name,
+        approval_date: ledgerData[0].approval_date,
+        approver_id: ledgerData[0].sequence, // Note: using sequence as placeholder
+        user_profiles: {
+          e_sig: ledgerData[0].approver_esig
+        }
+      };
 
       const { data: requesterData } = await supabase
         .from('user_profiles')
@@ -1325,27 +1323,26 @@ export function PettyCash() {
         throw new Error('Company information not found');
       }
 
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('approval_ledger')
-        .select(`
-          approver_name,
-          approval_date,
-          sequence,
-          approver_id,
-          user_profiles!approval_ledger_approver_id_fkey (
-            e_sig
-          )
-        `)
-        .eq('request_type', 'Petty Cash')
-        .eq('request_id', request.id)
-        .eq('action', 'Approved')
-        .order('sequence', { ascending: true });
+      // Get approval records using enhanced retry logic
+      const ledgerDataRecords = await fetchApprovalRecordsWithRetry(
+        request.id,
+        'Petty Cash',
+        request.current_level || 1
+      );
 
-      if (ledgerError) throw ledgerError;
-
-      if (!ledgerData || ledgerData.length === 0) {
+      if (!ledgerDataRecords || ledgerDataRecords.length === 0) {
         throw new Error('No approval records found');
       }
+
+      const ledgerData = ledgerDataRecords.map(record => ({
+        approver_name: record.approver_name,
+        approval_date: record.approval_date,
+        sequence: record.sequence,
+        approver_id: record.sequence, // Using sequence as placeholder
+        user_profiles: {
+          e_sig: record.approver_esig
+        }
+      }));
 
       const firstApprover = ledgerData[0];
 
