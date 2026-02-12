@@ -137,7 +137,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const mergedPdfBytes = await mergedPdf.save();
-    const attachmentFileName = `RFP_and_Merged_Attachment_${documentNumber}.pdf`;
+
+    // Sanitize description for filename (remove special characters, limit length)
+    const sanitizedDescription = description
+      .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .substring(0, 50); // Limit to 50 characters
+
+    const attachmentFileName = `RFP_${documentNumber}_${sanitizedDescription}.pdf`;
     console.log('✅ PDF merged, filename:', attachmentFileName);
 
     const mergedFilePath = `merged/${attachmentFileName}`;
