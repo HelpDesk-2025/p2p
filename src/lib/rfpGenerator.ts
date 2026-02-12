@@ -1313,8 +1313,8 @@ export async function generateAndUploadRFP(
 
     let approvalRecords: any[] = [];
     let retries = 0;
-    const maxRetries = 10;
-    const baseDelay = 1000; // Start with 1 second
+    const maxRetries = 15; // Increased from 10 for multi-company scenarios
+    const baseDelay = 800; // Start with 800ms
 
     console.log(`🔄 Fetching approval records. Expected: ${currentLevel} approvals`);
 
@@ -1328,28 +1328,56 @@ export async function generateAndUploadRFP(
         });
 
       if (approvalsError) {
-        console.error('Error fetching approvals:', approvalsError);
-        throw approvalsError;
+        console.error(`❌ Error fetching approvals on retry ${retries + 1}:`, approvalsError);
+
+        // For RPC errors, wait and retry instead of throwing immediately
+        if (retries < maxRetries - 1) {
+          const delay = baseDelay * Math.pow(1.4, retries);
+          console.log(`⏳ Waiting ${delay}ms before retry ${retries + 2} after error...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          retries++;
+          continue;
+        } else {
+          // Only throw on last retry
+          throw approvalsError;
+        }
       }
 
       approvalRecords = data || [];
       console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${currentLevel})`);
 
-      // Check if we have all required approval records
-      if (approvalRecords.length >= currentLevel) {
-        console.log('✅ All expected approval records found!');
-        break;
+      // Log details of what we found
+      if (approvalRecords.length > 0) {
+        console.log('Approval records details:', approvalRecords.map((r: any) => ({
+          name: r.approver_name,
+          hasEsig: !!r.approver_esig,
+          sequence: r.sequence
+        })));
       }
 
-      // If we don't have enough records and we're not at max retries, wait and retry
+      // Check if we have all required approval records AND all have signatures
+      const allHaveSignatures = approvalRecords.every((r: any) => r.approver_esig);
+
+      if (approvalRecords.length >= currentLevel) {
+        if (allHaveSignatures) {
+          console.log('✅ All expected approval records found with signatures!');
+          break;
+        } else {
+          console.log(`⚠️ Found ${approvalRecords.length} records but some missing signatures. Retrying...`);
+          const missingSignatures = approvalRecords.filter((r: any) => !r.approver_esig);
+          console.log('Records missing signatures:', missingSignatures.map((r: any) => r.approver_name));
+        }
+      }
+
+      // If we don't have enough records or missing signatures, wait and retry
       if (retries < maxRetries - 1) {
-        const delay = baseDelay * Math.pow(1.5, retries); // Exponential backoff
-        console.log(`⏳ Waiting ${delay}ms before retry ${retries + 2}...`);
+        const delay = baseDelay * Math.pow(1.4, retries); // Slightly slower exponential backoff
+        console.log(`⏳ Waiting ${delay.toFixed(0)}ms before retry ${retries + 2}...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         retries++;
       } else {
         // Last retry failed, log warning but proceed with what we have
-        console.warn(`⚠️ Could not fetch all approval records after ${maxRetries} attempts. Expected: ${currentLevel}, Got: ${approvalRecords.length}`);
+        console.warn(`⚠️ Could not fetch all approval records with signatures after ${maxRetries} attempts. Expected: ${currentLevel}, Got: ${approvalRecords.length}`);
         console.warn('Proceeding with available records. This may result in incomplete signatures.');
         break;
       }
