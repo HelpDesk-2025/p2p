@@ -370,7 +370,7 @@ export function PurchaseRequisition() {
     }
   };
 
-  const handleCompanyChange = (companyId: string) => {
+  const handleCompanyChange = async (companyId: string) => {
     setSelectedCompanyId(companyId);
     setSelectedDepartment('');
     setDepartments([]);
@@ -388,6 +388,21 @@ export function PurchaseRequisition() {
       payee_number: '',
     }));
     setVendorSearchTerm('');
+
+    // Generate new document number for the selected company
+    if (companyId) {
+      try {
+        const { data, error } = await supabase.rpc('get_next_number', {
+          p_series_name: 'Purchase Requisition',
+          p_company_id: companyId
+        });
+        if (error) throw error;
+        setFormData(prev => ({ ...prev, document_no: data }));
+      } catch (error: any) {
+        console.error('Error generating document number:', error);
+        alert('Error generating document number: ' + error.message);
+      }
+    }
   };
 
   const generateDocumentNo = async () => {
