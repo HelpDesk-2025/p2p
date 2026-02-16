@@ -102,11 +102,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 30000);
 
+    // Inactivity timeout - force logout after 1 minute of inactivity
+    let inactivityTimeout: NodeJS.Timeout | null = null;
+
+    const resetInactivityTimer = () => {
+      // Clear existing timeout
+      if (inactivityTimeout) {
+        clearTimeout(inactivityTimeout);
+      }
+
+      // Only set timer if user is logged in
+      if (user) {
+        inactivityTimeout = setTimeout(async () => {
+          console.log('User inactive for 1 minute - signing out');
+          await supabase.auth.signOut();
+          setUser(null);
+          setActualProfile(null);
+          setImpersonatedProfile(null);
+          setPermissions(null);
+        }, 60000); // 1 minute = 60000ms
+      }
+    };
+
+    // Track user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+
+    activityEvents.forEach(event => {
+      document.addEventListener(event, resetInactivityTimer);
+    });
+
+    // Start the timer initially if user is logged in
+    if (user) {
+      resetInactivityTimer();
+    }
+
     return () => {
       subscription.unsubscribe();
       clearInterval(sessionCheckInterval);
+
+      // Clean up inactivity timeout
+      if (inactivityTimeout) {
+        clearTimeout(inactivityTimeout);
+      }
+
+      // Remove activity event listeners
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, resetInactivityTimer);
+      });
     };
-  }, []);
+  }, [user]);
 
   const loadProfile = async (userId: string) => {
     try {
