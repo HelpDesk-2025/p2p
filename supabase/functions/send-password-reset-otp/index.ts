@@ -57,6 +57,10 @@ async function sendEmailWithSMTP(
   subject: string,
   htmlContent: string
 ) {
+  console.log(`[SMTP] Attempting to send email to: ${to}`);
+  console.log(`[SMTP] Using host: ${smtpConfig.host}:${smtpConfig.port}`);
+  console.log(`[SMTP] Encryption: ${smtpConfig.encryption}`);
+
   const message = [
     `From: ${smtpConfig.from_name} <${smtpConfig.from_address}>`,
     `To: ${to}`,
@@ -68,15 +72,14 @@ async function sendEmailWithSMTP(
   ].join('\r\n');
 
   const encoder = new TextEncoder();
-  const base64Message = btoa(
-    String.fromCharCode(...encoder.encode(message))
-  );
 
   try {
+    console.log(`[SMTP] Connecting to ${smtpConfig.host}:${smtpConfig.port}`);
     const conn = await Deno.connect({
       hostname: smtpConfig.host,
       port: smtpConfig.port,
     });
+    console.log('[SMTP] Connection established');
 
     const reader = conn.readable.getReader();
     const writer = conn.writable.getWriter();
@@ -84,12 +87,15 @@ async function sendEmailWithSMTP(
     const read = async () => {
       const { value } = await reader.read();
       if (value) {
-        return new TextDecoder().decode(value);
+        const response = new TextDecoder().decode(value);
+        console.log(`[SMTP] Received: ${response.substring(0, 100)}`);
+        return response;
       }
       return '';
     };
 
     const write = async (data: string) => {
+      console.log(`[SMTP] Sending: ${data.substring(0, 50)}${data.length > 50 ? '...' : ''}`);
       await writer.write(encoder.encode(data + '\r\n'));
     };
 
@@ -98,12 +104,14 @@ async function sendEmailWithSMTP(
     await read();
 
     if (smtpConfig.encryption === 'tls') {
+      console.log('[SMTP] Starting TLS...');
       await write('STARTTLS');
       await read();
-      
+
       const tlsConn = await Deno.startTls(conn, {
         hostname: smtpConfig.host,
       });
+      console.log('[SMTP] TLS connection established');
 
       const tlsReader = tlsConn.readable.getReader();
       const tlsWriter = tlsConn.writable.getWriter();
@@ -111,18 +119,23 @@ async function sendEmailWithSMTP(
       const tlsRead = async () => {
         const { value } = await tlsReader.read();
         if (value) {
-          return new TextDecoder().decode(value);
+          const response = new TextDecoder().decode(value);
+          console.log(`[SMTP/TLS] Received: ${response.substring(0, 100)}`);
+          return response;
         }
         return '';
       };
 
       const tlsWrite = async (data: string) => {
+        const logData = data.includes('AUTH') && data.length > 20 ? 'AUTH [REDACTED]' : data.substring(0, 50);
+        console.log(`[SMTP/TLS] Sending: ${logData}${data.length > 50 ? '...' : ''}`);
         await tlsWriter.write(encoder.encode(data + '\r\n'));
       };
 
       await tlsWrite(`EHLO ${smtpConfig.host}`);
       await tlsRead();
 
+      console.log('[SMTP] Authenticating...');
       await tlsWrite('AUTH LOGIN');
       await tlsRead();
 
@@ -132,25 +145,43 @@ async function sendEmailWithSMTP(
 
       const base64Password = btoa(smtpConfig.password);
       await tlsWrite(base64Password);
-      await tlsRead();
+      const authResponse = await tlsRead();
+
+      if (!authResponse.includes('235')) {
+        console.error('[SMTP] Authentication failed:', authResponse);
+        throw new Error('SMTP authentication failed');
+      }
+      console.log('[SMTP] Authentication successful');
 
       await tlsWrite(`MAIL FROM:<${smtpConfig.from_address}>`);
       await tlsRead();
 
       await tlsWrite(`RCPT TO:<${to}>`);
-      await tlsRead();
+      const rcptResponse = await tlsRead();
+
+      if (!rcptResponse.includes('250')) {
+        console.error('[SMTP] Recipient rejected:', rcptResponse);
+        throw new Error(`Recipient email rejected by server: ${to}`);
+      }
 
       await tlsWrite('DATA');
       await tlsRead();
 
       await tlsWrite(message + '\r\n.');
-      await tlsRead();
+      const dataResponse = await tlsRead();
+
+      if (!dataResponse.includes('250')) {
+        console.error('[SMTP] Message rejected:', dataResponse);
+        throw new Error('Email message rejected by server');
+      }
+      console.log('[SMTP] Email sent successfully');
 
       await tlsWrite('QUIT');
       await tlsRead();
 
       tlsConn.close();
     } else {
+      console.log('[SMTP] Using non-encrypted connection');
       await write('AUTH LOGIN');
       await read();
 
@@ -160,19 +191,36 @@ async function sendEmailWithSMTP(
 
       const base64Password = btoa(smtpConfig.password);
       await write(base64Password);
-      await read();
+      const authResponse = await read();
+
+      if (!authResponse.includes('235')) {
+        console.error('[SMTP] Authentication failed:', authResponse);
+        throw new Error('SMTP authentication failed');
+      }
+      console.log('[SMTP] Authentication successful');
 
       await write(`MAIL FROM:<${smtpConfig.from_address}>`);
       await read();
 
       await write(`RCPT TO:<${to}>`);
-      await read();
+      const rcptResponse = await read();
+
+      if (!rcptResponse.includes('250')) {
+        console.error('[SMTP] Recipient rejected:', rcptResponse);
+        throw new Error(`Recipient email rejected by server: ${to}`);
+      }
 
       await write('DATA');
       await read();
 
       await write(message + '\r\n.');
-      await read();
+      const dataResponse = await read();
+
+      if (!dataResponse.includes('250')) {
+        console.error('[SMTP] Message rejected:', dataResponse);
+        throw new Error('Email message rejected by server');
+      }
+      console.log('[SMTP] Email sent successfully');
 
       await write('QUIT');
       await read();
@@ -180,9 +228,11 @@ async function sendEmailWithSMTP(
       conn.close();
     }
 
+    console.log('[SMTP] Connection closed successfully');
     return { success: true };
   } catch (error: any) {
-    console.error('SMTP Error:', error);
+    console.error('[SMTP] ERROR:', error);
+    console.error('[SMTP] Stack trace:', error.stack);
     throw new Error(`Failed to send email via SMTP: ${error.message}`);
   }
 }
@@ -196,24 +246,34 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('[Main] Password reset OTP request received');
     const { email } = await req.json();
 
     if (!email) {
+      console.error('[Main] Email is missing in request');
       throw new Error('Email is required');
     }
+
+    console.log(`[Main] Processing request for email: ${email}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Check if user exists by querying the user_profiles table
+    console.log('[Main] Checking if user exists...');
     const { data: userProfile, error: profileError } = await supabase
       .from('user_profiles')
       .select('id, email')
       .ilike('email', email)
       .maybeSingle();
 
+    if (profileError) {
+      console.error('[Main] Error checking user profile:', profileError);
+    }
+
     if (!userProfile) {
+      console.log('[Main] User not found');
       return new Response(
         JSON.stringify({ success: false, error: 'No account found with this email address' }),
         {
@@ -226,25 +286,33 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log(`[Main] User found: ${userProfile.email}`);
+
     // Generate OTP
     const otpCode = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    console.log(`[Main] Generated OTP code: ${otpCode}, expires at: ${expiresAt.toISOString()}`);
+
     // Store OTP in database
+    console.log('[Main] Storing OTP in database...');
     const { error: otpError } = await supabase
       .from('password_reset_otps')
       .insert({
-        email,
+        email: userProfile.email,
         otp_code: otpCode,
         expires_at: expiresAt.toISOString(),
       });
 
     if (otpError) {
-      console.error('Failed to store OTP:', otpError);
+      console.error('[Main] Failed to store OTP:', otpError);
       throw new Error('Failed to generate OTP');
     }
 
+    console.log('[Main] OTP stored successfully');
+
     // Get SMTP config
+    console.log('[Main] Fetching SMTP configuration...');
     const { data: smtpConfig, error: configError } = await supabase
       .from('smtp_configurations')
       .select('*')
@@ -252,11 +320,11 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (configError || !smtpConfig) {
-      console.error('Failed to fetch SMTP configuration:', configError);
+      console.error('[Main] Failed to fetch SMTP configuration:', configError);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Email service not configured. Please contact administrator.' 
+        JSON.stringify({
+          success: false,
+          error: 'Email service not configured. Please contact administrator.'
         }),
         {
           status: 500,
@@ -268,9 +336,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log('[Main] SMTP configuration retrieved successfully');
+
     // Send OTP email
+    console.log(`[Main] Sending OTP email to: ${userProfile.email}`);
     const htmlContent = generateOTPEmailHTML(otpCode);
-    await sendEmailWithSMTP(smtpConfig, email, 'Password Reset OTP', htmlContent);
+    await sendEmailWithSMTP(smtpConfig, userProfile.email, 'Password Reset OTP', htmlContent);
+
+    console.log('[Main] OTP email sent successfully');
 
     return new Response(
       JSON.stringify({ success: true, message: 'OTP sent to your email' }),
@@ -282,7 +355,8 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error: any) {
-    console.error('Error sending OTP:', error);
+    console.error('[Main] Error sending OTP:', error);
+    console.error('[Main] Error stack:', error.stack);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {
