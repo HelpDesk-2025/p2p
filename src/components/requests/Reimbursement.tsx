@@ -981,13 +981,53 @@ export function Reimbursement() {
       }
 
       // Use RPC function to get approval records (excludes for_checking approvers)
-      const { data: approvals, error: ledgerError } = await supabase
+      const { data: approvalRecords, error: ledgerError } = await supabase
         .rpc('get_approval_records_with_signatures', {
           p_request_id: fullRequest.id,
           p_request_type: 'Reimbursement'
         });
 
       if (ledgerError) throw ledgerError;
+
+      // Fetch signature data for each approver to avoid HTTP header size limits
+      const approvalsWithSignatures = await Promise.all(
+        (approvalRecords || []).map(async (record: any) => {
+          let signatureData = null;
+
+          if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
+            try {
+              const { data: fileData } = await supabase.storage
+                .from('attachments')
+                .download(record.approver_esig);
+
+              if (fileData) {
+                const arrayBuffer = await fileData.arrayBuffer();
+                const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                signatureData = `data:${fileData.type};base64,${base64}`;
+              }
+            } catch (error) {
+              console.error('Failed to fetch signature from storage:', error);
+            }
+          }
+
+          if (!signatureData && record.approver_id) {
+            const { data: profileData } = await supabase
+              .from('user_profiles')
+              .select('e_sig')
+              .eq('id', record.approver_id)
+              .single();
+
+            if (profileData?.e_sig) {
+              signatureData = profileData.e_sig;
+            }
+          }
+
+          return {
+            ...record,
+            approver_esig: signatureData
+          };
+        })
+      );
 
       // Use the requester info from the fetched request
       const requesterData = {
@@ -1023,7 +1063,7 @@ export function Reimbursement() {
         cashAdvance: fullRequest.cash_advance || 0,
         netAmount: netAmount,
         payee: fullRequest.payee || requesterData.full_name || 'Unknown',
-        approvals: approvals
+        approvals: approvalsWithSignatures
       });
 
       // Upload the reimbursement form to storage

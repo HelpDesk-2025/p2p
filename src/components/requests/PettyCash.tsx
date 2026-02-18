@@ -942,7 +942,42 @@ export function PettyCash() {
         throw new Error('No approval records found');
       }
 
-      const firstApprover = approvalRecords[0];
+      // Fetch signature data for first approver
+      let firstApproverSignature = null;
+      const firstApproverRecord = approvalRecords[0];
+
+      if (firstApproverRecord.approver_esig && firstApproverRecord.approver_esig.startsWith('attachments/')) {
+        try {
+          const { data: fileData } = await supabase.storage
+            .from('attachments')
+            .download(firstApproverRecord.approver_esig);
+
+          if (fileData) {
+            const arrayBuffer = await fileData.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            firstApproverSignature = `data:${fileData.type};base64,${base64}`;
+          }
+        } catch (error) {
+          console.error('Failed to fetch signature from storage:', error);
+        }
+      }
+
+      if (!firstApproverSignature && firstApproverRecord.approver_id) {
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('e_sig')
+          .eq('id', firstApproverRecord.approver_id)
+          .single();
+
+        if (profileData?.e_sig) {
+          firstApproverSignature = profileData.e_sig;
+        }
+      }
+
+      const firstApprover = {
+        ...firstApproverRecord,
+        approver_esig: firstApproverSignature
+      };
 
       // Get company name
       const { data: companyData } = await supabase

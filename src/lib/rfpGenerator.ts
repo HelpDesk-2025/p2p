@@ -1047,13 +1047,56 @@ export async function generateAndUploadCanvassRFP(
 
     console.log('Approvals fetched:', approvalRecords);
 
+    // Fetch signature data separately for each approver to avoid HTTP header size limits
+    console.log('🔄 Fetching signature data for each approver...');
+    const approvalRecordsWithSignatures = await Promise.all(
+      (approvalRecords || []).map(async (record: any) => {
+        let signatureData = null;
+
+        // If signature_path exists, fetch from storage
+        if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
+          try {
+            const { data: fileData } = await supabase.storage
+              .from('attachments')
+              .download(record.approver_esig);
+
+            if (fileData) {
+              const arrayBuffer = await fileData.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              signatureData = `data:${fileData.type};base64,${base64}`;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch signature from storage for ${record.approver_name}:`, error);
+          }
+        }
+
+        // If no storage path or fetch failed, try to get from user_profiles.e_sig
+        if (!signatureData && record.approver_id) {
+          const { data: profileData } = await supabase
+            .from('user_profiles')
+            .select('e_sig')
+            .eq('id', record.approver_id)
+            .single();
+
+          if (profileData?.e_sig) {
+            signatureData = profileData.e_sig;
+          }
+        }
+
+        return {
+          ...record,
+          signature_data: signatureData
+        };
+      })
+    );
+
     // Transform RPC results to match expected format
-    const approvals = (approvalRecords || []).map((record: any) => ({
+    const approvals = (approvalRecordsWithSignatures || []).map((record: any) => ({
       approval_date: record.approval_date,
       sequence: record.sequence,
       approver: {
         full_name: record.approver_name,
-        e_sig: record.approver_esig
+        e_sig: record.signature_data
       }
     }));
 
@@ -1346,30 +1389,13 @@ export async function generateAndUploadRFP(
       approvalRecords = data || [];
       console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${currentLevel})`);
 
-      // Log details of what we found
-      if (approvalRecords.length > 0) {
-        console.log('Approval records details:', approvalRecords.map((r: any) => ({
-          name: r.approver_name,
-          hasEsig: !!r.approver_esig,
-          sequence: r.sequence
-        })));
-      }
-
-      // Check if we have all required approval records AND all have signatures
-      const allHaveSignatures = approvalRecords.every((r: any) => r.approver_esig);
-
+      // Check if we have all required approval records (don't check signatures yet - we'll fetch them separately)
       if (approvalRecords.length >= currentLevel) {
-        if (allHaveSignatures) {
-          console.log('✅ All expected approval records found with signatures!');
-          break;
-        } else {
-          console.log(`⚠️ Found ${approvalRecords.length} records but some missing signatures. Retrying...`);
-          const missingSignatures = approvalRecords.filter((r: any) => !r.approver_esig);
-          console.log('Records missing signatures:', missingSignatures.map((r: any) => r.approver_name));
-        }
+        console.log('✅ All expected approval records found!');
+        break;
       }
 
-      // If we don't have enough records or missing signatures, wait and retry
+      // If we don't have enough records, wait and retry
       if (retries < maxRetries - 1) {
         const delay = baseDelay * Math.pow(1.4, retries); // Slightly slower exponential backoff
         console.log(`⏳ Waiting ${delay.toFixed(0)}ms before retry ${retries + 2}...`);
@@ -1377,8 +1403,8 @@ export async function generateAndUploadRFP(
         retries++;
       } else {
         // Last retry failed, log warning but proceed with what we have
-        console.warn(`⚠️ Could not fetch all approval records with signatures after ${maxRetries} attempts. Expected: ${currentLevel}, Got: ${approvalRecords.length}`);
-        console.warn('Proceeding with available records. This may result in incomplete signatures.');
+        console.warn(`⚠️ Could not fetch all approval records after ${maxRetries} attempts. Expected: ${currentLevel}, Got: ${approvalRecords.length}`);
+        console.warn('Proceeding with available records.');
         break;
       }
     }
@@ -1389,13 +1415,56 @@ export async function generateAndUploadRFP(
       throw new Error(`No approved approvals found in ledger for request: ${requestId}. Cannot generate RFP without approvals.`);
     }
 
+    // Fetch signature data separately for each approver to avoid HTTP header size limits
+    console.log('🔄 Fetching signature data for each approver...');
+    const approvalRecordsWithSignatures = await Promise.all(
+      approvalRecords.map(async (record: any) => {
+        let signatureData = null;
+
+        // If signature_path exists, fetch from storage
+        if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
+          try {
+            const { data: fileData } = await supabase.storage
+              .from('attachments')
+              .download(record.approver_esig);
+
+            if (fileData) {
+              const arrayBuffer = await fileData.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              signatureData = `data:${fileData.type};base64,${base64}`;
+            }
+          } catch (error) {
+            console.error(`Failed to fetch signature from storage for ${record.approver_name}:`, error);
+          }
+        }
+
+        // If no storage path or fetch failed, try to get from user_profiles.e_sig
+        if (!signatureData && record.approver_id) {
+          const { data: profileData } = await supabase
+            .from('user_profiles')
+            .select('e_sig')
+            .eq('id', record.approver_id)
+            .single();
+
+          if (profileData?.e_sig) {
+            signatureData = profileData.e_sig;
+          }
+        }
+
+        return {
+          ...record,
+          signature_data: signatureData
+        };
+      })
+    );
+
     // Transform RPC results to match expected format
-    const approvals = (approvalRecords || []).map((record: any) => ({
+    const approvals = (approvalRecordsWithSignatures || []).map((record: any) => ({
       approval_date: record.approval_date,
       sequence: record.sequence,
       approver: {
         full_name: record.approver_name,
-        e_sig: record.approver_esig
+        e_sig: record.signature_data
       }
     }));
 
