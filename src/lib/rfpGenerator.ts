@@ -1033,7 +1033,7 @@ export async function generateAndUploadCanvassRFP(
     console.log('Winning vendor net payable:', winningNetPayable);
 
     // Use RPC function to bypass RLS and get all approval records with signatures
-    const { data: approvalRecords, error: approvalsError } = await supabase
+    const { data: approvalRecordsData, error: approvalsError } = await supabase
       .rpc('get_approval_records_with_signatures', {
         p_request_id: canvassId,
         p_request_type: 'Canvass',
@@ -1045,6 +1045,8 @@ export async function generateAndUploadCanvassRFP(
       throw approvalsError;
     }
 
+    // RPC now returns JSONB array directly
+    const approvalRecords = Array.isArray(approvalRecordsData) ? approvalRecordsData : (approvalRecordsData ? [approvalRecordsData] : []);
     console.log('Approvals fetched:', approvalRecords);
 
     // Fetch signature data separately for each approver to avoid HTTP header size limits
@@ -1386,7 +1388,8 @@ export async function generateAndUploadRFP(
         }
       }
 
-      approvalRecords = data || [];
+      // RPC now returns JSONB array directly
+      approvalRecords = Array.isArray(data) ? data : (data ? [data] : []);
       console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${currentLevel})`);
 
       // Check if we have all required approval records (don't check signatures yet - we'll fetch them separately)

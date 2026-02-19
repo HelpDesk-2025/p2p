@@ -930,13 +930,16 @@ export function PettyCash() {
       }
 
       // Use RPC function to get approval records (excludes for_checking approvers)
-      const { data: approvalRecords, error: ledgerError } = await supabase
+      const { data: approvalRecordsData, error: ledgerError } = await supabase
         .rpc('get_approval_records_with_signatures', {
           p_request_id: request.id,
           p_request_type: 'Petty Cash'
         });
 
       if (ledgerError) throw ledgerError;
+
+      // RPC now returns JSONB array directly
+      const approvalRecords = Array.isArray(approvalRecordsData) ? approvalRecordsData : (approvalRecordsData ? [approvalRecordsData] : []);
 
       if (!approvalRecords || approvalRecords.length === 0) {
         throw new Error('No approval records found');

@@ -981,13 +981,16 @@ export function Reimbursement() {
       }
 
       // Use RPC function to get approval records (excludes for_checking approvers)
-      const { data: approvalRecords, error: ledgerError } = await supabase
+      const { data: approvalRecordsData, error: ledgerError } = await supabase
         .rpc('get_approval_records_with_signatures', {
           p_request_id: fullRequest.id,
           p_request_type: 'Reimbursement'
         });
 
       if (ledgerError) throw ledgerError;
+
+      // RPC now returns JSONB array directly
+      const approvalRecords = Array.isArray(approvalRecordsData) ? approvalRecordsData : (approvalRecordsData ? [approvalRecordsData] : []);
 
       // Fetch signature data for each approver to avoid HTTP header size limits
       const approvalsWithSignatures = await Promise.all(
