@@ -106,7 +106,7 @@ export function CanvassApproval() {
         *,
         user_profiles:requester_id (full_name, email, company_id),
         companies!canvass_requests_company_id_fkey (id, name),
-        purchase_requisitions(document_no, pr_number, total_amount)
+        purchase_requisitions!canvass_requests_pr_id_fkey(document_no, pr_number, total_amount)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
