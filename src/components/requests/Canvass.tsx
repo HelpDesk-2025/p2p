@@ -2131,66 +2131,96 @@ export function Canvass() {
               </div>
 
               {viewingPR && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                  <h4 className="text-base font-bold text-slate-900 border-b border-blue-200 pb-2">
-                    Purchase Requisition Details
+                <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4">
+                    Selected Purchase Requisition
                   </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600">PR Number</label>
-                      <p className="text-sm text-slate-900 font-mono">{viewingPR.pr_number}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600">Company</label>
-                      <p className="text-sm text-slate-900">{selectedPRCompany || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600">Request Type</label>
-                      <p className="text-sm text-slate-900">{viewingPR.request_type || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600">Line Name</label>
-                      <p className="text-sm text-slate-900">{viewingPR.line_name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600">Budgeted</label>
-                      <p className="text-sm text-slate-900">{viewingPR.is_budgeted ? 'Yes' : 'No'}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs font-semibold text-slate-600">Purpose</label>
-                      <p className="text-sm text-slate-900">{viewingPR.purpose}</p>
-                    </div>
-                  </div>
 
-                  {viewingPR.items && viewingPR.items.length > 0 && (
-                    <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-2 block">PR Items</label>
-                      <div className="border border-blue-200 rounded-lg overflow-hidden bg-white">
-                        <table className="w-full">
-                          <thead className="bg-blue-100">
-                            <tr>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Quantity</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Unit</th>
-                              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700">Unit Price</th>
-                              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-blue-100">
-                            {viewingPR.items.map((item: any, index: number) => (
-                              <tr key={index}>
-                                <td className="px-3 py-2 text-xs text-slate-900">{item.description}</td>
-                                <td className="px-3 py-2 text-xs text-slate-700">{item.quantity}</td>
-                                <td className="px-3 py-2 text-xs text-slate-700">{item.unit}</td>
-                                <td className="px-3 py-2 text-xs text-slate-700 text-right">₱{item.unit_price?.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-xs text-slate-900 font-semibold text-right">₱{item.total_price?.toLocaleString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                      <div>
+                        <label className="text-sm font-semibold text-blue-600 block mb-1">Document No.</label>
+                        <p className="text-sm text-blue-900 font-mono">{viewingPR.document_no || viewingPR.pr_number}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-blue-600 block mb-1">Company</label>
+                        <p className="text-sm text-slate-900">{selectedPRCompany || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-blue-600 block mb-1">Department</label>
+                        <p className="text-sm text-slate-900">{viewingPR.department}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-blue-600 block mb-1">Total Amount</label>
+                        <p className="text-sm text-blue-900 font-semibold">₱{viewingPR.total_amount?.toLocaleString()}</p>
                       </div>
                     </div>
-                  )}
+
+                    <div>
+                      <label className="text-sm font-semibold text-blue-600 block mb-1">Request Date</label>
+                      <p className="text-sm text-slate-900">{new Date(viewingPR.request_date).toLocaleDateString()}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-blue-600 block mb-1">Description</label>
+                      <p className="text-sm text-slate-900">{viewingPR.description}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-semibold text-blue-600 block mb-1">Purpose</label>
+                      <p className="text-sm text-slate-900">{viewingPR.purpose}</p>
+                    </div>
+
+                    {viewingPR.merged_pdf_path && (
+                      <div>
+                        <label className="text-sm font-semibold text-blue-600 block mb-2">Merged PDF Document</label>
+                        <button
+                          onClick={async () => {
+                            const { data } = supabase.storage
+                              .from('attachments')
+                              .getPublicUrl(viewingPR.merged_pdf_path!);
+                            window.open(data.publicUrl, '_blank');
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <FileText size={18} />
+                          View Merged PDF
+                        </button>
+                      </div>
+                    )}
+
+                    {viewingPR.items && viewingPR.items.length > 0 && (
+                      <div>
+                        <label className="text-sm font-semibold text-blue-600 block mb-2">Items</label>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                          <table className="w-full">
+                            <thead className="bg-slate-100">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Item Name</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Description</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Quantity</th>
+                                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Unit</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Unit Price</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Total Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                              {viewingPR.items.map((item: any, index: number) => (
+                                <tr key={index}>
+                                  <td className="px-4 py-3 text-sm text-slate-900">{item.item_number || item.description}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-700">{item.item_description || item.item_notes || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-700">{item.quantity}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-700">{item.unit}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-700 text-right">₱{item.unit_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-900 font-semibold text-right">₱{item.total_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
