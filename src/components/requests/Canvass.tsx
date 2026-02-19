@@ -326,7 +326,6 @@ export function Canvass() {
       .select('*')
       .eq('ready_for_canvass', true)
       .eq('status', 'approved')
-      .is('canvass_id', null)
       .order('created_at', { ascending: false });
 
     setAvailablePRs(data || []);
@@ -1010,6 +1009,29 @@ export function Canvass() {
   };
 
   const handlePRSelection = async (pr: PurchaseRequisition) => {
+    // Check if this PR is already used in another canvass request
+    if (pr.id) {
+      const { data: existingCanvass, error: canvassError } = await supabase
+        .from('canvass_requests')
+        .select('canvass_number')
+        .eq('pr_id', pr.id)
+        .maybeSingle();
+
+      if (canvassError) {
+        console.error('Error checking existing canvass:', canvassError);
+      }
+
+      if (existingCanvass) {
+        const userConfirmed = window.confirm(
+          `This Purchase Requisition (${pr.document_no || pr.pr_number}) has already been used in Canvass Request ${existingCanvass.canvass_number}.\n\nDo you want to proceed and create another canvass request for this PR?`
+        );
+
+        if (!userConfirmed) {
+          return;
+        }
+      }
+    }
+
     setSelectedPR(pr);
     setShowPRSelection(false);
     setShowForm(true);
