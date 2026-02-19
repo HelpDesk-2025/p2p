@@ -1515,10 +1515,9 @@ export function PettyCash() {
                 </label>
                 <select
                   value={selectedDepartment}
-                  onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed"
                   required
-                  disabled={!selectedCompanyId}
+                  disabled
                 >
                   <option value="">Select Department</option>
                   {departments.map((dept) => (
@@ -1527,9 +1526,6 @@ export function PettyCash() {
                     </option>
                   ))}
                 </select>
-                {!selectedCompanyId && (
-                  <p className="text-xs text-amber-600 mt-1">Select a company first</p>
-                )}
               </div>
             ) : (
               <div>
