@@ -1055,8 +1055,12 @@ export async function generateAndUploadCanvassRFP(
       (approvalRecords || []).map(async (record: any) => {
         let signatureData = null;
 
-        // If signature_path exists, fetch from storage
-        if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
+        // Check if approver_esig is already base64 data (starts with data:image)
+        if (record.approver_esig && record.approver_esig.startsWith('data:image')) {
+          signatureData = record.approver_esig;
+        }
+        // If signature_path exists (starts with attachments/), fetch from storage
+        else if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
           try {
             const { data: fileData } = await supabase.storage
               .from('attachments')
@@ -1072,7 +1076,8 @@ export async function generateAndUploadCanvassRFP(
           }
         }
 
-        // If no storage path or fetch failed, try to get from user_profiles.e_sig
+        // If still no signature data, this shouldn't happen with the new RPC
+        // but keep as final fallback
         if (!signatureData && record.approver_id) {
           const { data: profileData } = await supabase
             .from('user_profiles')
@@ -1424,8 +1429,12 @@ export async function generateAndUploadRFP(
       approvalRecords.map(async (record: any) => {
         let signatureData = null;
 
-        // If signature_path exists, fetch from storage
-        if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
+        // Check if approver_esig is already base64 data (starts with data:image)
+        if (record.approver_esig && record.approver_esig.startsWith('data:image')) {
+          signatureData = record.approver_esig;
+        }
+        // If signature_path exists (starts with attachments/), fetch from storage
+        else if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
           try {
             const { data: fileData } = await supabase.storage
               .from('attachments')
@@ -1441,7 +1450,8 @@ export async function generateAndUploadRFP(
           }
         }
 
-        // If no storage path or fetch failed, try to get from user_profiles.e_sig
+        // If still no signature data, this shouldn't happen with the new RPC
+        // but keep as final fallback
         if (!signatureData && record.approver_id) {
           const { data: profileData } = await supabase
             .from('user_profiles')
