@@ -1,6 +1,17 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
 import { supabase } from './supabase';
 import { mergeRFPWithAttachments } from './pdfMerger';
+
+async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
+  const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+  const base64 = esigData.split(',')[1] || esigData;
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return pdfDoc.embedJpg(bytes);
+  }
+  return pdfDoc.embedPng(bytes);
+}
 
 // Global sanitization function for text that will be used in PDFs
 function sanitizeForPDF(text: string | null | undefined): string {
@@ -206,9 +217,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   // Add e-signature if available
   if (data.requestorEsig) {
     try {
-      const esigData = data.requestorEsig.split(',')[1] || data.requestorEsig;
-      const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-      const esigImage = await pdfDoc.embedPng(esigBytes);
+      const esigImage = await embedSignatureImage(pdfDoc, data.requestorEsig);
       const esigDims = esigImage.scale(0.5);
       page.drawImage(esigImage, {
         x: leftMargin + 20,
@@ -238,9 +247,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
     if (approval.approver_esig) {
       try {
-        const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
-        const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-        const esigImage = await pdfDoc.embedPng(esigBytes);
+        const esigImage = await embedSignatureImage(pdfDoc, approval.approver_esig);
         const esigDims = esigImage.scale(0.5);
         page.drawImage(esigImage, {
           x: leftMargin + 20,
@@ -270,9 +277,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
     for (const approval of recommendingApprovers) {
       if (approval.approver_esig) {
         try {
-          const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
-          const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-          const esigImage = await pdfDoc.embedPng(esigBytes);
+          const esigImage = await embedSignatureImage(pdfDoc, approval.approver_esig);
           const esigDims = esigImage.scale(0.5);
           page.drawImage(esigImage, {
             x: leftMargin + 20,
@@ -300,9 +305,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
     if (finalApprover.approver_esig) {
       try {
-        const esigData = finalApprover.approver_esig.split(',')[1] || finalApprover.approver_esig;
-        const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-        const esigImage = await pdfDoc.embedPng(esigBytes);
+        const esigImage = await embedSignatureImage(pdfDoc, finalApprover.approver_esig);
         const esigDims = esigImage.scale(0.5);
         page.drawImage(esigImage, {
           x: rightMargin + 20,
@@ -883,9 +886,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     if (approval.approver_esig) {
       try {
-        const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
-        const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-        const esigImage = await pdfDoc.embedPng(esigBytes);
+        const esigImage = await embedSignatureImage(pdfDoc, approval.approver_esig);
         const esigDims = esigImage.scale(0.3);
         page.drawImage(esigImage, {
           x: leftMargin + 20,
@@ -913,9 +914,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
     for (const approval of recommendingApprovers) {
       if (approval.approver_esig) {
         try {
-          const esigData = approval.approver_esig.split(',')[1] || approval.approver_esig;
-          const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-          const esigImage = await pdfDoc.embedPng(esigBytes);
+          const esigImage = await embedSignatureImage(pdfDoc, approval.approver_esig);
           const esigDims = esigImage.scale(0.3);
           page.drawImage(esigImage, {
             x: leftMargin + 20,
@@ -942,9 +941,7 @@ async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array>
 
     if (finalApprover.approver_esig) {
       try {
-        const esigData = finalApprover.approver_esig.split(',')[1] || finalApprover.approver_esig;
-        const esigBytes = Uint8Array.from(atob(esigData), c => c.charCodeAt(0));
-        const esigImage = await pdfDoc.embedPng(esigBytes);
+        const esigImage = await embedSignatureImage(pdfDoc, finalApprover.approver_esig);
         const esigDims = esigImage.scale(0.3);
         page.drawImage(esigImage, {
           x: rightMargin + 20,

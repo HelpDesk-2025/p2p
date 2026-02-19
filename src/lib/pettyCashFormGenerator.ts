@@ -1,4 +1,15 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
+
+async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
+  const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+  const base64 = esigData.split(',')[1] || esigData;
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return pdfDoc.embedJpg(bytes);
+  }
+  return pdfDoc.embedPng(bytes);
+}
 
 interface ExpenseTypeItem {
   expense_type_id: string;
@@ -250,7 +261,7 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
 
   if (sanitizedData.approvedByEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(sanitizedData.approvedByEsig);
+      const esigImage = await embedSignatureImage(pdfDoc, sanitizedData.approvedByEsig);
       const esigDims = esigImage.scale(0.4);
       page.drawImage(esigImage, {
         x: margin + boxWidth / 4 - esigDims.width / 2,
@@ -283,7 +294,7 @@ export async function generatePettyCashForm(data: PettyCashFormData): Promise<Ui
 
   if (sanitizedData.receivedByEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(sanitizedData.receivedByEsig);
+      const esigImage = await embedSignatureImage(pdfDoc, sanitizedData.receivedByEsig);
       const esigDims = esigImage.scale(0.4);
       page.drawImage(esigImage, {
         x: midX + boxWidth / 4 - esigDims.width / 2,

@@ -1,4 +1,15 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
+
+async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
+  const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+  const base64 = esigData.split(',')[1] || esigData;
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return pdfDoc.embedJpg(bytes);
+  }
+  return pdfDoc.embedPng(bytes);
+}
 
 interface ExpenseItem {
   date: string;
@@ -304,7 +315,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   // Draw requester signature
   if (data.requestedByEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(data.requestedByEsig);
+      const esigImage = await embedSignatureImage(pdfDoc, data.requestedByEsig);
       const esigDims = esigImage.scale(0.35);
       page.drawImage(esigImage, {
         x: leftColX + 15,
@@ -327,7 +338,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
     if (approver.approver_esig) {
       try {
-        const esigImage = await pdfDoc.embedPng(approver.approver_esig);
+        const esigImage = await embedSignatureImage(pdfDoc, approver.approver_esig);
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: colX + 15,

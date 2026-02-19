@@ -1,4 +1,15 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
+
+async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
+  const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+  const base64 = esigData.split(',')[1] || esigData;
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return pdfDoc.embedJpg(bytes);
+  }
+  return pdfDoc.embedPng(bytes);
+}
 
 interface ExpenseItem {
   date: string;
@@ -365,8 +376,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   page.drawText('Prepared by:', { x: sig1X, y: currentY, size: 9, font: boldFont });
   if (data.preparedByEsig) {
     try {
-      const esigImageBytes = Uint8Array.from(atob(data.preparedByEsig.split(',')[1]), c => c.charCodeAt(0));
-      const esigImage = await pdfDoc.embedPng(esigImageBytes);
+      const esigImage = await embedSignatureImage(pdfDoc, data.preparedByEsig);
       const esigDims = esigImage.scale(0.4);
       page.drawImage(esigImage, {
         x: sig1X + 10,
@@ -400,8 +410,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   page.drawText('Approved by:', { x: sig2X, y: currentY, size: 9, font: boldFont });
   if (data.approvedByEsig) {
     try {
-      const esigImageBytes = Uint8Array.from(atob(data.approvedByEsig.split(',')[1]), c => c.charCodeAt(0));
-      const esigImage = await pdfDoc.embedPng(esigImageBytes);
+      const esigImage = await embedSignatureImage(pdfDoc, data.approvedByEsig);
       const esigDims = esigImage.scale(0.4);
       page.drawImage(esigImage, {
         x: sig2X + 10,

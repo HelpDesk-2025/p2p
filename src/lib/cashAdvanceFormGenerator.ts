@@ -1,4 +1,15 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
+
+async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
+  const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+  const base64 = esigData.split(',')[1] || esigData;
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return pdfDoc.embedJpg(bytes);
+  }
+  return pdfDoc.embedPng(bytes);
+}
 
 interface ApprovalRecord {
   approver_name: string;
@@ -213,7 +224,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   // Payee section
   if (data.payeeEsig) {
     try {
-      const esigImage = await pdfDoc.embedPng(data.payeeEsig);
+      const esigImage = await embedSignatureImage(pdfDoc, data.payeeEsig);
       const esigDims = esigImage.scale(0.35);
       page.drawImage(esigImage, {
         x: leftColX + 20,
@@ -258,7 +269,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   // Accounting signature (first approver)
   if (firstApprover && firstApprover.approver_esig) {
     try {
-      const esigImage = await pdfDoc.embedPng(firstApprover.approver_esig);
+      const esigImage = await embedSignatureImage(pdfDoc, firstApprover.approver_esig);
       const esigDims = esigImage.scale(0.35);
       page.drawImage(esigImage, {
         x: rightColX + 20,
@@ -308,7 +319,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   if (recommendedByApprover) {
     if (recommendedByApprover.approver_esig) {
       try {
-        const esigImage = await pdfDoc.embedPng(recommendedByApprover.approver_esig);
+        const esigImage = await embedSignatureImage(pdfDoc, recommendedByApprover.approver_esig);
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: recByX + 15,
@@ -342,7 +353,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     const approver1 = approvedByApprovers[0];
     if (approver1.approver_esig) {
       try {
-        const esigImage = await pdfDoc.embedPng(approver1.approver_esig);
+        const esigImage = await embedSignatureImage(pdfDoc, approver1.approver_esig);
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: app1X + 15,
@@ -375,7 +386,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     const approver2 = approvedByApprovers[1];
     if (approver2.approver_esig) {
       try {
-        const esigImage = await pdfDoc.embedPng(approver2.approver_esig);
+        const esigImage = await embedSignatureImage(pdfDoc, approver2.approver_esig);
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
           x: app2X + 15,
