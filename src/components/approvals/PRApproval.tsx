@@ -567,6 +567,41 @@ export function PRApproval() {
           );
 
           console.log('✅ Request fully approved and requester notified');
+
+          // If this is a Purchase Order (PO) PR, notify procurement team
+          if (selectedRequest.purchase_type === 'Purchase Order') {
+            console.log('📧 Notifying procurement team for PO PR:', selectedRequest.document_no);
+
+            // Get company's procurement notification email
+            const { data: companyData } = await supabase
+              .from('companies')
+              .select('procurement_notification_email')
+              .eq('id', profile.company_id)
+              .single();
+
+            if (companyData?.procurement_notification_email) {
+              try {
+                await sendApprovalEmail(
+                  companyData.procurement_notification_email,
+                  'Procurement Team',
+                  'Purchase Requisition',
+                  selectedRequest.document_no,
+                  selectedRequest.user_profiles?.full_name || 'Unknown',
+                  selectedRequest.department,
+                  selectedRequest.total_amount,
+                  'Ready for Procurement Checking',
+                  profile.full_name || 'Unknown',
+                  'This Purchase Order PR has been fully approved and is ready for your review and processing.'
+                );
+                console.log('✅ Procurement team notified at:', companyData.procurement_notification_email);
+              } catch (emailError) {
+                console.error('❌ Error notifying procurement team:', emailError);
+                // Don't fail the approval if email fails
+              }
+            } else {
+              console.warn('⚠️ No procurement notification email configured for this company');
+            }
+          }
         }
       }
 
