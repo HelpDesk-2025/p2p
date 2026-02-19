@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, X, FileText, Download, UserCheck, ClipboardList, ExternalLink } from 'lucide-react';
+import { Eye, X, FileText, Download, UserCheck, ClipboardList, ExternalLink, Loader2 } from 'lucide-react';
 import Pagination from './Pagination';
 
 interface PurchaseReq {
@@ -62,6 +62,7 @@ export function ProcurementChecking() {
   const [showSmeUserDropdown, setShowSmeUserDropdown] = useState(false);
   const [smePurpose, setSmePurpose] = useState('');
   const [submittingSme, setSubmittingSme] = useState(false);
+  const [markingReadyForCanvass, setMarkingReadyForCanvass] = useState(false);
   const [smeRequestStatus, setSmeRequestStatus] = useState<{status: string, sme_name: string} | null>(null);
   const smeUserDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -195,6 +196,7 @@ export function ProcurementChecking() {
 
     if (!confirmed) return;
 
+    setMarkingReadyForCanvass(true);
     try {
       const { error } = await supabase
         .from('purchase_requisitions')
@@ -248,6 +250,8 @@ export function ProcurementChecking() {
     } catch (error) {
       console.error('Error marking PR as ready for canvass:', error);
       alert('Failed to mark PR as ready for canvass. Please try again.');
+    } finally {
+      setMarkingReadyForCanvass(false);
     }
   };
 
@@ -800,10 +804,20 @@ export function ProcurementChecking() {
                   </button>
                   <button
                     onClick={handleReadyForCanvass}
-                    className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                    disabled={markingReadyForCanvass}
+                    className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <ClipboardList size={20} />
-                    Ready for Canvass
+                    {markingReadyForCanvass ? (
+                      <>
+                        <Loader2 size={20} className="animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardList size={20} />
+                        Ready for Canvass
+                      </>
+                    )}
                   </button>
                 </div>
                 <button
