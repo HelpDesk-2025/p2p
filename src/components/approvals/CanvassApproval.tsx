@@ -973,8 +973,7 @@ export function CanvassApproval() {
                       </p>
                     </div>
                   )}
-                  <div className="overflow-x-auto pb-2">
-                    <div className="flex gap-4 min-w-max">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {selectedRequest.suppliers.map((supplier: any, index: number) => {
                       if (!supplier.vendor_name || supplier.vendor_name.trim() === '') return null;
                       const isRecommended = selectedRequest.recommended_quotation_index === index;
@@ -990,7 +989,7 @@ export function CanvassApproval() {
                       return (
                         <div
                           key={index}
-                          className={`border rounded-lg p-4 flex flex-col w-[400px] flex-shrink-0 ${
+                          className={`border rounded-lg p-4 flex flex-col ${
                             isSelected && showSelector
                               ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-600'
                               : isRecommended
@@ -1184,7 +1183,6 @@ export function CanvassApproval() {
                         </div>
                       );
                     })}
-                    </div>
                   </div>
                 </div>
               )}
