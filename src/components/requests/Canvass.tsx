@@ -68,6 +68,11 @@ interface CanvassReq {
   msbc_posting_date?: string;
   msbc_journal_batch_id?: string;
   msbc_error_message?: string;
+  purchase_requisitions?: {
+    document_no: string;
+    pr_number: string;
+    total_amount: number;
+  };
 }
 
 interface PurchaseRequisition {
@@ -355,7 +360,7 @@ export function Canvass() {
 
     let query = supabase
       .from('canvass_requests')
-      .select('*, user_profiles!canvass_requests_requester_id_fkey(company_id), companies!canvass_requests_company_id_fkey(id, name)')
+      .select('*, user_profiles!canvass_requests_requester_id_fkey(company_id), companies!canvass_requests_company_id_fkey(id, name), purchase_requisitions(document_no, pr_number, total_amount)')
       .order('created_at', { ascending: false });
 
     // Only filter by requester_id if user is not an admin
@@ -1991,6 +1996,16 @@ export function Canvass() {
                   </button>
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    PR Document No.
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-right whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    PR Amount
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('request_date')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Request Date {getSortIcon('request_date')}
                   </button>
@@ -2015,7 +2030,7 @@ export function Canvass() {
             <tbody className="divide-y divide-slate-100">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">No canvass requests found</td>
+                  <td colSpan={7} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">No canvass requests found</td>
                 </tr>
               ) : (
                 paginatedRequests.map((req, index) => (
@@ -2023,6 +2038,16 @@ export function Canvass() {
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.canvass_number}>
                         {req.canvass_number}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="font-mono text-sm text-blue-700 font-semibold">
+                        {req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap text-right">
+                      <span className="text-sm text-slate-900 font-semibold">
+                        {req.purchase_requisitions?.total_amount ? `₱${req.purchase_requisitions.total_amount.toLocaleString()}` : 'N/A'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">

@@ -34,6 +34,11 @@ interface CanvassReq {
     id: string;
     name: string;
   };
+  purchase_requisitions?: {
+    document_no: string;
+    pr_number: string;
+    total_amount: number;
+  };
 }
 
 interface PurchaseRequisition {
@@ -100,7 +105,8 @@ export function CanvassApproval() {
       .select(`
         *,
         user_profiles:requester_id (full_name, email, company_id),
-        companies!canvass_requests_company_id_fkey (id, name)
+        companies!canvass_requests_company_id_fkey (id, name),
+        purchase_requisitions(document_no, pr_number, total_amount)
       `)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
@@ -639,6 +645,16 @@ export function CanvassApproval() {
                     </button>
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      PR Document No.
+                    </span>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-right whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      PR Amount
+                    </span>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                     <button
                       onClick={() => handleSort('requester')}
                       className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
@@ -686,6 +702,16 @@ export function CanvassApproval() {
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.canvass_number}>
                         {request.canvass_number}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="font-mono text-sm text-blue-700 font-semibold">
+                        {request.purchase_requisitions?.document_no || request.purchase_requisitions?.pr_number || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap text-right">
+                      <span className="text-sm text-slate-900 font-semibold">
+                        {request.purchase_requisitions?.total_amount ? `₱${request.purchase_requisitions.total_amount.toLocaleString()}` : 'N/A'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3">
