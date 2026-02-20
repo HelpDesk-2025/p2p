@@ -366,7 +366,8 @@ export function PettyCashApproval() {
 
     try {
       const nextLevel = selectedRequest.current_approval_level + 1;
-      const isLastApproval = nextLevel >= approvalFlows.length;
+      const remainingNonCheckerSteps = approvalFlows.slice(nextLevel).filter(f => !f.for_checking);
+      const isLastApproval = nextLevel >= approvalFlows.length || remainingNonCheckerSteps.length === 0;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
       const { error: updateError } = await supabase

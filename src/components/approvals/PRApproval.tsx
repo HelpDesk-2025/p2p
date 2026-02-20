@@ -355,7 +355,8 @@ export function PRApproval() {
 
       const currentLevel = selectedRequest.current_approval_level;
       const nextLevel = currentLevel + 1;
-      const isLastApproval = nextLevel >= approvalFlows.length;
+      const remainingNonCheckerSteps = approvalFlows.slice(nextLevel).filter(f => !f.for_checking);
+      const isLastApproval = nextLevel >= approvalFlows.length || remainingNonCheckerSteps.length === 0;
 
       // STRICT: If rejected, entire request is rejected
       if (action === 'rejected') {
