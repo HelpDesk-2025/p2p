@@ -1163,9 +1163,9 @@ export function Reimbursement() {
               </label>
               <select
                 value={selectedDepartment}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed"
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                 required
-                disabled
               >
                 <option value="">Select Department</option>
                 {departments.map((dept) => (
@@ -1178,9 +1178,12 @@ export function Reimbursement() {
           ) : (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
-              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg">
-                <span className="font-semibold text-slate-900">{profile?.department || 'N/A'}</span>
-              </div>
+              <input
+                type="text"
+                value={profile?.department || ''}
+                readOnly
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed"
+              />
             </div>
           )}
 
