@@ -71,6 +71,7 @@ export function PRApproval() {
   const [loading, setLoading] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -177,6 +178,7 @@ export function PRApproval() {
     setSelectedRequest(request);
     setShowModal(true);
     setComments('');
+    setFlowsLoading(true);
 
     // Use the PR's company_id to look up the correct approval flow
     const prCompanyId = request.company_id || request.user_profiles?.company_id;
@@ -213,7 +215,11 @@ export function PRApproval() {
         console.error('Error loading approval flow:', error);
         setApprovalFlows([]);
         setCurrentApproverStep(null);
+      } finally {
+        setFlowsLoading(false);
       }
+    } else {
+      setFlowsLoading(false);
     }
   };
 
@@ -1217,19 +1223,19 @@ export function PRApproval() {
               <div className="flex gap-3 pt-4 border-t border-slate-200">
                 <button
                   onClick={() => handleAction('approved')}
-                  disabled={loading || !canApprove()}
+                  disabled={loading || flowsLoading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
-                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {approving ? 'Approving...' : 'Approve'}
+                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
                 </button>
                 <button
                   onClick={() => handleAction('rejected')}
-                  disabled={loading || !canApprove()}
+                  disabled={loading || flowsLoading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
-                  {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {rejecting ? 'Rejecting...' : 'Reject'}
+                  {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                 </button>
               </div>
             </div>

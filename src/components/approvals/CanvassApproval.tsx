@@ -81,6 +81,7 @@ export function CanvassApproval() {
   const [loading, setLoading] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [selectedPR, setSelectedPR] = useState<PurchaseRequisition | null>(null);
@@ -210,6 +211,7 @@ export function CanvassApproval() {
     setShowModal(true);
     setComments('');
     setSelectedPR(null);
+    setFlowsLoading(true);
     setSelectedVendorIndex(request.recommended_quotation_index ?? 0);
     setMyRecommendedVendorIndex(null);
     setMyRecommendationRemarks('');
@@ -266,34 +268,44 @@ export function CanvassApproval() {
     // Use the request's company_id to load the correct approval flows
     const requestCompanyId = request.company_id || request.user_profiles?.company_id;
     if (requestCompanyId) {
-      const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-      const rawFlows = await getApprovalFlow(
-        requestCompanyId,
-        request.department || '',
-        'Canvass',
-        request.is_budgeted || false,
-        request.total_amount
-      );
+      try {
+        const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
+        const rawFlows = await getApprovalFlow(
+          requestCompanyId,
+          request.department || '',
+          'Canvass',
+          request.is_budgeted || false,
+          request.total_amount
+        );
 
-      // Inject executive approvers if requester is Executive type
-      const flowsWithExecutive = await addExecutiveApprovalSteps(
-        rawFlows,
-        request.requester_id,
-        requestCompanyId
-      );
+        // Inject executive approvers if requester is Executive type
+        const flowsWithExecutive = await addExecutiveApprovalSteps(
+          rawFlows,
+          request.requester_id,
+          requestCompanyId
+        );
 
-      // Filter out the requester from approval flows
-      const flows = await filterApprovalFlowsForRequester(
-        flowsWithExecutive,
-        request.requester_id,
-        request.department || '',
-        requestCompanyId
-      );
+        // Filter out the requester from approval flows
+        const flows = await filterApprovalFlowsForRequester(
+          flowsWithExecutive,
+          request.requester_id,
+          request.department || '',
+          requestCompanyId
+        );
 
-      setApprovalFlows(flows);
+        setApprovalFlows(flows);
 
-      const currentStep = await getNextApprover(flows, request.current_approval_level);
-      setCurrentApproverStep(currentStep);
+        const currentStep = await getNextApprover(flows, request.current_approval_level);
+        setCurrentApproverStep(currentStep);
+      } catch (error) {
+        console.error('Error loading approval flow:', error);
+        setApprovalFlows([]);
+        setCurrentApproverStep(null);
+      } finally {
+        setFlowsLoading(false);
+      }
+    } else {
+      setFlowsLoading(false);
     }
   };
 
@@ -1311,20 +1323,20 @@ export function CanvassApproval() {
               <div className="flex gap-3 pt-4 border-t border-slate-200">
                 <button
                   onClick={() => handleAction('approved')}
-                  disabled={loading || !canApprove()}
+                  disabled={loading || flowsLoading || !canApprove()}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
-                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {approving ? 'Approving...' : 'Approve'}
+                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
                 </button>
                 {selectedRequest.current_approval_level === approvalFlows.length - 1 && (
                   <button
                     onClick={() => handleAction('rejected')}
-                    disabled={loading || !canApprove()}
+                    disabled={loading || flowsLoading || !canApprove()}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                   >
-                    {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                    {rejecting ? 'Rejecting...' : 'Reject'}
+                    {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                   </button>
                 )}
               </div>
