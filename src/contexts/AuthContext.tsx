@@ -1,7 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '../lib/supabase';
 import { getUserPermissions, UserPermissions } from '../lib/permissions';
+
+const INACTIVITY_TIMEOUT_MS = 30 * 1000;
+const WARNING_BEFORE_MS = 10 * 1000;
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +14,8 @@ interface AuthContextType {
   permissions: UserPermissions | null;
   loading: boolean;
   isImpersonating: boolean;
+  showInactivityWarning: boolean;
+  inactivityCountdown: number;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, department: string, companyId: string, companyName: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -17,6 +23,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   impersonateUser: (userId: string) => Promise<void>;
   stopImpersonation: () => void;
+  resetInactivityTimer: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [impersonatedProfile, setImpersonatedProfile] = useState<UserProfile | null>(null);
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [inactivityCountdown, setInactivityCountdown] = useState(WARNING_BEFORE_MS / 1000);
+
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const userRef = useRef<User | null>(null);
+
+  // Keep userRef in sync
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   // Use impersonated profile if available, otherwise use actual profile
   const profile = impersonatedProfile || actualProfile;
@@ -107,6 +126,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearInterval(sessionCheckInterval);
     };
   }, []);
+
+  const clearInactivityTimers = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    inactivityTimerRef.current = null;
+    warningTimerRef.current = null;
+    countdownIntervalRef.current = null;
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (!userRef.current) return;
+
+    clearInactivityTimers();
+    setShowInactivityWarning(false);
+    setInactivityCountdown(WARNING_BEFORE_MS / 1000);
+
+    warningTimerRef.current = setTimeout(() => {
+      setShowInactivityWarning(true);
+      let remaining = WARNING_BEFORE_MS / 1000;
+      setInactivityCountdown(remaining);
+      countdownIntervalRef.current = setInterval(() => {
+        remaining -= 1;
+        setInactivityCountdown(remaining);
+        if (remaining <= 0) {
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        }
+      }, 1000);
+    }, INACTIVITY_TIMEOUT_MS - WARNING_BEFORE_MS);
+
+    inactivityTimerRef.current = setTimeout(async () => {
+      setShowInactivityWarning(false);
+      clearInactivityTimers();
+      await supabase.auth.signOut();
+      setUser(null);
+      setActualProfile(null);
+      setImpersonatedProfile(null);
+      setPermissions(null);
+    }, INACTIVITY_TIMEOUT_MS);
+  }, [clearInactivityTimers]);
+
+  useEffect(() => {
+    if (!user) {
+      clearInactivityTimers();
+      setShowInactivityWarning(false);
+      return;
+    }
+
+    resetInactivityTimer();
+
+    const handleActivity = () => resetInactivityTimer();
+    ACTIVITY_EVENTS.forEach(event => window.addEventListener(event, handleActivity, { passive: true }));
+
+    return () => {
+      ACTIVITY_EVENTS.forEach(event => window.removeEventListener(event, handleActivity));
+      clearInactivityTimers();
+    };
+  }, [user, resetInactivityTimer, clearInactivityTimers]);
 
   const loadProfile = async (userId: string) => {
     try {
@@ -257,13 +334,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissions,
       loading,
       isImpersonating,
+      showInactivityWarning,
+      inactivityCountdown,
       signIn,
       signUp,
       signOut,
       resetPassword,
       updatePassword,
       impersonateUser,
-      stopImpersonation
+      stopImpersonation,
+      resetInactivityTimer
     }}>
       {children}
     </AuthContext.Provider>

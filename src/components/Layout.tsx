@@ -20,6 +20,7 @@ import {
   UserCheck,
   KeyRound,
   ScrollText,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -188,12 +189,16 @@ const configItems: MenuItem[] = [
 ];
 
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
-  const { profile, permissions, signOut } = useAuth();
+  const { profile, permissions, signOut, showInactivityWarning, inactivityCountdown, resetInactivityTimer } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleStayLoggedIn = () => {
+    resetInactivityTimer();
   };
 
   const canAccessItem = (item: MenuItem) => {
@@ -387,6 +392,46 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
+      )}
+
+      {showInactivityWarning && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-5 flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Session Expiring Soon</h2>
+                <p className="text-sm text-amber-700">Due to inactivity</p>
+              </div>
+            </div>
+            <div className="px-6 py-6 text-center">
+              <p className="text-slate-600 text-sm mb-4">
+                You will be automatically logged out in
+              </p>
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 mb-4">
+                <span className="text-2xl font-bold text-red-600">{inactivityCountdown}</span>
+              </div>
+              <p className="text-slate-500 text-xs">seconds</p>
+            </div>
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={handleSignOut}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Log Out Now
+              </button>
+              <button
+                onClick={handleStayLoggedIn}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                Stay Logged In
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
