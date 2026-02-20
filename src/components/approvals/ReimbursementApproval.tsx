@@ -455,8 +455,7 @@ export function ReimbursementApproval() {
 
     try {
       const nextLevel = selectedRequest.current_approval_level + 1;
-      const remainingNonCheckerSteps = approvalFlows.slice(nextLevel).filter(f => !f.for_checking);
-      const isLastApproval = nextLevel >= approvalFlows.length || remainingNonCheckerSteps.length === 0;
+      const isLastApproval = nextLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
       const { error: updateError } = await supabase
