@@ -6,6 +6,7 @@ import { getUserPermissions, UserPermissions } from '../lib/permissions';
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 const WARNING_BEFORE_MS = 10 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+const LAST_ACTIVITY_KEY = 'last_activity_ts';
 
 interface AuthContextType {
   user: User | null;
@@ -37,12 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
   const [inactivityCountdown, setInactivityCountdown] = useState(WARNING_BEFORE_MS / 1000);
 
-  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userRef = useRef<User | null>(null);
 
-  // Keep userRef in sync
   useEffect(() => {
     userRef.current = user;
   }, [user]);
@@ -127,63 +125,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const clearInactivityTimers = useCallback(() => {
-    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    inactivityTimerRef.current = null;
-    warningTimerRef.current = null;
-    countdownIntervalRef.current = null;
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
   }, []);
 
   const resetInactivityTimer = useCallback(() => {
     if (!userRef.current) return;
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+  }, []);
 
-    clearInactivityTimers();
-    setShowInactivityWarning(false);
-    setInactivityCountdown(WARNING_BEFORE_MS / 1000);
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollIntervalRef.current = setInterval(async () => {
+      if (!userRef.current) return;
+      const lastActivity = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
+      const elapsed = Date.now() - lastActivity;
+      const remaining = INACTIVITY_TIMEOUT_MS - elapsed;
 
-    warningTimerRef.current = setTimeout(() => {
-      setShowInactivityWarning(true);
-      let remaining = WARNING_BEFORE_MS / 1000;
-      setInactivityCountdown(remaining);
-      countdownIntervalRef.current = setInterval(() => {
-        remaining -= 1;
-        setInactivityCountdown(remaining);
-        if (remaining <= 0) {
-          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        }
-      }, 1000);
-    }, INACTIVITY_TIMEOUT_MS - WARNING_BEFORE_MS);
-
-    inactivityTimerRef.current = setTimeout(async () => {
-      setShowInactivityWarning(false);
-      clearInactivityTimers();
-      await supabase.auth.signOut();
-      setUser(null);
-      setActualProfile(null);
-      setImpersonatedProfile(null);
-      setPermissions(null);
-    }, INACTIVITY_TIMEOUT_MS);
-  }, [clearInactivityTimers]);
+      if (remaining <= 0) {
+        stopPolling();
+        setShowInactivityWarning(false);
+        await supabase.auth.signOut();
+        setUser(null);
+        setActualProfile(null);
+        setImpersonatedProfile(null);
+        setPermissions(null);
+        localStorage.removeItem(LAST_ACTIVITY_KEY);
+      } else if (remaining <= WARNING_BEFORE_MS) {
+        setShowInactivityWarning(true);
+        setInactivityCountdown(Math.ceil(remaining / 1000));
+      } else {
+        setShowInactivityWarning(false);
+        setInactivityCountdown(WARNING_BEFORE_MS / 1000);
+      }
+    }, 1000);
+  }, [stopPolling]);
 
   useEffect(() => {
     if (!user) {
-      clearInactivityTimers();
+      stopPolling();
       setShowInactivityWarning(false);
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
       return;
     }
 
-    resetInactivityTimer();
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    startPolling();
 
-    const handleActivity = () => resetInactivityTimer();
+    const handleActivity = () => {
+      localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    };
     ACTIVITY_EVENTS.forEach(event => window.addEventListener(event, handleActivity, { passive: true }));
 
     return () => {
       ACTIVITY_EVENTS.forEach(event => window.removeEventListener(event, handleActivity));
-      clearInactivityTimers();
+      stopPolling();
     };
-  }, [user, resetInactivityTimer, clearInactivityTimers]);
+  }, [user, startPolling, stopPolling]);
 
   const loadProfile = async (userId: string) => {
     try {
