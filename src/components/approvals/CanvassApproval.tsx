@@ -521,7 +521,7 @@ export function CanvassApproval() {
           selectedRequest.canvass_number,
           approvalFlows,
           selectedRequest.current_approval_level,
-          profile.company_id,
+          selectedRequest.company_id || profile.company_id,
           selectedRequest.department || profile.department || ''
         );
       }
@@ -530,7 +530,7 @@ export function CanvassApproval() {
         const nextApprover = approvalFlows[nextLevel];
         const nextApproverInfo = await getApproverEmail(
           nextApprover,
-          profile.company_id,
+          selectedRequest.company_id || profile.company_id,
           selectedRequest.department || profile.department || ''
         );
 

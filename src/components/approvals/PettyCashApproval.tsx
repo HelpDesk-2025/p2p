@@ -407,7 +407,7 @@ export function PettyCashApproval() {
           selectedRequest.pc_number,
           approvalFlows,
           selectedRequest.current_approval_level,
-          profile.company_id,
+          selectedRequest.company_id || profile.company_id,
           requestDepartment
         );
       }
@@ -416,7 +416,7 @@ export function PettyCashApproval() {
         const nextApprover = approvalFlows[nextLevel];
         const nextApproverInfo = await getApproverEmail(
           nextApprover,
-          profile.company_id,
+          selectedRequest.company_id || profile.company_id,
           requestDepartment
         );
 

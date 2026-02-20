@@ -399,7 +399,7 @@ export function PRApproval() {
           selectedRequest.document_no,
           approvalFlows,
           currentLevel,
-          profile.company_id,
+          selectedRequest.company_id || selectedRequest.user_profiles?.company_id || profile.company_id,
           selectedRequest.department
         );
 
@@ -528,7 +528,7 @@ export function PRApproval() {
 
           const nextApproverInfo = await getApproverEmail(
             nextApprover,
-            profile.company_id,
+            selectedRequest.company_id || selectedRequest.user_profiles?.company_id || profile.company_id,
             selectedRequest.department
           );
 
@@ -582,7 +582,7 @@ export function PRApproval() {
             const { data: companyData } = await supabase
               .from('companies')
               .select('procurement_notification_email')
-              .eq('id', profile.company_id)
+              .eq('id', selectedRequest.company_id || selectedRequest.user_profiles?.company_id || profile.company_id)
               .single();
 
             if (companyData?.procurement_notification_email) {
