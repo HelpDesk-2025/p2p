@@ -1351,8 +1351,16 @@ export async function generateAndUploadRFP(
     console.log('Request data fetched:', request);
 
     // Determine expected number of approvals
+    // Count only non-checker approved records since the RPC excludes checkers from PDF signatures
     const currentLevel = request.current_approval_level;
-    console.log('Current approval level:', currentLevel, 'Expected approvals:', currentLevel);
+    const { count: nonCheckerCount } = await supabase
+      .from('approval_ledger')
+      .select('id', { count: 'exact', head: true })
+      .eq('request_id', requestId)
+      .eq('action', 'Approved')
+      .eq('for_checking', false);
+    const expectedApprovals = Math.max(nonCheckerCount ?? currentLevel, 1);
+    console.log('Current approval level:', currentLevel, 'Expected non-checker approvals:', expectedApprovals);
 
     // Fetch approval records using RPC function to bypass RLS with retry logic
     const requestTypeName = requestType === 'purchase_requisition' ? 'Purchase Requisition' :
@@ -1363,7 +1371,7 @@ export async function generateAndUploadRFP(
     const maxRetries = 15; // Increased from 10 for multi-company scenarios
     const baseDelay = 800; // Start with 800ms
 
-    console.log(`🔄 Fetching approval records. Expected: ${currentLevel} approvals`);
+    console.log(`🔄 Fetching approval records. Expected: ${expectedApprovals} approvals`);
 
     while (retries < maxRetries) {
       // Use RPC function to bypass RLS and get all approval records with signatures
@@ -1392,10 +1400,10 @@ export async function generateAndUploadRFP(
 
       // RPC now returns JSONB array directly
       approvalRecords = Array.isArray(data) ? data : (data ? [data] : []);
-      console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${currentLevel})`);
+      console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${expectedApprovals})`);
 
       // Check if we have all required approval records (don't check signatures yet - we'll fetch them separately)
-      if (approvalRecords.length >= currentLevel) {
+      if (approvalRecords.length >= expectedApprovals) {
         console.log('✅ All expected approval records found!');
         break;
       }
@@ -1408,7 +1416,7 @@ export async function generateAndUploadRFP(
         retries++;
       } else {
         // Last retry failed, log warning but proceed with what we have
-        console.warn(`⚠️ Could not fetch all approval records after ${maxRetries} attempts. Expected: ${currentLevel}, Got: ${approvalRecords.length}`);
+        console.warn(`⚠️ Could not fetch all approval records after ${maxRetries} attempts. Expected: ${expectedApprovals}, Got: ${approvalRecords.length}`);
         console.warn('Proceeding with available records.');
         break;
       }
