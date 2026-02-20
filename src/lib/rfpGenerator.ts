@@ -1373,19 +1373,41 @@ export async function generateAndUploadRFP(
 
     console.log(`🔄 Fetching approval records. Expected: ${expectedApprovals} approvals`);
 
+    const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-approval-records`;
+
     while (retries < maxRetries) {
-      // Use RPC function to bypass RLS and get all approval records with signatures
-      const { data, error: approvalsError } = await supabase
-        .rpc('get_approval_records_with_signatures', {
-          p_request_id: requestId,
-          p_request_type: requestTypeName,
-          p_requester_id: request.requester_id
+      // Call edge function with service role key to avoid JWT header size limits
+      let fetchError: Error | null = null;
+      let fetchedRecords: any[] = [];
+
+      try {
+        const response = await fetch(edgeFunctionUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requestId,
+            requestType: requestTypeName,
+            requesterId: request.requester_id,
+          }),
         });
 
-      if (approvalsError) {
-        console.error(`❌ Error fetching approvals on retry ${retries + 1}:`, approvalsError);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          fetchError = new Error(errData.error || `HTTP ${response.status}`);
+        } else {
+          const result = await response.json();
+          fetchedRecords = Array.isArray(result.records) ? result.records : [];
+        }
+      } catch (err) {
+        fetchError = err instanceof Error ? err : new Error(String(err));
+      }
 
-        // For RPC errors, wait and retry instead of throwing immediately
+      if (fetchError) {
+        console.error(`❌ Error fetching approvals on retry ${retries + 1}:`, fetchError);
+
         if (retries < maxRetries - 1) {
           const delay = baseDelay * Math.pow(1.4, retries);
           console.log(`⏳ Waiting ${delay}ms before retry ${retries + 2} after error...`);
@@ -1393,13 +1415,11 @@ export async function generateAndUploadRFP(
           retries++;
           continue;
         } else {
-          // Only throw on last retry
-          throw approvalsError;
+          throw fetchError;
         }
       }
 
-      // RPC now returns JSONB array directly
-      approvalRecords = Array.isArray(data) ? data : (data ? [data] : []);
+      approvalRecords = fetchedRecords;
       console.log(`📊 Retry ${retries + 1}/${maxRetries}: Found ${approvalRecords.length} approval records (expected ${expectedApprovals})`);
 
       // Check if we have all required approval records (don't check signatures yet - we'll fetch them separately)
