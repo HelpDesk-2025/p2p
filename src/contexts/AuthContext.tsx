@@ -30,6 +30,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  if (sessionStorage.getItem('reload_after_login')) {
+    sessionStorage.removeItem('reload_after_login');
+  }
+
   const [user, setUser] = useState<User | null>(null);
   const [actualProfile, setActualProfile] = useState<UserProfile | null>(null);
   const [impersonatedProfile, setImpersonatedProfile] = useState<UserProfile | null>(null);
@@ -223,7 +227,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    // Check if user profile is active
     if (data.user) {
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
@@ -237,6 +240,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         throw new Error('Your account is pending approval. Please contact an administrator.');
       }
+
+      sessionStorage.setItem('reload_after_login', '1');
+      window.location.reload();
     }
   };
 
