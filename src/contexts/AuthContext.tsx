@@ -3,7 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '../lib/supabase';
 import { getUserPermissions, UserPermissions } from '../lib/permissions';
 
-const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const WARNING_BEFORE_MS = 10 * 1000;
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
 const LAST_ACTIVITY_KEY = 'last_activity_ts';
