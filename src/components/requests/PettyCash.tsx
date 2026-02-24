@@ -265,8 +265,8 @@ export function PettyCash() {
     fetchLinkedPettyCash();
   }, [viewingRequest]);
 
-  const generateDocumentNo = async () => {
-    const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+  const generateDocumentNo = async (overrideCompanyId?: string) => {
+    const companyId = overrideCompanyId ?? (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
     if (!companyId) {
       console.error('Company ID not available');
       return;
@@ -472,12 +472,13 @@ export function PettyCash() {
 
     if (companyId) {
       loadDepartments(companyId);
+      generateDocumentNo(companyId);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        document_no: '',
+      }));
     }
-
-    setFormData(prev => ({
-      ...prev,
-      document_no: '',
-    }));
   };
 
   const loadRequests = async () => {

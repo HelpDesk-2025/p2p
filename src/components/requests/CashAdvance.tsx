@@ -129,8 +129,8 @@ export function CashAdvance() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const generateDocumentNo = async () => {
-    const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
+  const generateDocumentNo = async (overrideCompanyId?: string) => {
+    const companyId = overrideCompanyId ?? (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
     if (!companyId) {
       console.error('Company ID not available');
       alert('Unable to generate document number: Company information not available');
@@ -309,14 +309,20 @@ export function CashAdvance() {
 
     if (companyId) {
       loadDepartments(companyId);
+      generateDocumentNo(companyId);
+      setFormData(prev => ({
+        ...prev,
+        payee: '',
+        payee_number: '',
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        document_no: '',
+        payee: '',
+        payee_number: '',
+      }));
     }
-
-    setFormData(prev => ({
-      ...prev,
-      document_no: '',
-      payee: '',
-      payee_number: '',
-    }));
   };
 
   const handlePaymentModeChange = (modeId: string) => {
