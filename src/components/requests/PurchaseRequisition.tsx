@@ -1212,7 +1212,10 @@ export function PurchaseRequisition() {
       bVal = b.description || b.purpose;
     }
 
-    if (typeof aVal === 'string') {
+    if (aVal == null) aVal = '';
+    if (bVal == null) bVal = '';
+
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
     }
