@@ -221,7 +221,10 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-full flex flex-col overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-slate-200 flex-shrink-0">
-            <img src="/p2p_logo.png" alt="Point to Point" className="h-10 w-auto object-contain mb-2" />
+            <div className="flex items-center gap-2 mb-2">
+              <img src="/p2p_logo.png" alt="Point to Point" className="h-10 w-auto object-contain" />
+              <span className="text-lg font-bold text-slate-900">P2P</span>
+            </div>
             <p className="text-sm text-slate-600 truncate">{profile?.full_name}</p>
             <p className="text-xs text-slate-500 capitalize truncate">{profile?.role}</p>
           </div>
