@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Mail, AlertCircle } from 'lucide-react';
+import { LogIn, UserPlus, Mail, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -27,6 +27,28 @@ export function LoginForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startResendCountdown = () => {
+    setResendCountdown(15);
+    countdownRef.current = setInterval(() => {
+      setResendCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (isSignUp) {
@@ -103,6 +125,7 @@ export function LoginForm() {
 
           setSuccess('OTP sent to your email! Please check your inbox.');
           setOtpStep('otp');
+          startResendCountdown();
         } else if (otpStep === 'otp') {
           if (otpCode.length !== 6) {
             throw new Error('Please enter a valid 6-digit OTP');
@@ -189,6 +212,7 @@ export function LoginForm() {
 
           setSuccess('OTP sent to your email! Please check your inbox and enter the code.');
           setSignUpStep('otp');
+          startResendCountdown();
         } else if (signUpStep === 'otp') {
           if (otpCode.length !== 6) {
             throw new Error('Please enter a valid 6-digit OTP');
@@ -235,6 +259,58 @@ export function LoginForm() {
       setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || resending) return;
+    setResending(true);
+    setError('');
+    setSuccess('');
+    try {
+      if (isForgotPassword) {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset-otp`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ email }),
+          }
+        );
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Failed to resend OTP');
+      } else {
+        const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-signup-otp`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              email,
+              fullName,
+              password,
+              department,
+              companyId: selectedCompanyId,
+              companyName: selectedCompany?.name || '',
+            }),
+          }
+        );
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Failed to resend OTP');
+      }
+      setSuccess('A new OTP has been sent to your email.');
+      startResendCountdown();
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -292,6 +368,21 @@ export function LoginForm() {
               <p className="text-sm text-slate-500 mt-2 text-center">
                 Enter the 6-digit code sent to {email}
               </p>
+              <div className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCountdown > 0 || resending}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed transition"
+                >
+                  <RefreshCw size={14} className={resending ? 'animate-spin' : ''} />
+                  {resending
+                    ? 'Sending...'
+                    : resendCountdown > 0
+                      ? `Resend OTP in ${resendCountdown}s`
+                      : 'Resend OTP'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -401,6 +492,21 @@ export function LoginForm() {
               <p className="text-sm text-slate-500 mt-2 text-center">
                 Enter the 6-digit code sent to {email}
               </p>
+              <div className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCountdown > 0 || resending}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:text-slate-400 disabled:cursor-not-allowed transition"
+                >
+                  <RefreshCw size={14} className={resending ? 'animate-spin' : ''} />
+                  {resending
+                    ? 'Sending...'
+                    : resendCountdown > 0
+                      ? `Resend OTP in ${resendCountdown}s`
+                      : 'Resend OTP'}
+                </button>
+              </div>
             </div>
           )}
 
