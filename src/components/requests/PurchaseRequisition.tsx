@@ -613,6 +613,16 @@ export function PurchaseRequisition() {
       return;
     }
 
+    // Validate PR Checklist and Payment Mode selection
+    if (!formData.pr_checklist_id) {
+      alert('Please select a PR Checklist before submitting.');
+      return;
+    }
+    if (!formData.payment_mode_id) {
+      alert('Please select a Payment Mode before submitting.');
+      return;
+    }
+
     // Validate required checklist attachments
     const missingRequiredAttachments = formData.checklist_items.filter(
       item => item.is_required && !item.file && !item.fileName
@@ -672,6 +682,16 @@ export function PurchaseRequisition() {
     // Validate payee for Non-Purchase Order
     if (formData.purchase_type === 'Non-Purchase Order' && status === 'pending' && !formData.payee.trim()) {
       alert('Please enter a payee for Non-Purchase Order requests.');
+      return;
+    }
+
+    // Validate PR Checklist and Payment Mode selection
+    if (status === 'pending' && !formData.pr_checklist_id) {
+      alert('Please select a PR Checklist before submitting.');
+      return;
+    }
+    if (status === 'pending' && !formData.payment_mode_id) {
+      alert('Please select a Payment Mode before submitting.');
       return;
     }
 
@@ -1406,12 +1426,12 @@ export function PurchaseRequisition() {
 
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
-              PR Checklist
+              PR Checklist <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.pr_checklist_id}
               onChange={(e) => handleChecklistChange(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className={`w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${!formData.pr_checklist_id ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
             >
               <option value="">Select a checklist</option>
               {prChecklists.map((checklist) => (
@@ -1816,12 +1836,12 @@ export function PurchaseRequisition() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Payment Mode
+                  Payment Mode <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.payment_mode_id}
                   onChange={(e) => handlePaymentModeChange(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${!formData.payment_mode_id ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
                 >
                   <option value="">Select a payment mode</option>
                   {paymentModes.map((mode) => (
