@@ -21,6 +21,7 @@ import {
   KeyRound,
   ScrollText,
   AlertTriangle,
+  History,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -59,7 +60,8 @@ export type ViewType =
   | 'config-impersonation'
   | 'config-withholding-tax-rates'
   | 'change-password'
-  | 'user-manual';
+  | 'user-manual'
+  | 'approved-rejected';
 
 interface MenuItem {
   id: ViewType;
@@ -105,6 +107,13 @@ const menuItems: MenuItem[] = [
     label: 'Reimbursement/Liquidation',
     icon: Receipt,
     permission: MODULE_PERMISSIONS.REIMBURSEMENT,
+    group: 'requests',
+  },
+  {
+    id: 'approved-rejected',
+    label: 'Approved & Rejected',
+    icon: History,
+    permission: MODULE_PERMISSIONS.APPROVED_REJECTED,
     group: 'requests',
   },
   {

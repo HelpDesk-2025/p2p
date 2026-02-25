@@ -128,5 +128,8 @@ export const MODULE_PERMISSIONS = {
 
   // Procurement
   PROCUREMENT_CHECKING: 'Procurement Checking',
-  APPROVAL_LEDGER: 'Approval Ledger'
+  APPROVAL_LEDGER: 'Approval Ledger',
+
+  // Reimbursement sub-pages
+  APPROVED_REJECTED: 'Approved and Rejected'
 } as const;

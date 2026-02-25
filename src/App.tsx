@@ -19,6 +19,7 @@ import { SmeApproval } from './components/approvals/SmeApproval';
 import { ConfigManager } from './components/config/ConfigManager';
 import { ApprovalLedger } from './components/ApprovalLedger';
 import { ProcurementChecking } from './components/ProcurementChecking';
+import { ApprovedRejected } from './components/ApprovedRejected';
 import { UserManual } from './components/UserManual';
 
 function AppContent() {
@@ -90,6 +91,8 @@ function AppContent() {
         return <ProcurementChecking />;
       case 'approval-ledger':
         return <ApprovalLedger />;
+      case 'approved-rejected':
+        return <ApprovedRejected />;
       case 'config-users':
         return <ConfigManager type="users" />;
       case 'config-checklists':

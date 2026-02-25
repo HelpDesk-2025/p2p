@@ -63,6 +63,7 @@ export function RolesPermissionsConfig() {
     'sme_approval',
     'procurement_checking',
     'approval_ledger',
+    'approved_rejected',
     'configuration',
   ];
 
