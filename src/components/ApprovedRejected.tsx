@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  CheckCircle, XCircle, Clock, Search, Filter, ChevronDown,
+  CheckCircle, XCircle, Search, Filter, ChevronDown,
   FileText, ArrowUp, ArrowDown, Eye, X, Download
 } from 'lucide-react';
 import Pagination from './Pagination';
@@ -224,8 +224,7 @@ export function ApprovedRejected() {
     const matchAction =
       filterAction === 'all' ||
       (filterAction === 'approved' && s.my_actions.includes('Approved')) ||
-      (filterAction === 'rejected' && s.my_actions.includes('Rejected')) ||
-      (filterAction === 'returned' && s.my_actions.includes('Returned'));
+      (filterAction === 'rejected' && s.my_actions.includes('Rejected'));
     return matchSearch && matchType && matchAction;
   });
 
@@ -259,7 +258,6 @@ export function ApprovedRejected() {
 
   const approvedCount = summaries.filter((s) => s.my_actions.includes('Approved')).length;
   const rejectedCount = summaries.filter((s) => s.my_actions.includes('Rejected')).length;
-  const returnedCount = summaries.filter((s) => s.my_actions.includes('Returned')).length;
 
   const uniqueTypes = [...new Set(summaries.map((s) => s.request_type))];
 
@@ -270,7 +268,7 @@ export function ApprovedRejected() {
         <p className="text-sm text-slate-500 mt-1">All requests you have been involved in as an approver</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
             <CheckCircle size={20} className="text-green-600" />
@@ -287,15 +285,6 @@ export function ApprovedRejected() {
           <div>
             <p className="text-2xl font-bold text-slate-900">{rejectedCount}</p>
             <p className="text-sm text-slate-500">Rejected</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-            <Clock size={20} className="text-orange-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-slate-900">{returnedCount}</p>
-            <p className="text-sm text-slate-500">Returned</p>
           </div>
         </div>
       </div>
@@ -335,7 +324,6 @@ export function ApprovedRejected() {
               <option value="all">All Actions</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-              <option value="returned">Returned</option>
             </select>
             <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -404,7 +392,6 @@ export function ApprovedRejected() {
                             >
                               {action === 'Approved' && <CheckCircle size={11} />}
                               {action === 'Rejected' && <XCircle size={11} />}
-                              {action === 'Returned' && <Clock size={11} />}
                               {action}
                             </span>
                           ))}
