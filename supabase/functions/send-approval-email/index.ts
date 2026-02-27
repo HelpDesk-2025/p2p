@@ -23,14 +23,36 @@ interface EmailRequest {
 }
 
 function generateEmailHTML(data: EmailRequest): string {
+  const isProcurementNotification = data.action === 'Ready for Procurement Checking';
+  const isFullyApproved = data.action === 'Fully Approved';
+
   const actionColor = data.action === 'Submitted' ? '#3b82f6' :
-                      data.action === 'Approved' ? '#22c55e' : '#ef4444';
+                      data.action === 'Approved' || isFullyApproved ? '#22c55e' :
+                      isProcurementNotification ? '#f97316' : '#ef4444';
+
+  const headerBg = isProcurementNotification
+    ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
+    : isFullyApproved
+    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+    : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
+
+  const introText = isProcurementNotification
+    ? `A <strong>${data.requestType}</strong> with Purchase Type <strong>Purchase Order</strong> has been fully approved and is now ready for Procurement Checking. Please review the request and mark it as Ready for Canvass.`
+    : `A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.`;
 
   const actionSection = data.action === 'Submitted'
     ? `
       <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
         <p style="margin: 0; color: #1e40af; font-weight: 600;">Action Required</p>
         <p style="margin: 8px 0 0 0; color: #1e3a8a;">This request requires your approval.</p>
+      </div>
+    `
+    : isProcurementNotification
+    ? `
+      <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0; color: #9a3412; font-weight: 600;">Procurement Checking Required</p>
+        <p style="margin: 8px 0 0 0; color: #7c2d12;">This Purchase Order PR has been fully approved. Please proceed with procurement checking and set it as Ready for Canvass.</p>
+        ${data.comments ? `<p style="margin: 8px 0 0 0; color: #7c2d12;">Note: ${data.comments}</p>` : ''}
       </div>
     `
     : `
@@ -49,15 +71,15 @@ function generateEmailHTML(data: EmailRequest): string {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f3f4f6;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px 24px; text-align: center;">
+        <div style="background: ${headerBg}; padding: 32px 24px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${data.requestType} ${data.action}</h1>
         </div>
-        
+
         <div style="padding: 32px 24px;">
           <p style="margin: 0 0 16px 0; font-size: 16px;">Hello ${data.recipientName},</p>
-          
-          <p style="margin: 0 0 24px 0; color: #6b7280;">A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.</p>
-          
+
+          <p style="margin: 0 0 24px 0; color: #6b7280;">${introText}</p>
+
           ${actionSection}
           
           <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
