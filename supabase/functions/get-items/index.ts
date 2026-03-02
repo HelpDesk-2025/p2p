@@ -132,8 +132,17 @@ Deno.serve(async (req: Request) => {
 
     const items = await response.json();
 
+    const isNotBlocked = (blocked: any) =>
+      blocked === null || blocked === undefined || String(blocked).trim() === '';
+
+    const filteredItems = Array.isArray(items?.value)
+      ? { ...items, value: items.value.filter((i: any) => isNotBlocked(i.blocked)) }
+      : Array.isArray(items)
+      ? items.filter((i: any) => isNotBlocked(i.blocked))
+      : items;
+
     return new Response(
-      JSON.stringify(items),
+      JSON.stringify(filteredItems),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }

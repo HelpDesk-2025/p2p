@@ -132,8 +132,17 @@ Deno.serve(async (req: Request) => {
 
     const vendors = await response.json();
 
+    const isNotBlocked = (blocked: any) =>
+      blocked === null || blocked === undefined || String(blocked).trim() === '';
+
+    const filteredVendors = Array.isArray(vendors?.value)
+      ? { ...vendors, value: vendors.value.filter((v: any) => isNotBlocked(v.blocked)) }
+      : Array.isArray(vendors)
+      ? vendors.filter((v: any) => isNotBlocked(v.blocked))
+      : vendors;
+
     return new Response(
-      JSON.stringify(vendors),
+      JSON.stringify(filteredVendors),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
