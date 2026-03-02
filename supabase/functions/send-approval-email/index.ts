@@ -136,6 +136,8 @@ async function sendEmailWithSMTP(
   subject: string,
   htmlContent: string
 ) {
+  const normalizedHtml = htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+
   const message = [
     `From: ${smtpConfig.from_name} <${smtpConfig.from_address}>`,
     `To: ${to}`,
@@ -143,7 +145,7 @@ async function sendEmailWithSMTP(
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
     '',
-    htmlContent,
+    normalizedHtml,
   ].join('\r\n');
 
   const encoder = new TextEncoder();
