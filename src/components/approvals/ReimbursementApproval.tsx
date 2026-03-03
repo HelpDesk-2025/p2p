@@ -842,10 +842,13 @@ export function ReimbursementApproval() {
               </div>
               <button
                 onClick={() => {
-                  setShowModal(false);
-                  setLinkedRequestDetails(null);
+                  if (!loading) {
+                    setShowModal(false);
+                    setLinkedRequestDetails(null);
+                  }
                 }}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
+                disabled={loading}
+                className="p-2 hover:bg-slate-100 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <X size={20} />
               </button>

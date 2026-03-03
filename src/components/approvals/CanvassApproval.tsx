@@ -787,8 +787,9 @@ export function CanvassApproval() {
                 <p className="text-sm text-slate-600 mt-1">{selectedRequest.canvass_number}</p>
               </div>
               <button
-                onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
+                onClick={() => { if (!loading) setShowModal(false); }}
+                disabled={loading}
+                className="p-2 hover:bg-slate-100 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <X size={20} />
               </button>
