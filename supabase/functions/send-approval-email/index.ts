@@ -139,7 +139,7 @@ async function sendEmailWithSMTP(
   const normalizedHtml = htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
 
   const message = [
-    `From: ${smtpConfig.from_name} <${smtpConfig.from_address}>`,
+    `From: "${smtpConfig.from_name}" <${smtpConfig.from_address}>`,
     `To: ${to}`,
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
