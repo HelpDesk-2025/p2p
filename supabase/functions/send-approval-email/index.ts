@@ -138,8 +138,10 @@ async function sendEmailWithSMTP(
 ) {
   const normalizedHtml = htmlContent.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
 
+  const encodedFromName = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(smtpConfig.from_name)))}?=`;
+
   const message = [
-    `From: "${smtpConfig.from_name}" <${smtpConfig.from_address}>`,
+    `From: ${encodedFromName} <${smtpConfig.from_address}>`,
     `To: ${to}`,
     `Subject: ${subject}`,
     'MIME-Version: 1.0',
