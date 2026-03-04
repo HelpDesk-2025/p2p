@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
     const vendors = await response.json();
 
     const isNotBlocked = (blocked: any) =>
-      blocked === null || blocked === undefined || String(blocked).trim() === '';
+      blocked === null || blocked === undefined || blocked === false || String(blocked).trim() === '';
 
     const filteredVendors = Array.isArray(vendors?.value)
       ? { ...vendors, value: vendors.value.filter((v: any) => isNotBlocked(v.blocked)) }
