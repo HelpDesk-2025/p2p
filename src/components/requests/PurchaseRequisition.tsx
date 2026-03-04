@@ -122,13 +122,13 @@ export function PurchaseRequisition() {
     loadRequests();
     loadPRChecklists();
     loadPaymentModes();
-    loadVendors();
-    loadItems();
   }, []);
 
   useEffect(() => {
     if (profile) {
       loadCompanies();
+      loadVendors();
+      loadItems();
     }
   }, [profile]);
 
@@ -214,7 +214,7 @@ export function PurchaseRequisition() {
     }
   };
 
-  const loadVendors = async (companyId?: string) => {
+  const loadVendors = async (companyId?: string, retryCount = 0) => {
     setLoadingVendors(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -223,7 +223,6 @@ export function PurchaseRequisition() {
         return;
       }
 
-      // Use provided companyId, or selected company, or profile company
       const targetCompanyId = companyId || (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors${targetCompanyId ? `?company_id=${targetCompanyId}` : ''}`;
@@ -239,12 +238,19 @@ export function PurchaseRequisition() {
       }
 
       const data = await response.json();
+      if (data.error && retryCount < 2) {
+        setTimeout(() => loadVendors(companyId, retryCount + 1), 1500);
+        return;
+      }
       const sortedVendors = (data.value || []).sort((a: any, b: any) =>
         (a.displayName || '').localeCompare(b.displayName || '')
       );
       setVendors(sortedVendors);
     } catch (error) {
       console.error('Error loading vendors:', error);
+      if (retryCount < 2) {
+        setTimeout(() => loadVendors(companyId, retryCount + 1), 1500);
+      }
     } finally {
       setLoadingVendors(false);
     }
@@ -255,7 +261,7 @@ export function PurchaseRequisition() {
     vendor.number?.toLowerCase().includes(vendorSearchTerm.toLowerCase())
   );
 
-  const loadItems = async (companyId?: string) => {
+  const loadItems = async (companyId?: string, retryCount = 0) => {
     setLoadingItems(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -264,7 +270,6 @@ export function PurchaseRequisition() {
         return;
       }
 
-      // Use provided companyId, or selected company, or profile company
       const targetCompanyId = companyId || (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-items${targetCompanyId ? `?company_id=${targetCompanyId}` : ''}`;
@@ -280,12 +285,19 @@ export function PurchaseRequisition() {
       }
 
       const data = await response.json();
+      if (data.error && retryCount < 2) {
+        setTimeout(() => loadItems(companyId, retryCount + 1), 1500);
+        return;
+      }
       const sortedItems = (data.value || []).sort((a: any, b: any) =>
         (a.displayName || '').localeCompare(b.displayName || '')
       );
       setItems(sortedItems);
     } catch (error) {
       console.error('Error loading items:', error);
+      if (retryCount < 2) {
+        setTimeout(() => loadItems(companyId, retryCount + 1), 1500);
+      }
     } finally {
       setLoadingItems(false);
     }
