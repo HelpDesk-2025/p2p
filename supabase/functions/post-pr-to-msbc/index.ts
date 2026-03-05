@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { PDFDocument } from 'npm:pdf-lib@1.17.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,79 +89,30 @@ Deno.serve(async (req: Request) => {
       purpose,
     });
 
-    if (!pr.rfp_pdf_path) {
-      throw new Error('RFP PDF not found');
+    const pdfPath = pr.merged_pdf_path || pr.rfp_pdf_path;
+    if (!pdfPath) {
+      throw new Error('No PDF found (rfp_pdf_path or merged_pdf_path required)');
     }
 
-    console.log('📥 Downloading RFP PDF from:', pr.rfp_pdf_path);
-    const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
+    console.log('📥 Downloading PDF from:', pdfPath);
+    const { data: pdfData, error: pdfDownloadError } = await supabaseClient.storage
       .from('attachments')
-      .download(pr.rfp_pdf_path);
+      .download(pdfPath);
 
-    if (rfpDownloadError || !rfpData) {
-      throw new Error(`Failed to download RFP: ${rfpDownloadError?.message}`);
+    if (pdfDownloadError || !pdfData) {
+      throw new Error(`Failed to download PDF: ${pdfDownloadError?.message}`);
     }
 
-    const rfpBytes = new Uint8Array(await rfpData.arrayBuffer());
-    console.log('✅ RFP downloaded, size:', rfpBytes.length);
+    const mergedPdfBytes = new Uint8Array(await pdfData.arrayBuffer());
+    console.log('✅ PDF downloaded, size:', mergedPdfBytes.length);
 
-    const attachmentBlobs: Array<{ data: Uint8Array; type: string }> = [];
-
-    if (pr.merged_pdf_path) {
-      console.log('📥 Downloading attachments from:', pr.merged_pdf_path);
-      const { data: attachData, error: attachError } = await supabaseClient.storage
-        .from('attachments')
-        .download(pr.merged_pdf_path);
-
-      if (!attachError && attachData) {
-        const attachBytes = new Uint8Array(await attachData.arrayBuffer());
-        attachmentBlobs.push({ data: attachBytes, type: 'application/pdf' });
-        console.log('✅ Attachments downloaded, size:', attachBytes.length);
-      }
-    }
-
-    console.log('🔄 Merging RFP with attachments...');
-    const mergedPdf = await PDFDocument.create();
-
-    const rfpPdf = await PDFDocument.load(rfpBytes);
-    const rfpPages = await mergedPdf.copyPages(rfpPdf, rfpPdf.getPageIndices());
-    rfpPages.forEach((page) => mergedPdf.addPage(page));
-
-    for (const attachment of attachmentBlobs) {
-      if (attachment.type === 'application/pdf') {
-        const pdf = await PDFDocument.load(attachment.data);
-        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-        copiedPages.forEach((page) => mergedPdf.addPage(page));
-      }
-    }
-
-    const mergedPdfBytes = await mergedPdf.save();
-
-    // Sanitize description for filename (remove special characters, limit length)
     const sanitizedDescription = description
-      .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '_') // Replace spaces with underscores
-      .substring(0, 50); // Limit to 50 characters
+      .replace(/[^a-zA-Z0-9\s-]/g, '')
+      .replace(/\s+/g, '_')
+      .substring(0, 50);
 
     const attachmentFileName = `RFP_${documentNumber}_${sanitizedDescription}.pdf`;
-    console.log('✅ PDF merged, filename:', attachmentFileName);
-
-    const mergedFilePath = `merged/${attachmentFileName}`;
-    const { error: uploadError } = await supabaseClient.storage
-      .from('attachments')
-      .upload(mergedFilePath, mergedPdfBytes, {
-        contentType: 'application/pdf',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.warn('⚠️ Failed to upload merged PDF:', uploadError);
-    } else {
-      await supabaseClient
-        .from('purchase_requisitions')
-        .update({ merged_rfp_attachment_path: mergedFilePath })
-        .eq('id', requestId);
-    }
+    console.log('✅ PDF ready, filename:', attachmentFileName);
 
     const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
     const headers = {
