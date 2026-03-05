@@ -106,10 +106,11 @@ export function Dashboard({ onViewChange }: DashboardProps) {
       }
 
       if (isImpersonating) {
-        const countApprovals = async (requestType: string, tableName: string) => {
+        const countApprovals = async (requestType: string, tableName: string, useIsBudgeted: boolean) => {
+          const budgetCol = useIsBudgeted ? 'is_budgeted, total_amount' : 'budgeted, amount';
           const { data: requests } = await supabase
             .from(tableName)
-            .select('id, company_id, department, requester_id, current_approval_level, is_budgeted, budgeted, total_amount, amount')
+            .select(`id, company_id, department, requester_id, current_approval_level, ${budgetCol}`)
             .eq('status', 'pending');
 
           if (!requests) return 0;
@@ -119,12 +120,14 @@ export function Dashboard({ onViewChange }: DashboardProps) {
               const companyId = req.company_id || profile.company_id;
               if (!companyId) return false;
               try {
+                const isBudgeted = useIsBudgeted ? (req.is_budgeted || false) : (req.budgeted || false);
+                const amount = useIsBudgeted ? (req.total_amount || 0) : (req.amount || 0);
                 const rawFlows = await getApprovalFlow(
                   companyId,
                   req.department,
                   requestType,
-                  req.is_budgeted || req.budgeted || false,
-                  req.total_amount || req.amount || 0
+                  isBudgeted,
+                  amount
                 );
                 const flows = await filterApprovalFlowsForRequester(
                   rawFlows,
@@ -154,11 +157,11 @@ export function Dashboard({ onViewChange }: DashboardProps) {
         };
 
         const [prCount, canvassCount, pcCount, reimbCount, caCount] = await Promise.all([
-          countApprovals('Purchase Requisition', 'purchase_requisitions'),
-          countApprovals('Canvass', 'canvass_requests'),
-          countApprovals('Petty Cash', 'petty_cash_requests'),
-          countApprovals('Reimbursement', 'reimbursement_requests'),
-          countApprovals('Cash Advance', 'cash_advance_requests'),
+          countApprovals('Purchase Requisition', 'purchase_requisitions', true),
+          countApprovals('Canvass', 'canvass_requests', true),
+          countApprovals('Petty Cash', 'petty_cash_requests', false),
+          countApprovals('Reimbursement', 'reimbursement_requests', false),
+          countApprovals('Cash Advance', 'cash_advance_requests', false),
         ]);
 
         setStats(prev => ({
