@@ -49,6 +49,7 @@ export function Dashboard({ onViewChange }: DashboardProps) {
     statusCounts: { pending: 0, approved: 0, rejected: 0 },
   });
   const [loading, setLoading] = useState(true);
+  const [approvalsLoading, setApprovalsLoading] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
@@ -58,27 +59,18 @@ export function Dashboard({ onViewChange }: DashboardProps) {
     if (!profile?.id) return;
 
     try {
+      const countQuery = (table: string) =>
+        supabase
+          .from(table)
+          .select('status', { count: 'exact', head: false })
+          .eq('requester_id', profile.id);
+
       const [prData, canvassData, pcData, reimbData, cashAdvData] = await Promise.all([
-        supabase
-          .from('purchase_requisitions')
-          .select('status', { count: 'exact' })
-          .eq('requester_id', profile.id),
-        supabase
-          .from('canvass_requests')
-          .select('status', { count: 'exact' })
-          .eq('requester_id', profile.id),
-        supabase
-          .from('petty_cash_requests')
-          .select('status', { count: 'exact' })
-          .eq('requester_id', profile.id),
-        supabase
-          .from('reimbursement_requests')
-          .select('status', { count: 'exact' })
-          .eq('requester_id', profile.id),
-        supabase
-          .from('cash_advance_requests')
-          .select('status', { count: 'exact' })
-          .eq('requester_id', profile.id),
+        countQuery('purchase_requisitions'),
+        countQuery('canvass_requests'),
+        countQuery('petty_cash_requests'),
+        countQuery('reimbursement_requests'),
+        countQuery('cash_advance_requests'),
       ]);
 
       const myRequests = {
@@ -89,107 +81,9 @@ export function Dashboard({ onViewChange }: DashboardProps) {
         cashAdvance: cashAdvData.count || 0,
       };
 
-      let pendingApprovals = { pr: 0, canvass: 0, pettyCash: 0, reimbursement: 0, cashAdvance: 0 };
-      if (profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement' || profile.role === 'accounting') {
-        // When impersonating, use manual counting since RPC uses auth.uid()
-        if (isImpersonating) {
-          // Manually count pending approvals by checking approval flows
-          const countApprovals = async (requestType: string, tableName: string) => {
-            const { data: requests } = await supabase
-              .from(tableName)
-              .select('*')
-              .eq('status', 'pending');
-
-            if (!requests) return 0;
-
-            let count = 0;
-            for (const req of requests) {
-              const companyId = req.company_id || profile.company_id;
-              if (!companyId) continue;
-
-              try {
-                const rawFlows = await getApprovalFlow(
-                  companyId,
-                  req.department,
-                  requestType,
-                  req.is_budgeted || req.budgeted || false,
-                  req.total_amount || req.amount || 0
-                );
-
-                const flows = await filterApprovalFlowsForRequester(
-                  rawFlows,
-                  req.requester_id,
-                  req.department,
-                  companyId
-                );
-
-                const currentStep = await getNextApprover(flows, req.current_approval_level);
-
-              if (!currentStep) continue;
-
-              // Get the current sequence
-              const currentSequence = currentStep.sequence;
-
-              // Check if user matches ANY approval flow at this sequence
-              const isCurrentApprover = flows.some(flow => {
-                if (flow.sequence !== currentSequence) return false;
-
-                if (flow.user_id) {
-                  return flow.user_id === profile.id;
-                } else {
-                  const approverType = flow.approver_type;
-
-                  if (approverType === 'Department Head' && profile.role === 'approver') {
-                    return req.department === profile.department;
-                  } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-                    return profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-                  } else if (approverType === 'President') {
-                    return profile.role === 'approver' || profile.role === 'admin';
-                  } else if (approverType === 'Accounting' || approverType === 'Accounting Head') {
-                    return profile.role === 'accounting' || profile.role === 'approver' || profile.role === 'admin';
-                  }
-                }
-                return false;
-              });
-
-              if (isCurrentApprover) count++;
-              } catch (error) {
-                console.error(`Error getting approval flow for ${requestType}:`, error);
-                continue;
-              }
-            }
-
-            return count;
-          };
-
-          pendingApprovals = {
-            pr: await countApprovals('Purchase Requisition', 'purchase_requisitions'),
-            canvass: await countApprovals('Canvass', 'canvass_requests'),
-            pettyCash: await countApprovals('Petty Cash', 'petty_cash_requests'),
-            reimbursement: await countApprovals('Reimbursement', 'reimbursement_requests'),
-            cashAdvance: await countApprovals('Cash Advance', 'cash_advance_requests'),
-          };
-        } else {
-          // Use RPC function for non-impersonated users
-          const { data: countsData } = await supabase.rpc('get_user_pending_approval_counts');
-
-          if (countsData && countsData.length > 0) {
-            const counts = countsData[0];
-            pendingApprovals = {
-              pr: counts.purchase_requisition_count || 0,
-              canvass: counts.canvass_request_count || 0,
-              pettyCash: counts.petty_cash_request_count || 0,
-              reimbursement: counts.reimbursement_request_count || 0,
-              cashAdvance: counts.cash_advance_request_count || 0,
-            };
-          }
-        }
-      }
-
       let pending = 0;
       let approved = 0;
       let rejected = 0;
-
       [prData, canvassData, pcData, reimbData, cashAdvData].forEach((result) => {
         result.data?.forEach((item: any) => {
           if (item.status === 'pending') pending++;
@@ -198,22 +92,128 @@ export function Dashboard({ onViewChange }: DashboardProps) {
         });
       });
 
-      setStats({
+      setStats(prev => ({
+        ...prev,
         myRequests,
-        pendingApprovals,
         statusCounts: { pending, approved, rejected },
-      });
+      }));
+      setLoading(false);
+
+      const isApprover = profile.role === 'approver' || profile.role === 'admin' || profile.role === 'procurement' || profile.role === 'accounting';
+      if (!isApprover) {
+        setApprovalsLoading(false);
+        return;
+      }
+
+      if (isImpersonating) {
+        const countApprovals = async (requestType: string, tableName: string) => {
+          const { data: requests } = await supabase
+            .from(tableName)
+            .select('id, company_id, department, requester_id, current_approval_level, is_budgeted, budgeted, total_amount, amount')
+            .eq('status', 'pending');
+
+          if (!requests) return 0;
+
+          const results = await Promise.all(
+            requests.map(async (req) => {
+              const companyId = req.company_id || profile.company_id;
+              if (!companyId) return false;
+              try {
+                const rawFlows = await getApprovalFlow(
+                  companyId,
+                  req.department,
+                  requestType,
+                  req.is_budgeted || req.budgeted || false,
+                  req.total_amount || req.amount || 0
+                );
+                const flows = await filterApprovalFlowsForRequester(
+                  rawFlows,
+                  req.requester_id,
+                  req.department,
+                  companyId
+                );
+                const currentStep = await getNextApprover(flows, req.current_approval_level);
+                if (!currentStep) return false;
+                const currentSequence = currentStep.sequence;
+                return flows.some(flow => {
+                  if (flow.sequence !== currentSequence) return false;
+                  if (flow.user_id) return flow.user_id === profile.id;
+                  const approverType = flow.approver_type;
+                  if (approverType === 'Department Head' && profile.role === 'approver') return req.department === profile.department;
+                  if (approverType === 'Procurement' || approverType === 'Procurement Head') return profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
+                  if (approverType === 'President') return profile.role === 'approver' || profile.role === 'admin';
+                  if (approverType === 'Accounting' || approverType === 'Accounting Head') return profile.role === 'accounting' || profile.role === 'approver' || profile.role === 'admin';
+                  return false;
+                });
+              } catch {
+                return false;
+              }
+            })
+          );
+          return results.filter(Boolean).length;
+        };
+
+        const [prCount, canvassCount, pcCount, reimbCount, caCount] = await Promise.all([
+          countApprovals('Purchase Requisition', 'purchase_requisitions'),
+          countApprovals('Canvass', 'canvass_requests'),
+          countApprovals('Petty Cash', 'petty_cash_requests'),
+          countApprovals('Reimbursement', 'reimbursement_requests'),
+          countApprovals('Cash Advance', 'cash_advance_requests'),
+        ]);
+
+        setStats(prev => ({
+          ...prev,
+          pendingApprovals: { pr: prCount, canvass: canvassCount, pettyCash: pcCount, reimbursement: reimbCount, cashAdvance: caCount },
+        }));
+      } else {
+        const { data: countsData } = await supabase.rpc('get_user_pending_approval_counts');
+        if (countsData && countsData.length > 0) {
+          const counts = countsData[0];
+          setStats(prev => ({
+            ...prev,
+            pendingApprovals: {
+              pr: counts.purchase_requisition_count || 0,
+              canvass: counts.canvass_request_count || 0,
+              pettyCash: counts.petty_cash_request_count || 0,
+              reimbursement: counts.reimbursement_request_count || 0,
+              cashAdvance: counts.cash_advance_request_count || 0,
+            },
+          }));
+        }
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-    } finally {
       setLoading(false);
+    } finally {
+      setApprovalsLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-slate-600">Loading dashboard...</div>
+      <div className="space-y-4 sm:space-y-6 p-4 sm:p-0">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div className="h-8 bg-slate-200 rounded w-32 mb-2 animate-pulse"/>
+          <div className="h-4 bg-slate-100 rounded w-48 animate-pulse"/>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+          {[0,1,2].map(i => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div><div className="h-4 bg-slate-200 rounded w-16 mb-2"/><div className="h-8 bg-slate-200 rounded w-12"/></div>
+                <div className="w-10 h-10 bg-slate-200 rounded-lg"/>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 animate-pulse">
+            <div className="h-5 bg-slate-200 rounded w-28 mb-4"/>
+            <div className="space-y-3">
+              {[0,1,2,3,4].map(i => <div key={i} className="h-10 bg-slate-100 rounded-lg"/>)}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -276,9 +276,17 @@ export function Dashboard({ onViewChange }: DashboardProps) {
 
         {(profile?.role === 'approver' || profile?.role === 'admin' || profile?.role === 'procurement' || profile?.role === 'accounting') && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4">
-              Pending Approvals
-            </h2>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900">
+                Pending Approvals
+              </h2>
+              {approvalsLoading && (
+                <span className="text-xs text-slate-400 flex items-center gap-1">
+                  <span className="inline-block w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin"/>
+                  Updating...
+                </span>
+              )}
+            </div>
             <div className="space-y-2 sm:space-y-3">
               <RequestTypeCard
                 icon={FileText}
