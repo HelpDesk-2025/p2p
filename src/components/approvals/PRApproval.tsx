@@ -69,6 +69,7 @@ export function PRApproval() {
   const [showModal, setShowModal] = useState(false);
   const [comments, setComments] = useState('');
   const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
@@ -85,6 +86,7 @@ export function PRApproval() {
 
   const loadRequests = async () => {
     if (!profile?.company_id && profile?.role !== 'admin') return;
+    setListLoading(true);
 
     const { data } = await supabase
       .from('purchase_requisitions')
@@ -100,12 +102,14 @@ export function PRApproval() {
 
     if (!data) {
       setRequests([]);
+      setListLoading(false);
       return;
     }
 
     // Admin users can see all requests
     if (profile.role === 'admin') {
       setRequests(data);
+      setListLoading(false);
       return;
     }
 
@@ -172,6 +176,7 @@ export function PRApproval() {
 
     const filteredRequests = requestsForCurrentUser.filter(req => req !== null) as PurchaseReq[];
     setRequests(filteredRequests);
+    setListLoading(false);
   };
 
   const handleViewRequest = async (request: PurchaseReq) => {
@@ -641,7 +646,45 @@ export function PRApproval() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-        {requests.length === 0 ? (
+        {listLoading ? (
+          <div className="overflow-auto flex-1">
+            <table className="w-full hidden lg:table">
+              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                <tr>
+                  {['DOC NO.', 'REQUESTER', 'DEPARTMENT', 'PAYEE', 'DATE', 'AMOUNT', 'LEVEL', 'ACTION'].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-28 mb-1"/><div className="h-3 bg-slate-100 rounded w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-36 mb-1"/><div className="h-3 bg-slate-100 rounded w-44"/></td>
+                    <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded-full w-28"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-32"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-24"/></td>
+                    <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-10"/></td>
+                    <td className="py-3 px-4"><div className="h-8 bg-slate-200 rounded w-8"/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="lg:hidden divide-y divide-slate-200">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 animate-pulse space-y-3">
+                  <div className="flex justify-between">
+                    <div className="h-4 bg-slate-200 rounded w-28"/>
+                    <div className="h-6 bg-slate-200 rounded w-10"/>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded w-40"/>
+                  <div className="h-3 bg-slate-100 rounded w-24"/>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : requests.length === 0 ? (
           <div className="p-12 text-center">
             <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />
             <p className="text-slate-600">No pending approvals</p>

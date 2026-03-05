@@ -45,6 +45,7 @@ export function SmeApproval() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [comments, setComments] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -56,6 +57,7 @@ export function SmeApproval() {
 
   const loadSmeRequests = async () => {
     if (!profile?.id) return;
+    setListLoading(true);
 
     let query = supabase
       .from('sme_requests')
@@ -96,6 +98,7 @@ export function SmeApproval() {
     if (data) {
       setRequests(data as any);
     }
+    setListLoading(false);
   };
 
   const handleReadyForCanvass = async () => {
@@ -293,6 +296,45 @@ export function SmeApproval() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        {listLoading ? (
+          <div className="overflow-auto flex-1">
+            <table className="w-full hidden lg:table">
+              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                <tr>
+                  {['DOC NO.', 'REQUESTER', 'DEPARTMENT', 'PURPOSE', 'DATE', 'STATUS', 'ACTION'].map((h) => (
+                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-28 mb-1"/><div className="h-3 bg-slate-100 rounded w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-36 mb-1"/><div className="h-3 bg-slate-100 rounded w-44"/></td>
+                    <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded-full w-28"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-40"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded-full w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-8 bg-slate-200 rounded w-8"/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="lg:hidden divide-y divide-slate-200">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 animate-pulse space-y-3">
+                  <div className="flex justify-between">
+                    <div className="h-4 bg-slate-200 rounded w-28"/>
+                    <div className="h-6 bg-slate-200 rounded w-16"/>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded w-40"/>
+                  <div className="h-3 bg-slate-100 rounded w-24"/>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="overflow-auto flex-1">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
@@ -443,6 +485,8 @@ export function SmeApproval() {
             onPageChange={handlePageChange}
             onItemsPerPageChange={handleItemsPerPageChange}
           />
+        )}
+        </>
         )}
       </div>
 
