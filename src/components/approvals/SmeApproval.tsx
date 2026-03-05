@@ -519,7 +519,7 @@ export function SmeApproval() {
                   <div className="flex-1 min-w-0">
                     <h4 className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Request from Procurement</h4>
                     <p className="text-xs sm:text-sm text-blue-800">
-                      <span className="font-medium">{viewingRequest.requester?.full_name}</span> is seeking {profile?.role === 'admin' ? <><span className="font-medium">{viewingRequest.sme_user?.full_name}</span>'s</> : \'your'} expertise for this Purchase Requisition.
+                      <span className="font-medium">{viewingRequest.requester?.full_name}</span> is seeking {profile?.role === 'admin' ? <><span className="font-medium">{viewingRequest.sme_user?.full_name}</span>&apos;s</> : "your"} expertise for this Purchase Requisition.
                     </p>
                     <div className="mt-2 sm:mt-3 bg-white border border-blue-200 rounded-lg p-2 sm:p-3">
                       <p className="text-xs font-medium text-blue-700 mb-1">Purpose:</p>
