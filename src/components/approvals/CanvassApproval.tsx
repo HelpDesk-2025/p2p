@@ -104,9 +104,17 @@ export function CanvassApproval() {
     setListLoading(true);
 
     try {
-      const { data: idRows } = await supabase.rpc('get_my_pending_approval_ids', {
+      const { data: idRows, error: rpcError } = await supabase.rpc('get_my_pending_approval_ids', {
         p_request_type: 'Canvass',
+        p_user_id: profile.id,
       });
+
+      if (rpcError) {
+        console.error('RPC error loading Canvass approval IDs:', rpcError);
+        setRequests([]);
+        setListLoading(false);
+        return;
+      }
 
       const ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
 
