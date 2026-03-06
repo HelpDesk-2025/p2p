@@ -80,93 +80,34 @@ export function CashAdvanceApproval() {
     if (!profile?.company_id && profile?.role !== 'admin') return;
     setListLoading(true);
 
-    const { data } = await supabase
-      .from('cash_advance_requests')
-      .select(`
-        *,
-        user_profiles:requester_id (full_name, email, company_id, department),
-        companies!cash_advance_requests_company_id_fkey (id, name)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    try {
+      const { data: idRows } = await supabase.rpc('get_my_pending_approval_ids', {
+        p_request_type: 'Cash Advance',
+      });
 
-    if (!data) {
+      const ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
+
+      if (ids.length === 0) {
+        setRequests([]);
+        setListLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('cash_advance_requests')
+        .select(`
+          *,
+          user_profiles:requester_id (full_name, email, company_id, department),
+          companies!cash_advance_requests_company_id_fkey (id, name)
+        `)
+        .in('id', ids)
+        .order('created_at', { ascending: false });
+
+      setRequests(data || []);
+    } catch (error) {
+      console.error('Error loading cash advance approvals:', error);
       setRequests([]);
-      setListLoading(false);
-      return;
     }
-
-    // Admin users can see all requests
-    if (profile.role === 'admin') {
-      setRequests(data);
-      setListLoading(false);
-      return;
-    }
-
-    // For non-admin users, check each request to see if they are the current approver
-    // This allows cross-company approvals
-    const requestsForCurrentUser = await Promise.all(
-      data.map(async (req) => {
-        try {
-          // Use the cash advance request's company_id to look up the correct approval flow
-          const caCompanyId = req.company_id || req.user_profiles?.company_id;
-          if (!caCompanyId) return null;
-
-          const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-          const rawFlows = await getApprovalFlow(
-            caCompanyId,
-            req.department || req.user_profiles?.department || profile.department || '',
-            'Cash Advance',
-            req.budgeted,
-            req.amount
-          );
-
-          // Inject executive approvers if requester is Executive type
-          const flowsWithExecutive = await addExecutiveApprovalSteps(
-            rawFlows,
-            req.requester_id,
-            caCompanyId
-          );
-
-          // Filter out the requester from approval flows
-          const flows = await filterApprovalFlowsForRequester(
-            flowsWithExecutive,
-            req.requester_id,
-            req.department || req.user_profiles?.department || '',
-            caCompanyId
-          );
-
-          const currentStep = await getNextApprover(flows, req.current_approval_level);
-
-        if (!currentStep) return null;
-
-        let isCurrentApprover = false;
-        const requestDepartment = req.department || req.user_profiles?.department;
-
-        if (currentStep.user_id) {
-          isCurrentApprover = currentStep.user_id === profile.id;
-        } else {
-          const approverType = currentStep.approver_type;
-
-          if (approverType === 'Department Head' && profile.role === 'approver') {
-            isCurrentApprover = requestDepartment === profile.department;
-          } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-            isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-          } else if (approverType === 'President') {
-            isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
-          }
-        }
-
-        return isCurrentApprover ? req : null;
-        } catch (error) {
-          console.error('Error checking approval flow for cash advance:', error);
-          return null;
-        }
-      })
-    );
-
-    const filteredRequests = requestsForCurrentUser.filter(req => req !== null) as CashAdvanceReq[];
-    setRequests(filteredRequests);
     setListLoading(false);
   };
 

@@ -103,111 +103,35 @@ export function CanvassApproval() {
     if (!profile?.company_id && profile?.role !== 'admin') return;
     setListLoading(true);
 
-    const { data } = await supabase
-      .from('canvass_requests')
-      .select(`
-        *,
-        user_profiles:requester_id (full_name, email, company_id),
-        companies!canvass_requests_company_id_fkey (id, name),
-        purchase_requisitions!canvass_requests_pr_id_fkey(document_no, pr_number, total_amount)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    try {
+      const { data: idRows } = await supabase.rpc('get_my_pending_approval_ids', {
+        p_request_type: 'Canvass',
+      });
 
-    if (!data) {
+      const ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
+
+      if (ids.length === 0) {
+        setRequests([]);
+        setListLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('canvass_requests')
+        .select(`
+          *,
+          user_profiles:requester_id (full_name, email, company_id),
+          companies!canvass_requests_company_id_fkey (id, name),
+          purchase_requisitions!canvass_requests_pr_id_fkey(document_no, pr_number, total_amount)
+        `)
+        .in('id', ids)
+        .order('created_at', { ascending: false });
+
+      setRequests(data || []);
+    } catch (error) {
+      console.error('Error loading canvass approvals:', error);
       setRequests([]);
-      setListLoading(false);
-      return;
     }
-
-    // Admin users can see all requests
-    if (profile.role === 'admin') {
-      setRequests(data);
-      setListLoading(false);
-      return;
-    }
-
-    // For non-admin users, check each request to see if they are the current approver
-    // This allows cross-company approvals
-    const requestsForCurrentUser = await Promise.all(
-      data.map(async (req) => {
-        try {
-          console.log('🔍 Checking canvass request:', req.canvass_number, 'for user:', profile.full_name);
-
-          // Use the canvass request's company_id to look up the correct approval flow
-          const canvassCompanyId = req.company_id || req.user_profiles?.company_id;
-          if (!canvassCompanyId) {
-            console.log('❌ No company_id found for request:', req.canvass_number);
-            return null;
-          }
-
-          const { filterApprovalFlowsForRequester } = await import('../../lib/approvalFlow');
-          const rawFlows = await getApprovalFlow(
-            canvassCompanyId,
-            req.department || profile.department || '',
-            'Canvass',
-            req.is_budgeted ?? false,
-            req.total_amount
-          );
-
-          console.log('📋 Raw flows:', rawFlows.length);
-
-          // Inject executive approvers if requester is Executive type
-          const flowsWithExecutive = await addExecutiveApprovalSteps(
-            rawFlows,
-            req.requester_id,
-            canvassCompanyId
-          );
-
-          // Filter out the requester from approval flows
-          const flows = await filterApprovalFlowsForRequester(
-            flowsWithExecutive,
-            req.requester_id,
-            req.department || '',
-            canvassCompanyId
-          );
-
-          console.log('📋 Filtered flows:', flows.length);
-
-          const currentStep = await getNextApprover(flows, req.current_approval_level);
-
-          if (!currentStep) {
-            console.log('❌ No current step found for request:', req.canvass_number);
-            return null;
-          }
-
-          console.log('👤 Current step:', currentStep.approver_type, 'user_id:', currentStep.user_id);
-
-          let isCurrentApprover = false;
-
-          if (currentStep.user_id) {
-            isCurrentApprover = currentStep.user_id === profile.id;
-            console.log('✅ Checking user_id match:', currentStep.user_id, '===', profile.id, '=', isCurrentApprover);
-          } else {
-            const approverType = currentStep.approver_type;
-
-            if (approverType === 'Department Head' && profile.role === 'approver') {
-              isCurrentApprover = req.department === profile.department;
-            } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-              isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-            } else if (approverType === 'President') {
-              isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
-            }
-            console.log('✅ Checking role-based match:', approverType, 'isCurrentApprover:', isCurrentApprover);
-          }
-
-          console.log(isCurrentApprover ? '✅ User IS current approver' : '❌ User is NOT current approver');
-          return isCurrentApprover ? req : null;
-        } catch (error) {
-          console.error('❌ Error checking request:', req.canvass_number, error);
-          return null;
-        }
-      })
-    );
-
-    const filteredRequests = requestsForCurrentUser.filter(req => req !== null) as CanvassReq[];
-    console.log('📊 Final filtered requests:', filteredRequests.length);
-    setRequests(filteredRequests);
     setListLoading(false);
   };
 

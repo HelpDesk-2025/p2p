@@ -88,94 +88,36 @@ export function PRApproval() {
     if (!profile?.company_id && profile?.role !== 'admin') return;
     setListLoading(true);
 
-    const { data } = await supabase
-      .from('purchase_requisitions')
-      .select(`
-        *,
-        user_profiles:requester_id (full_name, email, company_id),
-        payment_modes:payment_mode_id (mode_name),
-        pr_checklists:pr_checklist_id (pr_type, item_name),
-        companies!purchase_requisitions_company_id_fkey (id, name)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+    try {
+      const { data: idRows } = await supabase.rpc('get_my_pending_approval_ids', {
+        p_request_type: 'Purchase Requisition',
+      });
 
-    if (!data) {
+      const ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
+
+      if (ids.length === 0) {
+        setRequests([]);
+        setListLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('purchase_requisitions')
+        .select(`
+          *,
+          user_profiles:requester_id (full_name, email, company_id),
+          payment_modes:payment_mode_id (mode_name),
+          pr_checklists:pr_checklist_id (pr_type, item_name),
+          companies!purchase_requisitions_company_id_fkey (id, name)
+        `)
+        .in('id', ids)
+        .order('created_at', { ascending: false });
+
+      setRequests(data || []);
+    } catch (error) {
+      console.error('Error loading PR approvals:', error);
       setRequests([]);
-      setListLoading(false);
-      return;
     }
-
-    // Admin users can see all requests
-    if (profile.role === 'admin') {
-      setRequests(data);
-      setListLoading(false);
-      return;
-    }
-
-    // For non-admin users, check each request to see if they are the current approver
-    // This allows cross-company approvals
-    const requestsForCurrentUser = await Promise.all(
-      data.map(async (req) => {
-        try {
-          // Use the PR's company_id (not the requester's company) to look up the correct approval flow
-          // This allows requesters to create PRs for different companies they have access to
-          const prCompanyId = req.company_id || req.user_profiles?.company_id;
-          if (!prCompanyId) return null;
-
-          const rawFlows = await getApprovalFlow(
-            prCompanyId,
-            req.department,
-            'Purchase Requisition',
-            req.is_budgeted,
-            req.total_amount
-          );
-
-          // Inject executive approvers if requester is Executive type
-          const flowsWithExecutive = await addExecutiveApprovalSteps(
-            rawFlows,
-            req.requester_id,
-            prCompanyId
-          );
-
-          // Filter out the requester from approval flows
-          const flows = await filterApprovalFlowsForRequester(
-            flowsWithExecutive,
-            req.requester_id,
-            req.department,
-            prCompanyId
-          );
-
-          const currentStep = await getNextApprover(flows, req.current_approval_level);
-
-          if (!currentStep) return null;
-
-          let isCurrentApprover = false;
-
-          if (currentStep.user_id) {
-            isCurrentApprover = currentStep.user_id === profile.id;
-          } else {
-            const approverType = currentStep.approver_type;
-
-            if (approverType === 'Department Head' && profile.role === 'approver') {
-              isCurrentApprover = req.department === profile.department;
-            } else if (approverType === 'Procurement' || approverType === 'Procurement Head') {
-              isCurrentApprover = profile.role === 'procurement' || profile.role === 'approver' || profile.role === 'admin';
-            } else if (approverType === 'President') {
-              isCurrentApprover = profile.role === 'approver' || profile.role === 'admin';
-            }
-          }
-
-          return isCurrentApprover ? req : null;
-        } catch (error) {
-          console.error('Error checking approval flow for PR:', error);
-          return null;
-        }
-      })
-    );
-
-    const filteredRequests = requestsForCurrentUser.filter(req => req !== null) as PurchaseReq[];
-    setRequests(filteredRequests);
     setListLoading(false);
   };
 
