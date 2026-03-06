@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { PDFDocument } from 'npm:pdf-lib@1.17.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,20 @@ const corsHeaders = {
 const MSBC_USERNAME = 'SJGIPA';
 const MSBC_PASSWORD = 'Superteams2025';
 const MSBC_BASE_URL = 'https://st-joseph-group.com:7048/BC140/api/beta';
+
+async function mergePDFs(pdfByteArrays: Uint8Array[]): Promise<Uint8Array> {
+  const mergedPdf = await PDFDocument.create();
+  for (const pdfBytes of pdfByteArrays) {
+    try {
+      const pdf = await PDFDocument.load(pdfBytes);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+      copiedPages.forEach((page) => mergedPdf.addPage(page));
+    } catch (error) {
+      console.warn('Error loading PDF for merge:', error);
+    }
+  }
+  return await mergedPdf.save();
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -87,23 +102,56 @@ Deno.serve(async (req: Request) => {
       purpose,
     });
 
-    const pdfPath = ca.approved_ca_pdf_path || ca.rfp_pdf_path || ca.attachments_pdf_path;
-    if (!pdfPath) {
-      throw new Error('No PDF found (approved_ca_pdf_path, rfp_pdf_path, or attachments_pdf_path required)');
+    const rfpPath = ca.rfp_pdf_path;
+    const approvedCaPdfPath = ca.approved_ca_pdf_path;
+    const attachmentsPdfPath = ca.attachments_pdf_path;
+
+    if (!rfpPath && !approvedCaPdfPath && !attachmentsPdfPath) {
+      throw new Error('No PDF found (rfp_pdf_path, approved_ca_pdf_path, or attachments_pdf_path required)');
     }
 
-    console.log('📥 Downloading PDF from:', pdfPath);
-    const { data: pdfData, error: pdfDownloadError } = await supabaseClient.storage
-      .from('attachments')
-      .download(pdfPath);
+    const pdfParts: Uint8Array[] = [];
 
-    if (pdfDownloadError || !pdfData) {
-      throw new Error(`Failed to download PDF: ${pdfDownloadError?.message}`);
+    if (rfpPath) {
+      console.log('📥 Downloading RFP PDF from:', rfpPath);
+      const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
+        .from('attachments')
+        .download(rfpPath);
+
+      if (rfpDownloadError || !rfpData) {
+        throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
+      }
+      pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
+      console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
     }
 
-    const pdfBytes = new Uint8Array(await pdfData.arrayBuffer());
+    const secondaryPath = approvedCaPdfPath || attachmentsPdfPath;
+    if (secondaryPath) {
+      console.log('📥 Downloading CA/attachments PDF from:', secondaryPath);
+      const { data: caData, error: caDownloadError } = await supabaseClient.storage
+        .from('attachments')
+        .download(secondaryPath);
+
+      if (caDownloadError || !caData) {
+        console.warn('⚠️ Failed to download CA/attachments PDF, continuing without it:', caDownloadError?.message);
+      } else {
+        pdfParts.push(new Uint8Array(await caData.arrayBuffer()));
+        console.log('✅ CA/attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+      }
+    }
+
+    let finalPdfBytes: Uint8Array;
+    if (pdfParts.length > 1) {
+      console.log('🔀 Merging RFP + CA/attachments PDFs...');
+      finalPdfBytes = await mergePDFs(pdfParts);
+      console.log('✅ PDFs merged, final size:', finalPdfBytes.length);
+    } else {
+      finalPdfBytes = pdfParts[0];
+      console.log('✅ Using single PDF, size:', finalPdfBytes.length);
+    }
+
     const attachmentFileName = `${documentNumber}_Complete_Package.pdf`;
-    console.log('✅ PDF downloaded, size:', pdfBytes.length);
+    console.log('✅ PDF ready, filename:', attachmentFileName);
 
     const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
     const headers = {
@@ -189,7 +237,7 @@ Deno.serve(async (req: Request) => {
 
     try {
       console.log('📤 STEP 13: Uploading attachment content with HTTP/1.1...');
-      
+
       const http1Client = Deno.createHttpClient({
         alpnProtocols: ['http/1.1'],
       });
@@ -203,7 +251,7 @@ Deno.serve(async (req: Request) => {
             'If-Match': etag,
             'Content-Type': 'application/octet-stream',
           },
-          body: pdfBytes,
+          body: finalPdfBytes,
           client: http1Client,
         }
       );
