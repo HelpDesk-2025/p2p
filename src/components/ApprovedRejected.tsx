@@ -86,15 +86,22 @@ export function ApprovedRejected() {
     if (profile?.id) loadRecords();
   }, [profile?.id]);
 
+  const isAdmin = profile?.role === 'admin';
+
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('approval_ledger')
         .select('*')
-        .eq('approver_id', profile!.id)
         .neq('action', 'Submitted')
         .order('approval_date', { ascending: false });
+
+      if (!isAdmin) {
+        query = query.eq('approver_id', profile!.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -265,7 +272,7 @@ export function ApprovedRejected() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Approved & Rejected</h1>
-        <p className="text-sm text-slate-500 mt-1">All requests you have been involved in as an approver</p>
+        <p className="text-sm text-slate-500 mt-1">{isAdmin ? 'All approved and rejected requests across the system' : 'All requests you have been involved in as an approver'}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -342,7 +349,7 @@ export function ApprovedRejected() {
               <FileText size={24} className="text-slate-400" />
             </div>
             <p className="text-slate-700 font-medium">No records found</p>
-            <p className="text-sm text-slate-500 mt-1">You have not acted on any requests yet</p>
+            <p className="text-sm text-slate-500 mt-1">{isAdmin ? 'No approved or rejected requests in the system yet' : 'You have not acted on any requests yet'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -360,7 +367,7 @@ export function ApprovedRejected() {
                     </button>
                   </th>
                   <th className="px-4 py-3 text-left">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">My Action(s)</span>
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{isAdmin ? 'Action(s)' : 'My Action(s)'}</span>
                   </th>
                   <th className="px-4 py-3 text-left">
                     <button onClick={() => handleSort('latest_action_date')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
@@ -465,11 +472,12 @@ export function ApprovedRejected() {
                   />
 
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-700 mb-3">My Approval Actions</h4>
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">{isAdmin ? 'Approval Actions' : 'My Approval Actions'}</h4>
                     <div className="border border-slate-200 rounded-lg overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-100">
+                            {isAdmin && <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase">Approver</th>}
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase">Action</th>
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase">Date & Time</th>
                             <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase">Comments</th>
@@ -478,6 +486,7 @@ export function ApprovedRejected() {
                         <tbody className="divide-y divide-slate-50">
                           {selectedSummary.records.map((rec) => (
                             <tr key={rec.id}>
+                              {isAdmin && <td className="px-4 py-2.5 text-slate-700 text-xs">{rec.approver_name || '-'}</td>}
                               <td className="px-4 py-2.5">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[rec.action?.toLowerCase()] || 'bg-slate-100 text-slate-700'}`}>
                                   {rec.action === 'Approved' && <CheckCircle size={11} />}
