@@ -326,13 +326,22 @@ export function Canvass() {
   };
 
   const loadAvailablePRs = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('purchase_requisitions')
       .select('*')
       .eq('ready_for_canvass', true)
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
 
+    if (!['admin', 'approver', 'procurement'].includes(profile?.role || '')) {
+      if (profile?.enable_multi_company_requests && profile?.allowed_companies && profile.allowed_companies.length > 0) {
+        query = query.in('company_id', profile.allowed_companies);
+      } else if (profile?.company_id) {
+        query = query.eq('company_id', profile.company_id);
+      }
+    }
+
+    const { data } = await query;
     setAvailablePRs(data || []);
   };
 
