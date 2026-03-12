@@ -110,13 +110,6 @@ const menuItems: MenuItem[] = [
     group: 'requests',
   },
   {
-    id: 'approved-rejected',
-    label: 'Approved & Rejected',
-    icon: History,
-    permission: MODULE_PERMISSIONS.APPROVED_REJECTED,
-    group: 'requests',
-  },
-  {
     id: 'pr-approval',
     label: 'PR Approval',
     icon: CheckSquare,
@@ -170,6 +163,13 @@ const menuItems: MenuItem[] = [
     label: 'Approval Ledger',
     icon: ScrollText,
     permission: MODULE_PERMISSIONS.APPROVAL_LEDGER,
+    group: 'procurement',
+  },
+  {
+    id: 'approved-rejected',
+    label: 'Approved & Rejected',
+    icon: History,
+    permission: MODULE_PERMISSIONS.APPROVED_REJECTED,
     group: 'procurement',
   },
   {
