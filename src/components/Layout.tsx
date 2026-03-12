@@ -167,7 +167,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: 'approved-rejected',
-    label: 'Approved & Rejected',
+    label: 'Approval Logs',
     icon: History,
     permission: MODULE_PERMISSIONS.APPROVED_REJECTED,
     group: 'procurement',
