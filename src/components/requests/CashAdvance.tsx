@@ -88,6 +88,7 @@ export function CashAdvance() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const companiesInitialized = useRef(false);
 
   const [formData, setFormData] = useState({
     document_no: '',
@@ -243,7 +244,6 @@ export function CashAdvance() {
     try {
       if (!profile) return;
 
-      // If user has multi-company access enabled
       if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
@@ -255,15 +255,19 @@ export function CashAdvance() {
         if (error) throw error;
         setCompanies(data || []);
 
-        if (data && data.length > 0) {
+        if (!companiesInitialized.current && data && data.length > 0) {
           const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
           setSelectedCompanyId(defaultCompany.id);
           loadDepartments(defaultCompany.id);
+          companiesInitialized.current = true;
         }
       } else {
-        setSelectedCompanyId(profile.company_id || '');
-        if (profile.company_id) {
-          loadDepartments(profile.company_id);
+        if (!companiesInitialized.current) {
+          setSelectedCompanyId(profile.company_id || '');
+          if (profile.company_id) {
+            loadDepartments(profile.company_id);
+          }
+          companiesInitialized.current = true;
         }
       }
     } catch (error) {
@@ -271,9 +275,8 @@ export function CashAdvance() {
     }
   };
 
-  const loadDepartments = async (companyId: string) => {
+  const loadDepartments = async (companyId: string, setDefault = true) => {
     try {
-      console.log('Loading departments for company ID:', companyId);
       const { data, error } = await supabase
         .from('departments')
         .select('id, name')
@@ -282,18 +285,13 @@ export function CashAdvance() {
         .order('name', { ascending: true });
 
       if (error) throw error;
-
-      console.log('Loaded departments:', data?.length || 0);
       setDepartments(data || []);
 
-      if (data && data.length > 0) {
+      if (setDefault && data && data.length > 0) {
         const defaultDept = profile?.department && data.find(d => d.name === profile.department)
           ? profile.department
           : data[0].name;
-        console.log('Setting default department:', defaultDept);
         setSelectedDepartment(defaultDept);
-      } else {
-        console.log('No departments found for company');
       }
     } catch (error) {
       console.error('Error loading departments:', error);

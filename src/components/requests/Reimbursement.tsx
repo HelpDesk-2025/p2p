@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -61,6 +61,7 @@ export function Reimbursement() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const companiesInitialized = useRef(false);
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([
     { date: '', description: '', amount: 0 }
   ]);
@@ -127,7 +128,6 @@ export function Reimbursement() {
     try {
       if (!profile) return;
 
-      // If user has multi-company access enabled
       if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
@@ -139,14 +139,13 @@ export function Reimbursement() {
         if (error) throw error;
         setCompanies(data || []);
 
-        if (data && data.length > 0) {
+        if (!companiesInitialized.current && data && data.length > 0) {
           const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
           setSelectedCompanyId(defaultCompany.id);
           loadDepartments(defaultCompany.id);
+          companiesInitialized.current = true;
         }
       } else {
-        // Single company mode - load the user's company details
-        setSelectedCompanyId(profile.company_id || '');
         if (profile.company_id) {
           const { data: companyData, error: companyError } = await supabase
             .from('companies')
@@ -157,8 +156,13 @@ export function Reimbursement() {
           if (!companyError && companyData) {
             setCompanies([companyData]);
           }
-
-          loadDepartments(profile.company_id);
+        }
+        if (!companiesInitialized.current) {
+          setSelectedCompanyId(profile.company_id || '');
+          if (profile.company_id) {
+            loadDepartments(profile.company_id);
+          }
+          companiesInitialized.current = true;
         }
       }
     } catch (error) {
@@ -166,7 +170,7 @@ export function Reimbursement() {
     }
   };
 
-  const loadDepartments = async (companyId: string) => {
+  const loadDepartments = async (companyId: string, setDefault = true) => {
     try {
       const { data, error } = await supabase
         .from('departments')
@@ -176,10 +180,9 @@ export function Reimbursement() {
         .order('name', { ascending: true });
 
       if (error) throw error;
-
       setDepartments(data || []);
 
-      if (data && data.length > 0) {
+      if (setDefault && data && data.length > 0) {
         const defaultDept = profile?.department && data.find(d => d.name === profile.department)
           ? profile.department
           : data[0].name;

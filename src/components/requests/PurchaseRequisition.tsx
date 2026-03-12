@@ -99,6 +99,7 @@ export function PurchaseRequisition() {
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const companiesInitialized = useRef(false);
 
   const [formData, setFormData] = useState({
     document_no: '',
@@ -330,7 +331,6 @@ export function PurchaseRequisition() {
     try {
       if (!profile) return;
 
-      // If user has multi-company access enabled
       if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
@@ -342,23 +342,25 @@ export function PurchaseRequisition() {
         if (error) throw error;
         setCompanies(data || []);
 
-        // Set default to user's primary company if in list
-        if (data && data.length > 0) {
+        if (!companiesInitialized.current && data && data.length > 0) {
           const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
           setSelectedCompanyId(defaultCompany.id);
           loadDepartments(defaultCompany.id);
+          companiesInitialized.current = true;
         }
       } else {
-        // Single company mode - use profile's company
-        setSelectedCompanyId(profile.company_id || '');
-        setSelectedDepartment(profile.department || '');
+        if (!companiesInitialized.current) {
+          setSelectedCompanyId(profile.company_id || '');
+          setSelectedDepartment(profile.department || '');
+          companiesInitialized.current = true;
+        }
       }
     } catch (error) {
       console.error('Error loading companies:', error);
     }
   };
 
-  const loadDepartments = async (companyId: string) => {
+  const loadDepartments = async (companyId: string, setDefault = true) => {
     try {
       const { data, error } = await supabase
         .from('departments')
@@ -370,12 +372,13 @@ export function PurchaseRequisition() {
       if (error) throw error;
       setDepartments(data || []);
 
-      // Set default department if user's department is in the list
-      if (profile?.department && data) {
-        const userDept = data.find(d => d.name === profile.department);
-        setSelectedDepartment(userDept ? userDept.name : (data[0]?.name || ''));
-      } else if (data && data.length > 0) {
-        setSelectedDepartment(data[0].name);
+      if (setDefault && data && data.length > 0) {
+        if (profile?.department) {
+          const userDept = data.find(d => d.name === profile.department);
+          setSelectedDepartment(userDept ? userDept.name : (data[0]?.name || ''));
+        } else {
+          setSelectedDepartment(data[0].name);
+        }
       }
     } catch (error) {
       console.error('Error loading departments:', error);
