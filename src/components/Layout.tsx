@@ -305,7 +305,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
             {procurementItems.length > 0 && (
               <div className="mt-6">
                 <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Procurement
+                  Checking
                 </h3>
                 <div className="space-y-1">
                   {procurementItems.map((item) => (
