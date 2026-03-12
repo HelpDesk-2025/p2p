@@ -333,7 +333,7 @@ export function Canvass() {
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
 
-    if (!['admin', 'approver', 'procurement'].includes(profile?.role || '')) {
+    if (profile?.role !== 'admin') {
       if (profile?.enable_multi_company_requests && profile?.allowed_companies && profile.allowed_companies.length > 0) {
         query = query.in('company_id', profile.allowed_companies);
       } else if (profile?.company_id) {
