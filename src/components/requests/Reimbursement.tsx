@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { uploadLargeFile } from '../../lib/storageHelper';
@@ -633,27 +633,19 @@ export function Reimbursement() {
           );
 
           const firstApprover = approvalFlows[0];
-          const approverInfo = await getApproverEmail(
+          await sendApprovalEmailToAll(
             firstApprover,
             requestCompanyId,
-            requestDepartment
+            requestDepartment,
+            'Reimbursement',
+            formData.document_no,
+            profile.full_name || 'Unknown',
+            totalAmount,
+            'Submitted',
+            undefined,
+            undefined,
+            firstApprover.approver_type
           );
-
-          if (approverInfo) {
-            await sendApprovalEmail(
-              approverInfo.email,
-              approverInfo.name,
-              'Reimbursement',
-              formData.document_no,
-              profile.full_name || 'Unknown',
-              requestDepartment,
-              totalAmount,
-              'Submitted',
-              undefined,
-              undefined,
-              firstApprover.approver_type
-            );
-          }
         }
       }
 
@@ -751,27 +743,19 @@ export function Reimbursement() {
       );
 
       const firstApprover = approvalFlows[0];
-      const approverInfo = await getApproverEmail(
+      await sendApprovalEmailToAll(
         firstApprover,
         request.company_id,
-        department
+        department,
+        'Reimbursement',
+        request.reimb_number,
+        profile.full_name || 'Unknown',
+        request.amount,
+        'Submitted',
+        undefined,
+        undefined,
+        firstApprover.approver_type
       );
-
-      if (approverInfo) {
-        await sendApprovalEmail(
-          approverInfo.email,
-          approverInfo.name,
-          'Reimbursement',
-          request.reimb_number,
-          profile.full_name || 'Unknown',
-          department,
-          request.amount,
-          'Submitted',
-          undefined,
-          undefined,
-          firstApprover.approver_type
-        );
-      }
 
       setShowViewModal(false);
       setViewingRequest(null);

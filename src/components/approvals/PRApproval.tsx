@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
@@ -481,32 +481,21 @@ export function PRApproval() {
         // STRICT: Send email ONLY to next approver (sequential approval)
         if (!isLastApproval) {
           const nextApprover = approvalFlows[nextLevel];
+          const prCompanyId = selectedRequest.company_id || selectedRequest.user_profiles?.company_id || profile.company_id;
           console.log(`👤 Next approver (Step ${nextLevel + 1}):`, nextApprover.approver_type);
 
-          const nextApproverInfo = await getApproverEmail(
+          await sendApprovalEmailToAll(
             nextApprover,
-            selectedRequest.company_id || selectedRequest.user_profiles?.company_id || profile.company_id,
-            selectedRequest.department
-          );
-
-          if (!nextApproverInfo) {
-            throw new Error(`Could not find email for next approver: ${nextApprover.approver_type}`);
-          }
-
-          console.log(`📧 Sending email to Step ${nextLevel + 1} approver:`, nextApproverInfo.name);
-
-          await sendApprovalEmail(
-            nextApproverInfo.email,
-            nextApproverInfo.name,
+            prCompanyId,
+            selectedRequest.department,
             'Purchase Requisition',
             selectedRequest.document_no,
             selectedRequest.user_profiles?.full_name || 'Unknown',
-            selectedRequest.department,
             selectedRequest.total_amount,
             'Approved',
             profile.full_name || 'Unknown',
             comments,
-            nextApproverInfo.name
+            nextApprover.approver_type
           );
 
           console.log(`✅ Step ${currentLevel + 1} approved, waiting for Step ${nextLevel + 1}`);

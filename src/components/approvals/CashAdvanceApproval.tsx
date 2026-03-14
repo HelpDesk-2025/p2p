@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
@@ -549,27 +549,19 @@ export function CashAdvanceApproval() {
 
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
-        const nextApproverInfo = await getApproverEmail(
+        await sendApprovalEmailToAll(
           nextApprover,
           selectedRequest.company_id || profile.company_id,
-          requestDepartment
+          requestDepartment,
+          'Cash Advance',
+          selectedRequest.ca_number,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          selectedRequest.amount,
+          'Approved',
+          profile.full_name || 'Unknown',
+          comments,
+          nextApprover.approver_type
         );
-
-        if (nextApproverInfo) {
-          await sendApprovalEmail(
-            nextApproverInfo.email,
-            nextApproverInfo.name,
-            'Cash Advance',
-            selectedRequest.ca_number,
-            selectedRequest.user_profiles?.full_name || 'Unknown',
-            requestDepartment,
-            selectedRequest.amount,
-            'Approved',
-            profile.full_name || 'Unknown',
-            comments,
-            nextApproverInfo.name
-          );
-        }
       } else if (action === 'approved' && isLastApproval) {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
@@ -685,27 +685,19 @@ export function Canvass() {
           );
 
           const firstApprover = approvalFlows[0];
-          const approverInfo = await getApproverEmail(
+          await sendApprovalEmailToAll(
             firstApprover,
             profile.company_id,
-            department
+            department,
+            'Canvass',
+            formData.document_no,
+            profile.full_name || 'Unknown',
+            totalAmount,
+            'Submitted',
+            undefined,
+            undefined,
+            firstApprover.approver_type
           );
-
-          if (approverInfo) {
-            await sendApprovalEmail(
-              approverInfo.email,
-              approverInfo.name,
-              'Canvass',
-              formData.document_no,
-              profile.full_name || 'Unknown',
-              department,
-              totalAmount,
-              'Submitted',
-              undefined,
-              undefined,
-              firstApprover.approver_type
-            );
-          }
         }
       }
 
@@ -812,27 +804,19 @@ export function Canvass() {
       );
 
       const firstApprover = approvalFlows[0];
-      const approverInfo = await getApproverEmail(
+      await sendApprovalEmailToAll(
         firstApprover,
         profile.company_id,
-        profile.department || ''
+        profile.department || '',
+        'Canvass',
+        request.canvass_number,
+        profile.full_name || 'Unknown',
+        request.total_amount,
+        'Submitted',
+        undefined,
+        undefined,
+        firstApprover.approver_type
       );
-
-      if (approverInfo) {
-        await sendApprovalEmail(
-          approverInfo.email,
-          approverInfo.name,
-          'Canvass',
-          request.canvass_number,
-          profile.full_name || 'Unknown',
-          profile.department || '',
-          request.total_amount,
-          'Submitted',
-          undefined,
-          undefined,
-          firstApprover.approver_type
-        );
-      }
 
       setShowViewModal(false);
       setViewingRequest(null);

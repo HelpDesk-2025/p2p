@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
 import Pagination from '../Pagination';
@@ -467,27 +467,19 @@ export function CanvassApproval() {
 
       if (action === 'approved' && !isLastApproval) {
         const nextApprover = approvalFlows[nextLevel];
-        const nextApproverInfo = await getApproverEmail(
+        await sendApprovalEmailToAll(
           nextApprover,
           selectedRequest.company_id || profile.company_id,
-          selectedRequest.department || profile.department || ''
+          selectedRequest.department || profile.department || '',
+          'Canvass',
+          selectedRequest.canvass_number,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          selectedRequest.total_amount,
+          'Approved',
+          profile.full_name || 'Unknown',
+          comments,
+          nextApprover.approver_type
         );
-
-        if (nextApproverInfo) {
-          await sendApprovalEmail(
-            nextApproverInfo.email,
-            nextApproverInfo.name,
-            'Canvass',
-            selectedRequest.canvass_number,
-            selectedRequest.user_profiles?.full_name || 'Unknown',
-            selectedRequest.department || 'N/A',
-            selectedRequest.total_amount,
-            'Approved',
-            profile.full_name || 'Unknown',
-            comments,
-            nextApproverInfo.name
-          );
-        }
       } else if (action === 'approved' && isLastApproval) {
         try {
           await generateAndUploadCanvassRFP(selectedRequest.id, selectedRequest.canvass_number);

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Upload, Trash2, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { uploadLargeFile, fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
@@ -589,27 +589,19 @@ export function CashAdvance() {
           );
 
           const firstApprover = approvalFlows[0];
-          const approverInfo = await getApproverEmail(
+          await sendApprovalEmailToAll(
             firstApprover,
             profile.company_id,
-            profile.department || ''
+            profile.department || '',
+            'Cash Advance',
+            formData.document_no,
+            profile.full_name || 'Unknown',
+            formData.amount,
+            'Submitted',
+            undefined,
+            undefined,
+            firstApprover.approver_type
           );
-
-          if (approverInfo) {
-            await sendApprovalEmail(
-              approverInfo.email,
-              approverInfo.name,
-              'Cash Advance',
-              formData.document_no,
-              profile.full_name || 'Unknown',
-              profile.department || '',
-              formData.amount,
-              'Submitted',
-              undefined,
-              undefined,
-              firstApprover.approver_type
-            );
-          }
         }
       }
 
@@ -707,27 +699,19 @@ export function CashAdvance() {
       );
 
       const firstApprover = approvalFlows[0];
-      const approverInfo = await getApproverEmail(
+      await sendApprovalEmailToAll(
         firstApprover,
         profile.company_id,
-        profile.department || ''
+        profile.department || '',
+        'Cash Advance',
+        request.ca_number,
+        profile.full_name || 'Unknown',
+        request.amount,
+        'Submitted',
+        undefined,
+        undefined,
+        firstApprover.approver_type
       );
-
-      if (approverInfo) {
-        await sendApprovalEmail(
-          approverInfo.email,
-          approverInfo.name,
-          'Cash Advance',
-          request.ca_number,
-          profile.full_name || 'Unknown',
-          profile.department || '',
-          request.amount,
-          'Submitted',
-          undefined,
-          undefined,
-          firstApprover.approver_type
-        );
-      }
 
       setShowViewModal(false);
       setViewingRequest(null);

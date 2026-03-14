@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import Pagination from '../Pagination';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
@@ -925,26 +925,13 @@ export function PurchaseRequisition() {
           const firstApprover = approvalFlows[0];
           console.log('👤 Step 1 Approver:', firstApprover.approver_type);
 
-          const approverInfo = await getApproverEmail(
+          await sendApprovalEmailToAll(
             firstApprover,
             requestCompanyId,
-            requestDepartment
-          );
-
-          if (!approverInfo) {
-            throw new Error(`Could not find approver for ${firstApprover.approver_type}. Please contact administrator.`);
-          }
-
-          console.log('📧 Sending email to Step 1 approver:', approverInfo.name, '(' + approverInfo.email + ')');
-
-          // Send email to ONLY Step 1 approver
-          await sendApprovalEmail(
-            approverInfo.email,
-            approverInfo.name,
+            requestDepartment,
             'Purchase Requisition',
             formData.document_no,
             profile.full_name || 'Unknown',
-            formData.department,
             total,
             'Submitted',
             undefined,
@@ -1173,27 +1160,19 @@ export function PurchaseRequisition() {
       );
 
       const firstApprover = approvalFlows[0];
-      const approverInfo = await getApproverEmail(
+      await sendApprovalEmailToAll(
         firstApprover,
         requestCompanyId,
-        request.department
+        request.department,
+        'Purchase Requisition',
+        request.document_no,
+        profile.full_name || 'Unknown',
+        request.total_amount,
+        'Submitted',
+        undefined,
+        undefined,
+        firstApprover.approver_type
       );
-
-      if (approverInfo) {
-        await sendApprovalEmail(
-          approverInfo.email,
-          approverInfo.name,
-          'Purchase Requisition',
-          request.document_no,
-          profile.full_name || 'Unknown',
-          request.department,
-          request.total_amount,
-          'Submitted',
-          undefined,
-          undefined,
-          firstApprover.approver_type
-        );
-      }
 
       setShowViewModal(false);
       setViewingRequest(null);

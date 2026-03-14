@@ -562,6 +562,37 @@ export async function getAllApproverEmails(
   return results;
 }
 
+export async function sendApprovalEmailToAll(
+  approvalFlow: ApprovalFlow,
+  companyId: string,
+  department: string,
+  requestType: string,
+  documentNo: string,
+  requesterName: string,
+  totalAmount: number,
+  action: string,
+  actionBy?: string,
+  comments?: string,
+  nextApprover?: string
+): Promise<void> {
+  const recipients = await getAllApproverEmails(approvalFlow, companyId, department);
+  for (const recipient of recipients) {
+    await sendApprovalEmail(
+      recipient.email,
+      recipient.name,
+      requestType,
+      documentNo,
+      requesterName,
+      department,
+      totalAmount,
+      action,
+      actionBy,
+      comments,
+      nextApprover
+    );
+  }
+}
+
 export async function createRejectedLedgerEntries(
   requestType: string,
   requestId: string,

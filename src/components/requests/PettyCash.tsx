@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmail, getApproverEmail } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
@@ -761,27 +761,19 @@ export function PettyCash() {
           );
 
           const firstApprover = approvalFlows[0];
-          const approverInfo = await getApproverEmail(
+          await sendApprovalEmailToAll(
             firstApprover,
             companyId,
-            department
+            department,
+            'Petty Cash',
+            formData.document_no,
+            profile.full_name || 'Unknown',
+            formData.amount,
+            'Submitted',
+            undefined,
+            undefined,
+            firstApprover.approver_type
           );
-
-          if (approverInfo) {
-            await sendApprovalEmail(
-              approverInfo.email,
-              approverInfo.name,
-              'Petty Cash',
-              formData.document_no,
-              profile.full_name || 'Unknown',
-              department,
-              formData.amount,
-              'Submitted',
-              undefined,
-              undefined,
-              firstApprover.approver_type
-            );
-          }
         }
       }
 
@@ -882,27 +874,19 @@ export function PettyCash() {
       );
 
       const firstApprover = approvalFlows[0];
-      const approverInfo = await getApproverEmail(
+      await sendApprovalEmailToAll(
         firstApprover,
         companyId,
-        department
+        department,
+        'Petty Cash',
+        request.pc_number,
+        profile.full_name || 'Unknown',
+        request.amount,
+        'Submitted',
+        undefined,
+        undefined,
+        firstApprover.approver_type
       );
-
-      if (approverInfo) {
-        await sendApprovalEmail(
-          approverInfo.email,
-          approverInfo.name,
-          'Petty Cash',
-          request.pc_number,
-          profile.full_name || 'Unknown',
-          department,
-          request.amount,
-          'Submitted',
-          undefined,
-          undefined,
-          firstApprover.approver_type
-        );
-      }
 
       setShowViewModal(false);
       setViewingRequest(null);

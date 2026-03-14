@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, getApproverEmail, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
@@ -458,29 +458,20 @@ export function ReimbursementApproval() {
 
       // Handle email notifications first (separate from PDF generation)
       if (action === 'approved' && !isLastApproval) {
-        // Send email to next approver
         const nextApprover = approvalFlows[nextLevel];
-        const nextApproverInfo = await getApproverEmail(
+        await sendApprovalEmailToAll(
           nextApprover,
           selectedRequest.company_id || profile.company_id,
-          requestDepartment
+          requestDepartment,
+          actualRequestType,
+          selectedRequest.reimb_number,
+          selectedRequest.user_profiles?.full_name || 'Unknown',
+          selectedRequest.amount,
+          'Approved',
+          profile.full_name || 'Unknown',
+          comments,
+          nextApprover.approver_type
         );
-
-        if (nextApproverInfo) {
-          await sendApprovalEmail(
-            nextApproverInfo.email,
-            nextApproverInfo.name,
-            actualRequestType,
-            selectedRequest.reimb_number,
-            selectedRequest.user_profiles?.full_name || 'Unknown',
-            requestDepartment,
-            selectedRequest.amount,
-            'Approved',
-            profile.full_name || 'Unknown',
-            comments,
-            nextApproverInfo.name
-          );
-        }
       } else if (action === 'rejected') {
         // Send rejection email to requester
         await sendApprovalEmail(
