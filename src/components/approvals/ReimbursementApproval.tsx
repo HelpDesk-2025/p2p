@@ -293,7 +293,9 @@ export function ReimbursementApproval() {
     if (!currentApproverStep) return false;
 
     if (currentApproverStep.user_id) {
-      return currentApproverStep.user_id === profile.id;
+      if (currentApproverStep.user_id === profile.id) return true;
+      if (currentApproverStep.alternate_approver_id === profile.id) return true;
+      return false;
     }
 
     const approverType = currentApproverStep.approver_type;

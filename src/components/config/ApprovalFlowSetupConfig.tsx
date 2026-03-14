@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { Plus, Edit, Trash2, X, Search, Filter, ArrowUpDown } from "lucide-react";
+import { Plus, CreditCard as Edit, Trash2, X, Search, Filter, ArrowUpDown } from "lucide-react";
 import Pagination from "../Pagination";
 
 interface ApprovalFlowSetup {
@@ -19,6 +19,7 @@ interface ApprovalStep {
   workflow_type: number;
   approver_type: string;
   user_id: string | null;
+  alternate_approver_id: string | null;
   sequence: number;
   days_to_approve: number;
   for_checking: boolean;
@@ -42,10 +43,12 @@ export function ApprovalFlowSetupConfig() {
   const [editingStepId, setEditingStepId] = useState<string | null>(null);
   const [newStepData, setNewStepData] = useState({
     user_id: "",
+    alternate_approver_id: "",
     days_to_approve: "3",
     for_checking: false
   });
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [alternateUserSearchQuery, setAlternateUserSearchQuery] = useState("");
 
   // Filter and sorting states
   const [searchQuery, setSearchQuery] = useState("");
@@ -239,12 +242,12 @@ export function ApprovalFlowSetupConfig() {
         return;
       }
 
-      const selectedUser = users.find(u => u.id === newStepData.user_id);
       const payload = {
         approval_flow_setup_id: editingSetupId,
         workflow_type: workflowType,
         approver_type: "Specific User",
         user_id: newStepData.user_id,
+        alternate_approver_id: newStepData.alternate_approver_id || null,
         sequence: nextSequence,
         days_to_approve: parseInt(newStepData.days_to_approve),
         for_checking: newStepData.for_checking,
@@ -256,8 +259,9 @@ export function ApprovalFlowSetupConfig() {
       if (error) throw error;
 
       setAddingStepToWorkflow(null);
-      setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
+      setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
+      setAlternateUserSearchQuery("");
       loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -268,9 +272,12 @@ export function ApprovalFlowSetupConfig() {
     setEditingStepId(step.id);
     setNewStepData({
       user_id: step.user_id || "",
+      alternate_approver_id: step.alternate_approver_id || "",
       days_to_approve: step.days_to_approve.toString(),
       for_checking: step.for_checking || false
     });
+    setUserSearchQuery("");
+    setAlternateUserSearchQuery("");
     setAddingStepToWorkflow(step.workflow_type);
   };
 
@@ -286,6 +293,7 @@ export function ApprovalFlowSetupConfig() {
       const payload = {
         approver_type: "Specific User",
         user_id: newStepData.user_id,
+        alternate_approver_id: newStepData.alternate_approver_id || null,
         days_to_approve: parseInt(newStepData.days_to_approve),
         for_checking: newStepData.for_checking
       };
@@ -299,8 +307,9 @@ export function ApprovalFlowSetupConfig() {
 
       setEditingStepId(null);
       setAddingStepToWorkflow(null);
-      setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
+      setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
+      setAlternateUserSearchQuery("");
       loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
@@ -409,6 +418,23 @@ export function ApprovalFlowSetupConfig() {
     .filter((user) => {
       if (!userSearchQuery) return true;
       const searchLower = userSearchQuery.toLowerCase();
+      return (
+        user.full_name?.toLowerCase().includes(searchLower) ||
+        user.email?.toLowerCase().includes(searchLower) ||
+        user.company?.toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      const nameA = (a.full_name || "").toLowerCase();
+      const nameB = (b.full_name || "").toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+  const filteredAlternateUsers = users
+    .filter((user) => {
+      if (user.id === newStepData.user_id) return false;
+      if (!alternateUserSearchQuery) return true;
+      const searchLower = alternateUserSearchQuery.toLowerCase();
       return (
         user.full_name?.toLowerCase().includes(searchLower) ||
         user.email?.toLowerCase().includes(searchLower) ||
@@ -626,7 +652,7 @@ export function ApprovalFlowSetupConfig() {
                         <div className={`bg-white rounded-lg p-3 mb-2 border-2 ${colors.borderDark} space-y-2`}>
                           <h5 className="text-xs font-bold text-slate-900 mb-1">Add New Step</h5>
                           <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-700">Select User (All Companies)</label>
+                            <label className="text-xs font-semibold text-slate-700">Primary Approver</label>
                             <input
                               type="text"
                               placeholder="Search users..."
@@ -638,7 +664,7 @@ export function ApprovalFlowSetupConfig() {
                               value={newStepData.user_id}
                               onChange={(e) => setNewStepData({ ...newStepData, user_id: e.target.value })}
                               className={`w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg ${colors.ring}`}
-                              size={5}
+                              size={4}
                             >
                               <option value="">Select User</option>
                               {filteredAndSortedUsers.map((user) => (
@@ -648,6 +674,35 @@ export function ApprovalFlowSetupConfig() {
                               ))}
                             </select>
                             {filteredAndSortedUsers.length === 0 && userSearchQuery && (
+                              <p className="text-xs text-slate-500 mt-1">No users found</p>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-700">
+                              Alternate Approver <span className="text-slate-400 font-normal">(optional — either can approve)</span>
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              value={alternateUserSearchQuery}
+                              onChange={(e) => setAlternateUserSearchQuery(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-1"
+                            />
+                            <select
+                              value={newStepData.alternate_approver_id}
+                              onChange={(e) => setNewStepData({ ...newStepData, alternate_approver_id: e.target.value })}
+                              className={`w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg ${colors.ring}`}
+                              size={4}
+                            >
+                              <option value="">None</option>
+                              {filteredAlternateUsers.map((user) => (
+                                <option key={user.id} value={user.id}>
+                                  {user.full_name} - {user.company} ({user.email})
+                                </option>
+                              ))}
+                            </select>
+                            {filteredAlternateUsers.length === 0 && alternateUserSearchQuery && (
                               <p className="text-xs text-slate-500 mt-1">No users found</p>
                             )}
                           </div>
@@ -666,12 +721,12 @@ export function ApprovalFlowSetupConfig() {
                           <div className="flex items-center gap-2">
                             <input
                               type="checkbox"
-                              id="for-checking"
+                              id="for-checking-add"
                               checked={newStepData.for_checking}
                               onChange={(e) => setNewStepData({ ...newStepData, for_checking: e.target.checked })}
                               className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                             />
-                            <label htmlFor="for-checking" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                            <label htmlFor="for-checking-add" className="text-xs font-semibold text-slate-700 cursor-pointer">
                               For Checking Only (Not a Signatory)
                             </label>
                           </div>
@@ -686,8 +741,9 @@ export function ApprovalFlowSetupConfig() {
                             <button
                               onClick={() => {
                                 setAddingStepToWorkflow(null);
-                                setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
+                                setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
                                 setUserSearchQuery("");
+                                setAlternateUserSearchQuery("");
                               }}
                               className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-all"
                             >
@@ -701,7 +757,7 @@ export function ApprovalFlowSetupConfig() {
                         <div className={`bg-white rounded-lg p-3 mb-2 border-2 ${colors.borderDark} space-y-2`}>
                           <h5 className="text-xs font-bold text-slate-900 mb-1">Edit Step</h5>
                           <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-700">Select User (All Companies)</label>
+                            <label className="text-xs font-semibold text-slate-700">Primary Approver</label>
                             <input
                               type="text"
                               placeholder="Search users..."
@@ -713,7 +769,7 @@ export function ApprovalFlowSetupConfig() {
                               value={newStepData.user_id}
                               onChange={(e) => setNewStepData({ ...newStepData, user_id: e.target.value })}
                               className={`w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg ${colors.ring}`}
-                              size={5}
+                              size={4}
                             >
                               <option value="">Select User</option>
                               {filteredAndSortedUsers.map((user) => (
@@ -723,6 +779,35 @@ export function ApprovalFlowSetupConfig() {
                               ))}
                             </select>
                             {filteredAndSortedUsers.length === 0 && userSearchQuery && (
+                              <p className="text-xs text-slate-500 mt-1">No users found</p>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-700">
+                              Alternate Approver <span className="text-slate-400 font-normal">(optional — either can approve)</span>
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              value={alternateUserSearchQuery}
+                              onChange={(e) => setAlternateUserSearchQuery(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-1"
+                            />
+                            <select
+                              value={newStepData.alternate_approver_id}
+                              onChange={(e) => setNewStepData({ ...newStepData, alternate_approver_id: e.target.value })}
+                              className={`w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg ${colors.ring}`}
+                              size={4}
+                            >
+                              <option value="">None</option>
+                              {filteredAlternateUsers.map((user) => (
+                                <option key={user.id} value={user.id}>
+                                  {user.full_name} - {user.company} ({user.email})
+                                </option>
+                              ))}
+                            </select>
+                            {filteredAlternateUsers.length === 0 && alternateUserSearchQuery && (
                               <p className="text-xs text-slate-500 mt-1">No users found</p>
                             )}
                           </div>
@@ -741,12 +826,12 @@ export function ApprovalFlowSetupConfig() {
                           <div className="flex items-center gap-2">
                             <input
                               type="checkbox"
-                              id="for-checking"
+                              id="for-checking-edit"
                               checked={newStepData.for_checking}
                               onChange={(e) => setNewStepData({ ...newStepData, for_checking: e.target.checked })}
                               className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                             />
-                            <label htmlFor="for-checking" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                            <label htmlFor="for-checking-edit" className="text-xs font-semibold text-slate-700 cursor-pointer">
                               For Checking Only (Not a Signatory)
                             </label>
                           </div>
@@ -762,8 +847,9 @@ export function ApprovalFlowSetupConfig() {
                               onClick={() => {
                                 setEditingStepId(null);
                                 setAddingStepToWorkflow(null);
-                                setNewStepData({ user_id: "", days_to_approve: "3", for_checking: false });
+                                setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
                                 setUserSearchQuery("");
+                                setAlternateUserSearchQuery("");
                               }}
                               className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-all"
                             >
@@ -776,6 +862,7 @@ export function ApprovalFlowSetupConfig() {
                       <div className="space-y-1.5">
                         {workflowSteps.map((step) => {
                           const approverUser = step.user_id ? users.find(u => u.id === step.user_id) : null;
+                          const alternateUser = step.alternate_approver_id ? users.find(u => u.id === step.alternate_approver_id) : null;
                           const displayName = approverUser
                             ? `${approverUser.full_name} (${approverUser.company})`
                             : step.approver_type;
@@ -783,16 +870,27 @@ export function ApprovalFlowSetupConfig() {
                           return (
                             <div key={step.id} className={`bg-white rounded-lg p-2 shadow-sm border ${colors.borderLight}`}>
                               <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-slate-700">Step {step.sequence}</span>
-                                    <span className={`text-xs px-2 py-0.5 ${colors.badge} rounded-full font-bold`}>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="text-xs font-semibold text-slate-700 shrink-0">Step {step.sequence}</span>
+                                    <span className={`text-xs px-2 py-0.5 ${colors.badge} rounded-full font-bold truncate`}>
                                       {displayName}
                                     </span>
                                   </div>
-                                  <div className="text-xs text-slate-500 mt-0.5">{step.days_to_approve} days</div>
+                                  {alternateUser && (
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <span className="text-xs text-slate-400 shrink-0">or</span>
+                                      <span className="text-xs text-slate-600 font-medium truncate">
+                                        {alternateUser.full_name} ({alternateUser.company})
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                    <span>{step.days_to_approve} days</span>
+                                    {step.for_checking && <span className="text-amber-600 font-medium">Checker</span>}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1 ml-2">
+                                <div className="flex items-center gap-1 ml-2 shrink-0">
                                   <button
                                     onClick={() => handleEditStep(step)}
                                     className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-all"

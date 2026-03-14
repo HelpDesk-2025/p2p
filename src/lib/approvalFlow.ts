@@ -11,6 +11,7 @@ export interface ApprovalFlow {
   is_active: boolean;
   workflow_type: number;
   user_id: string | null;
+  alternate_approver_id: string | null;
   approval_flow_setup_id: string;
   for_checking?: boolean;
 }
@@ -331,7 +332,9 @@ export async function filterApprovalFlowsForRequester(
     }
 
     const filteredFlows = approvalFlows.filter((flow) => {
-      if (flow.user_id === requesterId) {
+      const primaryIsRequester = flow.user_id === requesterId;
+      const alternateIsRequester = flow.alternate_approver_id === requesterId;
+      if (primaryIsRequester && (!flow.alternate_approver_id || alternateIsRequester)) {
         console.log(`⏭️ Skipping approval step ${flow.sequence} (${flow.approver_type}) - Requester is the approver`);
         return false;
       }
@@ -535,6 +538,28 @@ export async function getApproverEmail(
     console.error('Error getting approver email:', error);
     return null;
   }
+}
+
+export async function getAllApproverEmails(
+  approvalFlow: ApprovalFlow,
+  companyId: string,
+  department: string
+): Promise<{ email: string; name: string }[]> {
+  const results: { email: string; name: string }[] = [];
+
+  const primary = await getApproverEmail(approvalFlow, companyId, department);
+  if (primary) results.push(primary);
+
+  if (approvalFlow.alternate_approver_id) {
+    const { data: altUser } = await supabase
+      .from('user_profiles')
+      .select('email, full_name')
+      .eq('id', approvalFlow.alternate_approver_id)
+      .maybeSingle();
+    if (altUser) results.push({ email: altUser.email, name: altUser.full_name || 'User' });
+  }
+
+  return results;
 }
 
 export async function createRejectedLedgerEntries(
