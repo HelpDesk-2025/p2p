@@ -128,11 +128,12 @@ export function ApprovalProgressTracker({
 
             setApprovalFlows(flows || []);
 
-            // Load approver names for flows with user_id
+            // Load approver names for flows with user_id or alternate_approver_id
             if (flows && flows.length > 0) {
-              const userIds = flows
-                .filter(f => f.user_id)
-                .map(f => f.user_id as string);
+              const userIds = [
+                ...flows.filter(f => f.user_id).map(f => f.user_id as string),
+                ...flows.filter(f => f.alternate_approver_id).map(f => f.alternate_approver_id as string),
+              ].filter((id, i, arr) => arr.indexOf(id) === i);
 
               if (userIds.length > 0) {
                 const { data: profiles } = await supabase
@@ -327,8 +328,21 @@ export function ApprovalProgressTracker({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-slate-900">
-                      Step {index + 1}: {flow.user_id && approverNames[flow.user_id] ? approverNames[flow.user_id] : flow.approver_type}
+                      Step {index + 1}:{' '}
+                      {flow.user_id && approverNames[flow.user_id]
+                        ? approverNames[flow.user_id]
+                        : flow.approver_type}
+                      {flow.alternate_approver_id && approverNames[flow.alternate_approver_id] && (
+                        <span className="text-slate-500 font-normal">
+                          {' '}or {approverNames[flow.alternate_approver_id]}
+                        </span>
+                      )}
                     </span>
+                    {flow.for_checking && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
+                        Checker
+                      </span>
+                    )}
                     {stepStatus === 'current' && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
                         Pending Approval
