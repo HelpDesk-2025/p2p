@@ -340,7 +340,7 @@ export function ApprovalProgressTracker({
                     </span>
                     {flow.for_checking && (
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
-                        Checker
+                        For Validation
                       </span>
                     )}
                     {stepStatus === 'current' && (
