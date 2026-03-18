@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, Save, CreditCard as Edit, X, Upload, Image as ImageIcon, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { ApprovalFlowSetupConfig } from './ApprovalFlowSetupConfig';
 import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
@@ -136,6 +136,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   });
   const [originalESig, setOriginalESig] = useState<string>('');
   const [originalEmail, setOriginalEmail] = useState<string>('');
+  const [updating, setUpdating] = useState(false);
   const [companies, setCompanies] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
@@ -324,6 +325,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const handleUpdate = async () => {
     try {
       if (!editingId) return;
+      setUpdating(true);
 
       console.log('Form data company:', formData.company);
       console.log('Available companies:', companies);
@@ -409,6 +411,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     } catch (error: any) {
       console.error('Error in handleUpdate:', error);
       alert('Error updating user: ' + error.message);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -1021,14 +1025,16 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-200">
             <button
               onClick={editingId ? handleUpdate : handleAdd}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30"
+              disabled={updating}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Save size={16} className="sm:w-[18px] sm:h-[18px]" />
-              {editingId ? "Update User" : "Create User"}
+              {updating ? <Loader2 size={16} className="sm:w-[18px] sm:h-[18px] animate-spin" /> : <Save size={16} className="sm:w-[18px] sm:h-[18px]" />}
+              {updating ? "Updating..." : editingId ? "Update User" : "Create User"}
             </button>
             <button
               onClick={handleCancel}
-              className="px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-slate-300 text-slate-700 font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:bg-slate-50 transition-all"
+              disabled={updating}
+              className="px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-slate-300 text-slate-700 font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
