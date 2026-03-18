@@ -135,6 +135,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     allowed_companies: [] as string[]
   });
   const [originalESig, setOriginalESig] = useState<string>('');
+  const [originalEmail, setOriginalEmail] = useState<string>('');
   const [companies, setCompanies] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
@@ -223,6 +224,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     };
     console.log('Setting form data:', formDataToSet);
     setOriginalESig(user.e_sig || '');
+    setOriginalEmail(user.email || '');
     setFormData(formDataToSet);
     setShowForm(true);
   };
@@ -362,11 +364,30 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         throw error;
       }
 
+      if (formData.email !== originalEmail) {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || (window as any).__APP_CONFIG__?.VITE_SUPABASE_URL;
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(`${supabaseUrl}/functions/v1/update-user-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || (window as any).__APP_CONFIG__?.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ userId: editingId, newEmail: formData.email }),
+        });
+        const authResult = await response.json();
+        if (!response.ok) {
+          throw new Error(authResult.error || 'Failed to update login email');
+        }
+      }
+
       console.log('Update result:', result);
-      alert('User updated successfully!');
+      alert('User updated successfully!' + (formData.email !== originalEmail ? ' Login email has been updated. The user should now use the new email to sign in.' : ''));
       setShowForm(false);
       setEditingId(null);
       setOriginalESig('');
+      setOriginalEmail('');
       setFormData({
         full_name: '',
         email: '',
@@ -395,6 +416,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     setShowForm(false);
     setEditingId(null);
     setOriginalESig('');
+    setOriginalEmail('');
     setFormData({
       full_name: '',
       email: '',
