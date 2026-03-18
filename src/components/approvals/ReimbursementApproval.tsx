@@ -967,14 +967,20 @@ export function ReimbursementApproval() {
                           <Eye size={18} />
                           Preview Form
                         </button>
-                        <a
-                          href={supabase.storage.from('attachments').getPublicUrl(linkedRequestDetails.rfp_pdf_path).data.publicUrl}
-                          download
+                        <button
+                          onClick={async () => {
+                            const { data } = await supabase.storage
+                              .from('attachments')
+                              .createSignedUrl(linkedRequestDetails.rfp_pdf_path, 3600);
+                            if (data?.signedUrl) {
+                              window.open(data.signedUrl, '_blank');
+                            }
+                          }}
                           className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
                         >
                           <Download size={18} />
                           Download
-                        </a>
+                        </button>
                       </div>
                     </div>
                   )}

@@ -838,10 +838,12 @@ export function CanvassApproval() {
                         <label className="text-sm font-semibold text-blue-600 block mb-2">Merged PDF Document</label>
                         <button
                           onClick={async () => {
-                            const { data } = supabase.storage
+                            const { data } = await supabase.storage
                               .from('attachments')
-                              .getPublicUrl(selectedPR.merged_pdf_path!);
-                            window.open(data.publicUrl, '_blank');
+                              .createSignedUrl(selectedPR.merged_pdf_path!, 3600);
+                            if (data?.signedUrl) {
+                              window.open(data.signedUrl, '_blank');
+                            }
                           }}
                           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                         >

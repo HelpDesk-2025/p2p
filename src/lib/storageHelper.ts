@@ -71,12 +71,16 @@ export async function deleteAttachments(filePaths: string[]): Promise<void> {
   }
 }
 
-export function getAttachmentUrl(filePath: string): string {
-  const { data } = supabase.storage
+export async function getAttachmentUrl(filePath: string): Promise<string> {
+  const { data, error } = await supabase.storage
     .from('attachments')
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 3600);
 
-  return data.publicUrl;
+  if (error) {
+    throw new Error(`Failed to get attachment URL: ${error.message}`);
+  }
+
+  return data.signedUrl;
 }
 
 export async function createSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
