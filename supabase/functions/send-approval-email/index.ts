@@ -112,7 +112,7 @@ function generateEmailHTML(data: EmailRequest): string {
           ` : ''}
 
           <div style="text-align: center; margin: 32px 0;">
-            <a href="https://procure-to-pay-web-a-cw8j.bolt.host/"
+            <a href="https://p2p.stjoseph-group.com/"
                style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
               Access the System
             </a>
