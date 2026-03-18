@@ -442,7 +442,7 @@ export async function sendApprovalEmail(
 
     const emailData = {
       to: recipientEmail,
-      subject: `${requestType} ${action} - ${documentNo}`,
+      subject: `P2P - ${requestType} ${action} - ${documentNo}`,
       recipientName,
       requestType,
       documentNo,

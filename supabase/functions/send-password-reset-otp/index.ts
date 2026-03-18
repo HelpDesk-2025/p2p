@@ -343,7 +343,7 @@ Deno.serve(async (req: Request) => {
     // Send OTP email
     console.log(`[Main] Sending OTP email to: ${userProfile.email}`);
     const htmlContent = generateOTPEmailHTML(otpCode);
-    await sendEmailWithSMTP(smtpConfig, userProfile.email, 'Password Reset OTP', htmlContent);
+    await sendEmailWithSMTP(smtpConfig, userProfile.email, 'P2P - Password Reset OTP', htmlContent);
 
     console.log('[Main] OTP email sent successfully');
 

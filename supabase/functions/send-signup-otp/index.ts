@@ -274,7 +274,7 @@ Deno.serve(async (req: Request) => {
 
     // Send OTP email
     const htmlContent = generateSignUpOTPEmailHTML(otpCode, fullName);
-    await sendEmailWithSMTP(smtpConfig, email, 'Verify Your Email - Point to Point', htmlContent);
+    await sendEmailWithSMTP(smtpConfig, email, 'P2P - Verify Your Email', htmlContent);
 
     return new Response(
       JSON.stringify({ success: true, message: 'OTP sent to your email' }),

@@ -159,7 +159,7 @@ export function SmeApproval() {
               },
               body: JSON.stringify({
                 to: companyData.procurement_notification_email,
-                subject: `Purchase Requisition Ready for Canvass - ${prData.document_no || prData.pr_number}`,
+                subject: `P2P - Purchase Requisition Ready for Canvass - ${prData.document_no || prData.pr_number}`,
                 recipientName: 'Procurement Team',
                 requestType: 'Purchase Requisition',
                 documentNo: prData.document_no || prData.pr_number,

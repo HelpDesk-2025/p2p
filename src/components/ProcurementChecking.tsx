@@ -226,7 +226,7 @@ export function ProcurementChecking() {
               },
               body: JSON.stringify({
                 to: companyData.procurement_notification_email,
-                subject: `Purchase Requisition Ready for Canvass - ${viewingRequest.document_no || viewingRequest.pr_number}`,
+                subject: `P2P - Purchase Requisition Ready for Canvass - ${viewingRequest.document_no || viewingRequest.pr_number}`,
                 recipientName: 'Procurement Team',
                 requestType: 'Purchase Requisition',
                 documentNo: viewingRequest.document_no || viewingRequest.pr_number,
@@ -344,7 +344,7 @@ export function ProcurementChecking() {
             },
             body: JSON.stringify({
               to: selectedUser.email,
-              subject: `SME Approval Required - ${viewingRequest.document_no || viewingRequest.pr_number}`,
+              subject: `P2P - SME Approval Required - ${viewingRequest.document_no || viewingRequest.pr_number}`,
               recipientName: selectedUser.full_name,
               requestType: 'SME Request',
               documentNo: viewingRequest.document_no || viewingRequest.pr_number,

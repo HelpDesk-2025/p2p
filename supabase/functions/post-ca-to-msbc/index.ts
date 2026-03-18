@@ -303,7 +303,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             to: recipient,
-            subject: `Cash Advance ${ca.ca_number} Posted to MSBC`,
+            subject: `P2P - Cash Advance ${ca.ca_number} Posted to MSBC`,
             recipientName: recipient === ca.requester?.email ? ca.requester?.full_name : 'Accounting Team',
             requestType: 'Cash Advance',
             documentNo: ca.ca_number,

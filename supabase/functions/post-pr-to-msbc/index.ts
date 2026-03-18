@@ -321,7 +321,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             to: recipient,
-            subject: `Purchase Requisition ${pr.document_no} Posted to MSBC`,
+            subject: `P2P - Purchase Requisition ${pr.document_no} Posted to MSBC`,
             recipientName: recipient === pr.requester?.email ? pr.requester?.full_name : 'Accounting Team',
             requestType: 'Purchase Requisition',
             documentNo: pr.document_no,

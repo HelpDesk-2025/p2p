@@ -298,7 +298,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             to: recipient,
-            subject: `Canvass ${canvass.canvass_number} Posted to MSBC`,
+            subject: `P2P - Canvass ${canvass.canvass_number} Posted to MSBC`,
             recipientName: recipient === canvass.requester?.email ? canvass.requester?.full_name : 'Accounting Team',
             requestType: 'Canvass Request',
             documentNo: canvass.canvass_number,
