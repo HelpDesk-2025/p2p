@@ -778,6 +778,10 @@ export function CashAdvance() {
         aVal = a.status;
         bVal = b.status;
         break;
+      case 'company_name':
+        aVal = ((a as any).companies?.name || '').toLowerCase();
+        bVal = ((b as any).companies?.name || '').toLowerCase();
+        break;
       default:
         return 0;
     }
@@ -1411,9 +1415,13 @@ export function CashAdvance() {
                 </button>
               </th>
               <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <button
+                  onClick={() => handleSort('company_name')}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                >
                   Company
-                </span>
+                  {getSortIcon('company_name')}
+                </button>
               </th>
               <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button

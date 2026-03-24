@@ -1075,6 +1075,11 @@ export function PettyCash() {
     let aVal: any = a[sortColumn as keyof PettyCashReq];
     let bVal: any = b[sortColumn as keyof PettyCashReq];
 
+    if (sortColumn === 'company_name') {
+      aVal = (a as any).companies?.name || '';
+      bVal = (b as any).companies?.name || '';
+    }
+
     if (typeof aVal === 'string') {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
@@ -2005,9 +2010,9 @@ export function PettyCash() {
                   </button>
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Company
-                  </span>
+                  <button onClick={() => handleSort('company_name')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                    Company {getSortIcon('company_name')}
+                  </button>
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('purpose')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">

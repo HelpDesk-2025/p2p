@@ -1224,6 +1224,9 @@ export function PurchaseRequisition() {
     } else if (sortColumn === 'description') {
       aVal = a.description || a.purpose;
       bVal = b.description || b.purpose;
+    } else if (sortColumn === 'company_name') {
+      aVal = (a as any).companies?.name || '';
+      bVal = (b as any).companies?.name || '';
     }
 
     if (aVal == null) aVal = '';
@@ -2224,9 +2227,9 @@ export function PurchaseRequisition() {
                   </button>
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Company
-                  </span>
+                  <button onClick={() => handleSort('company_name')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                    Company {getSortIcon('company_name')}
+                  </button>
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('description')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
