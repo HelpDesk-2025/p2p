@@ -2224,6 +2224,11 @@ export function PurchaseRequisition() {
                   </button>
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Company
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('description')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                     Description {getSortIcon('description')}
                   </button>
@@ -2263,7 +2268,7 @@ export function PurchaseRequisition() {
             <tbody className="divide-y divide-slate-100">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-sm text-slate-500">
                     No purchase requisitions found
                   </td>
                 </tr>
@@ -2273,6 +2278,11 @@ export function PurchaseRequisition() {
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.document_no || req.pr_number}>
                         {req.document_no || req.pr_number}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={(req as any).companies?.name || 'N/A'}>
+                        {(req as any).companies?.name || 'N/A'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3">

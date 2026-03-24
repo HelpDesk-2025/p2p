@@ -1467,20 +1467,11 @@ export function Reimbursement() {
                   {getSortIcon('request_date')}
                 </button>
               </th>
-              {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
-                <>
-                  <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Company
-                    </span>
-                  </th>
-                  <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Department
-                    </span>
-                  </th>
-                </>
-              )}
+              <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Company
+                </span>
+              </th>
               <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button
                   onClick={() => handleSort('purpose')}
@@ -1518,7 +1509,7 @@ export function Reimbursement() {
           <tbody className="divide-y divide-slate-100">
             {paginatedRequests.length === 0 ? (
               <tr>
-                <td colSpan={profile?.enable_multi_company_requests || profile?.role === 'admin' ? 8 : 6} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">No reimbursement/liquidation requests found</td>
+                <td colSpan={7} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">No reimbursement/liquidation requests found</td>
               </tr>
             ) : (
               paginatedRequests.map((req, index) => (
@@ -1537,20 +1528,11 @@ export function Reimbursement() {
                       })}
                     </span>
                   </td>
-                  {(profile?.enable_multi_company_requests || profile?.role === 'admin') && (
-                    <>
-                      <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={(req as any).companies?.name || 'N/A'}>
-                          {(req as any).companies?.name || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium max-w-[140px] truncate" title={req.department || 'N/A'}>
-                          {req.department || 'N/A'}
-                        </span>
-                      </td>
-                    </>
-                  )}
+                  <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                    <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={(req as any).companies?.name || 'N/A'}>
+                      {(req as any).companies?.name || 'N/A'}
+                    </span>
+                  </td>
                   <td className="px-3 xl:px-4 py-3">
                     <span className="text-sm text-slate-700 truncate block max-w-[200px]" title={req.purpose}>
                       {req.purpose}

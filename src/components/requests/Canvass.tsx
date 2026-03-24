@@ -1990,6 +1990,11 @@ export function Canvass() {
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Company
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     PR Document No.
                   </span>
                 </th>
@@ -2023,7 +2028,7 @@ export function Canvass() {
             <tbody className="divide-y divide-slate-100">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">No canvass requests found</td>
+                  <td colSpan={8} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">No canvass requests found</td>
                 </tr>
               ) : (
                 paginatedRequests.map((req, index) => (
@@ -2031,6 +2036,11 @@ export function Canvass() {
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.canvass_number}>
                         {req.canvass_number}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-slate-700 truncate block max-w-[150px]" title={(req as any).companies?.name || 'N/A'}>
+                        {(req as any).companies?.name || 'N/A'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
