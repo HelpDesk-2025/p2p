@@ -430,6 +430,7 @@ export function CashAdvanceApproval() {
           purpose: selectedRequest.purpose,
           payee: selectedRequest.payee || 'Unknown',
           payeeEsig: payeeData?.e_sig || null,
+          requestorEsig: requestorData?.e_sig || null,
           outstandingAsl: outstandingAsl,
           outstandingAslDate: new Date().toLocaleDateString(),
           remarks: remarks,
@@ -690,6 +691,7 @@ export function CashAdvanceApproval() {
         purpose: selectedRequest.purpose,
         payee: selectedRequest.payee || 'Unknown',
         payeeEsig: payeeData?.e_sig || null,
+        requestorEsig: requestorData?.e_sig || null,
         outstandingAsl: selectedRequest.outstanding_asl || 'None',
         outstandingAslDate: selectedRequest.outstanding_asl_date
           ? new Date(selectedRequest.outstanding_asl_date).toLocaleDateString()

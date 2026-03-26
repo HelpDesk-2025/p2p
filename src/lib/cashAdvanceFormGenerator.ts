@@ -29,6 +29,7 @@ interface CashAdvanceFormData {
   purpose: string;
   payee: string;
   payeeEsig: string | null;
+  requestorEsig: string | null;
   outstandingAsl: string;
   outstandingAslDate: string;
   remarks: string;
@@ -175,7 +176,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   yPos -= sectionHeight + 10;
 
   // Cash Advance section
-  const cashAdvanceHeight = 220;
+  const cashAdvanceHeight = 280;
   drawBox(margin, yPos - cashAdvanceHeight, width - 2 * margin, cashAdvanceHeight);
 
   const midX = width / 2;
@@ -219,16 +220,39 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     cashAdvY -= 13;
   }
 
-  cashAdvY -= 25;
+  cashAdvY -= 10;
+
+  // Requestor signature
+  if (data.requestorEsig) {
+    try {
+      const esigImage = await embedSignatureImage(pdfDoc, data.requestorEsig);
+      const esigDims = esigImage.scale(0.3);
+      page.drawImage(esigImage, {
+        x: leftColX + 20,
+        y: cashAdvY - esigDims.height,
+        width: esigDims.width,
+        height: esigDims.height,
+      });
+    } catch (error) {
+      console.error('Error embedding requestor e-signature:', error);
+    }
+  }
+
+  cashAdvY -= 30;
+  drawText(data.requestedBy, leftColX, cashAdvY, 9, false);
+  cashAdvY -= 12;
+  drawText('Requestor', leftColX, cashAdvY, 9, true);
+
+  cashAdvY -= 15;
 
   // Payee section
   if (data.payeeEsig) {
     try {
       const esigImage = await embedSignatureImage(pdfDoc, data.payeeEsig);
-      const esigDims = esigImage.scale(0.35);
+      const esigDims = esigImage.scale(0.3);
       page.drawImage(esigImage, {
         x: leftColX + 20,
-        y: cashAdvY,
+        y: cashAdvY - esigDims.height,
         width: esigDims.width,
         height: esigDims.height,
       });
@@ -237,9 +261,9 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
     }
   }
 
-  cashAdvY -= 15;
+  cashAdvY -= 30;
   drawText(data.payee, leftColX, cashAdvY, 9, false);
-  cashAdvY -= 15;
+  cashAdvY -= 12;
   drawText('Payee', leftColX, cashAdvY, 9, true);
 
   // Right side: Accounting Department info

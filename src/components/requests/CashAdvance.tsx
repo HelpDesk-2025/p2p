@@ -900,6 +900,7 @@ export function CashAdvance() {
         purpose: request.purpose,
         payee: request.payee || 'Unknown',
         payeeEsig: payeeData?.e_sig || null,
+        requestorEsig: requestorData?.e_sig || null,
         outstandingAsl: request.outstanding_asl || '',
         outstandingAslDate: request.outstanding_asl_date ? new Date(request.outstanding_asl_date).toLocaleDateString() : '',
         remarks: request.remarks || '',
