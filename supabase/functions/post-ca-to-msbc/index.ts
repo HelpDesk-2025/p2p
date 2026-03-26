@@ -125,18 +125,31 @@ Deno.serve(async (req: Request) => {
       console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
     }
 
-    const secondaryPath = approvedCaPdfPath || attachmentsPdfPath;
-    if (secondaryPath) {
-      console.log('📥 Downloading CA/attachments PDF from:', secondaryPath);
-      const { data: caData, error: caDownloadError } = await supabaseClient.storage
+    if (approvedCaPdfPath) {
+      console.log('📥 Downloading approved CA form PDF from:', approvedCaPdfPath);
+      const { data: caFormData, error: caFormDownloadError } = await supabaseClient.storage
         .from('attachments')
-        .download(secondaryPath);
+        .download(approvedCaPdfPath);
 
-      if (caDownloadError || !caData) {
-        console.warn('⚠️ Failed to download CA/attachments PDF, continuing without it:', caDownloadError?.message);
+      if (caFormDownloadError || !caFormData) {
+        console.warn('⚠️ Failed to download CA form PDF, continuing without it:', caFormDownloadError?.message);
       } else {
-        pdfParts.push(new Uint8Array(await caData.arrayBuffer()));
-        console.log('✅ CA/attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+        pdfParts.push(new Uint8Array(await caFormData.arrayBuffer()));
+        console.log('✅ CA form PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+      }
+    }
+
+    if (attachmentsPdfPath) {
+      console.log('📥 Downloading uploaded attachments PDF from:', attachmentsPdfPath);
+      const { data: attachData, error: attachDownloadError } = await supabaseClient.storage
+        .from('attachments')
+        .download(attachmentsPdfPath);
+
+      if (attachDownloadError || !attachData) {
+        console.warn('⚠️ Failed to download attachments PDF, continuing without it:', attachDownloadError?.message);
+      } else {
+        pdfParts.push(new Uint8Array(await attachData.arrayBuffer()));
+        console.log('✅ Attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
       }
     }
 
