@@ -1764,6 +1764,11 @@ export function Canvass() {
                           accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.svg"
                           onChange={(e) => {
                             const file = e.target.files?.[0] || null;
+                            if (file && file.size > 40 * 1024 * 1024) {
+                              alert(`File ${file.name} exceeds the 40MB size limit (${(file.size / 1024 / 1024).toFixed(2)}MB).`);
+                              e.target.value = '';
+                              return;
+                            }
                             const newQuotations = [...quotations];
                             newQuotations[idx].quotation_file = file;
                             setQuotations(newQuotations);

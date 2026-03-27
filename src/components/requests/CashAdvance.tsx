@@ -358,16 +358,22 @@ export function CashAdvance() {
     const validFiles: File[] = [];
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
 
+    const maxSizeBytes = 40 * 1024 * 1024;
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       console.log(`Checking file: ${file.name}, type: ${file.type}, size: ${file.size}`);
-      if (allowedTypes.includes(file.type)) {
-        console.log(`  ✓ Valid file added`);
-        validFiles.push(file);
-      } else {
+      if (!allowedTypes.includes(file.type)) {
         console.log(`  ✗ Invalid file type rejected`);
         alert(`File ${file.name} is not a valid format. Only images (JPG, PNG) and PDF files are allowed.`);
+        continue;
       }
+      if (file.size > maxSizeBytes) {
+        alert(`File ${file.name} exceeds the 40MB size limit (${(file.size / 1024 / 1024).toFixed(2)}MB).`);
+        continue;
+      }
+      console.log(`  ✓ Valid file added`);
+      validFiles.push(file);
     }
 
     console.log(`Valid files to add: ${validFiles.length}`);

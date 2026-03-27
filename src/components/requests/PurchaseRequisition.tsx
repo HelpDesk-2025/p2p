@@ -500,6 +500,12 @@ export function PurchaseRequisition() {
         event.target.value = '';
         return;
       }
+      const maxSizeBytes = 40 * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        alert(`File ${file.name} exceeds the 40MB size limit (${(file.size / 1024 / 1024).toFixed(2)}MB).`);
+        event.target.value = '';
+        return;
+      }
     }
     updateChecklistItem(index, file);
   };
@@ -770,10 +776,9 @@ export function PurchaseRequisition() {
       if (filesToUpload.length > 0 && profile?.id) {
         const mergedPdfBlob = await mergeFilesToPDFBlob(filesToUpload);
 
-        // Check file size (50MB limit for Supabase Storage)
-        const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
+        const maxSizeInBytes = 40 * 1024 * 1024;
         if (mergedPdfBlob.size > maxSizeInBytes) {
-          throw new Error(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 50MB. Please reduce the number or size of attachments.`);
+          throw new Error(`Merged PDF is too large (${(mergedPdfBlob.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 40MB. Please reduce the number or size of attachments.`);
         }
 
         const timestamp = Date.now();

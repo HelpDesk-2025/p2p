@@ -374,15 +374,20 @@ export function Reimbursement() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
+      const maxSizeBytes = 40 * 1024 * 1024;
+      const validFiles: File[] = [];
 
-      // Validate file types (only images and PDFs)
-      const validFiles = selectedFiles.filter(file => {
+      for (const file of selectedFiles) {
         const type = file.type;
-        return type.startsWith('image/') || type === 'application/pdf';
-      });
-
-      if (validFiles.length !== selectedFiles.length) {
-        alert('Only image and PDF files are allowed');
+        if (!type.startsWith('image/') && type !== 'application/pdf') {
+          alert(`File ${file.name} is not a valid format. Only image and PDF files are allowed.`);
+          continue;
+        }
+        if (file.size > maxSizeBytes) {
+          alert(`File ${file.name} exceeds the 40MB size limit (${(file.size / 1024 / 1024).toFixed(2)}MB).`);
+          continue;
+        }
+        validFiles.push(file);
       }
 
       setAttachments(prev => [...prev, ...validFiles]);

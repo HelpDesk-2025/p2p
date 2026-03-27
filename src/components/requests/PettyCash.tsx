@@ -153,9 +153,8 @@ export function PettyCash() {
       return;
     }
 
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setAttachmentError('File size must be less than 10MB');
+    if (file.size > 40 * 1024 * 1024) {
+      setAttachmentError('File size must be less than 40MB');
       setAttachmentFile(null);
       return;
     }
