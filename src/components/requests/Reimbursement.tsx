@@ -1742,6 +1742,79 @@ export function Reimbursement() {
                   </div>
                 </div>
               )}
+
+              {viewingRequest.attachments && viewingRequest.attachments.length > 0 && (
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold text-slate-700">Attachments</label>
+                    {viewingRequest.merged_pdf_path && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.storage
+                              .from('attachments')
+                              .download(viewingRequest.merged_pdf_path!);
+                            if (error) throw error;
+                            const url = URL.createObjectURL(data);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${viewingRequest.reimb_number}_attachments.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          } catch (err) {
+                            console.error('Error downloading attachments:', err);
+                            alert('Failed to download attachments');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition"
+                      >
+                        <Download size={14} />
+                        Download All
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {viewingRequest.attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText size={16} className="text-blue-600 flex-shrink-0" />
+                          <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                          <span className="text-xs text-slate-500 flex-shrink-0">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.storage
+                                .from('attachments')
+                                .download(file.path);
+                              if (error) throw error;
+                              const url = URL.createObjectURL(data);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = file.name;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            } catch (err) {
+                              console.error('Error downloading file:', err);
+                              alert('Failed to download file');
+                            }
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition flex-shrink-0"
+                        >
+                          <Download size={14} />
+                          Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-between">

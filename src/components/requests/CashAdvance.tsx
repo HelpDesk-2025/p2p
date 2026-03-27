@@ -1765,11 +1765,40 @@ export function CashAdvance() {
 
               {viewingRequest.attachment_metadata && viewingRequest.attachment_metadata.length > 0 && (
                 <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Attachments</label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold text-slate-700">Attachments</label>
+                    {viewingRequest.attachments_pdf_path && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.storage
+                              .from('attachments')
+                              .download(viewingRequest.attachments_pdf_path!);
+                            if (error) throw error;
+                            const url = URL.createObjectURL(data);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${viewingRequest.ca_number}_attachments.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          } catch (err) {
+                            console.error('Error downloading attachments:', err);
+                            alert('Failed to download attachments');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition"
+                      >
+                        <Download size={14} />
+                        Download All
+                      </button>
+                    )}
+                  </div>
                   <ul className="space-y-2">
                     {viewingRequest.attachment_metadata.map((file, index) => (
                       <li key={index} className="flex items-center gap-2 text-slate-700">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                        <FileText size={14} className="text-blue-600 flex-shrink-0" />
                         <span className="font-medium">{file.name}</span>
                         <span className="text-xs text-slate-500">
                           ({(file.size / 1024).toFixed(1)} KB)

@@ -2449,7 +2449,36 @@ export function PurchaseRequisition() {
 
               {viewingRequest.checklist_items && viewingRequest.checklist_items.length > 0 && (
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Checklist Items & Attachments</label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold text-slate-700">Checklist Items & Attachments</label>
+                    {viewingRequest.merged_pdf_path && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.storage
+                              .from('attachments')
+                              .download(viewingRequest.merged_pdf_path!);
+                            if (error) throw error;
+                            const url = URL.createObjectURL(data);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${viewingRequest.pr_number}_attachments.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          } catch (err) {
+                            console.error('Error downloading attachments:', err);
+                            alert('Failed to download attachments');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition"
+                      >
+                        <Download size={14} />
+                        Download Attachments
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-3">
                     {viewingRequest.checklist_items.map((item: any, index: number) => (
                       <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
