@@ -2023,6 +2023,11 @@ export function PettyCash() {
                     Amount {getSortIcon('amount')}
                   </button>
                 </th>
+                <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('request_type')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                    Request Type {getSortIcon('request_type')}
+                  </button>
+                </th>
                 <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                   <button onClick={() => handleSort('status')} className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors w-full">
                     Status {getSortIcon('status')}
@@ -2038,7 +2043,7 @@ export function PettyCash() {
             <tbody className="divide-y divide-slate-100">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">
+                  <td colSpan={8} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">
                     No petty cash requests found
                   </td>
                 </tr>
@@ -2072,6 +2077,15 @@ export function PettyCash() {
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="text-sm font-bold text-slate-900">
                         {formatCurrency(req.amount)}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
+                        req.request_type === 'For Liquidation'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-teal-100 text-teal-800'
+                      }`}>
+                        {req.request_type || 'For Cash Advance'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
