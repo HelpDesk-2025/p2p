@@ -1,62 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import https from 'node:https';
-import { Buffer } from 'node:buffer';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
-
-const sslAgent = new https.Agent({ rejectUnauthorized: false });
-
-async function msbcFetch(url: string, options: RequestInit & { body?: any } = {}): Promise<Response> {
-  const parsedUrl = new URL(url);
-  const bodyData = options.body
-    ? (typeof options.body === 'string' ? options.body : (options.body instanceof Uint8Array ? Buffer.from(options.body) : JSON.stringify(options.body)))
-    : null;
-
-  return new Promise((resolve, reject) => {
-    const reqHeaders: Record<string, string> = {};
-    if (options.headers) {
-      const h = options.headers as Record<string, string>;
-      for (const key of Object.keys(h)) {
-        reqHeaders[key] = h[key];
-      }
-    }
-
-    const req = https.request(
-      {
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port || 443,
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: options.method || 'GET',
-        headers: reqHeaders,
-        agent: sslAgent,
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) => chunks.push(chunk));
-        res.on('end', () => {
-          const body = Buffer.concat(chunks);
-          const responseHeaders = new Headers();
-          for (const [key, val] of Object.entries(res.headers)) {
-            if (val) responseHeaders.set(key, Array.isArray(val) ? val.join(', ') : val);
-          }
-          resolve(new Response(body, {
-            status: res.statusCode || 500,
-            statusText: res.statusMessage || '',
-            headers: responseHeaders,
-          }));
-        });
-      },
-    );
-
-    req.on('error', reject);
-    if (bodyData) req.write(bodyData);
-    req.end();
-  });
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -159,7 +107,7 @@ Deno.serve(async (req: Request) => {
     const password = 'Superteams2025';
     const basicAuth = btoa(`${username}:${password}`);
 
-    const response = await msbcFetch(apiUrl, {
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Basic ${basicAuth}`,
