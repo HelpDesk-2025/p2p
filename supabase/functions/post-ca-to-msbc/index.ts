@@ -1,5 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PDFDocument } from 'npm:pdf-lib@1.17.1';
+import https from 'node:https';
+import { Buffer } from 'node:buffer';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +12,56 @@ const corsHeaders = {
 const MSBC_USERNAME = 'SJGIPA';
 const MSBC_PASSWORD = 'Superteams2025';
 const MSBC_BASE_URL = 'https://st-joseph-group.com:7048/BC140/api/beta';
+
+const sslAgent = new https.Agent({ rejectUnauthorized: false });
+
+async function msbcFetch(url: string, options: RequestInit & { body?: any } = {}): Promise<Response> {
+  const parsedUrl = new URL(url);
+  const bodyData = options.body
+    ? (typeof options.body === 'string' ? options.body : (options.body instanceof Uint8Array ? Buffer.from(options.body) : JSON.stringify(options.body)))
+    : null;
+
+  return new Promise((resolve, reject) => {
+    const reqHeaders: Record<string, string> = {};
+    if (options.headers) {
+      const h = options.headers as Record<string, string>;
+      for (const key of Object.keys(h)) {
+        reqHeaders[key] = h[key];
+      }
+    }
+
+    const req = https.request(
+      {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: options.method || 'GET',
+        headers: reqHeaders,
+        agent: sslAgent,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => {
+          const body = Buffer.concat(chunks);
+          const responseHeaders = new Headers();
+          for (const [key, val] of Object.entries(res.headers)) {
+            if (val) responseHeaders.set(key, Array.isArray(val) ? val.join(', ') : val);
+          }
+          resolve(new Response(body, {
+            status: res.statusCode || 500,
+            statusText: res.statusMessage || '',
+            headers: responseHeaders,
+          }));
+        });
+      },
+    );
+
+    req.on('error', reject);
+    if (bodyData) req.write(bodyData);
+    req.end();
+  });
+}
 
 async function mergePDFs(pdfByteArrays: Uint8Array[]): Promise<Uint8Array> {
   const mergedPdf = await PDFDocument.create();
@@ -173,7 +225,7 @@ Deno.serve(async (req: Request) => {
     };
 
     console.log('📤 STEP 1: Creating journal batch...');
-    const step1Response = await fetch(
+    const step1Response = await msbcFetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases`,
       {
         method: 'POST',
@@ -196,7 +248,7 @@ Deno.serve(async (req: Request) => {
     console.log('✅ STEP 1: Journal batch created, ID:', parentID);
 
     console.log('📤 STEP 4: Creating journal line...');
-    const step4Response = await fetch(
+    const step4Response = await msbcFetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/journalPurchases(${parentID})/journalLinesPurch`,
       {
         method: 'POST',
@@ -224,7 +276,7 @@ Deno.serve(async (req: Request) => {
     console.log('✅ STEP 4: Journal line created, ID:', parentLineID);
 
     console.log('📤 STEP 7: Creating attachment record...');
-    const step7Response = await fetch(
+    const step7Response = await msbcFetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments`,
       {
         method: 'POST',
@@ -249,13 +301,9 @@ Deno.serve(async (req: Request) => {
     let attachmentUploadWarning = '';
 
     try {
-      console.log('📤 STEP 13: Uploading attachment content with HTTP/1.1...');
+      console.log('📤 STEP 13: Uploading attachment content...');
 
-      const http1Client = Deno.createHttpClient({
-        alpnProtocols: ['http/1.1'],
-      });
-
-      const step13Response = await fetch(
+      const step13Response = await msbcFetch(
         `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${parentLineID},id=${attachmentID})/content`,
         {
           method: 'PATCH',
@@ -265,11 +313,8 @@ Deno.serve(async (req: Request) => {
             'Content-Type': 'application/octet-stream',
           },
           body: finalPdfBytes,
-          client: http1Client,
         }
       );
-
-      http1Client.close();
 
       if (!step13Response.ok) {
         const errorText = await step13Response.text();

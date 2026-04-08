@@ -1,4 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import https from 'node:https';
+import { Buffer } from 'node:buffer';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,11 +12,55 @@ const MSBC_USERNAME = 'SJGIPA';
 const MSBC_PASSWORD = 'Superteams2025';
 const MSBC_BASE_URL = 'https://st-joseph-group.com:7048/BC140/api/beta';
 
-// Create HTTP/1.1 client for MSBC API
-const http11Client = Deno.createHttpClient({
-  http1: true,
-  http2: false,
-});
+const sslAgent = new https.Agent({ rejectUnauthorized: false });
+
+async function msbcFetch(url: string, options: RequestInit & { body?: any } = {}): Promise<Response> {
+  const parsedUrl = new URL(url);
+  const bodyData = options.body
+    ? (typeof options.body === 'string' ? options.body : (options.body instanceof Uint8Array ? Buffer.from(options.body) : JSON.stringify(options.body)))
+    : null;
+
+  return new Promise((resolve, reject) => {
+    const reqHeaders: Record<string, string> = {};
+    if (options.headers) {
+      const h = options.headers as Record<string, string>;
+      for (const key of Object.keys(h)) {
+        reqHeaders[key] = h[key];
+      }
+    }
+
+    const req = https.request(
+      {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: options.method || 'GET',
+        headers: reqHeaders,
+        agent: sslAgent,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => {
+          const body = Buffer.concat(chunks);
+          const responseHeaders = new Headers();
+          for (const [key, val] of Object.entries(res.headers)) {
+            if (val) responseHeaders.set(key, Array.isArray(val) ? val.join(', ') : val);
+          }
+          resolve(new Response(body, {
+            status: res.statusCode || 500,
+            statusText: res.statusMessage || '',
+            headers: responseHeaders,
+          }));
+        });
+      },
+    );
+
+    req.on('error', reject);
+    if (bodyData) req.write(bodyData);
+    req.end();
+  });
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -134,7 +180,7 @@ Deno.serve(async (req: Request) => {
     };
 
     console.log('📤 STEP 1: Creating purchase invoice...');
-    const step1Response = await fetch(
+    const step1Response = await msbcFetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/purchaseInvoices`,
       {
         method: 'POST',
@@ -164,7 +210,7 @@ Deno.serve(async (req: Request) => {
       const item = items[i];
       console.log(`  Adding line ${i + 1}/${items.length}: ${item.description}`);
 
-      const lineResponse = await fetch(
+      const lineResponse = await msbcFetch(
         `${MSBC_BASE_URL}/companies(${companyAPIID})/purchaseInvoices(${invoiceID})/purchaseInvoiceLines`,
         {
           method: 'POST',
@@ -191,7 +237,7 @@ Deno.serve(async (req: Request) => {
     console.log('✅ STEP 2: All invoice lines processed');
 
     console.log('📤 STEP 3: Creating attachment record...');
-    const step3Response = await fetch(
+    const step3Response = await msbcFetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments`,
       {
         method: 'POST',
@@ -213,7 +259,7 @@ Deno.serve(async (req: Request) => {
     console.log('✅ STEP 3: Attachment record created, ID:', attachmentID);
 
     console.log('📤 STEP 4: Getting attachment etag...');
-    const step4Response = await fetch(
+    const step4Response = await msbcFetch(
       `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${invoiceID},id=${attachmentID})`,
       { method: 'GET', headers }
     );
@@ -230,8 +276,8 @@ Deno.serve(async (req: Request) => {
     let attachmentUploadWarning = '';
 
     try {
-      console.log('📤 STEP 5: Uploading attachment content using HTTP/1.1...');
-      const step5Response = await fetch(
+      console.log('📤 STEP 5: Uploading attachment content...');
+      const step5Response = await msbcFetch(
         `${MSBC_BASE_URL}/companies(${companyAPIID})/attachments(parentId=${invoiceID},id=${attachmentID})/content`,
         {
           method: 'PATCH',
@@ -241,7 +287,6 @@ Deno.serve(async (req: Request) => {
             'Content-Type': 'application/octet-stream',
           },
           body: rfpBytes,
-          client: http11Client,
         }
       );
 
@@ -250,7 +295,7 @@ Deno.serve(async (req: Request) => {
         console.warn('⚠️ STEP 5 failed but continuing:', errorText);
         attachmentUploadWarning = `Attachment upload warning (HTTP ${step5Response.status}): ${errorText}`;
       } else {
-        console.log('✅ STEP 5: Attachment content uploaded successfully via HTTP/1.1');
+        console.log('✅ STEP 5: Attachment content uploaded successfully');
       }
     } catch (step5Error) {
       console.warn('⚠️ STEP 5 failed with exception but continuing:', step5Error);
