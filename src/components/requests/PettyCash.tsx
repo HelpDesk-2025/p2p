@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import { PDFDocument } from 'pdf-lib';
 import Pagination from '../Pagination';
+import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 
 interface PaymentMode {
@@ -115,6 +116,8 @@ export function PettyCash() {
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompanyId, setFilterCompanyId] = useState<string>('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -1073,24 +1076,50 @@ export function PettyCash() {
     return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
-  const filteredRequests = requests.filter((req) => {
-    if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    const companyName = (req as any).companies?.name || '';
-    const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const amountStr = req.amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
-    const requestType = req.request_type || '';
-    return (
-      req.pc_number?.toLowerCase().includes(term) ||
-      companyName.toLowerCase().includes(term) ||
-      dateStr.toLowerCase().includes(term) ||
-      req.purpose?.toLowerCase().includes(term) ||
-      amountStr.includes(term) ||
-      requestType.toLowerCase().includes(term) ||
-      req.status?.toLowerCase().includes(term)
-    );
-  });
+  const pcFilterColumns: FilterColumn[] = [
+    { key: 'pc_number', label: 'PC No.', type: 'text' },
+    { key: 'company_name', label: 'Company', type: 'select', options: companies.map(c => ({ value: c.name, label: c.name })) },
+    { key: 'request_date', label: 'Date', type: 'dateRange' },
+    { key: 'purpose', label: 'Purpose', type: 'text' },
+    { key: 'amount', label: 'Amount', type: 'number' },
+    { key: 'request_type', label: 'Request Type', type: 'select', options: [
+      { value: 'Petty Cash', label: 'Petty Cash' }, { value: 'Revolving Fund', label: 'Revolving Fund' },
+    ]},
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
+      { value: 'disbursed', label: 'Disbursed' },
+    ]},
+  ];
+
+  const pcGetFieldValue = (item: any, key: string) => {
+    if (key === 'company_name') return item.companies?.name || '';
+    return item[key];
+  };
+
+  const filteredRequests = applyFilters(
+    requests.filter((req) => {
+      if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const companyName = (req as any).companies?.name || '';
+      const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const amountStr = req.amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
+      const requestType = req.request_type || '';
+      return (
+        req.pc_number?.toLowerCase().includes(term) ||
+        companyName.toLowerCase().includes(term) ||
+        dateStr.toLowerCase().includes(term) ||
+        req.purpose?.toLowerCase().includes(term) ||
+        amountStr.includes(term) ||
+        requestType.toLowerCase().includes(term) ||
+        req.status?.toLowerCase().includes(term)
+      );
+    }),
+    filterValues,
+    pcFilterColumns,
+    pcGetFieldValue
+  );
 
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any = a[sortColumn as keyof PettyCashReq];
@@ -2044,6 +2073,22 @@ export function PettyCash() {
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Search</span>
             </button>
+            <button
+              onClick={() => setShowFilterModal(true)}
+              className={`relative px-4 py-2 text-sm border rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                getActiveFilterCount(filterValues) > 0
+                  ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="hidden sm:inline">Filter</span>
+              {getActiveFilterCount(filterValues) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {getActiveFilterCount(filterValues)}
+                </span>
+              )}
+            </button>
             {companies.length > 1 && (
               <select
                 value={filterCompanyId}
@@ -2566,6 +2611,14 @@ export function PettyCash() {
           </div>
         </div>
       )}
+
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        columns={pcFilterColumns}
+        values={filterValues}
+        onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
+      />
     </div>
   );
 }

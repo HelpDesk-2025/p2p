@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
 import Pagination from '../Pagination';
+import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -89,6 +90,8 @@ export function PurchaseRequisition() {
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompanyId, setFilterCompanyId] = useState<string>('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
 
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -1223,26 +1226,53 @@ export function PurchaseRequisition() {
     return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
-  const filteredRequests = requests.filter((req) => {
-    if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    const docNo = req.document_no || req.pr_number || '';
-    const description = req.description || req.purpose || '';
-    const department = req.department || '';
-    const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const dateReqStr = req.date_required ? new Date(req.date_required).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    const amountStr = req.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
-    return (
-      docNo.toLowerCase().includes(term) ||
-      description.toLowerCase().includes(term) ||
-      department.toLowerCase().includes(term) ||
-      dateStr.toLowerCase().includes(term) ||
-      dateReqStr.toLowerCase().includes(term) ||
-      amountStr.includes(term) ||
-      req.status?.toLowerCase().includes(term)
-    );
-  });
+  const prFilterColumns: FilterColumn[] = [
+    { key: 'document_no', label: 'Document No.', type: 'text' },
+    { key: 'company_name', label: 'Company', type: 'select', options: companies.map(c => ({ value: c.name, label: c.name })) },
+    { key: 'description', label: 'Description', type: 'text' },
+    { key: 'request_date', label: 'Request Date', type: 'dateRange' },
+    { key: 'purchase_type', label: 'Type', type: 'select', options: [{ value: 'Goods', label: 'Goods' }, { value: 'Services', label: 'Services' }] },
+    { key: 'payee', label: 'Payee', type: 'text' },
+    { key: 'total_amount', label: 'Amount', type: 'number' },
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
+      { value: 'in_procurement', label: 'In Procurement' },
+    ]},
+  ];
+
+  const prGetFieldValue = (item: any, key: string) => {
+    if (key === 'document_no') return item.document_no || item.pr_number || '';
+    if (key === 'company_name') return item.companies?.name || '';
+    if (key === 'description') return item.description || item.purpose || '';
+    return item[key];
+  };
+
+  const filteredRequests = applyFilters(
+    requests.filter((req) => {
+      if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const docNo = req.document_no || req.pr_number || '';
+      const description = req.description || req.purpose || '';
+      const department = req.department || '';
+      const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const dateReqStr = req.date_required ? new Date(req.date_required).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      const amountStr = req.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
+      return (
+        docNo.toLowerCase().includes(term) ||
+        description.toLowerCase().includes(term) ||
+        department.toLowerCase().includes(term) ||
+        dateStr.toLowerCase().includes(term) ||
+        dateReqStr.toLowerCase().includes(term) ||
+        amountStr.includes(term) ||
+        req.status?.toLowerCase().includes(term)
+      );
+    }),
+    filterValues,
+    prFilterColumns,
+    prGetFieldValue
+  );
 
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any = a[sortColumn as keyof PurchaseReq];
@@ -2177,6 +2207,22 @@ export function PurchaseRequisition() {
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Search</span>
             </button>
+            <button
+              onClick={() => setShowFilterModal(true)}
+              className={`relative px-4 py-2 text-sm border rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                getActiveFilterCount(filterValues) > 0
+                  ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="hidden sm:inline">Filter</span>
+              {getActiveFilterCount(filterValues) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {getActiveFilterCount(filterValues)}
+                </span>
+              )}
+            </button>
             {companies.length > 1 && (
               <select
                 value={filterCompanyId}
@@ -2719,6 +2765,14 @@ export function PurchaseRequisition() {
           </div>
         </div>
       )}
+
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        columns={prFilterColumns}
+        values={filterValues}
+        onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
+      />
     </div>
   );
 }

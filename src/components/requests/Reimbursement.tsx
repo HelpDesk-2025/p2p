@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { uploadLargeFile } from '../../lib/storageHelper';
 import Pagination from '../Pagination';
+import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 
 interface ExpenseItem {
   date: string;
@@ -76,6 +77,8 @@ export function Reimbursement() {
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompanyId, setFilterCompanyId] = useState<string>('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -806,22 +809,45 @@ export function Reimbursement() {
     return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
-  const filteredRequests = requests.filter((req) => {
-    if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    const companyName = (req as any).companies?.name || '';
-    const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const amountStr = req.amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
-    return (
-      req.reimb_number?.toLowerCase().includes(term) ||
-      companyName.toLowerCase().includes(term) ||
-      dateStr.toLowerCase().includes(term) ||
-      req.purpose?.toLowerCase().includes(term) ||
-      amountStr.includes(term) ||
-      req.status?.toLowerCase().includes(term)
-    );
-  });
+  const reimbFilterColumns: FilterColumn[] = [
+    { key: 'reimb_number', label: 'Reimb No.', type: 'text' },
+    { key: 'company_name', label: 'Company', type: 'select', options: companies.map(c => ({ value: c.name, label: c.name })) },
+    { key: 'request_date', label: 'Date', type: 'dateRange' },
+    { key: 'purpose', label: 'Purpose', type: 'text' },
+    { key: 'amount', label: 'Amount', type: 'number' },
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
+      { value: 'reimbursed', label: 'Reimbursed' },
+    ]},
+  ];
+
+  const reimbGetFieldValue = (item: any, key: string) => {
+    if (key === 'company_name') return item.companies?.name || '';
+    return item[key];
+  };
+
+  const filteredRequests = applyFilters(
+    requests.filter((req) => {
+      if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const companyName = (req as any).companies?.name || '';
+      const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const amountStr = req.amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
+      return (
+        req.reimb_number?.toLowerCase().includes(term) ||
+        companyName.toLowerCase().includes(term) ||
+        dateStr.toLowerCase().includes(term) ||
+        req.purpose?.toLowerCase().includes(term) ||
+        amountStr.includes(term) ||
+        req.status?.toLowerCase().includes(term)
+      );
+    }),
+    filterValues,
+    reimbFilterColumns,
+    reimbGetFieldValue
+  );
 
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any;
@@ -1502,6 +1528,22 @@ export function Reimbursement() {
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Search</span>
             </button>
+            <button
+              onClick={() => setShowFilterModal(true)}
+              className={`relative px-4 py-2 text-sm border rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                getActiveFilterCount(filterValues) > 0
+                  ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="hidden sm:inline">Filter</span>
+              {getActiveFilterCount(filterValues) > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {getActiveFilterCount(filterValues)}
+                </span>
+              )}
+            </button>
             {companies.length > 1 && (
               <select
                 value={filterCompanyId}
@@ -1963,6 +2005,14 @@ export function Reimbursement() {
           </div>
         </div>
       )}
+
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        columns={reimbFilterColumns}
+        values={filterValues}
+        onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
+      />
     </div>
   );
 }
