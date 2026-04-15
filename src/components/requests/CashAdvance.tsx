@@ -71,8 +71,10 @@ export function CashAdvance() {
   const [viewingRequest, setViewingRequest] = useState<CashAdvanceReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CashAdvanceReq | null>(null);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [breakdownAttachments, setBreakdownAttachments] = useState<File[]>([]);
+  const [boardApprovalAttachments, setBoardApprovalAttachments] = useState<File[]>([]);
+  const breakdownFileInputRef = useRef<HTMLInputElement>(null);
+  const boardApprovalFileInputRef = useRef<HTMLInputElement>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
@@ -362,23 +364,18 @@ export function CashAdvance() {
     setFormData({ ...formData, payment_mode_lines: newLines });
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    console.log('=== File Selection ===');
-    console.log(`Files selected: ${files.length}`);
-
+  const validateAndAddFiles = (
+    files: FileList,
+    setter: React.Dispatch<React.SetStateAction<File[]>>,
+    inputRef: React.RefObject<HTMLInputElement>
+  ) => {
     const validFiles: File[] = [];
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-
     const maxSizeBytes = 40 * 1024 * 1024;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      console.log(`Checking file: ${file.name}, type: ${file.type}, size: ${file.size}`);
       if (!allowedTypes.includes(file.type)) {
-        console.log(`  ✗ Invalid file type rejected`);
         alert(`File ${file.name} is not a valid format. Only images (JPG, PNG) and PDF files are allowed.`);
         continue;
       }
@@ -386,23 +383,29 @@ export function CashAdvance() {
         alert(`File ${file.name} exceeds the 40MB size limit (${(file.size / 1024 / 1024).toFixed(2)}MB).`);
         continue;
       }
-      console.log(`  ✓ Valid file added`);
       validFiles.push(file);
     }
 
-    console.log(`Valid files to add: ${validFiles.length}`);
-    setAttachments(prev => {
-      const newAttachments = [...prev, ...validFiles];
-      console.log(`Total attachments after adding: ${newAttachments.length}`);
-      return newAttachments;
-    });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    setter(prev => [...prev, ...validFiles]);
+    if (inputRef.current) {
+      inputRef.current.value = '';
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+  const handleBreakdownFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) validateAndAddFiles(e.target.files, setBreakdownAttachments, breakdownFileInputRef);
+  };
+
+  const handleBoardApprovalFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) validateAndAddFiles(e.target.files, setBoardApprovalAttachments, boardApprovalFileInputRef);
+  };
+
+  const removeBreakdownAttachment = (index: number) => {
+    setBreakdownAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeBoardApprovalAttachment = (index: number) => {
+    setBoardApprovalAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleEditDraft = (request: CashAdvanceReq) => {
@@ -431,15 +434,13 @@ export function CashAdvance() {
       return;
     }
 
-    // Validate attachments are required for cash advance
-    if (attachments.length === 0 && !editingRequest) {
-      alert('Please upload supporting documents. Attachments are required for cash advance requests.');
+    if (breakdownAttachments.length === 0 && !editingRequest) {
+      alert('Please upload a Breakdown Summary of Request. This attachment is required.');
       return;
     }
 
-    // For editing, check if attachments exist either as new uploads or existing ones
-    if (editingRequest && attachments.length === 0 && (!editingRequest.attachment_metadata || editingRequest.attachment_metadata.length === 0)) {
-      alert('Please upload supporting documents. Attachments are required for cash advance requests.');
+    if (editingRequest && breakdownAttachments.length === 0 && (!editingRequest.attachment_metadata || editingRequest.attachment_metadata.length === 0)) {
+      alert('Please upload a Breakdown Summary of Request. This attachment is required.');
       return;
     }
 
@@ -467,21 +468,15 @@ export function CashAdvance() {
 
       const budgetedValue = formData.budgeted === 'Budgeted';
 
-      if (attachments.length > 0) {
-        try {
-          console.log('=== Starting PDF merge ===');
-          console.log(`Total attachments to merge: ${attachments.length}`);
-          attachments.forEach((file, index) => {
-            console.log(`  [${index}] ${file.name} - ${file.type} - ${file.size} bytes`);
-          });
+      const allAttachments = [...breakdownAttachments, ...boardApprovalAttachments];
 
-          const mergedPdfBlob = await mergeFilesToPDFBlob(attachments);
-          console.log('=== PDF merge completed ===');
+      if (allAttachments.length > 0) {
+        try {
+          const mergedPdfBlob = await mergeFilesToPDFBlob(allAttachments);
 
           const fileName = `CA_${formData.document_no}_attachments_${Date.now()}.pdf`;
           const filePath = `cash_advance/${formData.document_no}/${fileName}`;
 
-          // Convert blob to ArrayBuffer for more efficient upload
           const arrayBuffer = await mergedPdfBlob.arrayBuffer();
 
           try {
@@ -492,7 +487,7 @@ export function CashAdvance() {
             throw new Error(`Failed to upload merged PDF: ${uploadError.message || uploadError}`);
           }
 
-          attachmentMetadata = attachments.map(file => ({
+          attachmentMetadata = allAttachments.map(file => ({
             name: file.name,
             type: file.type,
             size: file.size
@@ -628,7 +623,8 @@ export function CashAdvance() {
       setShowForm(false);
       setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '', payment_mode_lines: [] });
       setVendorSearchTerm('');
-      setAttachments([]);
+      setBreakdownAttachments([]);
+      setBoardApprovalAttachments([]);
       setEditingRequest(null);
       setSelectedPaymentMode(null);
       loadRequests();
@@ -1364,21 +1360,21 @@ export function CashAdvance() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Attachments (Images & PDFs) <span className="text-red-500">*</span>
+              Breakdown Summary of Request <span className="text-red-500">*</span>
             </label>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <input
-                  ref={fileInputRef}
+                  ref={breakdownFileInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,application/pdf"
                   multiple
-                  onChange={handleFileSelect}
+                  onChange={handleBreakdownFileSelect}
                   className="hidden"
                 />
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => breakdownFileInputRef.current?.click()}
                   className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
                 >
                   <Upload size={18} />
@@ -1389,12 +1385,12 @@ export function CashAdvance() {
                 </span>
               </div>
 
-              {attachments.length > 0 && (
+              {breakdownAttachments.length > 0 && (
                 <div className="border border-slate-200 rounded-lg p-4 space-y-2">
                   <p className="text-sm font-medium text-slate-700 mb-2">
-                    {attachments.length} file(s) selected
+                    {breakdownAttachments.length} file(s) selected
                   </p>
-                  {attachments.map((file, index) => (
+                  {breakdownAttachments.map((file, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg"
@@ -1410,7 +1406,67 @@ export function CashAdvance() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => removeAttachment(index)}
+                        onClick={() => removeBreakdownAttachment(index)}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition flex-shrink-0"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Board Approval <span className="text-xs text-slate-400 font-normal">(Optional)</span>
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <input
+                  ref={boardApprovalFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,application/pdf"
+                  multiple
+                  onChange={handleBoardApprovalFileSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => boardApprovalFileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
+                >
+                  <Upload size={18} />
+                  Upload Files
+                </button>
+                <span className="text-sm text-slate-500">
+                  JPG, PNG, or PDF files
+                </span>
+              </div>
+
+              {boardApprovalAttachments.length > 0 && (
+                <div className="border border-slate-200 rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    {boardApprovalAttachments.length} file(s) selected
+                  </p>
+                  {boardApprovalAttachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText size={16} className="text-slate-400 flex-shrink-0" />
+                        <span className="text-sm text-slate-700 truncate">
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-slate-500 flex-shrink-0">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeBoardApprovalAttachment(index)}
                         className="p-1 text-red-600 hover:bg-red-50 rounded transition flex-shrink-0"
                       >
                         <Trash2 size={16} />
