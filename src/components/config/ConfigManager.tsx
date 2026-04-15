@@ -1994,6 +1994,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
     name: '',
     api_id: '',
     president_min_amount: '0',
+    max_petty_cash_advance: '3000',
+    min_cash_advance: '3001',
     accounting_notification_email: '',
     procurement_notification_email: ''
   });
@@ -2007,6 +2009,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           name: formData.name,
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
+          max_petty_cash_advance: parseFloat(formData.max_petty_cash_advance) || 3000,
+          min_cash_advance: parseFloat(formData.min_cash_advance) || 3001,
           accounting_notification_email: formData.accounting_notification_email || null,
           procurement_notification_email: formData.procurement_notification_email || null
         }).eq('id', editingId);
@@ -2016,6 +2020,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           name: formData.name,
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
+          max_petty_cash_advance: parseFloat(formData.max_petty_cash_advance) || 3000,
+          min_cash_advance: parseFloat(formData.min_cash_advance) || 3001,
           accounting_notification_email: formData.accounting_notification_email || null,
           procurement_notification_email: formData.procurement_notification_email || null
         };
@@ -2024,7 +2030,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
       }
       setShowForm(false);
       setEditingId(null);
-      setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '', procurement_notification_email: '' });
+      setFormData({ name: '', api_id: '', president_min_amount: '0', max_petty_cash_advance: '3000', min_cash_advance: '3001', accounting_notification_email: '', procurement_notification_email: '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -2037,6 +2043,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
       name: company.name,
       api_id: company.api_id || '',
       president_min_amount: company.president_min_amount?.toString() || '0',
+      max_petty_cash_advance: company.max_petty_cash_advance?.toString() || '3000',
+      min_cash_advance: company.min_cash_advance?.toString() || '3001',
       accounting_notification_email: company.accounting_notification_email || '',
       procurement_notification_email: company.procurement_notification_email || ''
     });
@@ -2046,7 +2054,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: '', api_id: '', president_min_amount: '0', accounting_notification_email: '', procurement_notification_email: '' });
+    setFormData({ name: '', api_id: '', president_min_amount: '0', max_petty_cash_advance: '3000', min_cash_advance: '3001', accounting_notification_email: '', procurement_notification_email: '' });
   };
 
   const handleDelete = async (id: string) => {
@@ -2149,6 +2157,40 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
                 />
               </div>
               <p className="text-xs text-slate-500">Amounts above this require president approval</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Maximum Petty Cash Advance</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold">&#8369;</span>
+                <input
+                  type="number"
+                  placeholder="3000.00"
+                  min="0"
+                  step="0.01"
+                  value={formData.max_petty_cash_advance}
+                  onChange={(e) => setFormData({ ...formData, max_petty_cash_advance: e.target.value })}
+                  className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <p className="text-xs text-slate-500">Maximum amount allowed for petty cash advance requests</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Minimum Cash Advance</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold">&#8369;</span>
+                <input
+                  type="number"
+                  placeholder="3001.00"
+                  min="0"
+                  step="0.01"
+                  value={formData.min_cash_advance}
+                  onChange={(e) => setFormData({ ...formData, min_cash_advance: e.target.value })}
+                  className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <p className="text-xs text-slate-500">Minimum amount required for cash advance requests</p>
             </div>
 
             <div className="space-y-2">
