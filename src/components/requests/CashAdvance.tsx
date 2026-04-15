@@ -1043,10 +1043,9 @@ export function CashAdvance() {
 
       if (uploadError) throw uploadError;
 
-      // Update the database with the new PDF path
       const { error: updateError } = await supabase
         .from('cash_advance_requests')
-        .update({ approved_ca_pdf_path: uploadData.path })
+        .update({ approved_ca_pdf_path: uploadData.path, rfp_pdf_path: null })
         .eq('id', request.id);
 
       if (updateError) throw updateError;

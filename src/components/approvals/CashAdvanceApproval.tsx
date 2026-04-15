@@ -773,12 +773,11 @@ export function CashAdvanceApproval() {
 
       if (uploadError) throw uploadError;
 
-      // Update the request with new PDF paths
       const { error: updateError } = await supabase
         .from('cash_advance_requests')
         .update({
-          merged_pdf_path: mergedPdfPath,
-          rfp_pdf_path: `cash-advance/${selectedRequest.ca_number}_rfp_${timestamp}.pdf`
+          approved_ca_pdf_path: mergedPdfPath,
+          rfp_pdf_path: null
         })
         .eq('id', selectedRequest.id);
 

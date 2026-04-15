@@ -112,50 +112,63 @@ Deno.serve(async (req: Request) => {
 
     const pdfParts: Uint8Array[] = [];
 
-    if (rfpPath) {
-      console.log('📥 Downloading RFP PDF from:', rfpPath);
-      const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
-        .from('attachments')
-        .download(rfpPath);
-
-      if (rfpDownloadError || !rfpData) {
-        throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
-      }
-      pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
-      console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
-    }
-
-    if (approvedCaPdfPath) {
-      console.log('📥 Downloading approved CA form PDF from:', approvedCaPdfPath);
+    if (!rfpPath && approvedCaPdfPath) {
+      console.log('📥 No separate RFP path - approved_ca_pdf_path is the complete merged document');
       const { data: caFormData, error: caFormDownloadError } = await supabaseClient.storage
         .from('attachments')
         .download(approvedCaPdfPath);
 
       if (caFormDownloadError || !caFormData) {
-        console.warn('⚠️ Failed to download CA form PDF, continuing without it:', caFormDownloadError?.message);
-      } else {
-        pdfParts.push(new Uint8Array(await caFormData.arrayBuffer()));
-        console.log('✅ CA form PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+        throw new Error(`Failed to download merged PDF: ${caFormDownloadError?.message}`);
       }
-    }
+      pdfParts.push(new Uint8Array(await caFormData.arrayBuffer()));
+      console.log('✅ Complete merged PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+    } else {
+      if (rfpPath) {
+        console.log('📥 Downloading RFP PDF from:', rfpPath);
+        const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
+          .from('attachments')
+          .download(rfpPath);
 
-    if (attachmentsPdfPath) {
-      console.log('📥 Downloading uploaded attachments PDF from:', attachmentsPdfPath);
-      const { data: attachData, error: attachDownloadError } = await supabaseClient.storage
-        .from('attachments')
-        .download(attachmentsPdfPath);
+        if (rfpDownloadError || !rfpData) {
+          throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
+        }
+        pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
+        console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+      }
 
-      if (attachDownloadError || !attachData) {
-        console.warn('⚠️ Failed to download attachments PDF, continuing without it:', attachDownloadError?.message);
-      } else {
-        pdfParts.push(new Uint8Array(await attachData.arrayBuffer()));
-        console.log('✅ Attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+      if (approvedCaPdfPath) {
+        console.log('📥 Downloading approved CA form PDF from:', approvedCaPdfPath);
+        const { data: caFormData, error: caFormDownloadError } = await supabaseClient.storage
+          .from('attachments')
+          .download(approvedCaPdfPath);
+
+        if (caFormDownloadError || !caFormData) {
+          console.warn('⚠️ Failed to download CA form PDF, continuing without it:', caFormDownloadError?.message);
+        } else {
+          pdfParts.push(new Uint8Array(await caFormData.arrayBuffer()));
+          console.log('✅ CA form PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+        }
+      }
+
+      if (attachmentsPdfPath) {
+        console.log('📥 Downloading uploaded attachments PDF from:', attachmentsPdfPath);
+        const { data: attachData, error: attachDownloadError } = await supabaseClient.storage
+          .from('attachments')
+          .download(attachmentsPdfPath);
+
+        if (attachDownloadError || !attachData) {
+          console.warn('⚠️ Failed to download attachments PDF, continuing without it:', attachDownloadError?.message);
+        } else {
+          pdfParts.push(new Uint8Array(await attachData.arrayBuffer()));
+          console.log('✅ Attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+        }
       }
     }
 
     let finalPdfBytes: Uint8Array;
     if (pdfParts.length > 1) {
-      console.log('🔀 Merging RFP + CA/attachments PDFs...');
+      console.log('🔀 Merging PDFs...');
       finalPdfBytes = await mergePDFs(pdfParts);
       console.log('✅ PDFs merged, final size:', finalPdfBytes.length);
     } else {
