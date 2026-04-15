@@ -115,7 +115,6 @@ export function PettyCash() {
   const [tempSubItemSpecifyValues, setTempSubItemSpecifyValues] = useState<{ [key: string]: string }>({});
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCompanyId, setFilterCompanyId] = useState<string>('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -1099,7 +1098,6 @@ export function PettyCash() {
 
   const filteredRequests = applyFilters(
     requests.filter((req) => {
-      if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
       if (!searchTerm.trim()) return true;
       const term = searchTerm.toLowerCase();
       const companyName = (req as any).companies?.name || '';
@@ -2089,18 +2087,6 @@ export function PettyCash() {
                 </span>
               )}
             </button>
-            {companies.length > 1 && (
-              <select
-                value={filterCompanyId}
-                onChange={(e) => { setFilterCompanyId(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white sm:w-56"
-              >
-                <option value="">All Companies</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            )}
           </div>
         </div>
         <div className="overflow-auto flex-1">
