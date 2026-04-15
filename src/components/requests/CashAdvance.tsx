@@ -95,6 +95,9 @@ export function CashAdvance() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const companiesInitialized = useRef(false);
 
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+  const minCashAdvance = selectedCompany?.min_cash_advance ?? 3001;
+
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -252,7 +255,7 @@ export function CashAdvance() {
       if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
-          .select('id, name')
+          .select('id, name, min_cash_advance')
           .in('id', profile.allowed_companies)
           .eq('is_active', true)
           .order('name', { ascending: true });
@@ -271,6 +274,12 @@ export function CashAdvance() {
           setSelectedCompanyId(profile.company_id || '');
           if (profile.company_id) {
             loadDepartments(profile.company_id);
+            const { data: companyData } = await supabase
+              .from('companies')
+              .select('id, name, min_cash_advance')
+              .eq('id', profile.company_id)
+              .maybeSingle();
+            if (companyData) setCompanies([companyData]);
           }
           companiesInitialized.current = true;
         }
@@ -417,8 +426,8 @@ export function CashAdvance() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
-    if (formData.amount < 5000) {
-      alert('Amount must be at least ₱5,000');
+    if (formData.amount < minCashAdvance) {
+      alert(`Amount must be at least ₱${minCashAdvance.toLocaleString()}`);
       return;
     }
 
@@ -636,8 +645,8 @@ export function CashAdvance() {
   };
 
   const handleSubmitDraft = async (request: CashAdvanceReq) => {
-    if (request.amount < 5000) {
-      alert('Amount must be at least ₱5,000');
+    if (request.amount < minCashAdvance) {
+      alert(`Amount must be at least ₱${minCashAdvance.toLocaleString()}`);
       return;
     }
 
@@ -1269,18 +1278,18 @@ export function CashAdvance() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Amount (Min: ₱5,000)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Amount (Min: ₱{minCashAdvance.toLocaleString()})</label>
             <input
               type="number"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              min="5000"
+              min={minCashAdvance}
               step="0.01"
               required
             />
-            {formData.amount > 0 && formData.amount < 5000 && (
-              <p className="text-red-600 text-sm mt-1">Amount must be at least ₱5,000</p>
+            {formData.amount > 0 && formData.amount < minCashAdvance && (
+              <p className="text-red-600 text-sm mt-1">Amount must be at least ₱{minCashAdvance.toLocaleString()}</p>
             )}
           </div>
 
