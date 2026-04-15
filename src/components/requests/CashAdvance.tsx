@@ -996,6 +996,7 @@ export function CashAdvance() {
       const rfpBytes = await generateRFP({
         companyName: companyData?.name || 'N/A',
         requestType: 'Cash Advance',
+        documentNumber: request.ca_number,
         dateOfRequest: new Date(request.request_date).toLocaleDateString(),
         payee: request.payee || 'Unknown',
         purpose: request.purpose,
