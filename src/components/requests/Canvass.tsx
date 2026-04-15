@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
@@ -178,6 +178,7 @@ export function Canvass() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedPRCompany, setSelectedPRCompany] = useState<string>('');
   const [isHorizontalLayout, setIsHorizontalLayout] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -927,7 +928,26 @@ export function Canvass() {
     return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
-  const sortedRequests = [...requests].sort((a, b) => {
+  const filteredRequests = requests.filter((req) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const companyName = (req as any).companies?.name || '';
+    const prDocNo = req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number || '';
+    const prAmount = req.purchase_requisitions?.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
+    const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const reqDateStr = req.required_date ? new Date(req.required_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    return (
+      req.canvass_number?.toLowerCase().includes(term) ||
+      companyName.toLowerCase().includes(term) ||
+      prDocNo.toLowerCase().includes(term) ||
+      prAmount.includes(term) ||
+      dateStr.toLowerCase().includes(term) ||
+      reqDateStr.toLowerCase().includes(term) ||
+      req.status?.toLowerCase().includes(term)
+    );
+  });
+
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any = a[sortColumn as keyof CanvassReq];
     let bVal: any = b[sortColumn as keyof CanvassReq];
 
@@ -1989,6 +2009,26 @@ export function Canvass() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              placeholder="Search by canvass no., company, PR no., date, status..."
+              className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
         <div className="overflow-auto flex-1">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">

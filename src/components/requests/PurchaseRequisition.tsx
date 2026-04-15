@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import Pagination from '../Pagination';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
@@ -85,6 +85,8 @@ export function PurchaseRequisition() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PurchaseReq | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -1219,7 +1221,27 @@ export function PurchaseRequisition() {
     return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
-  const sortedRequests = [...requests].sort((a, b) => {
+  const filteredRequests = requests.filter((req) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    const docNo = req.document_no || req.pr_number || '';
+    const description = req.description || req.purpose || '';
+    const department = req.department || '';
+    const dateStr = new Date(req.request_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const dateReqStr = req.date_required ? new Date(req.date_required).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const amountStr = req.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '';
+    return (
+      docNo.toLowerCase().includes(term) ||
+      description.toLowerCase().includes(term) ||
+      department.toLowerCase().includes(term) ||
+      dateStr.toLowerCase().includes(term) ||
+      dateReqStr.toLowerCase().includes(term) ||
+      amountStr.includes(term) ||
+      req.status?.toLowerCase().includes(term)
+    );
+  });
+
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any = a[sortColumn as keyof PurchaseReq];
     let bVal: any = b[sortColumn as keyof PurchaseReq];
 
@@ -2124,6 +2146,26 @@ export function PurchaseRequisition() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
+        <div className="px-4 py-3 border-b border-slate-200">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              placeholder="Search by document no., description, department, amount, status..."
+              className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
         {/* Mobile Card View */}
         <div className="lg:hidden w-full max-w-full overflow-x-hidden">
           {paginatedRequests.length === 0 ? (
