@@ -212,7 +212,6 @@ export async function fetchApprovalRecordsWithRetry(
         }
       }
 
-      // Map approval records with e-signatures
       const approvalRecordsWithSigs = await Promise.all(
         (allApprovalRecords || []).map(async (record) => {
           const { data: approverData } = await supabase
@@ -221,12 +220,26 @@ export async function fetchApprovalRecordsWithRetry(
             .eq('id', record.approver_id)
             .maybeSingle();
 
+          let forChecking = record.for_checking || false;
+          if (!forChecking && record.approver_id) {
+            const { data: flowData } = await supabase
+              .from('approval_flows')
+              .select('for_checking')
+              .eq('user_id', record.approver_id)
+              .eq('sequence', record.sequence)
+              .eq('for_checking', true)
+              .maybeSingle();
+            if (flowData) {
+              forChecking = true;
+            }
+          }
+
           return {
             approver_name: record.approver_name,
             approver_esig: approverData?.e_sig || null,
             approval_date: record.approval_date,
             sequence: record.sequence,
-            for_checking: record.for_checking || false
+            for_checking: forChecking
           };
         })
       );
