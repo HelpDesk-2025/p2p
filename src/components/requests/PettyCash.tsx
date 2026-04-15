@@ -83,11 +83,15 @@ export function PettyCash() {
   const [viewingRequest, setViewingRequest] = useState<PettyCashReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PettyCashReq | null>(null);
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string; max_petty_cash_advance?: number }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const companiesInitialized = useRef(false);
+
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+  const maxPettyCashAdvance = selectedCompany?.max_petty_cash_advance ?? 5000;
+
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
@@ -134,8 +138,8 @@ export function PettyCash() {
   };
 
   const handleAmountChange = (value: number) => {
-    if (value > 5000) {
-      setAmountError('Petty cash amount cannot exceed ₱5,000.00');
+    if (value > maxPettyCashAdvance) {
+      setAmountError(`Petty cash amount cannot exceed ₱${maxPettyCashAdvance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     } else {
       setAmountError('');
     }
@@ -410,7 +414,7 @@ export function PettyCash() {
       if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
-          .select('id, name')
+          .select('id, name, max_petty_cash_advance')
           .in('id', profile.allowed_companies)
           .eq('is_active', true)
           .order('name', { ascending: true });
@@ -428,9 +432,9 @@ export function PettyCash() {
         if (profile.company_id) {
           const { data: companyData, error: companyError } = await supabase
             .from('companies')
-            .select('id, name')
+            .select('id, name, max_petty_cash_advance')
             .eq('id', profile.company_id)
-            .single();
+            .maybeSingle();
 
           if (!companyError && companyData) {
             setCompanies([companyData]);
@@ -476,6 +480,7 @@ export function PettyCash() {
     setSelectedCompanyId(companyId);
     setSelectedDepartment('');
     setDepartments([]);
+    setAmountError('');
 
     if (companyId) {
       loadDepartments(companyId);
@@ -584,9 +589,8 @@ export function PettyCash() {
         return;
       }
     } else {
-      // For other types: validate regular amount
-      if (formData.amount > 5000) {
-        alert('Petty cash amount cannot exceed ₱5,000.00');
+      if (formData.amount > maxPettyCashAdvance) {
+        alert(`Petty cash amount cannot exceed ₱${maxPettyCashAdvance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         return;
       }
     }
@@ -1970,13 +1974,13 @@ export function PettyCash() {
           ) : (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Amount <span className="text-xs text-slate-500">(Maximum: ₱5,000.00)</span>
+                Amount <span className="text-xs text-slate-500">(Maximum: ₱{maxPettyCashAdvance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
               </label>
               <input
                 type="number"
                 value={formData.amount}
                 onChange={(e) => handleAmountChange(Number(e.target.value))}
-                max={5000}
+                max={maxPettyCashAdvance}
                 step="0.01"
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none ${
                   amountError
