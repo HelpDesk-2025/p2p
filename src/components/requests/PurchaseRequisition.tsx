@@ -86,6 +86,7 @@ export function PurchaseRequisition() {
   const [editingRequest, setEditingRequest] = useState<PurchaseReq | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompanyId, setFilterCompanyId] = useState<string>('');
 
@@ -2154,20 +2155,28 @@ export function PurchaseRequisition() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { setSearchTerm(searchInput); setCurrentPage(1); } }}
                 placeholder="Search by document no., description, department, amount, status..."
-                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
-              {searchTerm && (
+              {searchInput && (
                 <button
-                  onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                  onClick={() => { setSearchInput(''); setSearchTerm(''); setCurrentPage(1); }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
+            <button
+              onClick={() => { setSearchTerm(searchInput); setCurrentPage(1); }}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">Search</span>
+            </button>
             {companies.length > 1 && (
               <select
                 value={filterCompanyId}
