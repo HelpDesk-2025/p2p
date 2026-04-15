@@ -87,6 +87,7 @@ export function PurchaseRequisition() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterCompanyId, setFilterCompanyId] = useState<string>('');
 
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -1222,6 +1223,7 @@ export function PurchaseRequisition() {
   };
 
   const filteredRequests = requests.filter((req) => {
+    if (filterCompanyId && (req as any).companies?.id !== filterCompanyId) return false;
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
     const docNo = req.document_no || req.pr_number || '';
@@ -2147,22 +2149,36 @@ export function PurchaseRequisition() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
         <div className="px-4 py-3 border-b border-slate-200">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              placeholder="Search by document no., description, department, amount, status..."
-              className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                placeholder="Search by document no., description, department, amount, status..."
+                className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {companies.length > 1 && (
+              <select
+                value={filterCompanyId}
+                onChange={(e) => { setFilterCompanyId(e.target.value); setCurrentPage(1); }}
+                className="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white sm:w-56"
               >
-                <X className="w-4 h-4" />
-              </button>
+                <option value="">All Companies</option>
+                {companies.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             )}
           </div>
         </div>
