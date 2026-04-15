@@ -176,7 +176,7 @@ Deno.serve(async (req: Request) => {
       console.log('✅ Using single PDF, size:', finalPdfBytes.length);
     }
 
-    const attachmentFileName = `${documentNumber}_Complete_Package.pdf`;
+    const attachmentFileName = `${documentNumber}_RFP&CA_FORM.pdf`;
     console.log('✅ PDF ready, filename:', attachmentFileName);
 
     const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
