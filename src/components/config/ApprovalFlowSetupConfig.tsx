@@ -49,6 +49,7 @@ export function ApprovalFlowSetupConfig() {
   });
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [alternateUserSearchQuery, setAlternateUserSearchQuery] = useState("");
+  const [stepCountMap, setStepCountMap] = useState<Record<string, number>>({});
 
   // Filter and sorting states
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,6 +65,7 @@ export function ApprovalFlowSetupConfig() {
 
   useEffect(() => {
     loadSetups();
+    loadStepCounts();
     loadCompanies();
     loadUsers();
   }, []);
@@ -78,14 +80,47 @@ export function ApprovalFlowSetupConfig() {
         `)
         .order("created_at", { ascending: false });
       setSetups(setupsData || []);
+    } catch (error: any) {
+      console.error("Error loading setups:", error);
+    }
+  };
 
+  const loadStepsForSetup = async (setupId: string) => {
+    try {
       const { data: stepsData } = await supabase
         .from("approval_flows")
         .select("*")
-        .not("approval_flow_setup_id", "is", null);
+        .eq("approval_flow_setup_id", setupId);
       setSteps(stepsData || []);
     } catch (error: any) {
-      console.error("Error loading setups:", error);
+      console.error("Error loading steps:", error);
+    }
+  };
+
+  const loadStepCounts = async () => {
+    try {
+      const allRows: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("approval_flows")
+          .select("approval_flow_setup_id")
+          .not("approval_flow_setup_id", "is", null)
+          .range(from, from + pageSize - 1);
+        if (!data || data.length === 0) break;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      setStepCountMap(
+        allRows.reduce((acc: Record<string, number>, row: any) => {
+          acc[row.approval_flow_setup_id] = (acc[row.approval_flow_setup_id] || 0) + 1;
+          return acc;
+        }, {})
+      );
+    } catch (error: any) {
+      console.error("Error loading step counts:", error);
     }
   };
 
@@ -197,8 +232,9 @@ export function ApprovalFlowSetupConfig() {
 
       setShowForm(false);
       setEditingSetupId(null);
+      setSteps([]);
       setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
-      loadSetups();
+      await loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -212,7 +248,8 @@ export function ApprovalFlowSetupConfig() {
         .delete()
         .eq("id", id);
       if (error) throw error;
-      loadSetups();
+      await loadSetups();
+      loadStepCounts();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -258,7 +295,8 @@ export function ApprovalFlowSetupConfig() {
       setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
       setAlternateUserSearchQuery("");
-      await loadSetups();
+      await loadStepsForSetup(editingSetupId);
+      loadStepCounts();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -306,7 +344,7 @@ export function ApprovalFlowSetupConfig() {
       setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
       setAlternateUserSearchQuery("");
-      await loadSetups();
+      if (editingSetupId) await loadStepsForSetup(editingSetupId);
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -323,7 +361,8 @@ export function ApprovalFlowSetupConfig() {
 
       if (error) throw error;
 
-      await loadSetups();
+      if (editingSetupId) await loadStepsForSetup(editingSetupId);
+      loadStepCounts();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -338,6 +377,7 @@ export function ApprovalFlowSetupConfig() {
       request_type: setup.request_type
     });
     setShowForm(true);
+    loadStepsForSetup(setup.id);
   };
 
   const selectedCompany = companies.find(c => c.id === formData.company_id);
@@ -1055,7 +1095,7 @@ export function ApprovalFlowSetupConfig() {
             <tbody className="divide-y divide-slate-100">
               {paginatedSetups.length > 0 ? (
                 paginatedSetups.map((setup) => {
-                  const setupSteps = steps.filter(s => s.approval_flow_setup_id === setup.id);
+                  const setupStepCount = stepCountMap[setup.id] || 0;
                   return (
                     <tr key={setup.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                       <td className="px-4 py-4 text-sm font-semibold text-slate-900">{setup.name}</td>
@@ -1070,7 +1110,7 @@ export function ApprovalFlowSetupConfig() {
                       </td>
                       <td className="px-4 py-4 text-sm">
                         <span className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800">
-                          {setupSteps.length} Steps
+                          {setupStepCount} Steps
                         </span>
                       </td>
                       <td className="px-4 py-4 text-sm">
