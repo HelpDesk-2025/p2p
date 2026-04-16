@@ -250,14 +250,15 @@ export function ApprovalFlowSetupConfig() {
         is_active: true
       };
 
-      const { error } = await supabase.from("approval_flows").insert(payload);
+      const { data: insertedStep, error } = await supabase.from("approval_flows").insert(payload).select().maybeSingle();
       if (error) throw error;
+      if (!insertedStep) throw new Error("Failed to create approval step");
 
       setAddingStepToWorkflow(null);
       setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
       setAlternateUserSearchQuery("");
-      loadSetups();
+      await loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -305,7 +306,7 @@ export function ApprovalFlowSetupConfig() {
       setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
       setUserSearchQuery("");
       setAlternateUserSearchQuery("");
-      loadSetups();
+      await loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
@@ -322,7 +323,7 @@ export function ApprovalFlowSetupConfig() {
 
       if (error) throw error;
 
-      loadSetups();
+      await loadSetups();
     } catch (error: any) {
       alert("Error: " + error.message);
     }
