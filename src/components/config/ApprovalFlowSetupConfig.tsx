@@ -225,11 +225,6 @@ export function ApprovalFlowSetupConfig() {
         return;
       }
 
-      if (newStepData.approver_type === "Specific User" && !newStepData.user_id) {
-        alert("Please select a user");
-        return;
-      }
-
       const existingSteps = steps.filter(
         s => s.approval_flow_setup_id === editingSetupId && s.workflow_type === workflowType
       );
@@ -640,7 +635,13 @@ export function ApprovalFlowSetupConfig() {
                           </div>
                         </div>
                         <button
-                          onClick={() => setAddingStepToWorkflow(workflowType)}
+                          onClick={() => {
+                            setEditingStepId(null);
+                            setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
+                            setUserSearchQuery("");
+                            setAlternateUserSearchQuery("");
+                            setAddingStepToWorkflow(workflowType);
+                          }}
                           className={`p-1.5 ${colors.btn} text-white rounded-lg transition-all`}
                           title="Add Step"
                         >
