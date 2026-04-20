@@ -2136,6 +2136,16 @@ export function PettyCash() {
                 </th>
                 <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Cash Release
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Cash Received
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Action
                   </span>
                 </th>
@@ -2144,7 +2154,7 @@ export function PettyCash() {
             <tbody className="divide-y divide-slate-100">
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">
+                  <td colSpan={10} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-slate-500 text-xs sm:text-sm">
                     No petty cash requests found
                   </td>
                 </tr>
@@ -2193,6 +2203,32 @@ export function PettyCash() {
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
                         {req.status}
                       </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      {req.request_type === 'For Cash Advance' && req.status === 'approved' ? (
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                          req.cash_released
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {req.cash_released ? 'Released' : 'Pending'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">--</span>
+                      )}
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      {(req.request_type === 'For Cash Advance' || req.request_type === 'For Reimbursement') && req.status === 'approved' ? (
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                          req.received_at
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {req.received_at ? 'Received' : 'Pending'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">--</span>
+                      )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button

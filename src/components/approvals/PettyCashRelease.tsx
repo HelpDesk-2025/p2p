@@ -277,7 +277,7 @@ export function PettyCashRelease() {
             <table className="w-full hidden lg:table">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
-                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'PURPOSE', 'DATE', 'AMOUNT', 'TYPE', 'ACTION'].map((h) => (
+                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'CASH RECEIVED', 'ACTION'].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -351,6 +351,11 @@ export function PettyCashRelease() {
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Cash Received
+                    </span>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Action
                     </span>
                   </th>
@@ -390,6 +395,15 @@ export function PettyCashRelease() {
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-teal-100 text-teal-800 text-xs font-medium">
                         {request.request_type || 'For Cash Advance'}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                        request.received_at
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {request.received_at ? 'Received' : 'Pending'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
