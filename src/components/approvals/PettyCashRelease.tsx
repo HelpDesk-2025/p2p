@@ -41,6 +41,9 @@ interface PettyCashReq {
   current_approval_level: number;
   received_at?: string;
   received_by?: string;
+  cash_released?: boolean;
+  cash_released_at?: string;
+  cash_released_by?: string;
   attachments?: Array<{
     file_name: string;
     file_path: string;
@@ -114,7 +117,8 @@ export function PettyCashRelease() {
           companies!petty_cash_requests_company_id_fkey (id, name)
         `)
         .eq('status', 'approved')
-        .is('received_at', null)
+        .eq('request_type', 'For Cash Advance')
+        .eq('cash_released', false)
         .order('created_at', { ascending: false });
 
       if (profile.role !== 'admin') {
@@ -148,8 +152,9 @@ export function PettyCashRelease() {
       const { error } = await supabase
         .from('petty_cash_requests')
         .update({
-          received_at: new Date().toISOString(),
-          received_by: profile.id,
+          cash_released: true,
+          cash_released_at: new Date().toISOString(),
+          cash_released_by: profile.id,
         })
         .eq('id', selectedRequest.id);
 
@@ -263,7 +268,7 @@ export function PettyCashRelease() {
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Release</h2>
-        <p className="text-slate-600 mt-1">Release approved petty cash requests to requesters</p>
+        <p className="text-slate-600 mt-1">Release approved cash advance petty cash requests to requesters</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
@@ -296,7 +301,7 @@ export function PettyCashRelease() {
         ) : requests.length === 0 ? (
           <div className="p-12 text-center">
             <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-600">No approved petty cash requests pending release</p>
+            <p className="text-slate-600">No approved cash advance requests pending release</p>
           </div>
         ) : (
           <div className="overflow-auto flex-1">

@@ -57,6 +57,8 @@ interface PettyCashReq {
   payee?: string;
   received_at?: string;
   received_by?: string;
+  cash_released?: boolean;
+  cash_released_at?: string;
   approved_petty_cash_pdf_path?: string;
   liquidation_pdf_path?: string;
   request_type?: string;
@@ -2249,13 +2251,25 @@ export function PettyCash() {
                 />
               )}
 
-              {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
+              {viewingRequest.status === 'approved' && !viewingRequest.received_at && viewingRequest.request_type === 'For Cash Advance' && !viewingRequest.cash_released && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                  <Loader2 size={20} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-amber-900">Request Approved - Awaiting Cash Release</h4>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Your petty cash request has been fully approved. Please wait for the cash to be released before you can receive it.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || (viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released)) && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
                     <h4 className="font-semibold text-green-900">Request Approved - Ready for Receiving</h4>
                     <p className="text-sm text-green-700 mt-1">
-                      Your petty cash request has been fully approved. Click the "Receive Cash" button below to mark it as received and generate the approved form.
+                      Your petty cash request has been fully approved{viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released_at ? ` and cash was released on ${new Date(viewingRequest.cash_released_at).toLocaleDateString()}` : ''}. Click the "Receive Cash" button below to mark it as received and generate the approved form.
                     </p>
                   </div>
                 </div>
@@ -2540,7 +2554,7 @@ export function PettyCash() {
                     </button>
                   </>
                 )}
-                {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
+                {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || (viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released)) && (
                   <button
                     onClick={() => handleReceivePettyCash(viewingRequest)}
                     disabled={loading}
