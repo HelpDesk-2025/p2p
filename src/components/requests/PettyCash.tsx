@@ -2311,6 +2311,18 @@ export function PettyCash() {
                 </div>
               )}
 
+              {viewingRequest.status === 'approved' && viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released && viewingRequest.cash_released_at && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+                  <Check size={20} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-emerald-900">Cash Released</h4>
+                    <p className="text-sm text-emerald-700 mt-1">
+                      Released on {new Date(viewingRequest.cash_released_at).toLocaleDateString()} at {new Date(viewingRequest.cash_released_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {viewingRequest.status === 'approved' && viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
