@@ -110,6 +110,13 @@ export function CashAdvance() {
     budgeted: 'Budgeted',
     payment_mode_id: '',
     payment_mode_lines: [] as PaymentModeLine[],
+    request_type: 'OTHERS' as 'EOS' | 'OTHERS',
+  });
+
+  const [eosCheckboxes, setEosCheckboxes] = useState({
+    quarterlyBusinessReview: false,
+    fiveConversation: false,
+    trustBuilder: false,
   });
 
   useEffect(() => {
@@ -411,6 +418,7 @@ export function CashAdvance() {
   const handleEditDraft = (request: CashAdvanceReq) => {
     setEditingRequest(request);
     const reqData = request as any;
+    const requestType = reqData.request_type || 'OTHERS';
     setFormData({
       document_no: request.ca_number,
       payee: reqData.payee || '',
@@ -421,7 +429,17 @@ export function CashAdvance() {
       budgeted: reqData.budgeted ? 'Budgeted' : 'Non-budgeted',
       payment_mode_id: request.payment_mode_id || '',
       payment_mode_lines: request.payment_mode_lines || [],
+      request_type: requestType,
     });
+    if (requestType === 'EOS') {
+      setEosCheckboxes({
+        quarterlyBusinessReview: request.purpose.includes('Quarterly Business Review'),
+        fiveConversation: request.purpose.includes('555 Conversation'),
+        trustBuilder: request.purpose.includes('Trust Builder'),
+      });
+    } else {
+      setEosCheckboxes({ quarterlyBusinessReview: false, fiveConversation: false, trustBuilder: false });
+    }
     setVendorSearchTerm(reqData.payee || '');
     setShowViewModal(false);
     setViewingRequest(null);
@@ -434,14 +452,24 @@ export function CashAdvance() {
       return;
     }
 
-    if (breakdownAttachments.length === 0 && !editingRequest) {
-      alert('Please upload a Breakdown Summary of Request. This attachment is required.');
-      return;
+    if (formData.request_type === 'EOS') {
+      const anyChecked = eosCheckboxes.quarterlyBusinessReview || eosCheckboxes.fiveConversation || eosCheckboxes.trustBuilder;
+      if (!anyChecked) {
+        alert('Please select at least one EOS purpose option.');
+        return;
+      }
     }
 
-    if (editingRequest && breakdownAttachments.length === 0 && (!editingRequest.attachment_metadata || editingRequest.attachment_metadata.length === 0)) {
-      alert('Please upload a Breakdown Summary of Request. This attachment is required.');
-      return;
+    if (formData.request_type === 'OTHERS') {
+      if (breakdownAttachments.length === 0 && !editingRequest) {
+        alert('Please upload a Breakdown Summary of Request. This attachment is required.');
+        return;
+      }
+
+      if (editingRequest && breakdownAttachments.length === 0 && (!editingRequest.attachment_metadata || editingRequest.attachment_metadata.length === 0)) {
+        alert('Please upload a Breakdown Summary of Request. This attachment is required.');
+        return;
+      }
     }
 
     // Validate required payment mode lines
@@ -467,6 +495,15 @@ export function CashAdvance() {
       let attachmentMetadata: any[] = [];
 
       const budgetedValue = formData.budgeted === 'Budgeted';
+
+      let finalPurpose = formData.purpose;
+      if (formData.request_type === 'EOS') {
+        const eosParts: string[] = [];
+        if (eosCheckboxes.quarterlyBusinessReview) eosParts.push('Quarterly Business Review');
+        if (eosCheckboxes.fiveConversation) eosParts.push('555 Conversation');
+        if (eosCheckboxes.trustBuilder) eosParts.push('Trust Builder');
+        finalPurpose = eosParts.join(', ');
+      }
 
       const allAttachments = [...breakdownAttachments, ...boardApprovalAttachments];
 
@@ -503,13 +540,14 @@ export function CashAdvance() {
         const updateData: any = {
           payee: formData.payee,
           payee_number: formData.payee_number,
-          purpose: formData.purpose,
+          purpose: finalPurpose,
           amount: formData.amount,
           date_needed: formData.date_needed || null,
           budgeted: budgetedValue,
           status,
           payment_mode_id: formData.payment_mode_id || null,
           payment_mode_lines: formData.payment_mode_lines,
+          request_type: formData.request_type,
         };
 
         if (attachmentsPdfPath) {
@@ -538,7 +576,7 @@ export function CashAdvance() {
           request_date: new Date().toISOString(),
           payee: formData.payee,
           payee_number: formData.payee_number,
-          purpose: formData.purpose,
+          purpose: finalPurpose,
           amount: formData.amount,
           date_needed: formData.date_needed || null,
           budgeted: budgetedValue,
@@ -546,6 +584,7 @@ export function CashAdvance() {
           current_approval_level: 0,
           payment_mode_id: formData.payment_mode_id || null,
           payment_mode_lines: formData.payment_mode_lines,
+          request_type: formData.request_type,
         };
 
         if (attachmentsPdfPath) {
@@ -621,7 +660,8 @@ export function CashAdvance() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '', payment_mode_lines: [] });
+      setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '', payment_mode_lines: [], request_type: 'OTHERS' });
+      setEosCheckboxes({ quarterlyBusinessReview: false, fiveConversation: false, trustBuilder: false });
       setVendorSearchTerm('');
       setBreakdownAttachments([]);
       setBoardApprovalAttachments([]);
@@ -646,8 +686,8 @@ export function CashAdvance() {
       return;
     }
 
-    // Validate attachments before submitting draft
-    if (!request.attachment_metadata || request.attachment_metadata.length === 0) {
+    const reqRequestType = (request as any).request_type || 'OTHERS';
+    if (reqRequestType === 'OTHERS' && (!request.attachment_metadata || request.attachment_metadata.length === 0)) {
       alert('Please upload supporting documents before submitting. Attachments are required for cash advance requests.');
       return;
     }
@@ -1247,18 +1287,77 @@ export function CashAdvance() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Purpose <span className="text-red-500">*</span>
+              Request Type <span className="text-red-500">*</span>
             </label>
-            <textarea
-              value={formData.purpose}
-              onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-              rows={3}
-              maxLength={200}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              required
-            />
-            <p className="text-xs text-slate-500 mt-1">{formData.purpose.length}/200 characters</p>
+            <select
+              value={formData.request_type}
+              onChange={(e) => {
+                const newType = e.target.value as 'EOS' | 'OTHERS';
+                setFormData({ ...formData, request_type: newType, purpose: '' });
+                setEosCheckboxes({ quarterlyBusinessReview: false, fiveConversation: false, trustBuilder: false });
+                if (newType === 'OTHERS') {
+                  setBreakdownAttachments([]);
+                  setBoardApprovalAttachments([]);
+                }
+              }}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+            >
+              <option value="OTHERS">OTHERS</option>
+              <option value="EOS">EOS</option>
+            </select>
           </div>
+
+          {formData.request_type === 'EOS' ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Purpose <span className="text-red-500">*</span>
+              </label>
+              <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={eosCheckboxes.quarterlyBusinessReview}
+                    onChange={(e) => setEosCheckboxes({ ...eosCheckboxes, quarterlyBusinessReview: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-700 group-hover:text-slate-900">Quarterly Business Review</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={eosCheckboxes.fiveConversation}
+                    onChange={(e) => setEosCheckboxes({ ...eosCheckboxes, fiveConversation: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-700 group-hover:text-slate-900">555 Conversation</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={eosCheckboxes.trustBuilder}
+                    onChange={(e) => setEosCheckboxes({ ...eosCheckboxes, trustBuilder: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-700 group-hover:text-slate-900">Trust Builder</span>
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Purpose <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={formData.purpose}
+                onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+                rows={3}
+                maxLength={200}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                required
+              />
+              <p className="text-xs text-slate-500 mt-1">{formData.purpose.length}/200 characters</p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -1358,6 +1457,8 @@ export function CashAdvance() {
             </div>
           )}
 
+          {formData.request_type === 'OTHERS' && (
+          <>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Breakdown Summary of Request <span className="text-red-500">*</span>
@@ -1477,6 +1578,8 @@ export function CashAdvance() {
               )}
             </div>
           </div>
+          </>
+          )}
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <button
