@@ -1543,7 +1543,7 @@ export function PurchaseRequisition() {
                     <p className="text-xs text-slate-500 mb-2">{item.description}</p>
                   )}
 
-                  {!item.file ? (
+                  {!item.file && !item.fileName ? (
                     <div className="relative">
                       <input
                         type="file"
@@ -1564,7 +1564,23 @@ export function PurchaseRequisition() {
                   ) : (
                     <div className="flex items-center gap-2 p-3 bg-white border border-slate-300 rounded-lg">
                       <FileText size={18} className="text-blue-600 flex-shrink-0" />
-                      <span className="text-sm text-slate-700 flex-1 truncate">{item.fileName}</span>
+                      <span className="text-sm text-slate-700 flex-1 truncate">
+                        {item.file ? item.fileName : `${item.fileName} (previously uploaded)`}
+                      </span>
+                      <input
+                        type="file"
+                        id={`checklist-replace-${index}`}
+                        accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,image/*"
+                        onChange={(e) => handleFileChange(index, e)}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`checklist-replace-${index}`}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-all cursor-pointer"
+                        title="Replace file"
+                      >
+                        <RefreshCw size={16} />
+                      </label>
                       <button
                         type="button"
                         onClick={() => removeChecklistFile(index)}
