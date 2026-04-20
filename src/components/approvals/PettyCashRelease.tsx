@@ -118,7 +118,6 @@ export function PettyCashRelease() {
         `)
         .eq('status', 'approved')
         .eq('request_type', 'For Cash Advance')
-        .eq('cash_released', false)
         .order('created_at', { ascending: false });
 
       if (profile.role !== 'admin') {
@@ -277,7 +276,7 @@ export function PettyCashRelease() {
             <table className="w-full hidden lg:table">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
-                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'CASH RECEIVED', 'ACTION'].map((h) => (
+                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'CASH RELEASED', 'CASH RECEIVED', 'ACTION'].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -292,6 +291,7 @@ export function PettyCashRelease() {
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-24"/></td>
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-8 bg-slate-200 rounded w-8"/></td>
                   </tr>
                 ))}
@@ -301,7 +301,7 @@ export function PettyCashRelease() {
         ) : requests.length === 0 ? (
           <div className="p-12 text-center">
             <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-600">No approved cash advance requests pending release</p>
+            <p className="text-slate-600">No approved cash advance requests found</p>
           </div>
         ) : (
           <div className="overflow-auto flex-1">
@@ -347,6 +347,11 @@ export function PettyCashRelease() {
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Type
+                    </span>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Cash Released
                     </span>
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
@@ -399,10 +404,23 @@ export function PettyCashRelease() {
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                        request.cash_released
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                        title={request.cash_released && request.cash_released_at ? new Date(request.cash_released_at).toLocaleString() : ''}
+                      >
+                        {request.cash_released ? 'Released' : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
                         request.received_at
                           ? 'bg-green-100 text-green-800'
                           : 'bg-amber-100 text-amber-800'
-                      }`}>
+                      }`}
+                        title={request.received_at ? new Date(request.received_at).toLocaleString() : ''}
+                      >
                         {request.received_at ? 'Received' : 'Pending'}
                       </span>
                     </td>
@@ -410,7 +428,7 @@ export function PettyCashRelease() {
                       <button
                         onClick={() => handleViewRequest(request)}
                         className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
-                        title="Review Request"
+                        title={request.cash_released ? 'View Request' : 'Review Request'}
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -637,21 +655,47 @@ export function PettyCashRelease() {
                 requestId={selectedRequest.id}
               />
 
+              {selectedRequest.cash_released && selectedRequest.cash_released_at && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+                  <CheckCircle size={20} className="text-emerald-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-emerald-900">Cash Released</h4>
+                    <p className="text-sm text-emerald-700 mt-1">
+                      Released on {new Date(selectedRequest.cash_released_at).toLocaleDateString()} at {new Date(selectedRequest.cash_released_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedRequest.received_at && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                  <CheckCircle size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900">Cash Received</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Received on {new Date(selectedRequest.received_at).toLocaleDateString()} at {new Date(selectedRequest.received_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4 border-t border-slate-200">
-                <button
-                  onClick={handleRelease}
-                  disabled={releasing}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
-                >
-                  {releasing ? <Loader2 size={20} className="animate-spin" /> : <Banknote size={20} />}
-                  {releasing ? 'Releasing...' : 'Release Petty Cash'}
-                </button>
+                {!selectedRequest.cash_released && (
+                  <button
+                    onClick={handleRelease}
+                    disabled={releasing}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  >
+                    {releasing ? <Loader2 size={20} className="animate-spin" /> : <Banknote size={20} />}
+                    {releasing ? 'Releasing...' : 'Release Petty Cash'}
+                  </button>
+                )}
                 <button
                   onClick={() => setShowModal(false)}
                   disabled={releasing}
-                  className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className={`${selectedRequest.cash_released ? 'flex-1' : ''} px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold`}
                 >
-                  Cancel
+                  {selectedRequest.cash_released ? 'Close' : 'Cancel'}
                 </button>
               </div>
             </div>
