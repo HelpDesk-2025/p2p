@@ -1294,16 +1294,14 @@ export function PRApproval() {
                   {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                 </button>
-                {currentApproverStep?.for_checking && (
-                  <button
-                    onClick={handleReturnToMaker}
-                    disabled={loading || flowsLoading || !canApprove()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                  >
-                    {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
-                    {returning ? 'Returning...' : 'Return to Maker'}
-                  </button>
-                )}
+                <button
+                  onClick={handleReturnToMaker}
+                  disabled={loading || flowsLoading || !canApprove()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                >
+                  {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  {returning ? 'Returning...' : 'Return to Maker'}
+                </button>
               </div>
             </div>
           </div>
