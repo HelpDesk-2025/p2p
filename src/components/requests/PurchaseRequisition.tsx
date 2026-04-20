@@ -601,6 +601,12 @@ export function PurchaseRequisition() {
       payment_mode_lines: (request as any).payment_mode_lines || [],
       items: request.items && request.items.length > 0 ? request.items : [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
     });
+
+    if ((request as any).payment_mode_id) {
+      const mode = paymentModes.find(m => m.id === (request as any).payment_mode_id);
+      setSelectedPaymentMode(mode || null);
+    }
+
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
@@ -625,6 +631,11 @@ export function PurchaseRequisition() {
       payment_mode_lines: (request as any).payment_mode_lines || [],
       items: request.items && request.items.length > 0 ? request.items : [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
     });
+
+    if ((request as any).payment_mode_id) {
+      const mode = paymentModes.find(m => m.id === (request as any).payment_mode_id);
+      setSelectedPaymentMode(mode || null);
+    }
 
     if (profile?.enable_multi_company_requests && (request as any).company_id) {
       setSelectedCompanyId((request as any).company_id);
@@ -2130,9 +2141,9 @@ export function PurchaseRequisition() {
                       <label className="block text-sm font-medium text-slate-700 mb-1">Amount (Net VAT)</label>
                       <p className="text-slate-900 font-semibold">₱{parseFloat(formData.amount_net_vat || '0').toFixed(2)}</p>
                     </div>
-                    {selectedPaymentMode && (
+                    {(selectedPaymentMode || formData.payment_mode_lines.length > 0) && (
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Payment Details</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Payment Details ({selectedPaymentMode?.mode_name || paymentModes.find(m => m.id === formData.payment_mode_id)?.mode_name || 'N/A'})</label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {formData.payment_mode_lines.map((line, index) => (
                             <div key={index}>
