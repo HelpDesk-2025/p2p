@@ -965,6 +965,18 @@ export function PurchaseRequisition() {
           console.log('📋 Approval steps:', approvalFlows.map((f, i) => `Step ${i + 1}: ${f.approver_type}`).join(' → '));
 
           const isResubmission = editingRequest && editingRequest.status === 'returned_to_maker';
+
+          if (isResubmission) {
+            const { error: deleteLedgerError } = await supabase
+              .from('approval_ledger')
+              .delete()
+              .eq('request_id', insertedPR.id)
+              .eq('request_type', 'Purchase Requisition');
+            if (deleteLedgerError) {
+              console.error('Error clearing old approval ledger:', deleteLedgerError);
+            }
+          }
+
           await createApprovalLedgerEntry(
             'Purchase Requisition',
             insertedPR.id,
