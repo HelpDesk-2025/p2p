@@ -183,22 +183,31 @@ export function Dashboard({ onViewChange }: DashboardProps) {
               icon={FileText}
               label="Purchase Requisitions"
               count={stats.myRequests.pr}
+              onClick={() => onViewChange?.('pr-request')}
             />
-            <RequestTypeCard icon={Search} label="Canvass" count={stats.myRequests.canvass} />
+            <RequestTypeCard
+              icon={Search}
+              label="Canvass"
+              count={stats.myRequests.canvass}
+              onClick={() => onViewChange?.('canvass-request')}
+            />
             <RequestTypeCard
               icon={Wallet}
               label="Petty Cash"
               count={stats.myRequests.pettyCash}
+              onClick={() => onViewChange?.('petty-cash-request')}
             />
             <RequestTypeCard
               icon={Banknote}
               label="Cash Advance"
               count={stats.myRequests.cashAdvance}
+              onClick={() => onViewChange?.('cash-advance-request')}
             />
             <RequestTypeCard
               icon={Receipt}
               label="Reimbursement"
               count={stats.myRequests.reimbursement}
+              onClick={() => onViewChange?.('reimbursement-request')}
             />
           </div>
         </div>
