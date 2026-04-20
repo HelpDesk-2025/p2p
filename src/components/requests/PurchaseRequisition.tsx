@@ -625,6 +625,14 @@ export function PurchaseRequisition() {
       payment_mode_lines: (request as any).payment_mode_lines || [],
       items: request.items && request.items.length > 0 ? request.items : [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
     });
+
+    if (profile?.enable_multi_company_requests && (request as any).company_id) {
+      setSelectedCompanyId((request as any).company_id);
+      loadDepartments((request as any).company_id, false).then(() => {
+        setSelectedDepartment(request.department || '');
+      });
+    }
+
     setShowViewModal(false);
     setViewingRequest(null);
     setShowForm(true);
