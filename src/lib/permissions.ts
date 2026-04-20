@@ -113,6 +113,7 @@ export const MODULE_PERMISSIONS = {
   PETTY_CASH_APPROVAL: 'Petty Cash Approval',
   REIMBURSEMENT_APPROVAL: 'Reimbursement Approval',
   SME_APPROVAL: 'Subject Matter Approval',
+  PETTY_CASH_RELEASE: 'Petty Cash Release',
 
   // Configuration Modules
   NUMBER_SERIES: 'Configuration',

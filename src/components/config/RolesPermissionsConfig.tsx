@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Save, X, Shield, Key, Edit } from 'lucide-react';
+import { Plus, Trash2, Save, X, Shield, Key, CreditCard as Edit } from 'lucide-react';
 
 interface Role {
   id: string;
@@ -61,6 +61,7 @@ export function RolesPermissionsConfig() {
     'cash_advance_approval',
     'reimbursement_approval',
     'sme_approval',
+    'petty_cash_release',
     'procurement_checking',
     'approval_ledger',
     'approved_rejected',

@@ -16,6 +16,7 @@ import { PettyCashApproval } from './components/approvals/PettyCashApproval';
 import { CashAdvanceApproval } from './components/approvals/CashAdvanceApproval';
 import { ReimbursementApproval } from './components/approvals/ReimbursementApproval';
 import { SmeApproval } from './components/approvals/SmeApproval';
+import { PettyCashRelease } from './components/approvals/PettyCashRelease';
 import { ConfigManager } from './components/config/ConfigManager';
 import { ApprovalLedger } from './components/ApprovalLedger';
 import { ProcurementChecking } from './components/ProcurementChecking';
@@ -87,6 +88,8 @@ function AppContent() {
         return <ReimbursementApproval />;
       case 'sme-approval':
         return <SmeApproval />;
+      case 'petty-cash-release':
+        return <PettyCashRelease />;
       case 'procurement-checking':
         return <ProcurementChecking />;
       case 'approval-ledger':

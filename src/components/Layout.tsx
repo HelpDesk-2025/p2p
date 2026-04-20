@@ -43,6 +43,7 @@ export type ViewType =
   | 'cash-advance-approval'
   | 'reimbursement-approval'
   | 'sme-approval'
+  | 'petty-cash-release'
   | 'procurement-checking'
   | 'approval-ledger'
   | 'config-approvers'
@@ -149,6 +150,13 @@ const menuItems: MenuItem[] = [
     label: 'SME Approval',
     icon: UserCheck,
     permission: MODULE_PERMISSIONS.SME_APPROVAL,
+    group: 'approvals',
+  },
+  {
+    id: 'petty-cash-release',
+    label: 'Petty Cash Release',
+    icon: Banknote,
+    permission: MODULE_PERMISSIONS.PETTY_CASH_RELEASE,
     group: 'approvals',
   },
   {
