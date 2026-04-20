@@ -118,6 +118,7 @@ export function CashAdvance() {
     fiveConversation: false,
     trustBuilder: false,
   });
+  const [eosAdditionalPurpose, setEosAdditionalPurpose] = useState('');
 
   useEffect(() => {
     loadRequests();
@@ -437,8 +438,11 @@ export function CashAdvance() {
         fiveConversation: request.purpose.includes('555 Conversation'),
         trustBuilder: request.purpose.includes('Trust Builder'),
       });
+      const additionalMatch = request.purpose.match(/Additional:\s*(.*)$/);
+      setEosAdditionalPurpose(additionalMatch ? additionalMatch[1].trim() : '');
     } else {
       setEosCheckboxes({ quarterlyBusinessReview: false, fiveConversation: false, trustBuilder: false });
+      setEosAdditionalPurpose('');
     }
     setVendorSearchTerm(reqData.payee || '');
     setShowViewModal(false);
@@ -503,6 +507,11 @@ export function CashAdvance() {
         if (eosCheckboxes.fiveConversation) eosParts.push('555 Conversation');
         if (eosCheckboxes.trustBuilder) eosParts.push('Trust Builder');
         finalPurpose = eosParts.join(', ');
+        if (eosAdditionalPurpose.trim()) {
+          finalPurpose = finalPurpose
+            ? `${finalPurpose}, Additional: ${eosAdditionalPurpose.trim()}`
+            : `Additional: ${eosAdditionalPurpose.trim()}`;
+        }
       }
 
       const allAttachments = [...breakdownAttachments, ...boardApprovalAttachments];
@@ -662,6 +671,7 @@ export function CashAdvance() {
       setShowForm(false);
       setFormData({ document_no: '', payee: '', payee_number: '', purpose: '', amount: 0, date_needed: '', budgeted: 'Budgeted', payment_mode_id: '', payment_mode_lines: [], request_type: 'OTHERS' });
       setEosCheckboxes({ quarterlyBusinessReview: false, fiveConversation: false, trustBuilder: false });
+      setEosAdditionalPurpose('');
       setVendorSearchTerm('');
       setBreakdownAttachments([]);
       setBoardApprovalAttachments([]);
@@ -1295,6 +1305,7 @@ export function CashAdvance() {
                 const newType = e.target.value as 'EOS' | 'OTHERS';
                 setFormData({ ...formData, request_type: newType, purpose: '' });
                 setEosCheckboxes({ quarterlyBusinessReview: false, fiveConversation: false, trustBuilder: false });
+      setEosAdditionalPurpose('');
                 if (newType === 'OTHERS') {
                   setBreakdownAttachments([]);
                   setBoardApprovalAttachments([]);
@@ -1340,6 +1351,20 @@ export function CashAdvance() {
                   />
                   <span className="text-sm text-slate-700 group-hover:text-slate-900">Trust Builder</span>
                 </label>
+                <div className="pt-3 border-t border-slate-200">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Additional Purpose
+                  </label>
+                  <textarea
+                    value={eosAdditionalPurpose}
+                    onChange={(e) => setEosAdditionalPurpose(e.target.value)}
+                    rows={2}
+                    maxLength={200}
+                    placeholder="Add any additional purpose details (optional)"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">{eosAdditionalPurpose.length}/200 characters</p>
+                </div>
               </div>
             </div>
           ) : (
