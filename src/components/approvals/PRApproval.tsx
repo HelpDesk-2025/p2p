@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
@@ -72,6 +72,7 @@ export function PRApproval() {
   const [listLoading, setListLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -568,6 +569,78 @@ export function PRApproval() {
       setLoading(false);
       setApproving(false);
       setRejecting(false);
+    }
+  };
+
+  const handleReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
+
+    if (!canApprove()) {
+      alert('You are not authorized to perform this action at this level.');
+      return;
+    }
+
+    if (!comments.trim()) {
+      alert('Please provide a comment explaining the reason for returning this request.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to return this Purchase Requisition (${selectedRequest.document_no}) to the maker for revision?`)) {
+      return;
+    }
+
+    setReturning(true);
+    setLoading(true);
+
+    try {
+      const currentLevel = selectedRequest.current_approval_level;
+
+      const { error: updateError } = await supabase
+        .from('purchase_requisitions')
+        .update({
+          status: 'returned_to_maker',
+          current_approval_level: currentLevel
+        })
+        .eq('id', selectedRequest.id);
+
+      if (updateError) throw updateError;
+
+      await createApprovalLedgerEntry(
+        'Purchase Requisition',
+        selectedRequest.id,
+        selectedRequest.document_no,
+        profile.id,
+        profile.full_name || 'Unknown',
+        currentApproverStep?.approver_type || 'Checker',
+        'Returned',
+        comments,
+        currentLevel + 1,
+        currentApproverStep?.for_checking || false
+      );
+
+      await sendApprovalEmail(
+        selectedRequest.user_profiles?.email || '',
+        selectedRequest.user_profiles?.full_name || 'User',
+        'Purchase Requisition',
+        selectedRequest.document_no,
+        selectedRequest.user_profiles?.full_name || 'Unknown',
+        selectedRequest.department,
+        selectedRequest.total_amount,
+        'Returned to Maker',
+        profile.full_name || 'Unknown',
+        comments
+      );
+
+      setShowModal(false);
+      setSelectedRequest(null);
+      setComments('');
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error returning request to maker:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+      setReturning(false);
     }
   };
 
@@ -1204,7 +1277,7 @@ export function PRApproval() {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
                 <button
                   onClick={() => handleAction('approved')}
                   disabled={loading || flowsLoading || !canApprove()}
@@ -1221,6 +1294,16 @@ export function PRApproval() {
                   {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                 </button>
+                {currentApproverStep?.for_checking && (
+                  <button
+                    onClick={handleReturnToMaker}
+                    disabled={loading || flowsLoading || !canApprove()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  >
+                    {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {returning ? 'Returning...' : 'Return to Maker'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

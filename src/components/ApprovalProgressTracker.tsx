@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, Clock, Circle, User, Send } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Circle, User, Send, CornerDownLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ApprovalFlow } from '../lib/approvalFlow';
 
@@ -206,6 +206,16 @@ export function ApprovalProgressTracker({
       return 'cancelled';
     }
 
+    if (status === 'returned_to_maker') {
+      const ledgerEntry = ledgerEntries.find(e => e.sequence === index + 1);
+      if (ledgerEntry) {
+        if (ledgerEntry.action === 'Returned') return 'returned';
+        if (ledgerEntry.action === 'Approved') return 'approved';
+      }
+      if (index < currentApprovalLevel) return 'approved';
+      return 'cancelled';
+    }
+
     const ledgerEntry = ledgerEntries.find(e => e.sequence === index + 1);
     if (ledgerEntry && ledgerEntry.action === 'Approved') return 'approved';
     if (index < currentApprovalLevel && !ledgerEntry) return 'approved';
@@ -221,6 +231,8 @@ export function ApprovalProgressTracker({
         return <XCircle className="text-red-600" size={24} />;
       case 'auto-rejected':
         return <XCircle className="text-gray-400" size={24} />;
+      case 'returned':
+        return <CornerDownLeft className="text-amber-500" size={24} />;
       case 'current':
         return <Clock className="text-blue-600 animate-pulse" size={24} />;
       case 'cancelled':
@@ -238,6 +250,8 @@ export function ApprovalProgressTracker({
         return 'border-red-600 bg-red-50';
       case 'auto-rejected':
         return 'border-gray-300 bg-gray-50';
+      case 'returned':
+        return 'border-amber-500 bg-amber-50';
       case 'current':
         return 'border-blue-600 bg-blue-50';
       case 'cancelled':
@@ -309,6 +323,7 @@ export function ApprovalProgressTracker({
                   className={`absolute left-5 top-12 w-0.5 h-full -mb-4 ${
                     stepStatus === 'approved' ? 'bg-green-600' :
                     stepStatus === 'rejected' ? 'bg-red-600' :
+                    stepStatus === 'returned' ? 'bg-amber-500' :
                     'bg-gray-200'
                   }`}
                 />
@@ -361,6 +376,11 @@ export function ApprovalProgressTracker({
                     {stepStatus === 'auto-rejected' && (
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
                         Auto-Rejected
+                      </span>
+                    )}
+                    {stepStatus === 'returned' && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-semibold">
+                        Returned to Maker
                       </span>
                     )}
                   </div>

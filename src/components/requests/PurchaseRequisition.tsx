@@ -606,6 +606,30 @@ export function PurchaseRequisition() {
     setShowForm(true);
   };
 
+  const handleEditReturnedRequest = (request: PurchaseReq) => {
+    setEditingRequest(request);
+    setFormData({
+      document_no: request.document_no,
+      description: request.description,
+      department: request.department,
+      date_required: request.date_required || (request as any).required_date,
+      purpose: request.purpose,
+      is_budgeted: request.is_budgeted,
+      purchase_type: request.purchase_type,
+      pr_checklist_id: (request as any).pr_checklist_id || '',
+      checklist_items: (request as any).checklist_items || [],
+      payee: request.payee || '',
+      payee_number: (request as any).payee_number || '',
+      amount_net_vat: request.amount_net_vat?.toString() || '',
+      payment_mode_id: (request as any).payment_mode_id || '',
+      payment_mode_lines: (request as any).payment_mode_lines || [],
+      items: request.items && request.items.length > 0 ? request.items : [{ description: '', quantity: 1, unit: 'pcs', unit_price: 0, total_price: 0, item_number: '' }],
+    });
+    setShowViewModal(false);
+    setViewingRequest(null);
+    setShowForm(true);
+  };
+
   const handlePreviewSubmit = () => {
     // Validate basic required fields
     if (!formData.description.trim()) {
@@ -845,7 +869,9 @@ export function PurchaseRequisition() {
       let insertedPR;
 
       if (editingRequest) {
-        // Update existing draft
+        if (status === 'pending') {
+          payload.current_approval_level = 0;
+        }
         const { data, error } = await supabase
           .from('purchase_requisitions')
           .update(payload)
@@ -919,7 +945,7 @@ export function PurchaseRequisition() {
           console.log('✅ Approval flows found:', approvalFlows.length, 'steps');
           console.log('📋 Approval steps:', approvalFlows.map((f, i) => `Step ${i + 1}: ${f.approver_type}`).join(' → '));
 
-          // Create initial ledger entry for submission
+          const isResubmission = editingRequest && editingRequest.status === 'returned_to_maker';
           await createApprovalLedgerEntry(
             'Purchase Requisition',
             insertedPR.id,
@@ -928,7 +954,7 @@ export function PurchaseRequisition() {
             profile.full_name || 'Unknown',
             'Requestor',
             'Submitted',
-            'Initial submission',
+            isResubmission ? 'Resubmission after return' : 'Initial submission',
             0
           );
 
@@ -1205,8 +1231,15 @@ export function PurchaseRequisition() {
       approved: 'bg-green-100 text-green-700',
       rejected: 'bg-red-100 text-red-700',
       in_procurement: 'bg-blue-100 text-blue-700',
+      returned_to_maker: 'bg-amber-100 text-amber-700',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'returned_to_maker') return 'Returned to Maker';
+    if (status === 'in_procurement') return 'In Procurement';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const handleSort = (column: string) => {
@@ -2250,7 +2283,7 @@ export function PurchaseRequisition() {
                       <span
                         className={`flex-shrink-0 px-2.5 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(req.status)}`}
                       >
-                        {req.status}
+                        {getStatusLabel(req.status)}
                       </span>
                     </div>
 
@@ -2423,7 +2456,7 @@ export function PurchaseRequisition() {
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
-                        {req.status}
+                        {getStatusLabel(req.status)}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
@@ -2478,7 +2511,7 @@ export function PurchaseRequisition() {
             </div>
 
             <div className="p-6 space-y-6">
-              {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected') && (
+              {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected' || viewingRequest.status === 'returned_to_maker') && (
                 <ApprovalProgressTracker
                   requestType="Purchase Requisition"
                   requestId={viewingRequest.id}
@@ -2531,7 +2564,7 @@ export function PurchaseRequisition() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
-                    {viewingRequest.status}
+                    {getStatusLabel(viewingRequest.status)}
                   </span>
                 </div>
               </div>
@@ -2705,6 +2738,16 @@ export function PurchaseRequisition() {
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
+                )}
+                {viewingRequest.status === 'returned_to_maker' && (
+                  <button
+                    onClick={() => handleEditReturnedRequest(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    <RefreshCw size={18} />
+                    Edit & Resubmit
+                  </button>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && viewingRequest.purchase_type !== 'Purchase Order' && (
                   <button
