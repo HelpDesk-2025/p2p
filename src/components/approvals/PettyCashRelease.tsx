@@ -239,6 +239,13 @@ export function PettyCashRelease() {
     return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
+  const requestsById = new Map(requests.map((r) => [r.id, r]));
+
+  const getLinkedCashAdvancePcNumber = (r: PettyCashReq): string | null => {
+    if (r.request_type !== 'For Liquidation' || !r.linked_petty_cash_id) return null;
+    return requestsById.get(r.linked_petty_cash_id)?.pc_number ?? null;
+  };
+
   const sortedRequests = [...requests].sort((a, b) => {
     let aVal: any;
     let bVal: any;
@@ -475,7 +482,7 @@ export function PettyCashRelease() {
             <table className="w-full hidden lg:table">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
-                  {['', 'PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'CASH RELEASED', 'CASH RECEIVED', 'EXPORTED', 'ACTION'].map((h) => (
+                  {['', 'PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'LINKED CA', 'CASH RELEASED', 'CASH RECEIVED', 'EXPORTED', 'ACTION'].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -489,6 +496,7 @@ export function PettyCashRelease() {
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded-full w-28"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-40"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-20"/></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-24"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-24"/></td>
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
@@ -577,6 +585,11 @@ export function PettyCashRelease() {
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Linked CA
+                    </span>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Cash Released
                     </span>
                   </th>
@@ -657,6 +670,22 @@ export function PettyCashRelease() {
                       }`}>
                         {request.request_type || 'For Cash Advance'}
                       </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      {request.request_type === 'For Liquidation' ? (
+                        getLinkedCashAdvancePcNumber(request) ? (
+                          <span
+                            className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded"
+                            title="Linked cash advance request"
+                          >
+                            {getLinkedCashAdvancePcNumber(request)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">Unlinked</span>
+                        )
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       {isReleaseEligible(request) ? (
