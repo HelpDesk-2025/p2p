@@ -2212,7 +2212,10 @@ export function PettyCash() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      {req.request_type === 'For Cash Advance' && req.status === 'approved' ? (
+                      {req.status === 'approved' && (
+                        req.request_type === 'For Cash Advance'
+                        || (req.request_type === 'For Liquidation' && (Number(req.amount) - (Number((req as any).petty_cash_advance) || 0)) > 0)
+                      ) ? (
                         <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
                           req.cash_released
                             ? 'bg-green-100 text-green-800'
@@ -2225,7 +2228,11 @@ export function PettyCash() {
                       )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      {(req.request_type === 'For Cash Advance' || req.request_type === 'For Reimbursement') && req.status === 'approved' ? (
+                      {req.status === 'approved' && (
+                        req.request_type === 'For Cash Advance'
+                        || req.request_type === 'For Reimbursement'
+                        || (req.request_type === 'For Liquidation' && (Number(req.amount) - (Number((req as any).petty_cash_advance) || 0)) > 0)
+                      ) ? (
                         <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
                           req.received_at
                             ? 'bg-green-100 text-green-800'
