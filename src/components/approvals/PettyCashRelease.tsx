@@ -285,11 +285,50 @@ export function PettyCashRelease() {
     }
   };
 
+  const orderRequestsWithLinkedLiquidations = (list: PettyCashReq[]): PettyCashReq[] => {
+    const liquidationsByLink = new Map<string, PettyCashReq[]>();
+    const standalone: PettyCashReq[] = [];
+
+    for (const r of list) {
+      if (r.request_type === 'For Liquidation' && r.linked_petty_cash_id) {
+        const arr = liquidationsByLink.get(r.linked_petty_cash_id) || [];
+        arr.push(r);
+        liquidationsByLink.set(r.linked_petty_cash_id, arr);
+      } else {
+        standalone.push(r);
+      }
+    }
+
+    const result: PettyCashReq[] = [];
+    const placedLiquidationIds = new Set<string>();
+    for (const r of standalone) {
+      result.push(r);
+      const linked = liquidationsByLink.get(r.id);
+      if (linked) {
+        for (const liq of linked) {
+          result.push(liq);
+          placedLiquidationIds.add(liq.id);
+        }
+      }
+    }
+
+    for (const [, liqs] of liquidationsByLink) {
+      for (const liq of liqs) {
+        if (!placedLiquidationIds.has(liq.id)) {
+          result.push(liq);
+        }
+      }
+    }
+
+    return result;
+  };
+
   const handleExportBundle = async () => {
     if (sortedRequests.length === 0 || exporting) return;
     setExporting(true);
     try {
-      const { blob, failures } = await generatePettyCashReleaseBundle(sortedRequests);
+      const ordered = orderRequestsWithLinkedLiquidations(sortedRequests);
+      const { blob, failures } = await generatePettyCashReleaseBundle(ordered);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const now = new Date();

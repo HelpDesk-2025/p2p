@@ -29,10 +29,11 @@ const ROW_HEIGHT = 28;
 const HEADER_ROW_HEIGHT = 30;
 
 const COLUMNS = [
-  { key: 'disbursement', label: 'Disbursement Date', width: 105, align: 'left' as const },
-  { key: 'pc_number', label: 'Petty Cash Request No.', width: 150, align: 'left' as const },
-  { key: 'recipient', label: 'To/Recipient', width: 140, align: 'left' as const },
-  { key: 'purpose', label: 'Purpose', width: 230, align: 'left' as const },
+  { key: 'disbursement', label: 'Disbursement Date', width: 95, align: 'left' as const },
+  { key: 'pc_number', label: 'Petty Cash Request No.', width: 135, align: 'left' as const },
+  { key: 'type', label: 'Request Type', width: 95, align: 'left' as const },
+  { key: 'recipient', label: 'To/Recipient', width: 120, align: 'left' as const },
+  { key: 'purpose', label: 'Purpose', width: 180, align: 'left' as const },
   { key: 'amount', label: 'Amount', width: 100, align: 'right' as const },
   { key: 'status', label: 'Status', width: 53, align: 'center' as const },
 ];
@@ -225,10 +226,11 @@ const generateSummaryPdf = async (requests: PettyCashBundleRequest[]): Promise<U
     const cells = [
       wrapText(formatDate(req.cash_released_at), font, 8.5, COLUMNS[0].width - 12),
       wrapText(`#${index + 1}  ${req.pc_number}`, font, 8.5, COLUMNS[1].width - 12),
-      wrapText(recipient, font, 8.5, COLUMNS[2].width - 12),
-      wrapText(purpose, font, 8.5, COLUMNS[3].width - 12),
-      wrapText(formatAmount(req.amount), font, 8.5, COLUMNS[4].width - 12),
-      wrapText(statusLabel(req), font, 8.5, COLUMNS[5].width - 8),
+      wrapText(req.request_type || 'For Cash Advance', font, 8.5, COLUMNS[2].width - 12),
+      wrapText(recipient, font, 8.5, COLUMNS[3].width - 12),
+      wrapText(purpose, font, 8.5, COLUMNS[4].width - 12),
+      wrapText(formatAmount(req.amount), font, 8.5, COLUMNS[5].width - 12),
+      wrapText(statusLabel(req), font, 8.5, COLUMNS[6].width - 8),
     ];
     const maxLines = Math.max(...cells.map((c) => c.length));
     return { cells, rowHeight: Math.max(ROW_HEIGHT, maxLines * 12 + 10) };
@@ -282,8 +284,8 @@ const generateSummaryPdf = async (requests: PettyCashBundleRequest[]): Promise<U
   const amountText = formatAmount(totalAmount);
   const amountX =
     MARGIN_X +
-    COLUMNS.slice(0, 4).reduce((s, c) => s + c.width, 0) +
-    COLUMNS[4].width -
+    COLUMNS.slice(0, 5).reduce((s, c) => s + c.width, 0) +
+    COLUMNS[5].width -
     fontBold.widthOfTextAtSize(amountText, 10) -
     6;
   page.drawText(amountText, {
