@@ -482,7 +482,7 @@ export function PettyCashRelease() {
             <table className="w-full hidden lg:table">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
-                  {['', 'PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'LINKED CA', 'CASH RELEASED', 'CASH RECEIVED', 'EXPORTED', 'ACTION'].map((h) => (
+                  {['', 'EXPORTED', 'PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'LINKED CA', 'CASH RELEASED', 'CASH RECEIVED', 'ACTION'].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -542,6 +542,11 @@ export function PettyCashRelease() {
                       }}
                     />
                   </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Exported
+                    </span>
+                  </th>
                   <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                     <button
                       onClick={() => handleSort('pc_number')}
@@ -600,11 +605,6 @@ export function PettyCashRelease() {
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Exported
-                    </span>
-                  </th>
-                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Action
                     </span>
                   </th>
@@ -634,6 +634,20 @@ export function PettyCashRelease() {
                         }}
                         title={isExportable(request) ? 'Select for export' : 'Only released or received requests can be exported'}
                       />
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      {request.exported_at ? (
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800"
+                          title={`Exported on ${new Date(request.exported_at).toLocaleString()}`}
+                        >
+                          Exported
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                          Not yet
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.pc_number}>
@@ -718,20 +732,6 @@ export function PettyCashRelease() {
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
                           N/A
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      {request.exported_at ? (
-                        <span
-                          className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800"
-                          title={`Exported on ${new Date(request.exported_at).toLocaleString()}`}
-                        >
-                          Exported
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
-                          Not yet
                         </span>
                       )}
                     </td>
