@@ -178,6 +178,15 @@ export function Canvass() {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedPRCompany, setSelectedPRCompany] = useState<string>('');
+  const [smeRecommendations, setSmeRecommendations] = useState<Array<{
+    id: string;
+    status: string;
+    purpose: string;
+    sme_comments: string | null;
+    created_at: string;
+    updated_at: string;
+    sme_user?: { full_name?: string | null; email?: string | null } | null;
+  }>>([]);
   const [isHorizontalLayout, setIsHorizontalLayout] = useState(true);
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -397,6 +406,11 @@ export function Canvass() {
     setShowViewModal(true);
     setViewingPR(null);
     setSelectedPRCompany('');
+    setSmeRecommendations([]);
+
+    if (request.pr_id) {
+      fetchSmeRecommendations(request.pr_id);
+    }
 
     // Fetch full canvass details including PR if pr_id exists
     if (request.pr_id) {
@@ -710,6 +724,7 @@ export function Canvass() {
       setShowPRSelection(false);
       setSelectedPR(null);
       setSelectedPRCompany('');
+      setSmeRecommendations([]);
       setFormData({ document_no: '', required_date: '', items: [{ description: '', quantity: 1, unit: 'pcs' }] });
       setQuotations([createEmptyQuotation(), createEmptyQuotation(), createEmptyQuotation()]);
       setRecommendedQuotationIndex(null);
@@ -1056,6 +1071,30 @@ export function Canvass() {
     }
   };
 
+  const fetchSmeRecommendations = async (prId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('sme_requests')
+        .select(`
+          id,
+          status,
+          purpose,
+          sme_comments,
+          created_at,
+          updated_at,
+          sme_user:sme_user_id ( full_name, email )
+        `)
+        .eq('pr_id', prId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setSmeRecommendations((data as any) || []);
+    } catch (err) {
+      console.error('Error fetching SME recommendations:', err);
+      setSmeRecommendations([]);
+    }
+  };
+
   const handlePRSelection = async (pr: PurchaseRequisition) => {
     // Check if this PR is already used in another canvass request
     if (pr.id) {
@@ -1083,6 +1122,12 @@ export function Canvass() {
     setSelectedPR(pr);
     setShowPRSelection(false);
     setShowForm(true);
+
+    if (pr.id) {
+      fetchSmeRecommendations(pr.id);
+    } else {
+      setSmeRecommendations([]);
+    }
 
     // Set the company ID from the PR and generate document number
     if (pr.company_id) {
@@ -1238,6 +1283,7 @@ export function Canvass() {
               setShowForm(false);
               setSelectedPR(null);
               setSelectedPRCompany('');
+              setSmeRecommendations([]);
               setVendors([]);
               setQuotations([
                 createEmptyQuotation(),
@@ -1285,6 +1331,50 @@ export function Canvass() {
                   <p className="text-blue-900">{selectedPR.purpose}</p>
                 </div>
               </div>
+
+              {smeRecommendations.length > 0 && (
+                <div className="mt-4">
+                  <label className="font-semibold text-blue-700 block mb-2">SME Recommendations</label>
+                  <div className="space-y-3">
+                    {smeRecommendations.map((rec) => {
+                      const statusColor =
+                        rec.status === 'approved' || rec.status === 'reviewed'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : rec.status === 'rejected'
+                          ? 'bg-red-50 border-red-200 text-red-800'
+                          : 'bg-amber-50 border-amber-200 text-amber-800';
+                      return (
+                        <div key={rec.id} className="bg-white border border-blue-200 rounded-lg p-3 sm:p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div className="text-sm">
+                              <span className="font-semibold text-blue-700">SME: </span>
+                              <span className="text-blue-900">{rec.sme_user?.full_name || rec.sme_user?.email || 'Unknown'}</span>
+                            </div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full border capitalize ${statusColor}`}>
+                              {rec.status}
+                            </span>
+                          </div>
+                          <div className="text-sm mb-2">
+                            <span className="font-semibold text-blue-700">Purpose of Request: </span>
+                            <span className="text-blue-900 whitespace-pre-wrap break-words">{rec.purpose}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-semibold text-blue-700">Recommendation: </span>
+                            {rec.sme_comments ? (
+                              <span className="text-blue-900 whitespace-pre-wrap break-words">{rec.sme_comments}</span>
+                            ) : (
+                              <span className="text-slate-500 italic">Pending SME response</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-2">
+                            {new Date(rec.updated_at || rec.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {selectedPR.merged_pdf_path && (
                 <div className="mt-4">
