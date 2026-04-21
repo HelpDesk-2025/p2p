@@ -45,6 +45,8 @@ interface PettyCashReq {
   cash_released?: boolean;
   cash_released_at?: string;
   cash_released_by?: string;
+  exported_at?: string | null;
+  exported_by?: string | null;
   attachments?: Array<{
     file_name: string;
     file_path: string;
@@ -79,6 +81,7 @@ export function PettyCashRelease() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
   const [exporting, setExporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadRequests();
@@ -157,6 +160,18 @@ export function PettyCashRelease() {
       return computeOverForReimbursement(request) > 0;
     }
     return true;
+  };
+
+  const computeStatus = (r: PettyCashReq): 'Released' | 'Pending' | 'N/A' | 'Received' => {
+    if (!isReleaseEligible(r)) return 'N/A';
+    if (r.received_at) return 'Received';
+    if (r.cash_released) return 'Released';
+    return 'Pending';
+  };
+
+  const isExportable = (r: PettyCashReq): boolean => {
+    const s = computeStatus(r);
+    return s === 'Released' || s === 'Received';
   };
 
   const getReleaseAmount = (request: PettyCashReq): number => {
@@ -325,19 +340,13 @@ export function PettyCashRelease() {
 
   const handleExportBundle = async () => {
     if (sortedRequests.length === 0 || exporting) return;
+    const exportable = sortedRequests.filter((r) => isExportable(r) && selectedIds.has(r.id));
+    if (exportable.length === 0) {
+      alert('Please select at least one released or received request to export.');
+      return;
+    }
     setExporting(true);
     try {
-      const computeStatus = (r: PettyCashReq): 'Released' | 'Pending' | 'N/A' | 'Received' => {
-        if (!isReleaseEligible(r)) return 'N/A';
-        if (r.received_at) return 'Received';
-        if (r.cash_released) return 'Released';
-        return 'Pending';
-      };
-      const exportable = sortedRequests.filter((r) => computeStatus(r) !== 'Pending');
-      if (exportable.length === 0) {
-        alert('No requests available to export. Only released or N/A cash release requests can be exported.');
-        return;
-      }
       const ordered = orderRequestsWithLinkedLiquidations(exportable).map((r) => ({
         ...r,
         release_status: computeStatus(r),
@@ -353,6 +362,25 @@ export function PettyCashRelease() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      const exportedAt = new Date().toISOString();
+      const idsToMark = exportable.map((r) => r.id);
+      const { error: updateError } = await supabase
+        .from('petty_cash_requests')
+        .update({ exported_at: exportedAt, exported_by: profile?.id ?? null })
+        .in('id', idsToMark);
+      if (updateError) {
+        console.error('Failed to mark requests as exported:', updateError);
+      } else {
+        setRequests((prev) =>
+          prev.map((r) =>
+            idsToMark.includes(r.id)
+              ? { ...r, exported_at: exportedAt, exported_by: profile?.id ?? null }
+              : r,
+          ),
+        );
+        setSelectedIds(new Set());
+      }
 
       if (failures.length > 0) {
         alert(
@@ -428,12 +456,16 @@ export function PettyCashRelease() {
         </div>
         <button
           onClick={handleExportBundle}
-          disabled={exporting || listLoading || sortedRequests.length === 0}
+          disabled={exporting || listLoading || selectedIds.size === 0}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
           title="Export all listed requests and their generated forms into a single PDF"
         >
           {exporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
-          {exporting ? 'Generating...' : 'Export Generated Forms'}
+          {exporting
+            ? 'Generating...'
+            : selectedIds.size > 0
+            ? `Export Selected (${selectedIds.size})`
+            : 'Export Selected'}
         </button>
       </div>
 
@@ -443,7 +475,7 @@ export function PettyCashRelease() {
             <table className="w-full hidden lg:table">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
-                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'CASH RELEASED', 'CASH RECEIVED', 'ACTION'].map((h) => (
+                  {['', 'PC NO.', 'REQUESTER', 'DEPARTMENT', 'AMOUNT', 'TYPE', 'CASH RELEASED', 'CASH RECEIVED', 'EXPORTED', 'ACTION'].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -451,12 +483,14 @@ export function PettyCashRelease() {
               <tbody className="divide-y divide-slate-100">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
+                    <td className="py-3 px-4"><div className="h-4 w-4 bg-slate-200 rounded"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-28 mb-1"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-36 mb-1"/><div className="h-3 bg-slate-100 rounded w-44"/></td>
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded-full w-28"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-40"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-4 bg-slate-200 rounded w-24"/></td>
+                    <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-6 bg-slate-200 rounded w-20"/></td>
                     <td className="py-3 px-4"><div className="h-8 bg-slate-200 rounded w-8"/></td>
@@ -475,6 +509,31 @@ export function PettyCashRelease() {
             <table className="w-full border-collapse">
               <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
                 <tr>
+                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap w-10">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Select all exportable rows on this page"
+                      disabled={paginatedRequests.filter(isExportable).length === 0}
+                      checked={
+                        paginatedRequests.filter(isExportable).length > 0 &&
+                        paginatedRequests
+                          .filter(isExportable)
+                          .every((r) => selectedIds.has(r.id))
+                      }
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          paginatedRequests.filter(isExportable).forEach((r) => {
+                            if (checked) next.add(r.id);
+                            else next.delete(r.id);
+                          });
+                          return next;
+                        });
+                      }}
+                    />
+                  </th>
                   <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                     <button
                       onClick={() => handleSort('pc_number')}
@@ -528,6 +587,11 @@ export function PettyCashRelease() {
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Exported
+                    </span>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Action
                     </span>
                   </th>
@@ -539,6 +603,25 @@ export function PettyCashRelease() {
                     key={request.id}
                     className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
                   >
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        aria-label={`Select ${request.pc_number}`}
+                        disabled={!isExportable(request)}
+                        checked={selectedIds.has(request.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (checked) next.add(request.id);
+                            else next.delete(request.id);
+                            return next;
+                          });
+                        }}
+                        title={isExportable(request) ? 'Select for export' : 'Only released or received requests can be exported'}
+                      />
+                    </td>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.pc_number}>
                         {request.pc_number}
@@ -606,6 +689,20 @@ export function PettyCashRelease() {
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
                           N/A
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                      {request.exported_at ? (
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800"
+                          title={`Exported on ${new Date(request.exported_at).toLocaleString()}`}
+                        >
+                          Exported
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                          Not yet
                         </span>
                       )}
                     </td>
