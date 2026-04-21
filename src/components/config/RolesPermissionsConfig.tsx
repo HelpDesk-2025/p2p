@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Trash2, Save, X, Shield, Key, CreditCard as Edit } from 'lucide-react';
+import { Plus, Trash2, Save, X, Shield, Key, Building2, CreditCard as Edit } from 'lucide-react';
 
 interface Role {
   id: string;
@@ -25,10 +25,21 @@ interface RolePermission {
 }
 
 export function RolesPermissionsConfig() {
-  const [activeTab, setActiveTab] = useState<'roles' | 'permissions' | 'assign'>('roles');
+  const [activeTab, setActiveTab] = useState<'roles' | 'permissions' | 'assign' | 'company_forms'>('roles');
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [companyFormPerms, setCompanyFormPerms] = useState<Array<{ id?: string; company_id: string; form_type: string; enabled: boolean }>>([]);
+  const [savingFormPerm, setSavingFormPerm] = useState<string | null>(null);
+
+  const REQUEST_FORM_TYPES: Array<{ key: string; label: string }> = [
+    { key: 'purchase_requisition', label: 'Purchase Requisition' },
+    { key: 'canvass', label: 'Canvass' },
+    { key: 'petty_cash', label: 'Petty Cash' },
+    { key: 'cash_advance', label: 'Cash Advance' },
+    { key: 'reimbursement', label: 'Reimbursement/Liquidation' },
+  ];
   const [loading, setLoading] = useState(false);
   const [showRoleForm, setShowRoleForm] = useState(false);
   const [showPermissionForm, setShowPermissionForm] = useState(false);
@@ -72,7 +83,53 @@ export function RolesPermissionsConfig() {
     loadRoles();
     loadPermissions();
     loadRolePermissions();
+    loadCompanies();
+    loadCompanyFormPerms();
   }, []);
+
+  const loadCompanies = async () => {
+    const { data } = await supabase
+      .from('companies')
+      .select('id, name')
+      .order('name', { ascending: true });
+    setCompanies(data || []);
+  };
+
+  const loadCompanyFormPerms = async () => {
+    const { data } = await supabase
+      .from('company_request_form_permissions')
+      .select('id, company_id, form_type, enabled');
+    setCompanyFormPerms(data || []);
+  };
+
+  const getCompanyFormPerm = (companyId: string, formType: string) => {
+    return companyFormPerms.find((p) => p.company_id === companyId && p.form_type === formType);
+  };
+
+  const handleToggleCompanyForm = async (companyId: string, formType: string) => {
+    const key = `${companyId}:${formType}`;
+    const existing = getCompanyFormPerm(companyId, formType);
+    setSavingFormPerm(key);
+    try {
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('company_request_form_permissions')
+          .update({ enabled: !existing.enabled, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('company_request_form_permissions')
+          .insert([{ company_id: companyId, form_type: formType, enabled: true }]);
+        if (error) throw error;
+      }
+      await loadCompanyFormPerms();
+    } catch (error: any) {
+      alert('Error updating company form permission: ' + error.message);
+    } finally {
+      setSavingFormPerm(null);
+    }
+  };
 
   const loadRoles = async () => {
     const { data } = await supabase
@@ -710,6 +767,72 @@ export function RolesPermissionsConfig() {
     );
   };
 
+  const renderCompanyFormsTab = () => (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900">Company Request Forms Permissions</h3>
+        <p className="text-sm text-slate-600 mt-1">
+          Control which request forms each company's users can submit. A form that is unchecked is not available to that company.
+        </p>
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase sticky left-0 bg-slate-50 z-10">
+                  Company
+                </th>
+                {REQUEST_FORM_TYPES.map((form) => (
+                  <th
+                    key={form.key}
+                    className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase whitespace-nowrap"
+                  >
+                    {form.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {companies.length === 0 ? (
+                <tr>
+                  <td colSpan={REQUEST_FORM_TYPES.length + 1} className="px-6 py-8 text-center text-slate-500">
+                    No companies found
+                  </td>
+                </tr>
+              ) : (
+                companies.map((company) => (
+                  <tr key={company.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 text-sm font-medium text-slate-900 sticky left-0 bg-white z-10">
+                      {company.name}
+                    </td>
+                    {REQUEST_FORM_TYPES.map((form) => {
+                      const perm = getCompanyFormPerm(company.id, form.key);
+                      const enabled = perm ? perm.enabled : false;
+                      const key = `${company.id}:${form.key}`;
+                      return (
+                        <td key={form.key} className="px-6 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            disabled={savingFormPerm === key}
+                            onChange={() => handleToggleCompanyForm(company.id, form.key)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-slate-700">
@@ -755,6 +878,19 @@ export function RolesPermissionsConfig() {
           >
             Assign Permissions
           </button>
+          <button
+            onClick={() => setActiveTab('company_forms')}
+            className={`px-4 py-2 font-medium border-b-2 transition whitespace-nowrap ${
+              activeTab === 'company_forms'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Building2 size={18} />
+              Company Request Forms Permissions
+            </div>
+          </button>
         </nav>
       </div>
 
@@ -762,6 +898,7 @@ export function RolesPermissionsConfig() {
         {activeTab === 'roles' && renderRolesTab()}
         {activeTab === 'permissions' && renderPermissionsTab()}
         {activeTab === 'assign' && renderAssignTab()}
+        {activeTab === 'company_forms' && renderCompanyFormsTab()}
       </div>
     </div>
   );
