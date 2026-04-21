@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText } from 'lucide-react';
+import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown } from 'lucide-react';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
+import { generatePettyCashReleaseBundle } from '../../lib/pettyCashReleaseBundleExporter';
 
 interface ExpenseItem {
   date: string;
@@ -77,6 +78,7 @@ export function PettyCashRelease() {
   const [linkedPettyCashDetails, setLinkedPettyCashDetails] = useState<PettyCashReq | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -249,6 +251,37 @@ export function PettyCashRelease() {
     }
   };
 
+  const handleExportBundle = async () => {
+    if (sortedRequests.length === 0 || exporting) return;
+    setExporting(true);
+    try {
+      const { blob, failures } = await generatePettyCashReleaseBundle(sortedRequests);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const now = new Date();
+      const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      a.href = url;
+      a.download = `Petty_Cash_Release_Bundle_${stamp}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (failures.length > 0) {
+        alert(
+          `Bundle generated, but the following ${failures.length} item(s) could not be included:\n\n${failures
+            .slice(0, 10)
+            .join('\n')}${failures.length > 10 ? `\n...and ${failures.length - 10} more` : ''}`,
+        );
+      }
+    } catch (error: any) {
+      console.error('Error exporting bundle:', error);
+      alert('Failed to export bundle: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const downloadGeneratedPdf = async (filePath: string, fileName: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -301,9 +334,20 @@ export function PettyCashRelease() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Release</h2>
-        <p className="text-slate-600 mt-1">Release approved cash advance petty cash requests to requesters</p>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Release</h2>
+          <p className="text-slate-600 mt-1">Release approved cash advance petty cash requests to requesters</p>
+        </div>
+        <button
+          onClick={handleExportBundle}
+          disabled={exporting || listLoading || sortedRequests.length === 0}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+          title="Export all listed requests and their generated forms into a single PDF"
+        >
+          {exporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
+          {exporting ? 'Generating...' : 'Export Generated Forms'}
+        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
