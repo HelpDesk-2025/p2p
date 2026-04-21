@@ -929,8 +929,10 @@ export function PettyCashRelease() {
                     {releasing
                       ? 'Releasing...'
                       : selectedRequest.request_type === 'For Liquidation'
-                      ? `Release Reimbursement (${'\u20B1'}${getReleaseAmount(selectedRequest).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
-                      : 'Release Petty Cash'}
+                      ? 'Release Petty Cash - Over for Reimbursement'
+                      : selectedRequest.request_type === 'For Reimbursement'
+                      ? 'Release Petty Cash - Reimbursement'
+                      : 'Release Petty Cash - Cash Advance'}
                   </button>
                 )}
                 <button
