@@ -121,7 +121,6 @@ export function PettyCashRelease() {
           companies!petty_cash_requests_company_id_fkey (id, name)
         `)
         .eq('status', 'approved')
-        .eq('request_type', 'For Cash Advance')
         .order('created_at', { ascending: false });
 
       if (profile.role !== 'admin') {
@@ -337,7 +336,7 @@ export function PettyCashRelease() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Release</h2>
-          <p className="text-slate-600 mt-1">Release approved cash advance petty cash requests to requesters</p>
+          <p className="text-slate-600 mt-1">Release approved petty cash requests to requesters</p>
         </div>
         <button
           onClick={handleExportBundle}
@@ -381,7 +380,7 @@ export function PettyCashRelease() {
         ) : requests.length === 0 ? (
           <div className="p-12 text-center">
             <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-600">No approved cash advance requests found</p>
+            <p className="text-slate-600">No approved petty cash requests found</p>
           </div>
         ) : (
           <div className="overflow-auto flex-1">
@@ -478,7 +477,13 @@ export function PettyCashRelease() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-teal-100 text-teal-800 text-xs font-medium">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                        request.request_type === 'For Liquidation'
+                          ? 'bg-blue-100 text-blue-800'
+                          : request.request_type === 'For Reimbursement'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-teal-100 text-teal-800'
+                      }`}>
                         {request.request_type || 'For Cash Advance'}
                       </span>
                     </td>
