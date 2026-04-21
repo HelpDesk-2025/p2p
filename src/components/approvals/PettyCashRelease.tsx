@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote } from 'lucide-react';
+import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText } from 'lucide-react';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 
@@ -50,6 +50,8 @@ interface PettyCashReq {
     file_type: string;
   }>;
   approved_petty_cash_pdf_path?: string;
+  rfp_pdf_path?: string;
+  liquidation_pdf_path?: string;
   user_profiles?: {
     full_name: string;
     email: string;
@@ -244,6 +246,40 @@ export function PettyCashRelease() {
     } catch (error) {
       console.error('Error downloading attachment:', error);
       alert('Failed to download attachment');
+    }
+  };
+
+  const downloadGeneratedPdf = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(filePath);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF');
+    }
+  };
+
+  const previewGeneratedPdf = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .download(filePath);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Error previewing PDF:', error);
+      alert('Failed to preview PDF');
     }
   };
 
@@ -647,6 +683,87 @@ export function PettyCashRelease() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {(selectedRequest.approved_petty_cash_pdf_path || selectedRequest.rfp_pdf_path || selectedRequest.liquidation_pdf_path) && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                  <label className="block text-sm font-semibold text-slate-700">Generated Forms</label>
+
+                  {selectedRequest.approved_petty_cash_pdf_path && (
+                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                      <div className="flex items-center gap-2">
+                        <FileText size={18} className="text-blue-600" />
+                        <span className="text-sm text-slate-700">Petty Cash Form - {selectedRequest.pc_number}.pdf</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewGeneratedPdf(selectedRequest.approved_petty_cash_pdf_path!)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                        >
+                          <Eye size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadGeneratedPdf(selectedRequest.approved_petty_cash_pdf_path!, `Petty_Cash_${selectedRequest.pc_number}.pdf`)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRequest.rfp_pdf_path && (
+                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                      <div className="flex items-center gap-2">
+                        <FileText size={18} className="text-amber-600" />
+                        <span className="text-sm text-slate-700">RFP - {selectedRequest.pc_number}.pdf</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewGeneratedPdf(selectedRequest.rfp_pdf_path!)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                        >
+                          <Eye size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadGeneratedPdf(selectedRequest.rfp_pdf_path!, `RFP_${selectedRequest.pc_number}.pdf`)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRequest.liquidation_pdf_path && (
+                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-300">
+                      <div className="flex items-center gap-2">
+                        <FileText size={18} className="text-teal-600" />
+                        <span className="text-sm text-slate-700">Liquidation Report - {selectedRequest.pc_number}.pdf</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => previewGeneratedPdf(selectedRequest.liquidation_pdf_path!)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                        >
+                          <Eye size={16} />
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => downloadGeneratedPdf(selectedRequest.liquidation_pdf_path!, `Liquidation_${selectedRequest.pc_number}.pdf`)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 transition"
+                        >
+                          <Download size={16} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
