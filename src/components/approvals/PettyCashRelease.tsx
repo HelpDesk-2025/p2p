@@ -170,8 +170,7 @@ export function PettyCashRelease() {
   };
 
   const isExportable = (r: PettyCashReq): boolean => {
-    const s = computeStatus(r);
-    return s === 'Released' || s === 'Received';
+    return computeStatus(r) !== 'Pending';
   };
 
   const getReleaseAmount = (request: PettyCashReq): number => {
@@ -349,7 +348,7 @@ export function PettyCashRelease() {
     if (sortedRequests.length === 0 || exporting) return;
     const exportable = sortedRequests.filter((r) => isExportable(r) && selectedIds.has(r.id));
     if (exportable.length === 0) {
-      alert('Please select at least one released or received request to export.');
+      alert('Please select at least one request to export. Requests awaiting cash release or receipt cannot be exported.');
       return;
     }
     setExporting(true);
@@ -632,7 +631,7 @@ export function PettyCashRelease() {
                             return next;
                           });
                         }}
-                        title={isExportable(request) ? 'Select for export' : 'Only released or received requests can be exported'}
+                        title={isExportable(request) ? 'Select for export' : 'Cannot export while cash release or receipt is pending'}
                       />
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
