@@ -1,6 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission, hasAnyPermission, MODULE_PERMISSIONS } from '../lib/permissions';
+import { supabase } from '../lib/supabase';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import {
   LayoutDashboard,
@@ -205,10 +206,56 @@ const configItems: MenuItem[] = [
   { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
 ];
 
+const REQUEST_VIEW_TO_FORM_TYPE: Partial<Record<ViewType, string>> = {
+  'pr-request': 'purchase_requisition',
+  'canvass-request': 'canvass',
+  'petty-cash-request': 'petty_cash',
+  'cash-advance-request': 'cash_advance',
+  'reimbursement-request': 'reimbursement',
+};
+
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const { profile, permissions, signOut, showInactivityWarning, inactivityCountdown, resetInactivityTimer } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [allowedFormTypes, setAllowedFormTypes] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    const loadCompanyFormPerms = async () => {
+      if (!profile) {
+        setAllowedFormTypes(null);
+        return;
+      }
+      if (profile.role === 'admin') {
+        setAllowedFormTypes(null);
+        return;
+      }
+
+      const companyIds: string[] = [];
+      if (profile.enable_multi_company_requests && Array.isArray(profile.allowed_companies) && profile.allowed_companies.length > 0) {
+        companyIds.push(...profile.allowed_companies);
+      } else if (profile.company_id) {
+        companyIds.push(profile.company_id);
+      }
+
+      if (companyIds.length === 0) {
+        setAllowedFormTypes(new Set());
+        return;
+      }
+
+      const { data } = await supabase
+        .from('company_request_form_permissions')
+        .select('company_id, form_type, enabled')
+        .in('company_id', companyIds)
+        .eq('enabled', true);
+
+      const allowed = new Set<string>();
+      (data || []).forEach((row: any) => allowed.add(row.form_type));
+      setAllowedFormTypes(allowed);
+    };
+
+    loadCompanyFormPerms();
+  }, [profile]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -226,7 +273,14 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     return hasPermission(permissions, item.permission);
   };
 
-  const filteredMenuItems = menuItems.filter(canAccessItem);
+  const passesCompanyFormFilter = (item: MenuItem) => {
+    const formType = REQUEST_VIEW_TO_FORM_TYPE[item.id];
+    if (!formType) return true;
+    if (allowedFormTypes === null) return true;
+    return allowedFormTypes.has(formType);
+  };
+
+  const filteredMenuItems = menuItems.filter((item) => canAccessItem(item) && passesCompanyFormFilter(item));
   const filteredConfigItems = configItems.filter(canAccessItem);
 
   const requestItems = filteredMenuItems.filter((item) => item.group === 'requests');
