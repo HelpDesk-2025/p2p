@@ -327,7 +327,12 @@ export function PettyCashRelease() {
     if (sortedRequests.length === 0 || exporting) return;
     setExporting(true);
     try {
-      const ordered = orderRequestsWithLinkedLiquidations(sortedRequests);
+      const exportable = sortedRequests.filter((r) => !isReleaseEligible(r) || r.cash_released);
+      if (exportable.length === 0) {
+        alert('No requests available to export. Only released or N/A cash release requests can be exported.');
+        return;
+      }
+      const ordered = orderRequestsWithLinkedLiquidations(exportable);
       const { blob, failures } = await generatePettyCashReleaseBundle(ordered);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
