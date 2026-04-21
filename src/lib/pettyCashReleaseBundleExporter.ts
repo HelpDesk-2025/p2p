@@ -13,6 +13,7 @@ export interface PettyCashBundleRequest {
   purpose: string;
   amount: number;
   request_type?: string;
+  release_status?: 'Released' | 'Pending' | 'N/A' | 'Received';
   expense_type_items?: Array<{ expense_type_name: string; sub_item_name: string }>;
   approved_petty_cash_pdf_path?: string;
   rfp_pdf_path?: string;
@@ -65,6 +66,7 @@ const derivePurpose = (req: PettyCashBundleRequest) => {
 };
 
 const statusLabel = (req: PettyCashBundleRequest) => {
+  if (req.release_status) return req.release_status;
   if (req.received_at) return 'Received';
   if (req.cash_released) return 'Released';
   return 'Pending';
