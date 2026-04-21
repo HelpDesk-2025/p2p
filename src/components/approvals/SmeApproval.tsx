@@ -25,6 +25,8 @@ interface SmeRequest {
     items: any[];
     merged_pdf_path: string | null;
     ready_for_canvass: boolean;
+    companies?: { name: string } | null;
+    pr_requester?: { full_name: string; email: string } | null;
   };
   requester: {
     full_name: string;
@@ -73,7 +75,9 @@ export function SmeApproval() {
           request_date,
           items,
           merged_pdf_path,
-          ready_for_canvass
+          ready_for_canvass,
+          companies:company_id ( name ),
+          pr_requester:requester_id ( full_name, email )
         ),
         requester:requested_by (
           full_name,
@@ -539,6 +543,10 @@ export function SmeApproval() {
                 <div>
                   <label className="text-xs sm:text-sm font-semibold text-slate-700">Company</label>
                   <p className="text-sm sm:text-base text-slate-900">{viewingRequest.purchase_requisitions?.companies?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-xs sm:text-sm font-semibold text-slate-700">Requester</label>
+                  <p className="text-sm sm:text-base text-slate-900">{viewingRequest.purchase_requisitions?.pr_requester?.full_name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-xs sm:text-sm font-semibold text-slate-700">Department</label>

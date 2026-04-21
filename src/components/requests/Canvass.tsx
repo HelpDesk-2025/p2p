@@ -93,6 +93,9 @@ interface PurchaseRequisition {
   merged_pdf_path: string | null;
   ready_for_canvass: boolean;
   company_id: string;
+  requester_id?: string;
+  requester_name?: string;
+  pr_requester?: { full_name?: string | null; email?: string | null } | null;
 }
 
 interface QuotationItem {
@@ -342,7 +345,7 @@ export function Canvass() {
   const loadAvailablePRs = async () => {
     let query = supabase
       .from('purchase_requisitions')
-      .select('*')
+      .select('*, pr_requester:requester_id ( full_name, email )')
       .eq('ready_for_canvass', true)
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
@@ -417,7 +420,7 @@ export function Canvass() {
       try {
         const { data: prData, error: prError } = await supabase
           .from('purchase_requisitions')
-          .select('*')
+          .select('*, pr_requester:requester_id ( full_name, email )')
           .eq('id', request.pr_id)
           .maybeSingle();
 
@@ -1309,6 +1312,10 @@ export function Canvass() {
                 <div>
                   <label className="font-semibold text-blue-700">Company</label>
                   <p className="text-blue-900">{selectedPRCompany || 'Loading...'}</p>
+                </div>
+                <div>
+                  <label className="font-semibold text-blue-700">Requester</label>
+                  <p className="text-blue-900">{selectedPR.pr_requester?.full_name || selectedPR.requester_name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="font-semibold text-blue-700">Department</label>
