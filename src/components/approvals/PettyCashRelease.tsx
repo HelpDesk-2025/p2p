@@ -137,6 +137,35 @@ export function PettyCashRelease() {
     setListLoading(false);
   };
 
+  const computeExpensesTotal = (request: PettyCashReq): number => {
+    if (request.expense_items && request.expense_items.length > 0) {
+      return request.expense_items.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    }
+    return Number(request.amount) || 0;
+  };
+
+  const computeOverForReimbursement = (request: PettyCashReq): number => {
+    if (request.request_type !== 'For Liquidation') return 0;
+    const total = computeExpensesTotal(request);
+    const advance = Number(request.petty_cash_advance) || 0;
+    const diff = total - advance;
+    return diff > 0 ? diff : 0;
+  };
+
+  const isReleaseEligible = (request: PettyCashReq): boolean => {
+    if (request.request_type === 'For Liquidation') {
+      return computeOverForReimbursement(request) > 0;
+    }
+    return true;
+  };
+
+  const getReleaseAmount = (request: PettyCashReq): number => {
+    if (request.request_type === 'For Liquidation') {
+      return computeOverForReimbursement(request);
+    }
+    return Number(request.amount) || 0;
+  };
+
   const handleViewRequest = (request: PettyCashReq) => {
     setSelectedRequest(request);
     setShowModal(true);
@@ -145,7 +174,13 @@ export function PettyCashRelease() {
   const handleRelease = async () => {
     if (!selectedRequest || !profile) return;
 
-    if (!confirm(`Are you sure you want to release Petty Cash ${selectedRequest.pc_number} (${'\u20B1'}${selectedRequest.amount.toLocaleString()}) to ${selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'the requester'}?`)) {
+    const releaseAmt = getReleaseAmount(selectedRequest);
+    const isOverLiq = selectedRequest.request_type === 'For Liquidation';
+    const confirmMsg = isOverLiq
+      ? `Release Over for Reimbursement amount of ${'\u20B1'}${releaseAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for Petty Cash ${selectedRequest.pc_number} to ${selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'the requester'}?`
+      : `Are you sure you want to release Petty Cash ${selectedRequest.pc_number} (${'\u20B1'}${releaseAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) to ${selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'the requester'}?`;
+
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -488,26 +523,38 @@ export function PettyCashRelease() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
-                        request.cash_released
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                        title={request.cash_released && request.cash_released_at ? new Date(request.cash_released_at).toLocaleString() : ''}
-                      >
-                        {request.cash_released ? 'Released' : 'Pending'}
-                      </span>
+                      {isReleaseEligible(request) ? (
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                          request.cash_released
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                          title={request.cash_released && request.cash_released_at ? new Date(request.cash_released_at).toLocaleString() : ''}
+                        >
+                          {request.cash_released ? 'Released' : 'Pending'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                          N/A
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
-                        request.received_at
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                        title={request.received_at ? new Date(request.received_at).toLocaleString() : ''}
-                      >
-                        {request.received_at ? 'Received' : 'Pending'}
-                      </span>
+                      {isReleaseEligible(request) ? (
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                          request.received_at
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                          title={request.received_at ? new Date(request.received_at).toLocaleString() : ''}
+                        >
+                          {request.received_at ? 'Received' : 'Pending'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                          N/A
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button
@@ -619,6 +666,32 @@ export function PettyCashRelease() {
                   <p className="text-slate-900">{selectedRequest.purpose}</p>
                 )}
               </div>
+
+              {selectedRequest.request_type === 'For Liquidation' && computeOverForReimbursement(selectedRequest) > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-amber-900 mb-2">Over for Reimbursement</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-amber-700">Total Expenditures</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {'\u20B1'}{computeExpensesTotal(selectedRequest).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-amber-700">Less: Cash Advance</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {'\u20B1'}{(Number(selectedRequest.petty_cash_advance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-amber-700">Amount to Release</p>
+                      <p className="text-lg font-bold text-amber-900">
+                        {'\u20B1'}{computeOverForReimbursement(selectedRequest).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {selectedRequest.request_type === 'For Liquidation' && linkedPettyCashDetails && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -846,22 +919,26 @@ export function PettyCashRelease() {
               )}
 
               <div className="flex gap-3 pt-4 border-t border-slate-200">
-                {!selectedRequest.cash_released && (
+                {isReleaseEligible(selectedRequest) && !selectedRequest.cash_released && (
                   <button
                     onClick={handleRelease}
                     disabled={releasing}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                   >
                     {releasing ? <Loader2 size={20} className="animate-spin" /> : <Banknote size={20} />}
-                    {releasing ? 'Releasing...' : 'Release Petty Cash'}
+                    {releasing
+                      ? 'Releasing...'
+                      : selectedRequest.request_type === 'For Liquidation'
+                      ? `Release Reimbursement (${'\u20B1'}${getReleaseAmount(selectedRequest).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+                      : 'Release Petty Cash'}
                   </button>
                 )}
                 <button
                   onClick={() => setShowModal(false)}
                   disabled={releasing}
-                  className={`${selectedRequest.cash_released ? 'flex-1' : ''} px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold`}
+                  className={`${!isReleaseEligible(selectedRequest) || selectedRequest.cash_released ? 'flex-1' : ''} px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold`}
                 >
-                  {selectedRequest.cash_released ? 'Close' : 'Cancel'}
+                  {!isReleaseEligible(selectedRequest) || selectedRequest.cash_released ? 'Close' : 'Cancel'}
                 </button>
               </div>
             </div>

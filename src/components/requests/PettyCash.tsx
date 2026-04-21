@@ -912,8 +912,15 @@ export function PettyCash() {
   };
 
   const handleReceivePettyCash = async (request: PettyCashReq) => {
-    if (request.request_type !== 'For Reimbursement' && request.request_type !== 'For Cash Advance') {
-      alert('Receive cash functionality is only available for "For Reimbursement" and "For Cash Advance" request types.');
+    const liquidationOver = request.request_type === 'For Liquidation'
+      && (Number(request.amount) - (Number(request.petty_cash_advance) || 0)) > 0;
+
+    if (
+      request.request_type !== 'For Reimbursement'
+      && request.request_type !== 'For Cash Advance'
+      && !liquidationOver
+    ) {
+      alert('Receive cash functionality is only available for "For Reimbursement", "For Cash Advance", or "For Liquidation" requests with an Over for Reimbursement amount.');
       return;
     }
 
@@ -2287,7 +2294,7 @@ export function PettyCash() {
                 />
               )}
 
-              {viewingRequest.status === 'approved' && !viewingRequest.received_at && viewingRequest.request_type === 'For Cash Advance' && !viewingRequest.cash_released && (
+              {viewingRequest.status === 'approved' && !viewingRequest.received_at && !viewingRequest.cash_released && (viewingRequest.request_type === 'For Cash Advance' || (viewingRequest.request_type === 'For Liquidation' && (Number(viewingRequest.amount) - (Number((viewingRequest as any).petty_cash_advance) || 0)) > 0)) && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
                   <Loader2 size={20} className="text-amber-600 mt-0.5 flex-shrink-0" />
                   <div>
@@ -2299,19 +2306,19 @@ export function PettyCash() {
                 </div>
               )}
 
-              {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || (viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released)) && (
+              {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || ((viewingRequest.request_type === 'For Cash Advance' || (viewingRequest.request_type === 'For Liquidation' && (Number(viewingRequest.amount) - (Number((viewingRequest as any).petty_cash_advance) || 0)) > 0)) && viewingRequest.cash_released)) && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
                     <h4 className="font-semibold text-green-900">Request Approved - Ready for Receiving</h4>
                     <p className="text-sm text-green-700 mt-1">
-                      Your petty cash request has been fully approved{viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released_at ? ` and cash was released on ${new Date(viewingRequest.cash_released_at).toLocaleDateString()}` : ''}. Click the "Receive Cash" button below to mark it as received and generate the approved form.
+                      Your petty cash request has been fully approved{(viewingRequest.request_type === 'For Cash Advance' || viewingRequest.request_type === 'For Liquidation') && viewingRequest.cash_released_at ? ` and cash was released on ${new Date(viewingRequest.cash_released_at).toLocaleDateString()}` : ''}. Click the "Receive Cash" button below to mark it as received and generate the approved form.
                     </p>
                   </div>
                 </div>
               )}
 
-              {viewingRequest.status === 'approved' && viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released && viewingRequest.cash_released_at && (
+              {viewingRequest.status === 'approved' && (viewingRequest.request_type === 'For Cash Advance' || viewingRequest.request_type === 'For Liquidation') && viewingRequest.cash_released && viewingRequest.cash_released_at && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-emerald-600 mt-0.5 flex-shrink-0" />
                   <div>
@@ -2323,7 +2330,7 @@ export function PettyCash() {
                 </div>
               )}
 
-              {viewingRequest.status === 'approved' && viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
+              {viewingRequest.status === 'approved' && viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance' || viewingRequest.request_type === 'For Liquidation') && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                   <Check size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
                   <div>
@@ -2602,7 +2609,7 @@ export function PettyCash() {
                     </button>
                   </>
                 )}
-                {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || (viewingRequest.request_type === 'For Cash Advance' && viewingRequest.cash_released)) && (
+                {viewingRequest.status === 'approved' && !viewingRequest.received_at && (viewingRequest.request_type === 'For Reimbursement' || ((viewingRequest.request_type === 'For Cash Advance' || (viewingRequest.request_type === 'For Liquidation' && (Number(viewingRequest.amount) - (Number((viewingRequest as any).petty_cash_advance) || 0)) > 0)) && viewingRequest.cash_released)) && (
                   <button
                     onClick={() => handleReceivePettyCash(viewingRequest)}
                     disabled={loading}
@@ -2612,7 +2619,7 @@ export function PettyCash() {
                     {loading ? 'Processing...' : 'Receive Cash'}
                   </button>
                 )}
-                {viewingRequest.status === 'approved' && viewingRequest.received_at && viewingRequest.approved_petty_cash_pdf_path && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance') && (
+                {viewingRequest.status === 'approved' && viewingRequest.received_at && viewingRequest.approved_petty_cash_pdf_path && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance' || viewingRequest.request_type === 'For Liquidation') && (
                   <>
                     <button
                       onClick={() => previewApprovedPettyCash(viewingRequest.approved_petty_cash_pdf_path!)}
