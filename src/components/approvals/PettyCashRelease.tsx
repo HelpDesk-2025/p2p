@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown } from 'lucide-react';
+import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown, Filter } from 'lucide-react';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
+import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { generatePettyCashReleaseBundle } from '../../lib/pettyCashReleaseBundleExporter';
 import { sendApprovalEmail } from '../../lib/approvalFlow';
 
@@ -83,6 +84,82 @@ export function PettyCashRelease() {
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
   const [exporting, setExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
+
+  const filterColumns: FilterColumn[] = [
+    {
+      key: 'exported',
+      label: 'Exported',
+      type: 'select',
+      options: [
+        { value: 'exported', label: 'Exported' },
+        { value: 'not_exported', label: 'Not Exported' },
+      ],
+    },
+    { key: 'pc_number', label: 'PC No.', type: 'text' },
+    { key: 'requester', label: 'Requester', type: 'text' },
+    { key: 'department', label: 'Department', type: 'text' },
+    { key: 'amount', label: 'Amount', type: 'number' },
+    {
+      key: 'request_type',
+      label: 'Type',
+      type: 'select',
+      options: [
+        { value: 'For Cash Advance', label: 'For Cash Advance' },
+        { value: 'For Reimbursement', label: 'For Reimbursement' },
+        { value: 'For Liquidation', label: 'For Liquidation' },
+      ],
+    },
+    { key: 'linked_ca', label: 'Linked CA', type: 'text' },
+    {
+      key: 'cash_released',
+      label: 'Cash Released',
+      type: 'select',
+      options: [
+        { value: 'released', label: 'Released' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'n/a', label: 'N/A' },
+      ],
+    },
+    {
+      key: 'cash_received',
+      label: 'Cash Received',
+      type: 'select',
+      options: [
+        { value: 'received', label: 'Received' },
+        { value: 'pending', label: 'Pending' },
+        { value: 'n/a', label: 'N/A' },
+      ],
+    },
+  ];
+
+  const getFilterFieldValue = (r: PettyCashReq, key: string): any => {
+    switch (key) {
+      case 'exported':
+        return r.exported_at ? 'exported' : 'not_exported';
+      case 'pc_number':
+        return r.pc_number;
+      case 'requester':
+        return r.user_profiles?.full_name || '';
+      case 'department':
+        return r.department || r.user_profiles?.department || '';
+      case 'amount':
+        return Number(r.amount) || 0;
+      case 'request_type':
+        return r.request_type || 'For Cash Advance';
+      case 'linked_ca':
+        return getLinkedCashAdvancePcNumber(r) || '';
+      case 'cash_released':
+        if (!isReleaseEligible(r)) return 'n/a';
+        return r.cash_released ? 'released' : 'pending';
+      case 'cash_received':
+        if (!isReleaseEligible(r)) return 'n/a';
+        return r.received_at ? 'received' : 'pending';
+      default:
+        return '';
+    }
+  };
 
   useEffect(() => {
     loadRequests();
@@ -293,7 +370,9 @@ export function PettyCashRelease() {
     return requestsById.get(r.linked_petty_cash_id)?.pc_number ?? null;
   };
 
-  const sortedRequests = [...requests].sort((a, b) => {
+  const filteredRequests = applyFilters(requests, filterValues, filterColumns, getFilterFieldValue);
+
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any;
     let bVal: any;
 
@@ -508,20 +587,43 @@ export function PettyCashRelease() {
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Release</h2>
           <p className="text-slate-600 mt-1">Release approved petty cash requests to requesters</p>
         </div>
-        <button
-          onClick={handleExportBundle}
-          disabled={exporting || listLoading || selectedIds.size === 0}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
-          title="Export all listed requests and their generated forms into a single PDF"
-        >
-          {exporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
-          {exporting
-            ? 'Generating...'
-            : selectedIds.size > 0
-            ? `Export Selected (${selectedIds.size})`
-            : 'Export Selected'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilterModal(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-semibold shadow-sm relative"
+            title="Filter requests"
+          >
+            <Filter size={18} />
+            Filters
+            {getActiveFilterCount(filterValues) > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-xs font-bold rounded-full bg-blue-600 text-white">
+                {getActiveFilterCount(filterValues)}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={handleExportBundle}
+            disabled={exporting || listLoading || selectedIds.size === 0}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+            title="Export all listed requests and their generated forms into a single PDF"
+          >
+            {exporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
+            {exporting
+              ? 'Generating...'
+              : selectedIds.size > 0
+              ? `Export Selected (${selectedIds.size})`
+              : 'Export Selected'}
+          </button>
+        </div>
       </div>
+
+      <FilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        columns={filterColumns}
+        values={filterValues}
+        onApply={(v) => { setFilterValues(v); setCurrentPage(1); }}
+      />
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
