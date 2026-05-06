@@ -17,14 +17,11 @@ export interface Role {
 export interface UserPermissions {
   role: string;
   permissions: string[];
+  hasFullAccess: boolean;
 }
 
-/**
- * Fetches the current user's role and permissions
- */
 export async function getUserPermissions(userId: string): Promise<UserPermissions | null> {
   try {
-    // Get user profile with role
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('role')
@@ -36,11 +33,11 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
       return null;
     }
 
-    // Get role with permissions
     const { data: roleData, error: roleError } = await supabase
       .from('roles')
       .select(`
         name,
+        has_full_access,
         role_permissions (
           permissions (
             name,
@@ -52,18 +49,23 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
       .maybeSingle();
 
     if (roleError || !roleData) {
+      if (profile.role === 'admin') {
+        return { role: profile.role, permissions: [], hasFullAccess: true };
+      }
       console.error('Error fetching role permissions:', roleError);
-      return null;
+      return { role: profile.role, permissions: [], hasFullAccess: false };
     }
 
-    // Extract permission names
     const permissions = roleData.role_permissions?.map((rp: any) =>
-      rp.permissions.name
-    ) || [];
+      rp.permissions?.name
+    ).filter(Boolean) || [];
+
+    const hasFullAccess = Boolean((roleData as any).has_full_access) || profile.role === 'admin';
 
     return {
       role: profile.role,
-      permissions
+      permissions,
+      hasFullAccess,
     };
   } catch (error) {
     console.error('Error getting user permissions:', error);
@@ -71,27 +73,21 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
   }
 }
 
-/**
- * Checks if user has a specific permission
- */
 export function hasPermission(userPermissions: UserPermissions | null, permission: string): boolean {
   if (!userPermissions) return false;
+  if (userPermissions.hasFullAccess) return true;
   return userPermissions.permissions.includes(permission);
 }
 
-/**
- * Checks if user has any of the specified permissions
- */
 export function hasAnyPermission(userPermissions: UserPermissions | null, permissions: string[]): boolean {
   if (!userPermissions) return false;
+  if (userPermissions.hasFullAccess) return true;
   return permissions.some(p => userPermissions.permissions.includes(p));
 }
 
-/**
- * Checks if user has all of the specified permissions
- */
 export function hasAllPermissions(userPermissions: UserPermissions | null, permissions: string[]): boolean {
   if (!userPermissions) return false;
+  if (userPermissions.hasFullAccess) return true;
   return permissions.every(p => userPermissions.permissions.includes(p));
 }
 

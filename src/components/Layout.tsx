@@ -61,6 +61,8 @@ export type ViewType =
   | 'config-roles-permissions'
   | 'config-impersonation'
   | 'config-withholding-tax-rates'
+  | 'config-announcements'
+  | 'config-api-integrations'
   | 'change-password'
   | 'user-manual'
   | 'approved-rejected';
@@ -106,7 +108,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: 'reimbursement-request',
-    label: 'Reimbursement/Liquidation',
+    label: 'Reimbursement | Liquidation',
     icon: Receipt,
     permission: MODULE_PERMISSIONS.REIMBURSEMENT,
     group: 'requests',
@@ -141,7 +143,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: 'reimbursement-approval',
-    label: 'Reimbursement Approval',
+    label: 'Reimbursement | Liquidation Approval',
     icon: CheckSquare,
     permission: MODULE_PERMISSIONS.REIMBURSEMENT_APPROVAL,
     group: 'approvals',
@@ -190,44 +192,44 @@ const menuItems: MenuItem[] = [
 ];
 
 const configItems: MenuItem[] = [
-  { id: 'config-approvers', label: 'Approvers', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-users', label: 'Users', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
-  { id: 'config-impersonation', label: 'View as User', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
-  { id: 'config-checklists', label: 'PR Checklists', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_PR_CHECKLISTS] },
-  { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_PAYMENT_MODES] },
-  { id: 'config-holidays', label: 'Holidays', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-companies', label: 'Companies', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-approval-flows', label: 'Approval Flows', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-number-series', label: 'Number Series', icon: Settings, permission: MODULE_PERMISSIONS.NUMBER_SERIES },
-  { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, permission: MODULE_PERMISSIONS.APPROVAL_FLOW },
-  { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, permission: MODULE_PERMISSIONS.SMTP },
-  { id: 'config-expense-types', label: 'Type of Expense', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_EXPENSE_TYPES] },
-  { id: 'config-withholding-tax-rates', label: 'Withholding Tax Rates', icon: Settings, permission: [MODULE_PERMISSIONS.APPROVAL_FLOW, MODULE_PERMISSIONS.CONFIG_TAX_RATES] },
-  { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: MODULE_PERMISSIONS.ROLES_PERMISSIONS },
+  { id: 'config-approvers', label: 'Approvers', icon: Settings, permission: 'config_approvers' },
+  { id: 'config-users', label: 'Users', icon: Settings, permission: 'config_users' },
+  { id: 'config-impersonation', label: 'View as User', icon: Settings, permission: 'config_view_as_users' },
+  { id: 'config-checklists', label: 'PR Checklists', icon: Settings, permission: 'config_pr_checklists' },
+  { id: 'config-payment-modes', label: 'Payment Modes', icon: Settings, permission: 'config_payment_modes' },
+  { id: 'config-holidays', label: 'Holidays', icon: Settings, permission: 'config_holidays' },
+  { id: 'config-companies', label: 'Companies', icon: Settings, permission: 'config_companies' },
+  { id: 'config-approval-flows', label: 'Approval Flows', icon: Settings, permission: 'config_approval_flows' },
+  { id: 'config-number-series', label: 'Number Series', icon: Settings, permission: 'config_number_series' },
+  { id: 'config-vendors-items', label: 'Vendors & Items', icon: Settings, permission: 'config_vendors_items' },
+  { id: 'config-smtp', label: 'SMTP Settings', icon: Settings, permission: 'config_smtp_settings' },
+  { id: 'config-expense-types', label: 'Type of Expense', icon: Settings, permission: 'config_expense_types' },
+  { id: 'config-withholding-tax-rates', label: 'Withholding Tax Rates', icon: Settings, permission: 'config_tax_rates' },
+  { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: 'config_roles_permissions' },
+  { id: 'config-announcements', label: 'Announcements', icon: Settings, permission: 'config_roles_permissions' },
+  { id: 'config-api-integrations', label: 'API Integration', icon: Settings, permission: 'config_api_integrations' },
 ];
 
-const REQUEST_VIEW_TO_FORM_TYPE: Partial<Record<ViewType, string>> = {
-  'pr-request': 'purchase_requisition',
-  'canvass-request': 'canvass',
-  'petty-cash-request': 'petty_cash',
-  'cash-advance-request': 'cash_advance',
-  'reimbursement-request': 'reimbursement',
-};
+const VIEW_KEYS_EXEMPT_FROM_COMPANY_GATING: Set<string> = new Set([
+  'dashboard',
+  'user-manual',
+  'change-password',
+]);
 
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const { profile, permissions, signOut, showInactivityWarning, inactivityCountdown, resetInactivityTimer } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [allowedFormTypes, setAllowedFormTypes] = useState<Set<string> | null>(null);
+  const [allowedPageKeys, setAllowedPageKeys] = useState<Set<string> | null>(null);
 
   useEffect(() => {
-    const loadCompanyFormPerms = async () => {
+    const loadCompanyPerms = async () => {
       if (!profile) {
-        setAllowedFormTypes(null);
+        setAllowedPageKeys(null);
         return;
       }
-      if (profile.role === 'admin') {
-        setAllowedFormTypes(null);
+      if (profile.role === 'admin' || permissions?.hasFullAccess) {
+        setAllowedPageKeys(null);
         return;
       }
 
@@ -239,23 +241,23 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
       }
 
       if (companyIds.length === 0) {
-        setAllowedFormTypes(new Set());
+        setAllowedPageKeys(new Set());
         return;
       }
 
       const { data } = await supabase
-        .from('company_request_form_permissions')
-        .select('company_id, form_type, enabled')
+        .from('company_page_permissions')
+        .select('company_id, page_key, enabled')
         .in('company_id', companyIds)
         .eq('enabled', true);
 
-      const allowed = new Set<string>();
-      (data || []).forEach((row: any) => allowed.add(row.form_type));
-      setAllowedFormTypes(allowed);
+      const allowedPages = new Set<string>();
+      (data || []).forEach((row: any) => allowedPages.add(row.page_key));
+      setAllowedPageKeys(allowedPages);
     };
 
-    loadCompanyFormPerms();
-  }, [profile]);
+    loadCompanyPerms();
+  }, [profile, permissions?.hasFullAccess]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -273,15 +275,18 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     return hasPermission(permissions, item.permission);
   };
 
-  const passesCompanyFormFilter = (item: MenuItem) => {
-    const formType = REQUEST_VIEW_TO_FORM_TYPE[item.id];
-    if (!formType) return true;
-    if (allowedFormTypes === null) return true;
-    return allowedFormTypes.has(formType);
+  const passesCompanyPageFilter = (item: MenuItem) => {
+    if (allowedPageKeys === null) return true;
+    if (VIEW_KEYS_EXEMPT_FROM_COMPANY_GATING.has(item.id as string)) return true;
+    return allowedPageKeys.has(item.id as string);
   };
 
-  const filteredMenuItems = menuItems.filter((item) => canAccessItem(item) && passesCompanyFormFilter(item));
-  const filteredConfigItems = configItems.filter(canAccessItem);
+  const filteredMenuItems = menuItems.filter(
+    (item) => canAccessItem(item) && passesCompanyPageFilter(item)
+  );
+  const filteredConfigItems = configItems.filter(
+    (item) => canAccessItem(item) && passesCompanyPageFilter(item)
+  );
 
   const requestItems = filteredMenuItems.filter((item) => item.group === 'requests');
   const approvalItems = filteredMenuItems.filter((item) => item.group === 'approvals');
@@ -456,8 +461,8 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
         <ImpersonationBanner />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-          <div className="p-4 sm:p-6 lg:p-8 w-full">{children}</div>
+        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full">
+          <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 w-full h-full">{children}</div>
         </main>
       </div>
 

@@ -97,22 +97,29 @@ export function ApprovalProgressTracker({
               amount: data.total_amount || data.amount || 0
             });
 
+            const isPettyCash = requestType === 'Petty Cash' || requestType === 'petty_cash';
+
             const rawFlows = await getApprovalFlow(
               companyId,
               data.department || '',
               requestType,
               isBudgeted,
-              data.total_amount || data.amount || 0
+              data.total_amount || data.amount || 0,
+              isPettyCash ? (data.expense_category || 'Department Expense') : undefined
             );
 
             console.log('Raw flows loaded:', rawFlows?.length || 0);
 
-            // Check if requester is Executive and add custom approval steps
-            const flowsWithExecutive = await addExecutiveApprovalSteps(
-              rawFlows || [],
-              data.requester_id,
-              companyId
-            );
+            // For Petty Cash, the configured Approval Flow Setup is the source of truth
+            // (Expense Category drives which workflow is used), so executive override is skipped.
+            const flowsWithExecutive = isPettyCash
+              ? (rawFlows || [])
+              : await addExecutiveApprovalSteps(
+                  rawFlows || [],
+                  data.requester_id,
+                  companyId,
+                  isBudgeted
+                );
 
             console.log('Flows after executive check:', flowsWithExecutive?.length || 0);
 

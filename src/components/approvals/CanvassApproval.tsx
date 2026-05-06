@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
@@ -82,6 +82,7 @@ export function CanvassApproval() {
   const [listLoading, setListLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -219,7 +220,8 @@ export function CanvassApproval() {
         const flowsWithExecutive = await addExecutiveApprovalSteps(
           rawFlows,
           request.requester_id,
-          requestCompanyId
+          requestCompanyId,
+          !!request.is_budgeted
         );
 
         // Filter out the requester from approval flows
@@ -557,6 +559,70 @@ export function CanvassApproval() {
       setLoading(false);
       setApproving(false);
       setRejecting(false);
+    }
+  };
+
+  const handleReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
+    if (!canApprove()) {
+      alert('You are not authorized to perform this action at this level.');
+      return;
+    }
+    if (!comments.trim()) {
+      alert('Please provide a comment explaining the reason for returning this request.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to return this Canvass (${selectedRequest.canvass_number}) to the maker for revision?`)) {
+      return;
+    }
+
+    setReturning(true);
+    setLoading(true);
+    try {
+      const currentLevel = selectedRequest.current_approval_level;
+
+      const { error: updateError } = await supabase
+        .from('canvass_requests')
+        .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
+        .eq('id', selectedRequest.id);
+      if (updateError) throw updateError;
+
+      await createApprovalLedgerEntry(
+        'Canvass',
+        selectedRequest.id,
+        selectedRequest.canvass_number,
+        profile.id,
+        profile.full_name || 'Unknown',
+        currentApproverStep?.approver_type || 'Checker',
+        'Returned',
+        comments,
+        currentLevel + 1,
+        currentApproverStep?.for_checking || false
+      );
+
+      await sendApprovalEmail(
+        selectedRequest.user_profiles?.email || '',
+        selectedRequest.user_profiles?.full_name || 'User',
+        'Canvass',
+        selectedRequest.canvass_number,
+        selectedRequest.user_profiles?.full_name || 'Unknown',
+        selectedRequest.department,
+        selectedRequest.total_amount,
+        'Returned to Maker',
+        profile.full_name || 'Unknown',
+        comments
+      );
+
+      setShowModal(false);
+      setSelectedRequest(null);
+      setComments('');
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error returning canvass to maker:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+      setReturning(false);
     }
   };
 
@@ -1310,6 +1376,15 @@ export function CanvassApproval() {
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                 </button>
               </div>
+              <button
+                onClick={handleReturnToMaker}
+                disabled={loading || flowsLoading || !canApprove() || !comments.trim()}
+                title={!comments.trim() ? 'Please add comments explaining what needs to be revised' : ''}
+                className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+              >
+                {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                {returning ? 'Returning...' : 'Return to Maker'}
+              </button>
             </div>
           </div>
         </div>

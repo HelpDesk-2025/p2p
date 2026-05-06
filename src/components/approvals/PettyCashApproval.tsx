@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
+import { getApprovalFlow, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import Pagination from '../Pagination';
@@ -70,6 +70,7 @@ export function PettyCashApproval() {
   const [listLoading, setListLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -166,19 +167,14 @@ export function PettyCashApproval() {
           request.department || request.user_profiles?.department || profile.department || '',
           'Petty Cash',
           false,
-          request.amount
+          request.amount,
+          request.expense_category || 'Department Expense'
         );
 
-        // Inject executive approvers if requester is Executive type
-        const flowsWithExecutive = await addExecutiveApprovalSteps(
-          rawFlows,
-          request.requester_id,
-          pcCompanyId
-        );
-
-        // Filter out the requester from approval flows
+        // Petty Cash follows the configured Approval Flow Setup driven by Expense Category;
+        // executive override is intentionally skipped here.
         const flows = await filterApprovalFlowsForRequester(
-          flowsWithExecutive,
+          rawFlows,
           request.requester_id,
           request.department || request.user_profiles?.department || '',
           pcCompanyId
@@ -394,12 +390,14 @@ export function PettyCashApproval() {
             );
 
             if (ledgerDataRecords && ledgerDataRecords.length > 0) {
+              // "Approved By" signatory uses the second-to-the-last approver in the chain.
+              const approvedByIndex = Math.max(ledgerDataRecords.length - 2, 0);
               const firstApprover = {
-                approver_name: ledgerDataRecords[0].approver_name,
-                approval_date: ledgerDataRecords[0].approval_date,
-                approver_id: ledgerDataRecords[0].sequence, // Using sequence as placeholder
+                approver_name: ledgerDataRecords[approvedByIndex].approver_name,
+                approval_date: ledgerDataRecords[approvedByIndex].approval_date,
+                approver_id: ledgerDataRecords[approvedByIndex].sequence,
                 user_profiles: {
-                  e_sig: ledgerDataRecords[0].approver_esig
+                  e_sig: ledgerDataRecords[approvedByIndex].approver_esig
                 }
               };
 
@@ -499,6 +497,21 @@ export function PettyCashApproval() {
           profile.full_name || 'Unknown',
           comments
         );
+
+        if (profile.email) {
+          await sendApprovalEmail(
+            profile.email,
+            profile.full_name || 'Approver',
+            'Petty Cash',
+            selectedRequest.pc_number,
+            selectedRequest.user_profiles?.full_name || 'Unknown',
+            requestDepartment,
+            selectedRequest.amount,
+            'Cash Release Pending',
+            profile.full_name || 'Approver',
+            comments
+          );
+        }
       } else if (action === 'rejected') {
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
@@ -524,6 +537,70 @@ export function PettyCashApproval() {
       setLoading(false);
       setApproving(false);
       setRejecting(false);
+    }
+  };
+
+  const handleReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
+    if (!canApprove()) {
+      alert('You are not authorized to perform this action at this level.');
+      return;
+    }
+    if (!comments.trim()) {
+      alert('Please provide a comment explaining the reason for returning this request.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to return this Petty Cash (${selectedRequest.pc_number}) to the maker for revision?`)) {
+      return;
+    }
+
+    setReturning(true);
+    setLoading(true);
+    try {
+      const currentLevel = selectedRequest.current_approval_level;
+
+      const { error: updateError } = await supabase
+        .from('petty_cash_requests')
+        .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
+        .eq('id', selectedRequest.id);
+      if (updateError) throw updateError;
+
+      await createApprovalLedgerEntry(
+        'Petty Cash',
+        selectedRequest.id,
+        selectedRequest.pc_number,
+        profile.id,
+        profile.full_name || 'Unknown',
+        currentApproverStep?.approver_type || 'Checker',
+        'Returned',
+        comments,
+        currentLevel + 1,
+        currentApproverStep?.for_checking || false
+      );
+
+      await sendApprovalEmail(
+        selectedRequest.user_profiles?.email || '',
+        selectedRequest.user_profiles?.full_name || 'User',
+        'Petty Cash',
+        selectedRequest.pc_number,
+        selectedRequest.user_profiles?.full_name || 'Unknown',
+        selectedRequest.department,
+        selectedRequest.amount,
+        'Returned to Maker',
+        profile.full_name || 'Unknown',
+        comments
+      );
+
+      setShowModal(false);
+      setSelectedRequest(null);
+      setComments('');
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error returning petty cash to maker:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+      setReturning(false);
     }
   };
 
@@ -774,7 +851,9 @@ export function PettyCashApproval() {
                   <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Date of Transactions</label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    {selectedRequest.request_type === 'For Cash Advance' ? 'Date Needed' : 'Transaction Date'}
+                  </label>
                   <p className="text-slate-900">
                     {selectedRequest.date_of_transactions
                       ? new Date(selectedRequest.date_of_transactions).toLocaleDateString()
@@ -788,6 +867,10 @@ export function PettyCashApproval() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Type</label>
                   <p className="text-slate-900">{selectedRequest.request_type || 'For Cash Advance'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Expense Category</label>
+                  <p className="text-slate-900">{(selectedRequest as any).expense_category || 'Department Expense'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
@@ -886,27 +969,33 @@ export function PettyCashApproval() {
                           </tr>
                         ))}
                         <tr className="bg-slate-50 font-semibold border-t-2 border-slate-300">
-                          <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">Total Expenditures:</td>
+                          <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">
+                            {selectedRequest.request_type === 'For Reimbursement' ? 'Total for Reimbursement:' : 'Total Expenditures:'}
+                          </td>
                           <td className="px-4 py-3 text-sm text-slate-900 text-right">
                             ₱{selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
-                        <tr className="bg-white">
-                          <td colSpan={2} className="px-4 py-2 text-sm text-slate-700 text-right">Less: Petty Cash Advance:</td>
-                          <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">
-                            ₱{(selectedRequest.petty_cash_advance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                        <tr className={`font-bold ${(selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                          <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">
-                            {(selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) >= 0
-                              ? 'Excess for Deposit:'
-                              : 'Over for Reimbursement:'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-900 text-right">
-                            ₱{Math.abs((selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
+                        {selectedRequest.request_type !== 'For Reimbursement' && (
+                          <>
+                            <tr className="bg-white">
+                              <td colSpan={2} className="px-4 py-2 text-sm text-slate-700 text-right">Less: Petty Cash Advance:</td>
+                              <td className="px-4 py-2 text-sm text-slate-900 text-right font-medium">
+                                ₱{(selectedRequest.petty_cash_advance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                            <tr className={`font-bold ${(selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                              <td colSpan={2} className="px-4 py-3 text-sm text-slate-700 text-right">
+                                {(selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0) >= 0
+                                  ? 'Excess for Deposit:'
+                                  : 'Over for Reimbursement:'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-900 text-right">
+                                ₱{Math.abs((selectedRequest.petty_cash_advance || 0) - selectedRequest.expense_items.reduce((sum, item) => sum + item.amount, 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          </>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -993,6 +1082,15 @@ export function PettyCashApproval() {
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                 </button>
               </div>
+              <button
+                onClick={handleReturnToMaker}
+                disabled={loading || flowsLoading || !canApprove() || !comments.trim()}
+                title={!comments.trim() ? 'Please add comments explaining what needs to be revised' : ''}
+                className="w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+              >
+                {returning ? <Loader2 size={20} className="animate-spin" /> : <CornerDownLeft size={20} />}
+                {returning ? 'Returning...' : 'Return to Maker'}
+              </button>
             </div>
           </div>
         </div>

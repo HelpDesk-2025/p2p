@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send, CornerDownLeft } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
@@ -57,6 +57,7 @@ export function CashAdvanceApproval() {
   const [listLoading, setListLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -154,7 +155,8 @@ export function CashAdvanceApproval() {
         const flowsWithExecutive = await addExecutiveApprovalSteps(
           rawFlows,
           request.requester_id,
-          caCompanyId
+          caCompanyId,
+          !!request.budgeted
         );
 
         // Filter out the requester from approval flows
@@ -632,6 +634,70 @@ export function CashAdvanceApproval() {
       setLoading(false);
       setApproving(false);
       setRejecting(false);
+    }
+  };
+
+  const handleReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
+    if (!canApprove()) {
+      alert('You are not authorized to perform this action at this level.');
+      return;
+    }
+    if (!comments.trim()) {
+      alert('Please provide a comment explaining the reason for returning this request.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to return this Cash Advance (${selectedRequest.ca_number}) to the maker for revision?`)) {
+      return;
+    }
+
+    setReturning(true);
+    setLoading(true);
+    try {
+      const currentLevel = selectedRequest.current_approval_level;
+
+      const { error: updateError } = await supabase
+        .from('cash_advance_requests')
+        .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
+        .eq('id', selectedRequest.id);
+      if (updateError) throw updateError;
+
+      await createApprovalLedgerEntry(
+        'Cash Advance',
+        selectedRequest.id,
+        selectedRequest.ca_number,
+        profile.id,
+        profile.full_name || 'Unknown',
+        currentApproverStep?.approver_type || 'Checker',
+        'Returned',
+        comments,
+        currentLevel + 1,
+        currentApproverStep?.for_checking || false
+      );
+
+      await sendApprovalEmail(
+        selectedRequest.user_profiles?.email || '',
+        selectedRequest.user_profiles?.full_name || 'User',
+        'Cash Advance',
+        selectedRequest.ca_number,
+        selectedRequest.user_profiles?.full_name || 'Unknown',
+        selectedRequest.department,
+        selectedRequest.amount,
+        'Returned to Maker',
+        profile.full_name || 'Unknown',
+        comments
+      );
+
+      setShowModal(false);
+      setSelectedRequest(null);
+      setComments('');
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error returning cash advance to maker:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+      setReturning(false);
     }
   };
 
@@ -1229,6 +1295,15 @@ export function CashAdvanceApproval() {
                     >
                       {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                       {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
+                    </button>
+                    <button
+                      onClick={handleReturnToMaker}
+                      disabled={loading || flowsLoading || !canApprove() || !comments.trim()}
+                      title={!comments.trim() ? 'Please add comments explaining what needs to be revised' : ''}
+                      className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    >
+                      {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                      {returning ? 'Returning...' : 'Return to Maker'}
                     </button>
                   </>
                 ) : null}

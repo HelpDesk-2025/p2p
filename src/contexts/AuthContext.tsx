@@ -190,6 +190,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user, startPolling, stopPolling]);
 
+  const reloadPermissions = useCallback(async () => {
+    const targetId = impersonatedProfile?.id || actualProfile?.id;
+    if (!targetId) return;
+    const userPermissions = await getUserPermissions(targetId);
+    setPermissions(userPermissions);
+  }, [impersonatedProfile, actualProfile]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('permissions-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'role_permissions' }, () => {
+        reloadPermissions();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'roles' }, () => {
+        reloadPermissions();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'permissions' }, () => {
+        reloadPermissions();
+      })
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'user_profiles', filter: `id=eq.${impersonatedProfile?.id || actualProfile?.id || user.id}` },
+        (payload: any) => {
+          const newRow = payload.new;
+          if (newRow) {
+            if (impersonatedProfile && newRow.id === impersonatedProfile.id) {
+              setImpersonatedProfile(newRow);
+            } else if (actualProfile && newRow.id === actualProfile.id) {
+              setActualProfile(newRow);
+            }
+          }
+          reloadPermissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, actualProfile?.id, impersonatedProfile?.id, reloadPermissions]);
+
   const loadProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase

@@ -328,115 +328,62 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
 
   // Get approvers (excluding the first one who is Accounting)
   const signatureApprovers = data.approvals.length > 1 ? data.approvals.slice(1) : [];
-  const recommendedByApprover = signatureApprovers[0];
-  const approvedByApprovers = signatureApprovers.slice(1);
+  const recommendedByApprovers = signatureApprovers.length > 1 ? signatureApprovers.slice(0, -1) : [];
+  const approvedByApprover = signatureApprovers.length > 0 ? signatureApprovers[signatureApprovers.length - 1] : null;
 
-  // Draw headers
-  drawText('Recommended By', recByX, approvalY, 10, true);
-  if (approvedByApprovers.length > 0) {
-    drawText('Approved By', app1X, approvalY, 10, true);
+  const columnXs = [recByX, app1X, app2X];
+  const headerY = approvalY;
+  const signatureY = approvalY - 50;
+
+  recommendedByApprovers.forEach((_, idx) => {
+    if (idx < columnXs.length) {
+      drawText('Recommended By', columnXs[idx], headerY, 10, true);
+    }
+  });
+
+  if (approvedByApprover) {
+    const approvedColIdx = Math.min(recommendedByApprovers.length, columnXs.length - 1);
+    drawText('Approved By', columnXs[approvedColIdx], headerY, 10, true);
   }
 
-  approvalY -= 50;
-
-  // Draw recommended by approver (first in signature section)
-  if (recommendedByApprover) {
-    if (recommendedByApprover.approver_esig) {
+  const drawApprover = async (approver: typeof signatureApprovers[number], colX: number) => {
+    if (approver.approver_esig) {
       try {
-        const esigImage = await embedSignatureImage(pdfDoc, recommendedByApprover.approver_esig);
+        const esigImage = await embedSignatureImage(pdfDoc, approver.approver_esig);
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
-          x: recByX + 15,
-          y: approvalY - 10,
+          x: colX + 15,
+          y: signatureY - 10,
           width: esigDims.width,
           height: esigDims.height,
         });
       } catch (error) {
-        console.error('Error embedding recommended by e-signature:', error);
+        console.error('Error embedding e-signature:', error);
       }
     }
 
-    drawText(recommendedByApprover.approver_name, recByX, approvalY - 30, 9, false);
+    drawText(approver.approver_name, colX, signatureY - 30, 9, false);
 
-    // Add "For Checking Only" text if this is a checker
-    if (recommendedByApprover.for_checking) {
-      drawText('For Checking Only', recByX, approvalY - 42, 7, false);
+    if (approver.for_checking) {
+      drawText('For Checking Only', colX, signatureY - 42, 7, false);
     }
 
-    const recommendedByDate = new Date(recommendedByApprover.approval_date);
-    const dateYOffset = recommendedByApprover.for_checking ? -55 : -45;
+    const approvalDate = new Date(approver.approval_date);
+    const dateYOffset = approver.for_checking ? -55 : -45;
     drawText(
-      recommendedByDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
-      recommendedByDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      recByX, approvalY + dateYOffset, 8, false
+      approvalDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      approvalDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      colX, signatureY + dateYOffset, 8, false
     );
+  };
+
+  for (let i = 0; i < recommendedByApprovers.length && i < columnXs.length; i++) {
+    await drawApprover(recommendedByApprovers[i], columnXs[i]);
   }
 
-  // Draw approved by approvers (max 2)
-  if (approvedByApprovers.length > 0) {
-    const approver1 = approvedByApprovers[0];
-    if (approver1.approver_esig) {
-      try {
-        const esigImage = await embedSignatureImage(pdfDoc, approver1.approver_esig);
-        const esigDims = esigImage.scale(0.35);
-        page.drawImage(esigImage, {
-          x: app1X + 15,
-          y: approvalY - 10,
-          width: esigDims.width,
-          height: esigDims.height,
-        });
-      } catch (error) {
-        console.error('Error embedding approved by 1 e-signature:', error);
-      }
-    }
-
-    drawText(approver1.approver_name, app1X, approvalY - 30, 9, false);
-
-    // Add "For Checking Only" text if this is a checker
-    if (approver1.for_checking) {
-      drawText('For Checking Only', app1X, approvalY - 42, 7, false);
-    }
-
-    const approver1Date = new Date(approver1.approval_date);
-    const app1DateYOffset = approver1.for_checking ? -55 : -45;
-    drawText(
-      approver1Date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
-      approver1Date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      app1X, approvalY + app1DateYOffset, 8, false
-    );
-  }
-
-  if (approvedByApprovers.length > 1) {
-    const approver2 = approvedByApprovers[1];
-    if (approver2.approver_esig) {
-      try {
-        const esigImage = await embedSignatureImage(pdfDoc, approver2.approver_esig);
-        const esigDims = esigImage.scale(0.35);
-        page.drawImage(esigImage, {
-          x: app2X + 15,
-          y: approvalY - 10,
-          width: esigDims.width,
-          height: esigDims.height,
-        });
-      } catch (error) {
-        console.error('Error embedding approved by 2 e-signature:', error);
-      }
-    }
-
-    drawText(approver2.approver_name, app2X, approvalY - 30, 9, false);
-
-    // Add "For Checking Only" text if this is a checker
-    if (approver2.for_checking) {
-      drawText('For Checking Only', app2X, approvalY - 42, 7, false);
-    }
-
-    const approver2Date = new Date(approver2.approval_date);
-    const app2DateYOffset = approver2.for_checking ? -55 : -45;
-    drawText(
-      approver2Date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
-      approver2Date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      app2X, approvalY + app2DateYOffset, 8, false
-    );
+  if (approvedByApprover) {
+    const approvedColIdx = Math.min(recommendedByApprovers.length, columnXs.length - 1);
+    await drawApprover(approvedByApprover, columnXs[approvedColIdx]);
   }
 
   const pdfBytes = await pdfDoc.save();

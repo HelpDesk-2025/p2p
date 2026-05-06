@@ -599,6 +599,7 @@ export function ApprovalFlowSetupConfig() {
                   <option value="Petty Cash">Petty Cash</option>
                   <option value="Cash Advance">Cash Advance</option>
                   <option value="Reimbursement">Reimbursement</option>
+                  <option value="Liquidation">Liquidation</option>
                 </select>
               </div>
             </div>
@@ -632,34 +633,52 @@ export function ApprovalFlowSetupConfig() {
             </div>
           </div>
 
-          {editingSetupId && selectedCompany && (
+          {editingSetupId && selectedCompany && (() => {
+            const isPettyCash = formData.request_type === 'Petty Cash';
+            const workflowTypes = isPettyCash ? [1, 2] : [1, 2, 3];
+            const presidentAmountLabel = selectedCompany.president_min_amount
+              ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })
+              : '0';
+            return (
             <>
-              <div className="border-t border-slate-200 pt-6">
-                <h4 className="text-lg font-bold text-slate-900 mb-4">Approval Steps Configuration</h4>
-                <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">President Min Amount</p>
-                      <p className="text-lg font-bold text-slate-900 font-mono">
-                        ₱{selectedCompany.president_min_amount
-                          ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })
-                          : '0.00'}
-                      </p>
+              {!isPettyCash && (
+                <div className="border-t border-slate-200 pt-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-4">Approval Steps Configuration</h4>
+                  <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">President Min Amount</p>
+                        <p className="text-lg font-bold text-slate-900 font-mono">
+                          ₱{selectedCompany.president_min_amount
+                            ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })
+                            : '0.00'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+              {isPettyCash && (
+                <div className="border-t border-slate-200 pt-6">
+                  <h4 className="text-lg font-bold text-slate-900 mb-2">Approval Steps Configuration</h4>
+                  <p className="text-sm text-slate-600 mb-4">Petty Cash uses two expense categories. Each category drives its own approval workflow.</p>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map((workflowType) => {
+              <div className={`grid grid-cols-1 ${isPettyCash ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4`}>
+                {workflowTypes.map((workflowType) => {
                   const colors = [
                     { bg: "from-red-50 to-orange-50", border: "border-red-200", btn: "bg-red-500 hover:bg-red-600", badge: "bg-red-100 text-red-800", ring: "focus:ring-red-500", borderLight: "border-red-200", borderDark: "border-red-300" },
                     { bg: "from-green-50 to-emerald-50", border: "border-green-200", btn: "bg-green-500 hover:bg-green-600", badge: "bg-green-100 text-green-800", ring: "focus:ring-green-500", borderLight: "border-green-200", borderDark: "border-green-300" },
                     { bg: "from-amber-50 to-yellow-50", border: "border-amber-200", btn: "bg-amber-500 hover:bg-amber-600", badge: "bg-amber-100 text-amber-800", ring: "focus:ring-amber-500", borderLight: "border-amber-200", borderDark: "border-amber-300" }
                   ][workflowType - 1];
 
-                  const titles = ["Unbudgeted", "Budgeted <" + (selectedCompany.president_min_amount ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 }) : '0'), "Budgeted >" + (selectedCompany.president_min_amount ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 }) : '0')];
-                  const subtitles = ["No budget allocation", `Less than ₱${selectedCompany.president_min_amount ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 }) : '0'}`, `More than ₱${selectedCompany.president_min_amount ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 }) : '0'}`];
+                  const titles = isPettyCash
+                    ? ["Department Expense", "ManCom Expense"]
+                    : ["Unbudgeted", `Budgeted <${presidentAmountLabel}`, `Budgeted >${presidentAmountLabel}`];
+                  const subtitles = isPettyCash
+                    ? ["Routine department-level expenses", "Requires ManCom-level approval"]
+                    : ["No budget allocation", `Less than ₱${presidentAmountLabel}`, `More than ₱${presidentAmountLabel}`];
 
                   const workflowSteps = currentSteps.filter(s => s.workflow_type === workflowType).sort((a, b) => a.sequence - b.sequence);
 
@@ -961,7 +980,8 @@ export function ApprovalFlowSetupConfig() {
                 })}
               </div>
             </>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -1029,6 +1049,7 @@ export function ApprovalFlowSetupConfig() {
                 <option value="Petty Cash">Petty Cash</option>
                 <option value="Cash Advance">Cash Advance</option>
                 <option value="Reimbursement">Reimbursement</option>
+                <option value="Liquidation">Liquidation</option>
               </select>
             </div>
 

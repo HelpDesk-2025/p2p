@@ -122,6 +122,10 @@ function AppContent() {
         return <ConfigManager type="roles-permissions" />;
       case 'config-impersonation':
         return <ConfigManager type="impersonation" />;
+      case 'config-announcements':
+        return <ConfigManager type="announcements" />;
+      case 'config-api-integrations':
+        return <ConfigManager type="api-integrations" />;
       case 'change-password':
         return <ChangePassword />;
       default:

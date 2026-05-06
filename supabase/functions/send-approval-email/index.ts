@@ -25,19 +25,29 @@ interface EmailRequest {
 function generateEmailHTML(data: EmailRequest): string {
   const isProcurementNotification = data.action === 'Ready for Procurement Checking';
   const isFullyApproved = data.action === 'Fully Approved';
+  const isCashReleased = data.action === 'Cash Released';
+  const isCashReceived = data.action === 'Cash Received';
+  const isCashReleasePending = data.action === 'Cash Release Pending';
+  const isCashEvent = isCashReleased || isCashReceived || isCashReleasePending;
 
   const actionColor = data.action === 'Submitted' ? '#3b82f6' :
-                      data.action === 'Approved' || isFullyApproved ? '#22c55e' :
-                      isProcurementNotification ? '#f97316' : '#ef4444';
+                      data.action === 'Approved' || isFullyApproved || isCashReleased || isCashReceived ? '#22c55e' :
+                      isCashReleasePending || isProcurementNotification ? '#f97316' : '#ef4444';
 
-  const headerBg = isProcurementNotification
+  const headerBg = isProcurementNotification || isCashReleasePending
     ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
-    : isFullyApproved
+    : isFullyApproved || isCashReleased || isCashReceived
     ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
     : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
 
   const introText = isProcurementNotification
     ? `A <strong>${data.requestType}</strong> with Purchase Type <strong>Purchase Order</strong> has been fully approved and is now ready for Procurement Checking. Please review the request and mark it as Ready for Canvass.`
+    : isCashReleasePending
+    ? `<strong>${data.requestType}</strong> ${data.documentNo} has been fully approved and is now awaiting cash release. Please proceed with releasing the cash to the requester.`
+    : isCashReleased
+    ? `Cash for <strong>${data.requestType}</strong> ${data.documentNo} has been released by ${data.actionBy || 'the disbursing officer'}. Please log in to confirm receipt of the funds.`
+    : isCashReceived
+    ? `${data.actionBy || 'The requester'} has confirmed receipt of cash for <strong>${data.requestType}</strong> ${data.documentNo}.`
     : `A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.`;
 
   const actionSection = data.action === 'Submitted'
@@ -113,8 +123,8 @@ function generateEmailHTML(data: EmailRequest): string {
 
           <div style="text-align: center; margin: 32px 0;">
             <a href="https://p2p.stjoseph-group.com/"
-               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-              Access the System
+               style="display: inline-block; background-color: #1d4ed8; background-image: none; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <font color="#ffffff"><span style="color: #ffffff;">Access the System</span></font>
             </a>
           </div>
 

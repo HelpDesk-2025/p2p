@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
@@ -46,6 +46,7 @@ interface ReimbursementReq {
     id: string;
     name: string;
   };
+  current_approval_level?: number;
 }
 
 export function Reimbursement() {
@@ -609,7 +610,7 @@ export function Reimbursement() {
         const rawApprovalFlows = await getApprovalFlow(
           requestCompanyId,
           requestDepartment,
-          'Reimbursement',
+          requestType,
           false,
           totalAmount
         );
@@ -618,7 +619,8 @@ export function Reimbursement() {
         let flowsWithExecutive = await addExecutiveApprovalSteps(
           rawApprovalFlows,
           profile.id,
-          requestCompanyId
+          requestCompanyId,
+          false
         );
 
         // Filter out requester from approval flows
@@ -630,6 +632,14 @@ export function Reimbursement() {
         );
 
         if (approvalFlows.length > 0) {
+          const isResubmission = editingRequest?.status === 'returned_to_maker';
+          if (isResubmission) {
+            await supabase
+              .from('approval_ledger')
+              .delete()
+              .eq('request_id', insertedRequest.id)
+              .eq('request_type', 'Reimbursement');
+          }
           await createApprovalLedgerEntry(
             'Reimbursement',
             insertedRequest.id,
@@ -638,7 +648,7 @@ export function Reimbursement() {
             profile.full_name || 'Unknown',
             'Requestor',
             'Submitted',
-            'Initial submission',
+            isResubmission ? 'Resubmission after return' : 'Initial submission',
             0
           );
 
@@ -647,7 +657,7 @@ export function Reimbursement() {
             firstApprover,
             requestCompanyId,
             requestDepartment,
-            'Reimbursement',
+            requestType,
             formData.document_no,
             profile.full_name || 'Unknown',
             totalAmount,
@@ -702,10 +712,11 @@ export function Reimbursement() {
       }
 
       const department = request.department || profile?.department || '';
+      const draftRequestType = (request as any).request_type || 'Reimbursement';
       const rawApprovalFlows = await getApprovalFlow(
         request.company_id,
         department,
-        'Reimbursement',
+        draftRequestType,
         false,
         request.amount
       );
@@ -718,7 +729,8 @@ export function Reimbursement() {
       let flowsWithExecutive = await addExecutiveApprovalSteps(
         rawApprovalFlows,
         profile.id,
-        request.company_id
+        request.company_id,
+        false
       );
 
       // Filter out requester from approval flows
@@ -733,12 +745,22 @@ export function Reimbursement() {
         throw new Error('No additional approvers required for this request.');
       }
 
+      const isResubmission = request.status === 'returned_to_maker';
+
       const { error: updateError } = await supabase
         .from('reimbursement_requests')
         .update({ status: 'pending', current_approval_level: 0 })
         .eq('id', request.id);
 
       if (updateError) throw updateError;
+
+      if (isResubmission) {
+        await supabase
+          .from('approval_ledger')
+          .delete()
+          .eq('request_id', request.id)
+          .eq('request_type', 'Reimbursement');
+      }
 
       await createApprovalLedgerEntry(
         'Reimbursement',
@@ -748,7 +770,7 @@ export function Reimbursement() {
         profile.full_name || 'Unknown',
         'Requestor',
         'Submitted',
-        'Initial submission',
+        isResubmission ? 'Resubmission after return' : 'Initial submission',
         0
       );
 
@@ -757,7 +779,7 @@ export function Reimbursement() {
         firstApprover,
         request.company_id,
         department,
-        'Reimbursement',
+        draftRequestType,
         request.reimb_number,
         profile.full_name || 'Unknown',
         request.amount,
@@ -788,8 +810,60 @@ export function Reimbursement() {
       approved: 'bg-green-100 text-green-700',
       rejected: 'bg-red-100 text-red-700',
       reimbursed: 'bg-blue-100 text-blue-700',
+      returned_to_maker: 'bg-amber-100 text-amber-700',
+      cancelled: 'bg-slate-200 text-slate-800',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  const handleCancelRequest = async (request: ReimbursementReq) => {
+    if (request.status !== 'pending' || (request.current_approval_level ?? 0) !== 0) {
+      alert('This request can no longer be cancelled because an approver has already acted on it.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to cancel Reimbursement ${request.reimb_number}?\n\nThis action cannot be undone.`)) return;
+    const reason = prompt('Please provide a reason for cancelling this request:');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert('A cancellation reason is required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('reimbursement_requests')
+        .update({ status: 'cancelled' })
+        .eq('id', request.id);
+      if (error) throw error;
+
+      await createApprovalLedgerEntry(
+        'Reimbursement',
+        request.id,
+        request.reimb_number,
+        profile?.id || null,
+        profile?.full_name || 'Unknown',
+        'Requestor',
+        'Cancelled',
+        reason.trim(),
+        0
+      );
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+      alert(`Reimbursement ${request.reimb_number} has been cancelled successfully.`);
+      await loadRequests();
+    } catch (error: any) {
+      console.error('Error cancelling request:', error);
+      alert('Failed to cancel request: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'returned_to_maker') return 'Returned to Maker';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const handleSort = (column: string) => {
@@ -1648,26 +1722,40 @@ export function Reimbursement() {
                   </td>
                   <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
-                      {req.status}
+                      {getStatusLabel(req.status)}
                     </span>
                   </td>
                   <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                    <button
-                      onClick={async () => {
-                        setViewingRequest(req);
-                        setShowViewModal(true);
-                        setLinkedRequestDetails(null);
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          setViewingRequest(req);
+                          setShowViewModal(true);
+                          setLinkedRequestDetails(null);
 
-                        // Load linked request details if this is a liquidation
-                        if ((req as any).request_type === 'Liquidation' && (req as any).linked_cash_advance_id && (req as any).cash_advance_type) {
-                          await loadLinkedRequestDetails((req as any).linked_cash_advance_id, (req as any).cash_advance_type);
-                        }
-                      }}
-                      className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
-                      title="View Request"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                          // Load linked request details if this is a liquidation
+                          if ((req as any).request_type === 'Liquidation' && (req as any).linked_cash_advance_id && (req as any).cash_advance_type) {
+                            await loadLinkedRequestDetails((req as any).linked_cash_advance_id, (req as any).cash_advance_type);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        title="View Request"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {req.status === 'pending'
+                        && (req.current_approval_level ?? 0) === 0
+                        && (req as any).requester_id === profile?.id && (
+                        <button
+                          onClick={() => handleCancelRequest(req)}
+                          disabled={loading}
+                          className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Cancel Request"
+                        >
+                          <Ban className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1743,7 +1831,7 @@ export function Reimbursement() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
-                    {viewingRequest.status}
+                    {getStatusLabel(viewingRequest.status)}
                   </span>
                 </div>
               </div>
@@ -1928,6 +2016,38 @@ export function Reimbursement() {
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
+                )}
+                {viewingRequest.status === 'returned_to_maker' && (
+                  <>
+                    <button
+                      onClick={() => handleEditDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Edit size={18} />
+                      Edit & Resubmit
+                    </button>
+                    <button
+                      onClick={() => handleSubmitDraft(viewingRequest)}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                      {submitting ? 'Submitting...' : 'Resubmit for Approval'}
+                    </button>
+                  </>
+                )}
+                {viewingRequest.status === 'pending'
+                  && (viewingRequest.current_approval_level ?? 0) === 0
+                  && viewingRequest.requester_id === profile?.id && (
+                  <button
+                    onClick={() => handleCancelRequest(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Ban size={18} />
+                    Cancel Request
+                  </button>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
                   <button

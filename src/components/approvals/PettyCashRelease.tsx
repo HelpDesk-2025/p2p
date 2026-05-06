@@ -5,6 +5,7 @@ import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generatePettyCashReleaseBundle } from '../../lib/pettyCashReleaseBundleExporter';
+import { sendApprovalEmail } from '../../lib/approvalFlow';
 
 interface ExpenseItem {
   date: string;
@@ -116,6 +117,29 @@ export function PettyCashRelease() {
     setListLoading(true);
 
     try {
+      let allowedCompanyIds: string[] | null = null;
+      if (profile.role !== 'admin') {
+        const { data: roleRow } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('name', profile.role)
+          .maybeSingle();
+
+        if (roleRow?.id) {
+          const { data: scopedCompanies } = await supabase
+            .from('role_petty_cash_release_companies')
+            .select('company_id')
+            .eq('role_id', roleRow.id);
+          if (scopedCompanies && scopedCompanies.length > 0) {
+            allowedCompanyIds = scopedCompanies.map((r: any) => r.company_id);
+          }
+        }
+
+        if (!allowedCompanyIds) {
+          allowedCompanyIds = profile.company_id ? [profile.company_id] : [];
+        }
+      }
+
       let query = supabase
         .from('petty_cash_requests')
         .select(`
@@ -126,8 +150,13 @@ export function PettyCashRelease() {
         .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
-      if (profile.role !== 'admin') {
-        query = query.eq('company_id', profile.company_id);
+      if (allowedCompanyIds !== null) {
+        if (allowedCompanyIds.length === 0) {
+          setRequests([]);
+          setListLoading(false);
+          return;
+        }
+        query = query.in('company_id', allowedCompanyIds);
       }
 
       const { data, error } = await query;
@@ -210,6 +239,25 @@ export function PettyCashRelease() {
         .eq('id', selectedRequest.id);
 
       if (error) throw error;
+
+      const requesterEmail = selectedRequest.user_profiles?.email;
+      const requesterName = selectedRequest.user_profiles?.full_name || 'Requester';
+      const requesterDept = selectedRequest.department || selectedRequest.user_profiles?.department || '';
+      if (requesterEmail) {
+        await sendApprovalEmail(
+          requesterEmail,
+          requesterName,
+          'Petty Cash',
+          selectedRequest.pc_number,
+          requesterName,
+          requesterDept,
+          releaseAmt,
+          'Cash Released',
+          profile.full_name || 'Disbursing Officer',
+          undefined,
+          undefined
+        );
+      }
 
       setShowModal(false);
       setSelectedRequest(null);
@@ -803,7 +851,9 @@ export function PettyCashRelease() {
                   <p className="text-slate-900">{new Date(selectedRequest.request_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Date of Transactions</label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    {selectedRequest.request_type === 'For Cash Advance' ? 'Date Needed' : 'Transaction Date'}
+                  </label>
                   <p className="text-slate-900">
                     {selectedRequest.date_of_transactions
                       ? new Date(selectedRequest.date_of_transactions).toLocaleDateString()

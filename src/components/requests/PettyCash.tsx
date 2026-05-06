@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
-import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
+import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll, sendApprovalEmail, getLastApproverContact } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
@@ -62,6 +62,7 @@ interface PettyCashReq {
   approved_petty_cash_pdf_path?: string;
   liquidation_pdf_path?: string;
   request_type?: string;
+  expense_category?: string;
   expense_items?: ExpenseItem[];
   expense_type_items?: ExpenseTypeItem[];
   linked_petty_cash_id?: string;
@@ -72,6 +73,8 @@ interface PettyCashReq {
     file_path: string;
     file_type: string;
   }>;
+  current_approval_level?: number;
+  requester_id?: string;
 }
 
 export function PettyCash() {
@@ -85,7 +88,7 @@ export function PettyCash() {
   const [viewingRequest, setViewingRequest] = useState<PettyCashReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PettyCashReq | null>(null);
-  const [companies, setCompanies] = useState<{ id: string; name: string; max_petty_cash_advance?: number }[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string; max_petty_cash_advance?: number; max_petty_cash_reimbursement?: number }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
@@ -93,6 +96,7 @@ export function PettyCash() {
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const maxPettyCashAdvance = selectedCompany?.max_petty_cash_advance ?? 5000;
+  const maxPettyCashReimbursement = selectedCompany?.max_petty_cash_reimbursement ?? 5000;
 
   const [formData, setFormData] = useState({
     document_no: '',
@@ -105,9 +109,10 @@ export function PettyCash() {
     payment_mode_id: '',
     request_type: 'For Cash Advance',
     no_of_pax: 0,
+    expense_category: 'Department Expense',
   });
   const [amountError, setAmountError] = useState('');
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState('');
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([
     { date: '', description: '', amount: 0 }
@@ -139,9 +144,13 @@ export function PettyCash() {
     }).format(amount);
   };
 
+  const getMaxAmountForType = (requestType: string) =>
+    requestType === 'For Reimbursement' ? maxPettyCashReimbursement : maxPettyCashAdvance;
+
   const handleAmountChange = (value: number) => {
-    if (value > maxPettyCashAdvance) {
-      setAmountError(`Petty cash amount cannot exceed ₱${maxPettyCashAdvance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    const maxAllowed = getMaxAmountForType(formData.request_type);
+    if (value > maxAllowed) {
+      setAmountError(`Petty cash amount cannot exceed ₱${maxAllowed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     } else {
       setAmountError('');
     }
@@ -149,29 +158,34 @@ export function PettyCash() {
   };
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setAttachmentFile(null);
-      setAttachmentError('');
+    const incoming = Array.from(e.target.files || []);
+    if (incoming.length === 0) {
       return;
     }
 
-    // Check if file is PDF or image
     const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-    if (!validTypes.includes(file.type)) {
-      setAttachmentError('Please upload a PDF or image file (JPG, JPEG, PNG)');
-      setAttachmentFile(null);
-      return;
+    const accepted: File[] = [];
+    for (const file of incoming) {
+      if (!validTypes.includes(file.type)) {
+        setAttachmentError('Please upload PDF or image files only (JPG, JPEG, PNG)');
+        e.target.value = '';
+        return;
+      }
+      if (file.size > 40 * 1024 * 1024) {
+        setAttachmentError(`"${file.name}" exceeds the 40MB per-file limit`);
+        e.target.value = '';
+        return;
+      }
+      accepted.push(file);
     }
 
-    if (file.size > 40 * 1024 * 1024) {
-      setAttachmentError('File size must be less than 40MB');
-      setAttachmentFile(null);
-      return;
-    }
-
-    setAttachmentFile(file);
+    setAttachmentFiles((prev) => [...prev, ...accepted]);
     setAttachmentError('');
+    e.target.value = '';
+  };
+
+  const removeAttachmentAt = (index: number) => {
+    setAttachmentFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addExpenseItem = () => {
@@ -192,42 +206,6 @@ export function PettyCash() {
 
   const calculateTotalExpenditures = () => {
     return expenseItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  };
-
-  const convertImageToPDF = async (imageFile: File): Promise<Uint8Array> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const imageBytes = event.target?.result as ArrayBuffer;
-          const pdfDoc = await PDFDocument.create();
-
-          let image;
-          if (imageFile.type === 'image/jpeg' || imageFile.type === 'image/jpg') {
-            image = await pdfDoc.embedJpg(imageBytes);
-          } else if (imageFile.type === 'image/png') {
-            image = await pdfDoc.embedPng(imageBytes);
-          } else {
-            throw new Error('Unsupported image type');
-          }
-
-          const page = pdfDoc.addPage([image.width, image.height]);
-          page.drawImage(image, {
-            x: 0,
-            y: 0,
-            width: image.width,
-            height: image.height,
-          });
-
-          const pdfBytes = await pdfDoc.save();
-          resolve(pdfBytes);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read image file'));
-      reader.readAsArrayBuffer(imageFile);
-    });
   };
 
   useEffect(() => {
@@ -416,7 +394,7 @@ export function PettyCash() {
       if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
-          .select('id, name, max_petty_cash_advance')
+          .select('id, name, max_petty_cash_advance, max_petty_cash_reimbursement')
           .in('id', profile.allowed_companies)
           .eq('is_active', true)
           .order('name', { ascending: true });
@@ -434,7 +412,7 @@ export function PettyCash() {
         if (profile.company_id) {
           const { data: companyData, error: companyError } = await supabase
             .from('companies')
-            .select('id, name, max_petty_cash_advance')
+            .select('id, name, max_petty_cash_advance, max_petty_cash_reimbursement')
             .eq('id', profile.company_id)
             .maybeSingle();
 
@@ -555,6 +533,7 @@ export function PettyCash() {
       payment_mode_id: (request as any).payment_mode_id || '',
       request_type: request.request_type || 'For Cash Advance',
       no_of_pax: request.no_of_pax || 0,
+      expense_category: (request as any).expense_category || 'Department Expense',
     });
     // Initialize expense items for liquidation
     if (request.expense_items && request.expense_items.length > 0) {
@@ -573,12 +552,19 @@ export function PettyCash() {
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
-    // For Liquidation: validate expense items instead of regular amount
-    if (formData.request_type === 'For Liquidation') {
+    // For Liquidation or For Reimbursement: validate expense items instead of regular amount
+    if (formData.request_type === 'For Liquidation' || formData.request_type === 'For Reimbursement') {
       const totalExpenditures = calculateTotalExpenditures();
-      if (totalExpenditures > 10000) {
+      if (formData.request_type === 'For Liquidation' && totalExpenditures > 10000) {
         alert('Total expenditures cannot exceed ₱10,000.00');
         return;
+      }
+      if (formData.request_type === 'For Reimbursement') {
+        const maxReimb = getMaxAmountForType('For Reimbursement');
+        if (totalExpenditures > maxReimb) {
+          alert(`Total for reimbursement cannot exceed ₱${maxReimb.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+          return;
+        }
       }
       if (totalExpenditures === 0) {
         alert('Please add at least one expense item with a valid amount');
@@ -591,21 +577,18 @@ export function PettyCash() {
         return;
       }
     } else {
-      if (formData.amount > maxPettyCashAdvance) {
-        alert(`Petty cash amount cannot exceed ₱${maxPettyCashAdvance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      const maxAllowed = getMaxAmountForType(formData.request_type);
+      if (formData.amount > maxAllowed) {
+        alert(`Petty cash amount cannot exceed ₱${maxAllowed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         return;
       }
     }
 
     // Validate attachment for "For Reimbursement" or "For Liquidation" type
     if (formData.request_type === 'For Reimbursement' || formData.request_type === 'For Liquidation') {
-      // For new requests, attachments are required
-      if (!attachmentFile && !editingRequest) {
-        alert('Please upload receipts. Attachments are required for Reimbursement and Liquidation requests.');
-        return;
-      }
-      // For editing, check if attachments exist either as new upload or existing ones
-      if (editingRequest && !attachmentFile && (!editingRequest.attachments || editingRequest.attachments.length === 0)) {
+      const hasNew = attachmentFiles.length > 0;
+      const hasExisting = !!editingRequest?.attachments && editingRequest.attachments.length > 0;
+      if (!hasNew && !hasExisting) {
         alert('Please upload receipts. Attachments are required for Reimbursement and Liquidation requests.');
         return;
       }
@@ -621,9 +604,13 @@ export function PettyCash() {
       let insertedRequest;
 
       // Calculate amount based on request type
-      const finalAmount = formData.request_type === 'For Liquidation'
+      const finalAmount = (formData.request_type === 'For Liquidation' || formData.request_type === 'For Reimbursement')
         ? calculateTotalExpenditures()
         : formData.amount;
+
+      // Always persist the row as 'draft' first so RLS allows attachment writes;
+      // the status is flipped to its final value after the attachment is saved.
+      const persistedStatus: 'draft' | 'pending' = 'draft';
 
       if (editingRequest) {
         const { data, error } = await supabase
@@ -637,11 +624,12 @@ export function PettyCash() {
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
-            expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
+            expense_items: (formData.request_type === 'For Liquidation' || formData.request_type === 'For Reimbursement') ? expenseItems : null,
             linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
             petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
             no_of_pax: formData.no_of_pax || null,
-            status,
+            expense_category: formData.expense_category,
+            status: persistedStatus,
           })
           .eq('id', editingRequest.id)
           .select()
@@ -668,11 +656,12 @@ export function PettyCash() {
             budgeted: formData.budgeted,
             payment_mode_id: formData.payment_mode_id || null,
             request_type: formData.request_type,
-            expense_items: formData.request_type === 'For Liquidation' ? expenseItems : null,
+            expense_items: (formData.request_type === 'For Liquidation' || formData.request_type === 'For Reimbursement') ? expenseItems : null,
             linked_petty_cash_id: formData.request_type === 'For Liquidation' && selectedPettyCashId ? selectedPettyCashId : null,
             petty_cash_advance: formData.request_type === 'For Liquidation' && selectedPettyCashId ? pettyCashAdvance : null,
             no_of_pax: formData.no_of_pax || null,
-            status,
+            expense_category: formData.expense_category,
+            status: persistedStatus,
             current_approval_level: 0,
           })
           .select()
@@ -682,44 +671,52 @@ export function PettyCash() {
         insertedRequest = data;
       }
 
-      // Upload attachment if present
-      if (attachmentFile && insertedRequest) {
-        let fileToUpload: Blob | Uint8Array = attachmentFile;
-        let fileName = attachmentFile.name;
-        let fileType = attachmentFile.type;
-
-        // Convert image to PDF if needed
-        if (attachmentFile.type.startsWith('image/')) {
-          try {
-            const pdfBytes = await convertImageToPDF(attachmentFile);
-            fileToUpload = new Blob([pdfBytes], { type: 'application/pdf' });
-            // Change file extension to .pdf
-            fileName = fileName.replace(/\.(jpg|jpeg|png)$/i, '.pdf');
-            fileType = 'application/pdf';
-          } catch (conversionError) {
-            console.error('Error converting image to PDF:', conversionError);
-            throw new Error('Failed to convert image to PDF. Please try again.');
+      // Merge all new attachments into a single PDF and upload
+      if (attachmentFiles.length > 0 && insertedRequest) {
+        let mergedPdfBytes: Uint8Array;
+        try {
+          const mergedDoc = await PDFDocument.create();
+          for (const file of attachmentFiles) {
+            const arrayBuffer = await file.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            if (file.type === 'application/pdf') {
+              const src = await PDFDocument.load(bytes);
+              const pages = await mergedDoc.copyPages(src, src.getPageIndices());
+              pages.forEach((p) => mergedDoc.addPage(p));
+            } else if (file.type === 'image/png') {
+              const img = await mergedDoc.embedPng(bytes);
+              const page = mergedDoc.addPage([img.width, img.height]);
+              page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+            } else if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+              const img = await mergedDoc.embedJpg(bytes);
+              const page = mergedDoc.addPage([img.width, img.height]);
+              page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+            }
           }
+          mergedPdfBytes = await mergedDoc.save();
+        } catch (mergeError) {
+          console.error('Error merging attachments:', mergeError);
+          throw new Error('Failed to merge attachments into a single PDF. Please try again.');
         }
 
-        // Upload to storage
         const timestamp = Date.now();
+        const fileName = `receipts_${timestamp}.pdf`;
         const filePath = `petty-cash-attachments/${insertedRequest.id}_${timestamp}_${fileName}`;
+        const fileType = 'application/pdf';
 
         const { error: uploadError } = await supabase.storage
           .from('attachments')
-          .upload(filePath, fileToUpload, {
+          .upload(filePath, new Blob([mergedPdfBytes], { type: fileType }), {
             contentType: fileType,
-            upsert: true
+            upsert: true,
           });
 
         if (uploadError) throw uploadError;
 
-        // Update request with attachment info
         const attachmentData = [{
           file_name: fileName,
           file_path: filePath,
-          file_type: fileType
+          file_type: fileType,
         }];
 
         const { error: updateError } = await supabase
@@ -728,6 +725,20 @@ export function PettyCash() {
           .eq('id', insertedRequest.id);
 
         if (updateError) throw updateError;
+      }
+
+      // Flip to the actual target status now that any attachment write has completed.
+      // The earlier insert/update used 'draft' so RLS would allow the attachments update.
+      if (status === 'pending' && insertedRequest) {
+        const { data: finalized, error: finalizeError } = await supabase
+          .from('petty_cash_requests')
+          .update({ status: 'pending', current_approval_level: 0 })
+          .eq('id', insertedRequest.id)
+          .select()
+          .single();
+
+        if (finalizeError) throw finalizeError;
+        insertedRequest = finalized;
       }
 
       if (status === 'pending' && insertedRequest) {
@@ -739,25 +750,29 @@ export function PettyCash() {
           department,
           'Petty Cash',
           false,
-          formData.amount
+          formData.amount,
+          formData.expense_category
         );
 
-        // Add executive approval steps if requester is Executive
-        let flowsWithExecutive = await addExecutiveApprovalSteps(
-          rawApprovalFlows,
-          profile.id,
-          companyId
-        );
-
-        // Filter out requester from approval flows
+        // Petty Cash uses the configured Approval Flow Setup driven by Expense Category;
+        // executive override is intentionally skipped here so the setup is always honored.
         const approvalFlows = await filterApprovalFlowsForRequester(
-          flowsWithExecutive,
+          rawApprovalFlows,
           profile.id,
           department,
           companyId
         );
 
         if (approvalFlows.length > 0) {
+          const isResubmission = editingRequest?.status === 'returned_to_maker';
+          if (isResubmission) {
+            await supabase
+              .from('approval_ledger')
+              .delete()
+              .eq('request_id', insertedRequest.id)
+              .eq('request_type', 'Petty Cash');
+          }
+
           await createApprovalLedgerEntry(
             'Petty Cash',
             insertedRequest.id,
@@ -766,7 +781,7 @@ export function PettyCash() {
             profile.full_name || 'Unknown',
             'Requestor',
             'Submitted',
-            'Initial submission',
+            isResubmission ? 'Resubmission after return' : 'Initial submission',
             0
           );
 
@@ -788,10 +803,10 @@ export function PettyCash() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', date_of_transactions: '', budgeted: true, payment_mode_id: '', request_type: 'For Cash Advance', no_of_pax: 0 });
+      setFormData({ document_no: '', payee: '', purpose: '', amount: 0, date_needed: '', date_of_transactions: '', budgeted: true, payment_mode_id: '', request_type: 'For Cash Advance', no_of_pax: 0, expense_category: 'Department Expense' });
       setEditingRequest(null);
       setAmountError('');
-      setAttachmentFile(null);
+      setAttachmentFiles([]);
       setAttachmentError('');
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
       setSelectedPettyCashId('');
@@ -838,23 +853,17 @@ export function PettyCash() {
         department,
         'Petty Cash',
         request.budgeted || false,
-        request.amount
+        request.amount,
+        (request as any).expense_category || 'Department Expense'
       );
 
       if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
       }
 
-      // Add executive approval steps if requester is Executive
-      let flowsWithExecutive = await addExecutiveApprovalSteps(
-        rawApprovalFlows,
-        profile.id,
-        companyId
-      );
-
-      // Filter out requester from approval flows
+      // Petty Cash uses the configured Approval Flow Setup driven by Expense Category.
       const approvalFlows = await filterApprovalFlowsForRequester(
-        flowsWithExecutive,
+        rawApprovalFlows,
         profile.id,
         department,
         companyId
@@ -864,12 +873,22 @@ export function PettyCash() {
         throw new Error('No additional approvers required for this request.');
       }
 
+      const isResubmission = request.status === 'returned_to_maker';
+
       const { error: updateError } = await supabase
         .from('petty_cash_requests')
         .update({ status: 'pending', current_approval_level: 0 })
         .eq('id', request.id);
 
       if (updateError) throw updateError;
+
+      if (isResubmission) {
+        await supabase
+          .from('approval_ledger')
+          .delete()
+          .eq('request_id', request.id)
+          .eq('request_type', 'Petty Cash');
+      }
 
       await createApprovalLedgerEntry(
         'Petty Cash',
@@ -879,7 +898,7 @@ export function PettyCash() {
         profile.full_name || 'Unknown',
         'Requestor',
         'Submitted',
-        'Initial submission',
+        isResubmission ? 'Resubmission after return' : 'Initial submission',
         0
       );
 
@@ -950,9 +969,10 @@ export function PettyCash() {
         throw new Error('No approval records found');
       }
 
-      // Fetch signature data for first approver
+      // "Approved By" signatory uses the second-to-the-last approver in the chain.
       let firstApproverSignature = null;
-      const firstApproverRecord = approvalRecords[0];
+      const approvedByIndex = Math.max(approvalRecords.length - 2, 0);
+      const firstApproverRecord = approvalRecords[approvedByIndex];
 
       if (firstApproverRecord.approver_esig && firstApproverRecord.approver_esig.startsWith('attachments/')) {
         try {
@@ -1049,6 +1069,27 @@ export function PettyCash() {
 
       if (updateError) throw updateError;
 
+      try {
+        const lastApprover = await getLastApproverContact(request.id, 'Petty Cash');
+        if (lastApprover?.email) {
+          await sendApprovalEmail(
+            lastApprover.email,
+            lastApprover.name,
+            'Petty Cash',
+            request.pc_number,
+            profile.full_name || 'Requester',
+            request.department || '',
+            Number(request.amount) || 0,
+            'Cash Received',
+            profile.full_name || 'Requester',
+            undefined,
+            undefined
+          );
+        }
+      } catch (notifyError) {
+        console.error('Failed to send cash received email:', notifyError);
+      }
+
       alert('Petty cash marked as received successfully! The approved form has been generated.');
       await loadRequests();
       setShowViewModal(false);
@@ -1061,6 +1102,51 @@ export function PettyCash() {
     }
   };
 
+  const handleCancelRequest = async (request: PettyCashReq) => {
+    if (request.status !== 'pending' || (request.current_approval_level ?? 0) !== 0) {
+      alert('This request can no longer be cancelled because an approver has already acted on it.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to cancel Petty Cash ${request.pc_number}?\n\nThis action cannot be undone.`)) return;
+    const reason = prompt('Please provide a reason for cancelling this request:');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert('A cancellation reason is required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('petty_cash_requests')
+        .update({ status: 'cancelled' })
+        .eq('id', request.id);
+      if (error) throw error;
+
+      await createApprovalLedgerEntry(
+        'Petty Cash',
+        request.id,
+        request.pc_number,
+        profile?.id || null,
+        profile?.full_name || 'Unknown',
+        'Requestor',
+        'Cancelled',
+        reason.trim(),
+        0
+      );
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+      alert(`Petty Cash ${request.pc_number} has been cancelled successfully.`);
+      await loadRequests();
+    } catch (error: any) {
+      console.error('Error cancelling request:', error);
+      alert('Failed to cancel request: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-slate-100 text-slate-700',
@@ -1068,8 +1154,15 @@ export function PettyCash() {
       approved: 'bg-green-100 text-green-700',
       rejected: 'bg-red-100 text-red-700',
       disbursed: 'bg-blue-100 text-blue-700',
+      returned_to_maker: 'bg-amber-100 text-amber-700',
+      cancelled: 'bg-slate-200 text-slate-800',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'returned_to_maker') return 'Returned to Maker';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const handleSort = (column: string) => {
@@ -1273,12 +1366,14 @@ export function PettyCash() {
         return;
       }
 
+      // "Approved By" signatory uses the second-to-the-last approver in the chain.
+      const approvedByIndex = Math.max(ledgerData.length - 2, 0);
       const firstApprover = {
-        approver_name: ledgerData[0].approver_name,
-        approval_date: ledgerData[0].approval_date,
-        approver_id: ledgerData[0].sequence, // Note: using sequence as placeholder
+        approver_name: ledgerData[approvedByIndex].approver_name,
+        approval_date: ledgerData[approvedByIndex].approval_date,
+        approver_id: ledgerData[approvedByIndex].sequence,
         user_profiles: {
-          e_sig: ledgerData[0].approver_esig
+          e_sig: ledgerData[approvedByIndex].approver_esig
         }
       };
 
@@ -1436,7 +1531,9 @@ export function PettyCash() {
         }
       }));
 
-      const firstApprover = ledgerData[0];
+      // "Approved By" signatory uses the second-to-the-last approver in the chain.
+      const approvedByIndex = Math.max(ledgerData.length - 2, 0);
+      const firstApprover = ledgerData[approvedByIndex];
 
       // Get company name
       const { data: companyData } = await supabase
@@ -1623,7 +1720,7 @@ export function PettyCash() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Date of Transaction <span className="text-red-500">*</span>
+              {formData.request_type === 'For Cash Advance' ? 'Date Needed' : 'Transaction Date'} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -1634,20 +1731,45 @@ export function PettyCash() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
-            <select
-              value={formData.request_type}
-              onChange={(e) => {
-                setFormData({ ...formData, request_type: e.target.value });
-              }}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-              required
-            >
-              <option value="For Cash Advance">For Cash Advance</option>
-              <option value="For Reimbursement">For Reimbursement</option>
-              <option value="For Liquidation">For Liquidation</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
+              <select
+                value={formData.request_type}
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  setFormData({ ...formData, request_type: newType });
+                  const newMax = getMaxAmountForType(newType);
+                  if (formData.amount > newMax) {
+                    setAmountError(`Petty cash amount cannot exceed ₱${newMax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+                  } else {
+                    setAmountError('');
+                  }
+                }}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                required
+              >
+                <option value="For Cash Advance">For Cash Advance</option>
+                <option value="For Reimbursement">For Reimbursement</option>
+                <option value="For Liquidation">For Liquidation</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Expense Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.expense_category}
+                onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                required
+              >
+                <option value="Department Expense">Department Expense</option>
+                <option value="ManCom Expense">ManCom Expense | Board Expense</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Determines which approval workflow is used.</p>
+            </div>
           </div>
 
           {formData.request_type === 'For Cash Advance' && (
@@ -1657,36 +1779,38 @@ export function PettyCash() {
                 <span className="text-xs text-slate-500 ml-2 font-normal">(Optional)</span>
               </label>
               <p className="text-xs text-slate-600 mb-3">
-                Upload supporting documents if available (PDF or image file)
+                Upload one or more PDF or image files. They will be merged into a single PDF for approval.
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                   <Upload size={18} className="text-slate-600" />
-                  <span className="text-sm text-slate-700">Choose File</span>
+                  <span className="text-sm text-slate-700">Add File(s)</span>
                   <input
                     type="file"
+                    multiple
                     accept=".pdf,image/jpeg,image/jpg,image/png"
                     onChange={handleAttachmentChange}
                     className="hidden"
                   />
                 </label>
-                {attachmentFile && (
-                  <div className="flex items-center gap-2 text-sm text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-300">
-                    <Paperclip size={16} className="text-green-600" />
-                    <span className="truncate max-w-xs">{attachmentFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAttachmentFile(null);
-                        setAttachmentError('');
-                      }}
-                      className="text-red-500 hover:text-red-700 ml-2"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
               </div>
+              {attachmentFiles.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {attachmentFiles.map((f, i) => (
+                    <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-300">
+                      <Paperclip size={16} className="text-green-600" />
+                      <span className="truncate flex-1">{i + 1}. {f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachmentAt(i)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {attachmentError && (
                 <p className="mt-2 text-sm text-red-600">{attachmentError}</p>
               )}
@@ -1700,36 +1824,43 @@ export function PettyCash() {
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <p className="text-xs text-slate-600 mb-3">
-                Upload receipts or supporting documents (PDF or image file)
+                Upload one or more receipts (PDF or image). Multiple files will be merged into a single PDF for approval.
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <label className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition">
                   <Upload size={18} className="text-slate-600" />
-                  <span className="text-sm text-slate-700">Choose File</span>
+                  <span className="text-sm text-slate-700">Add File(s)</span>
                   <input
                     type="file"
+                    multiple
                     accept=".pdf,image/jpeg,image/jpg,image/png"
                     onChange={handleAttachmentChange}
                     className="hidden"
                   />
                 </label>
-                {attachmentFile && (
-                  <div className="flex items-center gap-2 text-sm text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-300">
-                    <Paperclip size={16} className="text-blue-600" />
-                    <span className="truncate max-w-xs">{attachmentFile.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAttachmentFile(null);
-                        setAttachmentError('');
-                      }}
-                      className="text-red-500 hover:text-red-700 ml-2"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
               </div>
+              {attachmentFiles.length > 0 && (
+                <ul className="mt-3 space-y-2">
+                  {attachmentFiles.map((f, i) => (
+                    <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-sm text-slate-700 bg-white px-3 py-2 rounded-lg border border-slate-300">
+                      <Paperclip size={16} className="text-blue-600" />
+                      <span className="truncate flex-1">{i + 1}. {f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachmentAt(i)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {editingRequest?.attachments && editingRequest.attachments.length > 0 && attachmentFiles.length === 0 && (
+                <p className="mt-3 text-xs text-slate-600">
+                  Existing attachment on file will be kept. Add new files to replace it with a merged PDF.
+                </p>
+              )}
               {attachmentError && (
                 <p className="mt-2 text-sm text-red-600">{attachmentError}</p>
               )}
@@ -1874,7 +2005,7 @@ export function PettyCash() {
             </div>
           )}
 
-          {formData.request_type === 'For Liquidation' ? (
+          {(formData.request_type === 'For Liquidation' || formData.request_type === 'For Reimbursement') ? (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-slate-700">Expense Itemization</label>
@@ -1946,50 +2077,59 @@ export function PettyCash() {
                     ))}
                   </tbody>
                   <tfoot className="bg-slate-50 border-t">
-                    <tr>
+                    <tr className={formData.request_type === 'For Reimbursement' ? 'border-t-2 border-slate-300' : ''}>
                       <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
-                        Total Expenditures:
+                        {formData.request_type === 'For Reimbursement' ? 'Total for Reimbursement:' : 'Total Expenditures:'}
                       </td>
-                      <td className="px-4 py-2 font-bold text-slate-900">
+                      <td className={`px-4 py-2 font-bold text-slate-900 ${formData.request_type === 'For Reimbursement' ? 'text-lg' : ''}`}>
                         ₱{calculateTotalExpenditures().toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td></td>
                     </tr>
-                    <tr>
-                      <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
-                        Less: Petty Cash Advance:
-                      </td>
-                      <td className="px-4 py-2 font-semibold text-slate-900">
-                        ₱{pettyCashAdvance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td></td>
-                    </tr>
-                    <tr className="border-t-2 border-slate-300">
-                      <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
-                        {(calculateTotalExpenditures() - pettyCashAdvance) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
-                      </td>
-                      <td className="px-4 py-2 font-bold text-lg text-slate-900">
-                        ₱{Math.abs(calculateTotalExpenditures() - pettyCashAdvance).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td></td>
-                    </tr>
+                    {formData.request_type === 'For Liquidation' && (
+                      <>
+                        <tr>
+                          <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
+                            Less: Petty Cash Advance:
+                          </td>
+                          <td className="px-4 py-2 font-semibold text-slate-900">
+                            ₱{pettyCashAdvance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td></td>
+                        </tr>
+                        <tr className="border-t-2 border-slate-300">
+                          <td colSpan={2} className="px-4 py-2 text-right font-bold text-slate-900">
+                            {(calculateTotalExpenditures() - pettyCashAdvance) >= 0 ? 'Over for Reimbursement:' : 'Excess for Deposit:'}
+                          </td>
+                          <td className="px-4 py-2 font-bold text-lg text-slate-900">
+                            ₱{Math.abs(calculateTotalExpenditures() - pettyCashAdvance).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </>
+                    )}
                   </tfoot>
                 </table>
               </div>
-              {calculateTotalExpenditures() > 10000 && (
+              {formData.request_type === 'For Liquidation' && calculateTotalExpenditures() > 10000 && (
                 <p className="mt-2 text-sm text-red-600">Total expenditures cannot exceed ₱10,000.00</p>
+              )}
+              {formData.request_type === 'For Reimbursement' && calculateTotalExpenditures() > getMaxAmountForType('For Reimbursement') && (
+                <p className="mt-2 text-sm text-red-600">
+                  Total for reimbursement cannot exceed ₱{getMaxAmountForType('For Reimbursement').toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               )}
             </div>
           ) : (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Amount <span className="text-xs text-slate-500">(Maximum: ₱{maxPettyCashAdvance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                Amount <span className="text-xs text-slate-500">(Maximum: ₱{getMaxAmountForType(formData.request_type).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
               </label>
               <input
                 type="number"
                 value={formData.amount}
                 onChange={(e) => handleAmountChange(Number(e.target.value))}
-                max={maxPettyCashAdvance}
+                max={getMaxAmountForType(formData.request_type)}
                 step="0.01"
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none ${
                   amountError
@@ -2043,6 +2183,7 @@ export function PettyCash() {
                 payment_mode_id: '',
                 request_type: 'For Cash Advance',
                 no_of_pax: 0,
+                expense_category: 'Department Expense',
               });
               generateDocumentNo();
             }}
@@ -2208,7 +2349,7 @@ export function PettyCash() {
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
-                        {req.status}
+                        {getStatusLabel(req.status)}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
@@ -2246,16 +2387,30 @@ export function PettyCash() {
                       )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          setViewingRequest(req);
-                          setShowViewModal(true);
-                        }}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
-                        title="View Request"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setViewingRequest(req);
+                            setShowViewModal(true);
+                          }}
+                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          title="View Request"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {req.status === 'pending'
+                          && (req.current_approval_level ?? 0) === 0
+                          && req.requester_id === profile?.id && (
+                          <button
+                            onClick={() => handleCancelRequest(req)}
+                            disabled={loading}
+                            className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Cancel Request"
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -2360,7 +2515,9 @@ export function PettyCash() {
                   <p className="text-slate-900">{new Date(viewingRequest.request_date).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Date of Transaction</label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    {viewingRequest.request_type === 'For Cash Advance' ? 'Date Needed' : 'Transaction Date'}
+                  </label>
                   <p className="text-slate-900">
                     {viewingRequest.date_of_transactions
                       ? new Date(viewingRequest.date_of_transactions).toLocaleDateString()
@@ -2388,13 +2545,17 @@ export function PettyCash() {
                   <p className="text-slate-900">{viewingRequest.request_type || 'For Cash Advance'}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Expense Category</label>
+                  <p className="text-slate-900">{viewingRequest.expense_category || 'Department Expense'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Amount</label>
                   <p className="text-slate-900 font-bold">{formatCurrency(viewingRequest.amount)}</p>
                 </div>
                 <div className="col-span-2">
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
-                    {viewingRequest.status}
+                    {getStatusLabel(viewingRequest.status)}
                   </span>
                 </div>
               </div>
@@ -2448,7 +2609,7 @@ export function PettyCash() {
                 </div>
               )}
 
-              {viewingRequest.request_type === 'For Liquidation' && viewingRequest.expense_items && viewingRequest.expense_items.length > 0 && (
+              {(viewingRequest.request_type === 'For Liquidation' || viewingRequest.request_type === 'For Reimbursement') && viewingRequest.expense_items && viewingRequest.expense_items.length > 0 && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Expense Itemization</label>
                   <div className="border border-slate-300 rounded-lg overflow-hidden">
@@ -2474,15 +2635,15 @@ export function PettyCash() {
                         ))}
                       </tbody>
                       <tfoot className="bg-slate-50 border-t">
-                        <tr>
+                        <tr className={viewingRequest.request_type === 'For Reimbursement' ? 'border-t-2 border-slate-300' : ''}>
                           <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
-                            Total Expenditures:
+                            {viewingRequest.request_type === 'For Reimbursement' ? 'Total for Reimbursement:' : 'Total Expenditures:'}
                           </td>
-                          <td className="px-4 py-2 font-bold text-slate-900">
+                          <td className={`px-4 py-2 font-bold text-slate-900 ${viewingRequest.request_type === 'For Reimbursement' ? 'text-lg' : ''}`}>
                             {formatCurrency(viewingRequest.amount)}
                           </td>
                         </tr>
-                        {viewingRequest.petty_cash_advance && (
+                        {viewingRequest.request_type === 'For Liquidation' && viewingRequest.petty_cash_advance && (
                           <>
                             <tr>
                               <td colSpan={2} className="px-4 py-2 text-right font-semibold text-slate-700">
@@ -2616,6 +2777,28 @@ export function PettyCash() {
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
+                )}
+                {viewingRequest.status === 'returned_to_maker' && (
+                  <button
+                    onClick={() => handleEditDraft(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    <Edit size={18} />
+                    Edit & Resubmit
+                  </button>
+                )}
+                {viewingRequest.status === 'pending'
+                  && (viewingRequest.current_approval_level ?? 0) === 0
+                  && viewingRequest.requester_id === profile?.id && (
+                  <button
+                    onClick={() => handleCancelRequest(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Ban size={18} />
+                    Cancel Request
+                  </button>
                 )}
                 {viewingRequest.status === 'approved' && !viewingRequest.received_at && viewingRequest.cash_released && (viewingRequest.request_type === 'For Reimbursement' || viewingRequest.request_type === 'For Cash Advance' || (viewingRequest.request_type === 'For Liquidation' && (Number(viewingRequest.amount) - (Number((viewingRequest as any).petty_cash_advance) || 0)) > 0)) && (
                   <button

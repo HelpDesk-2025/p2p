@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { PDFDocument } from 'pdf-lib';
@@ -69,6 +69,8 @@ interface CanvassReq {
   msbc_posting_date?: string;
   msbc_journal_batch_id?: string;
   msbc_error_message?: string;
+  current_approval_level?: number;
+  requester_id?: string;
   purchase_requisitions?: {
     document_no: string;
     pr_number: string;
@@ -682,7 +684,8 @@ export function Canvass() {
         let flowsWithExecutive = await addExecutiveApprovalSteps(
           rawApprovalFlows,
           profile.id,
-          selectedCompanyId
+          selectedCompanyId,
+          false
         );
 
         // Filter out requester from approval flows
@@ -694,6 +697,15 @@ export function Canvass() {
         );
 
         if (approvalFlows.length > 0) {
+          const isResubmission = editingRequest?.status === 'returned_to_maker';
+          if (isResubmission) {
+            await supabase
+              .from('approval_ledger')
+              .delete()
+              .eq('request_id', insertedRequest.id)
+              .eq('request_type', 'Canvass');
+          }
+
           await createApprovalLedgerEntry(
             'Canvass',
             insertedRequest.id,
@@ -702,7 +714,7 @@ export function Canvass() {
             profile.full_name || 'Unknown',
             'Requestor',
             'Submitted',
-            'Initial submission',
+            isResubmission ? 'Resubmission after return' : 'Initial submission',
             0
           );
 
@@ -792,7 +804,8 @@ export function Canvass() {
       let flowsWithExecutive = await addExecutiveApprovalSteps(
         rawApprovalFlows,
         profile.id,
-        request.company_id
+        request.company_id,
+        !!request.is_budgeted
       );
 
       // Filter out requester from approval flows
@@ -807,12 +820,22 @@ export function Canvass() {
         throw new Error('No additional approvers required for this request.');
       }
 
+      const isResubmission = request.status === 'returned_to_maker';
+
       const { error: updateError } = await supabase
         .from('canvass_requests')
         .update({ status: 'pending', current_approval_level: 0 })
         .eq('id', request.id);
 
       if (updateError) throw updateError;
+
+      if (isResubmission) {
+        await supabase
+          .from('approval_ledger')
+          .delete()
+          .eq('request_id', request.id)
+          .eq('request_type', 'Canvass');
+      }
 
       await createApprovalLedgerEntry(
         'Canvass',
@@ -822,7 +845,7 @@ export function Canvass() {
         profile.full_name || 'Unknown',
         'Requestor',
         'Submitted',
-        'Initial submission',
+        isResubmission ? 'Resubmission after return' : 'Initial submission',
         0
       );
 
@@ -924,14 +947,66 @@ export function Canvass() {
     }
   };
 
+  const handleCancelRequest = async (request: CanvassReq) => {
+    if (request.status !== 'pending' || (request.current_approval_level ?? 0) !== 0) {
+      alert('This request can no longer be cancelled because an approver has already acted on it.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to cancel Canvass ${request.canvass_number}?\n\nThis action cannot be undone.`)) return;
+    const reason = prompt('Please provide a reason for cancelling this request:');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert('A cancellation reason is required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('canvass_requests')
+        .update({ status: 'cancelled' })
+        .eq('id', request.id);
+      if (error) throw error;
+
+      await createApprovalLedgerEntry(
+        'Canvass',
+        request.id,
+        request.canvass_number,
+        profile?.id || null,
+        profile?.full_name || 'Unknown',
+        'Requestor',
+        'Cancelled',
+        reason.trim(),
+        0
+      );
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+      alert(`Canvass ${request.canvass_number} has been cancelled successfully.`);
+      await loadRequests();
+    } catch (error: any) {
+      console.error('Error cancelling request:', error);
+      alert('Failed to cancel request: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-slate-100 text-slate-700',
       pending: 'bg-yellow-100 text-yellow-700',
       approved: 'bg-green-100 text-green-700',
       rejected: 'bg-red-100 text-red-700',
+      returned_to_maker: 'bg-amber-100 text-amber-700',
+      cancelled: 'bg-slate-200 text-slate-800',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'returned_to_maker') return 'Returned to Maker';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const handleSort = (column: string) => {
@@ -958,6 +1033,7 @@ export function Canvass() {
     { key: 'status', label: 'Status', type: 'select', options: [
       { value: 'draft', label: 'Draft' }, { value: 'pending', label: 'Pending' },
       { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
+      { value: 'returned_to_maker', label: 'Returned to Maker' },
     ]},
   ];
 
@@ -2271,17 +2347,31 @@ export function Canvass() {
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
-                        {req.status}
+                        {getStatusLabel(req.status)}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => handleViewRequest(req)}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
-                        title="View Request"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          onClick={() => handleViewRequest(req)}
+                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          title="View Request"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {req.status === 'pending'
+                          && (req.current_approval_level ?? 0) === 0
+                          && req.requester_id === profile?.id && (
+                          <button
+                            onClick={() => handleCancelRequest(req)}
+                            disabled={loading}
+                            className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Cancel Request"
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -2345,7 +2435,7 @@ export function Canvass() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Status</label>
                   <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
-                    {viewingRequest.status}
+                    {getStatusLabel(viewingRequest.status)}
                   </span>
                 </div>
                 {viewingRequest.total_amount && (
@@ -2737,6 +2827,28 @@ export function Canvass() {
                       {submitting ? 'Submitting...' : 'Submit for Approval'}
                     </button>
                   </>
+                )}
+                {viewingRequest.status === 'returned_to_maker' && (
+                  <button
+                    onClick={() => handleEditDraft(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    <Edit size={18} />
+                    Edit & Resubmit
+                  </button>
+                )}
+                {viewingRequest.status === 'pending'
+                  && (viewingRequest.current_approval_level ?? 0) === 0
+                  && viewingRequest.requester_id === profile?.id && (
+                  <button
+                    onClick={() => handleCancelRequest(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Ban size={18} />
+                    Cancel Request
+                  </button>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
                   <>

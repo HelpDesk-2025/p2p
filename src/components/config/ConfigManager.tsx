@@ -6,9 +6,11 @@ import { NumberSeriesConfig } from './NumberSeriesConfig';
 import { SmtpConfig } from './SmtpConfig';
 import { RolesPermissionsConfig } from './RolesPermissionsConfig';
 import { ImpersonationConfig } from './ImpersonationConfig';
+import { AnnouncementsConfig } from './AnnouncementsConfig';
+import { ApiIntegrationsConfig } from './ApiIntegrationsConfig';
 import Pagination from '../Pagination';
 
-type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation';
+type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation' | 'announcements' | 'api-integrations';
 
 interface ConfigManagerProps {
   type: ConfigType;
@@ -98,6 +100,10 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         return <WithholdingTaxRatesConfig data={data} reload={loadData} />;
       case 'impersonation':
         return <ImpersonationConfig />;
+      case 'announcements':
+        return <AnnouncementsConfig />;
+      case 'api-integrations':
+        return <ApiIntegrationsConfig />;
       default:
         return <div>Select a configuration type</div>;
     }
@@ -125,8 +131,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     department: '',
     role: '',
     approver_type: '',
-    approver_email: '',
-    checker_email: '',
+    approver_email_non_budgeted: '',
+    checker_email_non_budgeted: '',
+    approver_email_budgeted: '',
+    checker_email_budgeted: '',
     sequence: '',
     days_of_approval: '',
     e_sig: '',
@@ -142,10 +150,11 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
   const [allDepartments, setAllDepartments] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [approverSearchTerm, setApproverSearchTerm] = useState('');
-  const [checkerSearchTerm, setCheckerSearchTerm] = useState('');
-  const [showApproverDropdown, setShowApproverDropdown] = useState(false);
-  const [showCheckerDropdown, setShowCheckerDropdown] = useState(false);
+  const [openExecDropdown, setOpenExecDropdown] = useState<string | null>(null);
+  const [execSteps, setExecSteps] = useState<{
+    non_budgeted: { step_type: 'approver' | 'checker'; email: string }[];
+    budgeted: { step_type: 'approver' | 'checker'; email: string }[];
+  }>({ non_budgeted: [], budgeted: [] });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
@@ -192,9 +201,67 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
     }
   };
 
+  const loadExecSteps = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('executive_approval_steps')
+      .select('category, step_type, sequence, email')
+      .eq('user_profile_id', userId)
+      .order('category', { ascending: true })
+      .order('sequence', { ascending: true });
+
+    if (error) {
+      console.error('Error loading executive approval steps:', error);
+      setExecSteps({ non_budgeted: [], budgeted: [] });
+      return;
+    }
+
+    const non_budgeted = (data || [])
+      .filter(r => r.category === 'non_budgeted')
+      .map(r => ({ step_type: r.step_type as 'approver' | 'checker', email: r.email || '' }));
+    const budgeted = (data || [])
+      .filter(r => r.category === 'budgeted')
+      .map(r => ({ step_type: r.step_type as 'approver' | 'checker', email: r.email || '' }));
+
+    setExecSteps({ non_budgeted, budgeted });
+  };
+
+  const saveExecSteps = async (userId: string) => {
+    await supabase.from('executive_approval_steps').delete().eq('user_profile_id', userId);
+
+    const rows: {
+      user_profile_id: string;
+      category: 'non_budgeted' | 'budgeted';
+      step_type: 'approver' | 'checker';
+      sequence: number;
+      email: string;
+    }[] = [];
+    (['non_budgeted', 'budgeted'] as const).forEach((category) => {
+      execSteps[category].forEach((step, idx) => {
+        if (step.email?.trim()) {
+          rows.push({
+            user_profile_id: userId,
+            category,
+            step_type: step.step_type,
+            sequence: idx + 1,
+            email: step.email.trim(),
+          });
+        }
+      });
+    });
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from('executive_approval_steps').insert(rows);
+      if (error) {
+        console.error('Error saving executive approval steps:', error);
+        throw error;
+      }
+    }
+  };
+
   const handleEdit = (user: any) => {
     console.log('Editing user:', user);
     setEditingId(user.id);
+    loadExecSteps(user.id);
 
     if (user.company) {
       const company = companies.find(c => c.name === user.company);
@@ -214,8 +281,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       department: user.department || '',
       role: user.role || 'standard',
       approver_type: user.approver_type || '',
-      approver_email: user.approver_email || '',
-      checker_email: user.checker_email || '',
+      approver_email_non_budgeted: user.approver_email_non_budgeted || user.approver_email || '',
+      checker_email_non_budgeted: user.checker_email_non_budgeted || user.checker_email || '',
+      approver_email_budgeted: user.approver_email_budgeted || '',
+      checker_email_budgeted: user.checker_email_budgeted || '',
       sequence: user.sequence?.toString() || '',
       days_of_approval: user.days_of_approval?.toString() || '',
       e_sig: user.e_sig || '',
@@ -251,8 +320,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             department: formData.department || null,
             role: formData.role,
             approver_type: formData.approver_type || null,
-            approver_email: formData.approver_email || null,
-            checker_email: formData.checker_email || null,
+            approver_email: formData.approver_email_non_budgeted || null,
+            checker_email: formData.checker_email_non_budgeted || null,
+            approver_email_non_budgeted: formData.approver_email_non_budgeted || null,
+            checker_email_non_budgeted: formData.checker_email_non_budgeted || null,
+            approver_email_budgeted: formData.approver_email_budgeted || null,
+            checker_email_budgeted: formData.checker_email_budgeted || null,
             e_sig: formData.e_sig || null
           }
         }
@@ -267,11 +340,19 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
           .update({
             is_active: formData.is_active,
             enable_multi_company_requests: formData.enable_multi_company_requests,
-            allowed_companies: formData.allowed_companies
+            allowed_companies: formData.allowed_companies,
+            approver_email_non_budgeted: formData.approver_email_non_budgeted || null,
+            checker_email_non_budgeted: formData.checker_email_non_budgeted || null,
+            approver_email_budgeted: formData.approver_email_budgeted || null,
+            checker_email_budgeted: formData.checker_email_budgeted || null
           })
           .eq('id', authData.user.id);
 
         if (updateError) throw updateError;
+
+        if (formData.approver_type === 'Executive') {
+          await saveExecSteps(authData.user.id);
+        }
       }
 
       alert('User created successfully!');
@@ -284,8 +365,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: '',
         role: 'standard',
         approver_type: '',
-        approver_email: '',
-        checker_email: '',
+        approver_email_non_budgeted: '',
+        checker_email_non_budgeted: '',
+        approver_email_budgeted: '',
+        checker_email_budgeted: '',
         sequence: '',
         days_of_approval: '',
         e_sig: '',
@@ -293,6 +376,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         enable_multi_company_requests: false,
         allowed_companies: []
       });
+      setExecSteps({ non_budgeted: [], budgeted: [] });
       reload();
     } catch (error: any) {
       alert('Error creating user: ' + error.message);
@@ -344,8 +428,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: formData.department || null,
         role: formData.role,
         approver_type: formData.approver_type || null,
-        approver_email: formData.approver_email || null,
-        checker_email: formData.checker_email || null,
+        approver_email: formData.approver_email_non_budgeted || null,
+        checker_email: formData.checker_email_non_budgeted || null,
+        approver_email_non_budgeted: formData.approver_email_non_budgeted || null,
+        checker_email_non_budgeted: formData.checker_email_non_budgeted || null,
+        approver_email_budgeted: formData.approver_email_budgeted || null,
+        checker_email_budgeted: formData.checker_email_budgeted || null,
         e_sig: formData.e_sig || null,
         is_active: formData.is_active,
         enable_multi_company_requests: formData.enable_multi_company_requests,
@@ -364,6 +452,12 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       if (error) {
         console.error('Update error:', error);
         throw error;
+      }
+
+      if (formData.approver_type === 'Executive') {
+        await saveExecSteps(editingId);
+      } else {
+        await supabase.from('executive_approval_steps').delete().eq('user_profile_id', editingId);
       }
 
       if (formData.email !== originalEmail) {
@@ -398,8 +492,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         department: '',
         role: 'standard',
         approver_type: '',
-        approver_email: '',
-        checker_email: '',
+        approver_email_non_budgeted: '',
+        checker_email_non_budgeted: '',
+        approver_email_budgeted: '',
+        checker_email_budgeted: '',
         sequence: '',
         days_of_approval: '',
         e_sig: '',
@@ -407,6 +503,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         enable_multi_company_requests: false,
         allowed_companies: []
       });
+      setExecSteps({ non_budgeted: [], budgeted: [] });
       reload();
     } catch (error: any) {
       console.error('Error in handleUpdate:', error);
@@ -429,6 +526,10 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       department: '',
       role: 'standard',
       approver_type: '',
+      approver_email_non_budgeted: '',
+      checker_email_non_budgeted: '',
+      approver_email_budgeted: '',
+      checker_email_budgeted: '',
       sequence: '',
       days_of_approval: '',
       e_sig: '',
@@ -436,6 +537,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       enable_multi_company_requests: false,
       allowed_companies: []
     });
+    setExecSteps({ non_budgeted: [], budgeted: [] });
   };
 
   const handleSort = (field: typeof sortField) => {
@@ -753,133 +855,200 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
 
             {formData.approver_type === 'Executive' && (
-              <>
-                <div className="space-y-1.5 sm:space-y-2 relative">
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700">Approver Email</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.approver_email}
-                      onChange={(e) => {
-                        setFormData({ ...formData, approver_email: e.target.value });
-                        setApproverSearchTerm(e.target.value);
-                        setShowApproverDropdown(true);
-                      }}
-                      onFocus={() => setShowApproverDropdown(true)}
-                      className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Search user by name or email"
-                    />
-                    {showApproverDropdown && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {allUsers
-                          .filter(user => {
-                            const searchLower = formData.approver_email.toLowerCase();
-                            return (
-                              user.full_name?.toLowerCase().includes(searchLower) ||
-                              user.email?.toLowerCase().includes(searchLower) ||
-                              user.company?.toLowerCase().includes(searchLower)
-                            );
-                          })
-                          .map(user => (
-                            <div
-                              key={user.id}
-                              onClick={() => {
-                                setFormData({ ...formData, approver_email: user.email });
-                                setShowApproverDropdown(false);
-                              }}
-                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-b-0"
-                            >
-                              <div className="font-medium text-sm text-slate-800">{user.full_name}</div>
-                              <div className="text-xs text-slate-600">{user.email}</div>
-                              {user.company && (
-                                <div className="text-xs text-slate-500">{user.company} {user.department && `- ${user.department}`}</div>
-                              )}
-                            </div>
-                          ))}
-                        {allUsers.filter(user => {
-                          const searchLower = formData.approver_email.toLowerCase();
-                          return (
-                            user.full_name?.toLowerCase().includes(searchLower) ||
-                            user.email?.toLowerCase().includes(searchLower) ||
-                            user.company?.toLowerCase().includes(searchLower)
-                          );
-                        }).length === 0 && (
-                          <div className="px-3 py-2 text-sm text-slate-500 text-center">No users found</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {showApproverDropdown && (
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowApproverDropdown(false)}
-                    />
-                  )}
+              <div className="sm:col-span-2 space-y-4">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider">
+                    Executive Approval Routing
+                  </h4>
+                  <span className="h-px flex-1 bg-slate-200" />
                 </div>
 
-                <div className="space-y-1.5 sm:space-y-2 relative">
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-700">Checker Email</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.checker_email}
-                      onChange={(e) => {
-                        setFormData({ ...formData, checker_email: e.target.value });
-                        setCheckerSearchTerm(e.target.value);
-                        setShowCheckerDropdown(true);
-                      }}
-                      onFocus={() => setShowCheckerDropdown(true)}
-                      className="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="Search user by name or email"
-                    />
-                    {showCheckerDropdown && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {allUsers
-                          .filter(user => {
-                            const searchLower = formData.checker_email.toLowerCase();
-                            return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {([
+                    {
+                      key: 'non_budgeted' as const,
+                      title: 'Non-Budgeted',
+                      subtitle: 'Applied when the request is not budgeted',
+                      ring: 'border-rose-200',
+                      badge: 'bg-rose-100 text-rose-800',
+                      addBtn: 'bg-rose-600 hover:bg-rose-700',
+                    },
+                    {
+                      key: 'budgeted' as const,
+                      title: 'Budgeted',
+                      subtitle: 'Applied when the request is budgeted',
+                      ring: 'border-emerald-200',
+                      badge: 'bg-emerald-100 text-emerald-800',
+                      addBtn: 'bg-emerald-600 hover:bg-emerald-700',
+                    },
+                  ]).map((section) => {
+                    const steps = execSteps[section.key];
+                    return (
+                      <div
+                        key={section.key}
+                        className={`rounded-xl border ${section.ring} bg-slate-50/60 p-4 space-y-3`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${section.badge}`}>
+                            {section.title}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500">
+                            {steps.length} step{steps.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 -mt-1">{section.subtitle}</p>
+
+                        <div className="space-y-2">
+                          {steps.length === 0 && (
+                            <div className="text-xs text-slate-400 italic text-center py-4 border border-dashed border-slate-300 rounded-lg bg-white">
+                              No approval steps yet. Click "Add Step" below to configure.
+                            </div>
+                          )}
+
+                          {steps.map((step, idx) => {
+                            const dropdownKey = `${section.key}-${idx}`;
+                            const isOpen = openExecDropdown === dropdownKey;
+                            const searchLower = step.email.toLowerCase();
+                            const matched = allUsers.filter((user) =>
                               user.full_name?.toLowerCase().includes(searchLower) ||
                               user.email?.toLowerCase().includes(searchLower) ||
                               user.company?.toLowerCase().includes(searchLower)
                             );
-                          })
-                          .map(user => (
-                            <div
-                              key={user.id}
-                              onClick={() => {
-                                setFormData({ ...formData, checker_email: user.email });
-                                setShowCheckerDropdown(false);
-                              }}
-                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-b-0"
-                            >
-                              <div className="font-medium text-sm text-slate-800">{user.full_name}</div>
-                              <div className="text-xs text-slate-600">{user.email}</div>
-                              {user.company && (
-                                <div className="text-xs text-slate-500">{user.company} {user.department && `- ${user.department}`}</div>
-                              )}
-                            </div>
-                          ))}
-                        {allUsers.filter(user => {
-                          const searchLower = formData.checker_email.toLowerCase();
-                          return (
-                            user.full_name?.toLowerCase().includes(searchLower) ||
-                            user.email?.toLowerCase().includes(searchLower) ||
-                            user.company?.toLowerCase().includes(searchLower)
-                          );
-                        }).length === 0 && (
-                          <div className="px-3 py-2 text-sm text-slate-500 text-center">No users found</div>
-                        )}
+
+                            const updateStep = (patch: Partial<typeof step>) => {
+                              setExecSteps((prev) => ({
+                                ...prev,
+                                [section.key]: prev[section.key].map((s, i) => i === idx ? { ...s, ...patch } : s),
+                              }));
+                            };
+
+                            const moveStep = (dir: -1 | 1) => {
+                              setExecSteps((prev) => {
+                                const list = [...prev[section.key]];
+                                const target = idx + dir;
+                                if (target < 0 || target >= list.length) return prev;
+                                [list[idx], list[target]] = [list[target], list[idx]];
+                                return { ...prev, [section.key]: list };
+                              });
+                            };
+
+                            const removeStep = () => {
+                              setExecSteps((prev) => ({
+                                ...prev,
+                                [section.key]: prev[section.key].filter((_, i) => i !== idx),
+                              }));
+                            };
+
+                            return (
+                              <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2 relative">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                    {idx + 1}
+                                  </span>
+                                  <select
+                                    value={step.step_type}
+                                    onChange={(e) => updateStep({ step_type: e.target.value as 'approver' | 'checker' })}
+                                    className="px-2 py-1 text-xs font-semibold border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  >
+                                    <option value="approver">Approver</option>
+                                    <option value="checker">Checker</option>
+                                  </select>
+                                  <div className="ml-auto flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => moveStep(-1)}
+                                      disabled={idx === 0}
+                                      className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed"
+                                      title="Move up"
+                                    >
+                                      <ArrowUp size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => moveStep(1)}
+                                      disabled={idx === steps.length - 1}
+                                      className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed"
+                                      title="Move down"
+                                    >
+                                      <ArrowDown size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={removeStep}
+                                      className="p-1 text-rose-500 hover:text-rose-700"
+                                      title="Remove"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={step.email}
+                                    onChange={(e) => {
+                                      updateStep({ email: e.target.value });
+                                      setOpenExecDropdown(dropdownKey);
+                                    }}
+                                    onFocus={() => setOpenExecDropdown(dropdownKey)}
+                                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                                    placeholder="Search user by name or email"
+                                  />
+                                  {isOpen && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                      {matched.map((user) => (
+                                        <div
+                                          key={user.id}
+                                          onClick={() => {
+                                            updateStep({ email: user.email });
+                                            setOpenExecDropdown(null);
+                                          }}
+                                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                                        >
+                                          <div className="font-medium text-sm text-slate-800">{user.full_name}</div>
+                                          <div className="text-xs text-slate-600">{user.email}</div>
+                                          {user.company && (
+                                            <div className="text-xs text-slate-500">
+                                              {user.company}{user.department && ` - ${user.department}`}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                      {matched.length === 0 && (
+                                        <div className="px-3 py-2 text-sm text-slate-500 text-center">No users found</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                {isOpen && (
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setOpenExecDropdown(null)}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExecSteps((prev) => ({
+                              ...prev,
+                              [section.key]: [...prev[section.key], { step_type: 'approver', email: '' }],
+                            }))
+                          }
+                          className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white rounded-lg transition-colors ${section.addBtn}`}
+                        >
+                          <Plus size={14} />
+                          Add Step
+                        </button>
                       </div>
-                    )}
-                  </div>
-                  {showCheckerDropdown && (
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowCheckerDropdown(false)}
-                    />
-                  )}
+                    );
+                  })}
                 </div>
-              </>
+              </div>
             )}
 
             <div className="space-y-1.5 sm:space-y-2">
@@ -1995,6 +2164,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
     api_id: '',
     president_min_amount: '0',
     max_petty_cash_advance: '3000',
+    max_petty_cash_reimbursement: '5000',
     min_cash_advance: '3001',
     accounting_notification_email: '',
     procurement_notification_email: ''
@@ -2010,6 +2180,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
           max_petty_cash_advance: parseFloat(formData.max_petty_cash_advance) || 3000,
+          max_petty_cash_reimbursement: parseFloat(formData.max_petty_cash_reimbursement) || 5000,
           min_cash_advance: parseFloat(formData.min_cash_advance) || 3001,
           accounting_notification_email: formData.accounting_notification_email || null,
           procurement_notification_email: formData.procurement_notification_email || null
@@ -2021,6 +2192,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
           max_petty_cash_advance: parseFloat(formData.max_petty_cash_advance) || 3000,
+          max_petty_cash_reimbursement: parseFloat(formData.max_petty_cash_reimbursement) || 5000,
           min_cash_advance: parseFloat(formData.min_cash_advance) || 3001,
           accounting_notification_email: formData.accounting_notification_email || null,
           procurement_notification_email: formData.procurement_notification_email || null
@@ -2030,7 +2202,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
       }
       setShowForm(false);
       setEditingId(null);
-      setFormData({ name: '', api_id: '', president_min_amount: '0', max_petty_cash_advance: '3000', min_cash_advance: '3001', accounting_notification_email: '', procurement_notification_email: '' });
+      setFormData({ name: '', api_id: '', president_min_amount: '0', max_petty_cash_advance: '3000', max_petty_cash_reimbursement: '5000', min_cash_advance: '3001', accounting_notification_email: '', procurement_notification_email: '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -2044,6 +2216,7 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
       api_id: company.api_id || '',
       president_min_amount: company.president_min_amount?.toString() || '0',
       max_petty_cash_advance: company.max_petty_cash_advance?.toString() || '3000',
+      max_petty_cash_reimbursement: company.max_petty_cash_reimbursement?.toString() || '5000',
       min_cash_advance: company.min_cash_advance?.toString() || '3001',
       accounting_notification_email: company.accounting_notification_email || '',
       procurement_notification_email: company.procurement_notification_email || ''
@@ -2174,6 +2347,23 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
                 />
               </div>
               <p className="text-xs text-slate-500">Maximum amount allowed for petty cash advance requests</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-700">Maximum Petty Cash Reimbursement</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold">&#8369;</span>
+                <input
+                  type="number"
+                  placeholder="5000.00"
+                  min="0"
+                  step="0.01"
+                  value={formData.max_petty_cash_reimbursement}
+                  onChange={(e) => setFormData({ ...formData, max_petty_cash_reimbursement: e.target.value })}
+                  className="w-full pl-8 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <p className="text-xs text-slate-500">Maximum amount allowed for petty cash reimbursement requests</p>
             </div>
 
             <div className="space-y-2">

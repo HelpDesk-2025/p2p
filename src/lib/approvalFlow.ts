@@ -11,7 +11,7 @@ export interface ApprovalFlow {
   is_active: boolean;
   workflow_type: number;
   user_id: string | null;
-  alternate_approver_id: string | null;
+  alternate_approver_id?: string | null;
   approval_flow_setup_id: string;
   for_checking?: boolean;
 }
@@ -36,10 +36,11 @@ export async function getApprovalFlow(
   department: string,
   requestType: string,
   isBudgeted: boolean,
-  totalAmount: number
+  totalAmount: number,
+  expenseCategory?: string
 ): Promise<ApprovalFlow[]> {
   try {
-    console.log('🔍 STRICT APPROVAL FLOW CHECK with params:', {
+    console.log('STRICT APPROVAL FLOW CHECK with params:', {
       companyId,
       department,
       requestType,
@@ -47,9 +48,7 @@ export async function getApprovalFlow(
       totalAmount
     });
 
-    // STEP 1: Validate company exists
     if (!companyId) {
-      console.error('❌ VALIDATION FAILED: Company ID is required');
       throw new Error('Company ID is required for approval flow');
     }
 
@@ -60,46 +59,36 @@ export async function getApprovalFlow(
       .single();
 
     if (companyError) {
-      console.error('❌ VALIDATION FAILED: Company not found');
       throw companyError;
     }
 
-    // STEP 2: Validate department
     if (!department) {
-      console.error('❌ VALIDATION FAILED: Department is required');
       throw new Error('Department is required for approval flow');
     }
 
-    // STEP 3: Validate request type
     if (!requestType) {
-      console.error('❌ VALIDATION FAILED: Request type is required');
       throw new Error('Request type is required for approval flow');
     }
 
-    // STEP 4: Determine workflow type based on budget setup
     const presidentMinAmount = company?.president_min_amount || 0;
     let workflowType: number;
 
-    // For Purchase Requisition, Canvass, and Cash Advance, check budget setup
     if (requestType === 'Purchase Requisition' || requestType === 'Canvass' || requestType === 'Cash Advance') {
       if (!isBudgeted) {
         workflowType = WORKFLOW_TYPES.UNBUDGETED;
-        console.log('📊 Budget Setup: UNBUDGETED - Workflow Type 1');
       } else if (totalAmount < presidentMinAmount) {
         workflowType = WORKFLOW_TYPES.BUDGETED_BELOW_MIN;
-        console.log(`📊 Budget Setup: BUDGETED < ₱${presidentMinAmount.toLocaleString()} - Workflow Type 2`);
       } else {
         workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
-        console.log(`📊 Budget Setup: BUDGETED ≥ ₱${presidentMinAmount.toLocaleString()} - Workflow Type 3`);
       }
+    } else if (requestType === 'Petty Cash') {
+      workflowType = expenseCategory === 'ManCom Expense'
+        ? WORKFLOW_TYPES.BUDGETED_BELOW_MIN
+        : WORKFLOW_TYPES.UNBUDGETED;
     } else {
-      // For other request types (Petty Cash, Reimbursement), use unbudgeted workflow
       workflowType = WORKFLOW_TYPES.UNBUDGETED;
-      console.log('📊 Non-budget request type - Using Workflow Type 1');
     }
 
-    // STEP 5: Look for department-specific approval flow setup
-    console.log('🔍 STEP 5: Looking for department-specific approval flow setup...');
     const { data: departmentSetup, error: deptError } = await supabase
       .from('approval_flow_setups')
       .select('id, name')
@@ -110,14 +99,10 @@ export async function getApprovalFlow(
       .maybeSingle();
 
     if (deptError) {
-      console.error('❌ Error looking up department setup:', deptError);
       throw deptError;
     }
 
     if (departmentSetup) {
-      console.log('✅ Found department-specific setup:', departmentSetup.name);
-      console.log('🔍 STEP 6: Looking for approval steps matching workflow type', workflowType);
-
       const { data: flows, error: flowsError } = await supabase
         .from('approval_flows')
         .select('*')
@@ -127,22 +112,14 @@ export async function getApprovalFlow(
         .order('sequence', { ascending: true });
 
       if (flowsError) {
-        console.error('❌ Error fetching approval flows:', flowsError);
         throw flowsError;
       }
 
       if (flows && flows.length > 0) {
-        console.log('✅ Found', flows.length, 'approval steps for department:', flows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
         return flows;
       }
-
-      console.log('⚠️ No approval steps found for department setup with workflow type', workflowType);
-    } else {
-      console.log('⚠️ No department-specific setup found');
     }
 
-    // STEP 7: Fallback to company-wide approval flow setup
-    console.log('🔍 STEP 7: Looking for company-wide approval flow setup...');
     const { data: companySetup, error: companySetupError } = await supabase
       .from('approval_flow_setups')
       .select('id, name')
@@ -153,18 +130,12 @@ export async function getApprovalFlow(
       .maybeSingle();
 
     if (companySetupError) {
-      console.error('❌ Error looking up company setup:', companySetupError);
       throw companySetupError;
     }
 
     if (!companySetup) {
-      console.error('❌ VALIDATION FAILED: No approval flow setup found');
-      console.error('Missing setup for:', { companyId, department, requestType, workflowType });
       throw new Error(`No approval flow configured for ${requestType} in ${department}`);
     }
-
-    console.log('✅ Found company-wide setup:', companySetup.name);
-    console.log('🔍 STEP 8: Looking for approval steps matching workflow type', workflowType);
 
     const { data: flows, error: flowsError } = await supabase
       .from('approval_flows')
@@ -175,19 +146,16 @@ export async function getApprovalFlow(
       .order('sequence', { ascending: true });
 
     if (flowsError) {
-      console.error('❌ Error fetching approval flows:', flowsError);
       throw flowsError;
     }
 
     if (!flows || flows.length === 0) {
-      console.error('❌ VALIDATION FAILED: No approval steps configured');
       throw new Error(`No approval steps configured for workflow type ${workflowType}`);
     }
 
-    console.log('✅ Found', flows.length, 'approval steps:', flows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
     return flows;
   } catch (error) {
-    console.error('❌ Error in getApprovalFlow:', error);
+    console.error('Error in getApprovalFlow:', error);
     throw error;
   }
 }
@@ -195,114 +163,95 @@ export async function getApprovalFlow(
 export async function addExecutiveApprovalSteps(
   approvalFlows: ApprovalFlow[],
   requesterId: string,
-  companyId: string
+  companyId: string,
+  isBudgeted: boolean = false
 ): Promise<ApprovalFlow[]> {
   try {
-    console.log('🔍 Checking if requester is Executive:', requesterId);
-
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
-      .select('approver_type, approver_email, checker_email')
+      .select('approver_type, approver_email, checker_email, approver_email_non_budgeted, approver_email_budgeted, checker_email_non_budgeted, checker_email_budgeted')
       .eq('id', requesterId)
-      .single();
+      .maybeSingle();
 
-    if (requesterError) {
-      console.error('❌ Error fetching requester profile:', requesterError);
+    if (requesterError || !requesterProfile) {
+      console.error('Error fetching requester profile:', requesterError);
       return approvalFlows;
     }
-
-    console.log('📋 Requester profile:', {
-      approver_type: requesterProfile.approver_type,
-      approver_email: requesterProfile.approver_email,
-      checker_email: requesterProfile.checker_email
-    });
 
     if (requesterProfile.approver_type !== 'Executive') {
-      console.log('ℹ️ Requester is not Executive, returning regular approval flows');
       return approvalFlows;
     }
 
-    console.log('✅ Requester is Executive, building custom approval steps');
+    const category = isBudgeted ? 'budgeted' : 'non_budgeted';
+
+    const { data: dynamicSteps, error: stepsError } = await supabase
+      .from('executive_approval_steps')
+      .select('step_type, email, sequence')
+      .eq('user_profile_id', requesterId)
+      .eq('category', category)
+      .order('sequence', { ascending: true });
+
+    if (stepsError) {
+      console.error('Error loading executive_approval_steps:', stepsError);
+    }
+
+    type Step = { step_type: 'approver' | 'checker'; email: string };
+    const steps: Step[] = (dynamicSteps || [])
+      .map((s: any) => ({ step_type: s.step_type as 'approver' | 'checker', email: s.email }))
+      .filter((s: Step) => !!s.email);
+
+    if (steps.length === 0) {
+      const approverEmail = isBudgeted
+        ? (requesterProfile.approver_email_budgeted || requesterProfile.approver_email)
+        : (requesterProfile.approver_email_non_budgeted || requesterProfile.approver_email);
+      const checkerEmail = isBudgeted
+        ? (requesterProfile.checker_email_budgeted || requesterProfile.checker_email)
+        : (requesterProfile.checker_email_non_budgeted || requesterProfile.checker_email);
+
+      if (approverEmail) steps.push({ step_type: 'approver', email: approverEmail });
+      if (checkerEmail) steps.push({ step_type: 'checker', email: checkerEmail });
+    }
+
+    console.log('Executive steps resolved:', steps);
+
+    const emails = steps.map((s) => s.email);
+    const userByEmail: Record<string, { id: string; full_name: string | null; email: string }> = {};
+    if (emails.length > 0) {
+      const { data: users } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, email')
+        .in('email', emails);
+      (users || []).forEach((u: any) => { userByEmail[u.email] = u; });
+    }
 
     const executiveFlows: ApprovalFlow[] = [];
     let sequence = 1;
-
-    // Add Approver Email as Step 1
-    if (requesterProfile.approver_email) {
-      console.log('🔍 Looking for approver with email:', requesterProfile.approver_email);
-      const { data: approverUser, error: approverError } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email')
-        .eq('email', requesterProfile.approver_email)
-        .maybeSingle();
-
-      if (approverError) {
-        console.error('❌ Error fetching approver user:', approverError);
-      } else if (approverUser) {
-        console.log(`✅ Found approver: ${approverUser.full_name} (${approverUser.email})`);
-        console.log(`📝 Adding Step ${sequence}: ${approverUser.full_name} (Approver)`);
-        executiveFlows.push({
-          id: `executive-approver-${requesterId}`,
-          company_id: companyId,
-          department_id: null,
-          approver_type: `${approverUser.full_name} (Approver)`,
-          sequence: sequence,
-          days_to_approve: 3,
-          is_required: true,
-          is_active: true,
-          workflow_type: 1,
-          user_id: approverUser.id,
-          approval_flow_setup_id: 'executive-approval',
-          for_checking: false
-        });
-        sequence++;
-      } else {
-        console.warn('⚠️ No user found with approver email:', requesterProfile.approver_email);
+    for (const step of steps) {
+      const user = userByEmail[step.email];
+      if (!user) {
+        console.warn('No user_profile found for executive step email:', step.email);
+        continue;
       }
-    } else {
-      console.log('ℹ️ No approver email set for this Executive user');
+      const label = step.step_type === 'approver' ? 'Approver' : 'Checker';
+      executiveFlows.push({
+        id: `executive-${step.step_type}-${sequence}-${requesterId}`,
+        company_id: companyId,
+        department_id: null,
+        approver_type: `${user.full_name} (${label})`,
+        sequence,
+        days_to_approve: 3,
+        is_required: true,
+        is_active: true,
+        workflow_type: 1,
+        user_id: user.id,
+        alternate_approver_id: null,
+        approval_flow_setup_id: 'executive-approval',
+        for_checking: step.step_type === 'checker',
+      });
+      sequence++;
     }
 
-    // Add Checker Email as Step 2 (if it exists)
-    if (requesterProfile.checker_email) {
-      console.log('🔍 Looking for checker with email:', requesterProfile.checker_email);
-      const { data: checkerUser, error: checkerError } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email')
-        .eq('email', requesterProfile.checker_email)
-        .maybeSingle();
-
-      if (checkerError) {
-        console.error('❌ Error fetching checker user:', checkerError);
-      } else if (checkerUser) {
-        console.log(`✅ Found checker: ${checkerUser.full_name} (${checkerUser.email})`);
-        console.log(`📝 Adding Step ${sequence}: ${checkerUser.full_name} (Checker)`);
-        executiveFlows.push({
-          id: `executive-checker-${requesterId}`,
-          company_id: companyId,
-          department_id: null,
-          approver_type: `${checkerUser.full_name} (Checker)`,
-          sequence: sequence,
-          days_to_approve: 3,
-          is_required: true,
-          is_active: true,
-          workflow_type: 1,
-          user_id: checkerUser.id,
-          approval_flow_setup_id: 'executive-approval',
-          for_checking: true
-        });
-        sequence++;
-      } else {
-        console.warn('⚠️ No user found with checker email:', requesterProfile.checker_email);
-      }
-    } else {
-      console.log('ℹ️ No checker email set for this Executive user');
-    }
-
-    // For Executive requestors, ONLY return their approver and checker
-    // Do NOT include regular approval flow steps
-    console.log(`✅ Returning ${executiveFlows.length} executive approval steps only`);
-    console.log('Executive flows:', executiveFlows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
+    console.log('Returning executive flows:', executiveFlows.length);
     return executiveFlows;
   } catch (error) {
     console.error('Error adding executive approval steps:', error);
@@ -317,9 +266,6 @@ export async function filterApprovalFlowsForRequester(
   companyId: string
 ): Promise<ApprovalFlow[]> {
   try {
-    console.log('🔍 Filtering approval flows for requester:', requesterId);
-    console.log('📥 Input flows:', approvalFlows.length, approvalFlows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
-
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
       .select('role, department')
@@ -335,14 +281,12 @@ export async function filterApprovalFlowsForRequester(
       const primaryIsRequester = flow.user_id === requesterId;
       const alternateIsRequester = flow.alternate_approver_id === requesterId;
       if (primaryIsRequester && (!flow.alternate_approver_id || alternateIsRequester)) {
-        console.log(`⏭️ Skipping approval step ${flow.sequence} (${flow.approver_type}) - Requester is the approver`);
         return false;
       }
 
       if (flow.approver_type === 'Department Head' &&
           requesterProfile.role === 'approver' &&
           requesterProfile.department === requesterDepartment) {
-        console.log(`⏭️ Skipping approval step ${flow.sequence} (Department Head) - Requester is the department head`);
         return false;
       }
 
@@ -353,9 +297,6 @@ export async function filterApprovalFlowsForRequester(
       ...flow,
       sequence: index + 1
     }));
-
-    console.log(`✅ Filtered approval flows: ${approvalFlows.length} → ${resequencedFlows.length} steps`);
-    console.log('📤 Output flows:', resequencedFlows.map(f => `Step ${f.sequence}: ${f.approver_type}`));
 
     return resequencedFlows;
   } catch (error) {
@@ -368,18 +309,14 @@ export async function getNextApprover(
   approvalFlows: ApprovalFlow[],
   currentLevel: number
 ): Promise<ApprovalFlow | null> {
-  // Get unique sequences from approval flows
   const uniqueSequences = [...new Set(approvalFlows.map(f => f.sequence))].sort((a, b) => a - b);
 
-  // Check if currentLevel is valid
   if (currentLevel >= uniqueSequences.length) {
     return null;
   }
 
-  // Get the target sequence at this level
   const targetSequence = uniqueSequences[currentLevel];
 
-  // Return the first flow at this sequence (if multiple approvers exist at same sequence, they're all valid)
   return approvalFlows.find(f => f.sequence === targetSequence) || null;
 }
 
@@ -431,8 +368,6 @@ export async function sendApprovalEmail(
   nextApprover?: string
 ): Promise<void> {
   try {
-    console.log('📧 Sending approval email to:', recipientEmail, 'for action:', action);
-
     const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-approval-email`;
 
     const headers = {
@@ -455,8 +390,6 @@ export async function sendApprovalEmail(
       nextApprover,
     };
 
-    console.log('📧 Email data:', JSON.stringify(emailData, null, 2));
-
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
@@ -466,13 +399,43 @@ export async function sendApprovalEmail(
     const result = await response.json();
 
     if (!result.success) {
-      console.error('❌ Failed to send email:', result);
+      console.error('Failed to send email:', result);
       alert(`Email notification failed: ${result.message || 'Unknown error'}. The request was created successfully.`);
-    } else {
-      console.log('✅ Email sent successfully:', result);
     }
   } catch (error) {
-    console.error('❌ Error sending approval email:', error);
+    console.error('Error sending approval email:', error);
+  }
+}
+
+export async function getLastApproverContact(
+  requestId: string,
+  requestType: string
+): Promise<{ email: string; name: string } | null> {
+  try {
+    const { data: ledger } = await supabase
+      .from('approval_ledger')
+      .select('approver_id, approver_name, sequence')
+      .eq('request_id', requestId)
+      .eq('request_type', requestType)
+      .eq('action', 'Approved')
+      .eq('for_checking', false)
+      .order('sequence', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!ledger?.approver_id) return null;
+
+    const { data: user } = await supabase
+      .from('user_profiles')
+      .select('email, full_name')
+      .eq('id', ledger.approver_id)
+      .maybeSingle();
+
+    if (!user?.email) return null;
+    return { email: user.email, name: user.full_name || ledger.approver_name || 'Approver' };
+  } catch (error) {
+    console.error('Error fetching last approver:', error);
+    return null;
   }
 }
 
@@ -604,19 +567,15 @@ export async function createRejectedLedgerEntries(
 ): Promise<void> {
   try {
     const remainingApprovers = approvalFlows.slice(currentLevel + 1);
-    console.log('🔄 Creating auto-rejected entries for remaining approvers:', remainingApprovers.length);
 
     if (remainingApprovers.length === 0) {
-      console.log('ℹ️ No remaining approvers to auto-reject');
       return;
     }
 
     for (const flow of remainingApprovers) {
-      console.log(`🔍 Processing auto-rejection for sequence ${flow.sequence}: ${flow.approver_type}`);
       const approverInfo = await getApproverEmail(flow, companyId, department);
 
       if (approverInfo) {
-        console.log(`✅ Found approver info: ${approverInfo.name}`);
         await createApprovalLedgerEntry(
           requestType,
           requestId,
@@ -628,13 +587,10 @@ export async function createRejectedLedgerEntries(
           'Previous step was rejected',
           flow.sequence
         );
-        console.log(`✅ Auto-rejected entry created for ${approverInfo.name}`);
-      } else {
-        console.warn(`⚠️ Could not find approver info for ${flow.approver_type}`);
       }
     }
   } catch (error) {
-    console.error('❌ Error creating rejected ledger entries:', error);
+    console.error('Error creating rejected ledger entries:', error);
     throw error;
   }
 }

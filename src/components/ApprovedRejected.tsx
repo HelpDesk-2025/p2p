@@ -703,7 +703,7 @@ function RequestDetailView({ requestType, data, onPreviewPdf, onDownloadPdf }: R
           <FieldRow label="Requester" value={data.user_profiles?.full_name} />
           <FieldRow label="Amount" value={<span className="font-semibold">{fmtMoney(data.amount)}</span>} />
           <FieldRow label="Request Date" value={fmt(data.request_date)} />
-          {data.date_of_transactions && <FieldRow label="Date of Transactions" value={fmt(data.date_of_transactions)} />}
+          {data.date_of_transactions && <FieldRow label="Date Needed" value={fmt(data.date_of_transactions)} />}
           {data.request_type && <FieldRow label="Request Type" value={data.request_type} />}
           <FieldRow label="Status" value={
             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${

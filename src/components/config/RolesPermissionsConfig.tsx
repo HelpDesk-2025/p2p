@@ -7,7 +7,15 @@ interface Role {
   name: string;
   description: string;
   is_active: boolean;
+  has_full_access?: boolean;
   created_at: string;
+}
+
+interface CompanyPagePerm {
+  id?: string;
+  company_id: string;
+  page_key: string;
+  enabled: boolean;
 }
 
 interface Permission {
@@ -25,21 +33,29 @@ interface RolePermission {
 }
 
 export function RolesPermissionsConfig() {
-  const [activeTab, setActiveTab] = useState<'roles' | 'permissions' | 'assign' | 'company_forms'>('roles');
+  const [activeTab, setActiveTab] = useState<'roles' | 'permissions' | 'assign' | 'company_pages'>('roles');
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
-  const [companyFormPerms, setCompanyFormPerms] = useState<Array<{ id?: string; company_id: string; form_type: string; enabled: boolean }>>([]);
-  const [savingFormPerm, setSavingFormPerm] = useState<string | null>(null);
+  const [companyPagePerms, setCompanyPagePerms] = useState<CompanyPagePerm[]>([]);
+  const [savingPagePerm, setSavingPagePerm] = useState<string | null>(null);
+  const [rolePcrCompanies, setRolePcrCompanies] = useState<Array<{ role_id: string; company_id: string }>>([]);
+  const [savingPcrCompany, setSavingPcrCompany] = useState<string | null>(null);
 
-  const REQUEST_FORM_TYPES: Array<{ key: string; label: string }> = [
-    { key: 'purchase_requisition', label: 'Purchase Requisition' },
-    { key: 'canvass', label: 'Canvass' },
-    { key: 'petty_cash', label: 'Petty Cash' },
-    { key: 'cash_advance', label: 'Cash Advance' },
-    { key: 'reimbursement', label: 'Reimbursement/Liquidation' },
+  const PAGE_SECTIONS: Array<{ section: string; items: Array<{ key: string; label: string }> }> = [
+    {
+      section: 'Requests',
+      items: [
+        { key: 'pr-request', label: 'Purchase Requisition' },
+        { key: 'canvass-request', label: 'Canvass' },
+        { key: 'petty-cash-request', label: 'Petty Cash' },
+        { key: 'cash-advance-request', label: 'Cash Advance' },
+        { key: 'reimbursement-request', label: 'Reimbursement / Liquidation' },
+      ],
+    },
   ];
+
   const [loading, setLoading] = useState(false);
   const [showRoleForm, setShowRoleForm] = useState(false);
   const [showPermissionForm, setShowPermissionForm] = useState(false);
@@ -51,6 +67,7 @@ export function RolesPermissionsConfig() {
     name: '',
     description: '',
     is_active: true,
+    has_full_access: false,
   });
 
   const [permissionForm, setPermissionForm] = useState({
@@ -84,8 +101,80 @@ export function RolesPermissionsConfig() {
     loadPermissions();
     loadRolePermissions();
     loadCompanies();
-    loadCompanyFormPerms();
+    loadCompanyPagePerms();
+    loadRolePcrCompanies();
   }, []);
+
+  const loadRolePcrCompanies = async () => {
+    const { data } = await supabase
+      .from('role_petty_cash_release_companies')
+      .select('role_id, company_id');
+    setRolePcrCompanies(data || []);
+  };
+
+  const hasRolePcrCompany = (roleId: string, companyId: string) =>
+    rolePcrCompanies.some((rc) => rc.role_id === roleId && rc.company_id === companyId);
+
+  const handleToggleRolePcrCompany = async (roleId: string, companyId: string) => {
+    const key = `${roleId}:${companyId}`;
+    setSavingPcrCompany(key);
+    try {
+      if (hasRolePcrCompany(roleId, companyId)) {
+        const { error } = await supabase
+          .from('role_petty_cash_release_companies')
+          .delete()
+          .eq('role_id', roleId)
+          .eq('company_id', companyId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('role_petty_cash_release_companies')
+          .insert([{ role_id: roleId, company_id: companyId }]);
+        if (error) throw error;
+      }
+      await loadRolePcrCompanies();
+    } catch (error: any) {
+      alert('Error updating company scope: ' + error.message);
+    } finally {
+      setSavingPcrCompany(null);
+    }
+  };
+
+  const loadCompanyPagePerms = async () => {
+    const { data } = await supabase
+      .from('company_page_permissions')
+      .select('id, company_id, page_key, enabled');
+    setCompanyPagePerms(data || []);
+  };
+
+  const getCompanyPagePerm = (companyId: string, pageKey: string) => {
+    return companyPagePerms.find((p) => p.company_id === companyId && p.page_key === pageKey);
+  };
+
+  const handleToggleCompanyPage = async (companyId: string, pageKey: string) => {
+    const key = `${companyId}:${pageKey}`;
+    const existing = getCompanyPagePerm(companyId, pageKey);
+    setSavingPagePerm(key);
+    try {
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('company_page_permissions')
+          .update({ enabled: !existing.enabled, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('company_page_permissions')
+          .insert([{ company_id: companyId, page_key: pageKey, enabled: true }]);
+        if (error) throw error;
+      }
+      await loadCompanyPagePerms();
+    } catch (error: any) {
+      alert('Error updating company page permission: ' + error.message);
+    } finally {
+      setSavingPagePerm(null);
+    }
+  };
 
   const loadCompanies = async () => {
     const { data } = await supabase
@@ -93,42 +182,6 @@ export function RolesPermissionsConfig() {
       .select('id, name')
       .order('name', { ascending: true });
     setCompanies(data || []);
-  };
-
-  const loadCompanyFormPerms = async () => {
-    const { data } = await supabase
-      .from('company_request_form_permissions')
-      .select('id, company_id, form_type, enabled');
-    setCompanyFormPerms(data || []);
-  };
-
-  const getCompanyFormPerm = (companyId: string, formType: string) => {
-    return companyFormPerms.find((p) => p.company_id === companyId && p.form_type === formType);
-  };
-
-  const handleToggleCompanyForm = async (companyId: string, formType: string) => {
-    const key = `${companyId}:${formType}`;
-    const existing = getCompanyFormPerm(companyId, formType);
-    setSavingFormPerm(key);
-    try {
-      if (existing?.id) {
-        const { error } = await supabase
-          .from('company_request_form_permissions')
-          .update({ enabled: !existing.enabled, updated_at: new Date().toISOString() })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('company_request_form_permissions')
-          .insert([{ company_id: companyId, form_type: formType, enabled: true }]);
-        if (error) throw error;
-      }
-      await loadCompanyFormPerms();
-    } catch (error: any) {
-      alert('Error updating company form permission: ' + error.message);
-    } finally {
-      setSavingFormPerm(null);
-    }
   };
 
   const loadRoles = async () => {
@@ -171,7 +224,7 @@ export function RolesPermissionsConfig() {
       }
       setShowRoleForm(false);
       setEditingRole(null);
-      setRoleForm({ name: '', description: '', is_active: true });
+      setRoleForm({ name: '', description: '', is_active: true, has_full_access: false });
       loadRoles();
     } catch (error: any) {
       alert('Error saving role: ' + error.message);
@@ -232,6 +285,7 @@ export function RolesPermissionsConfig() {
       name: role.name,
       description: role.description || '',
       is_active: role.is_active,
+      has_full_access: role.has_full_access ?? false,
     });
     setShowRoleForm(true);
   };
@@ -287,7 +341,7 @@ export function RolesPermissionsConfig() {
           onClick={() => {
             setShowRoleForm(true);
             setEditingRole(null);
-            setRoleForm({ name: '', description: '', is_active: true });
+            setRoleForm({ name: '', description: '', is_active: true, has_full_access: false });
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
@@ -332,6 +386,22 @@ export function RolesPermissionsConfig() {
             />
             <label htmlFor="role-active" className="text-sm font-medium text-slate-700">
               Active
+            </label>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <input
+              type="checkbox"
+              id="role-full-access"
+              checked={roleForm.has_full_access}
+              onChange={(e) => setRoleForm({ ...roleForm, has_full_access: e.target.checked })}
+              className="w-4 h-4 mt-0.5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+            />
+            <label htmlFor="role-full-access" className="text-sm text-slate-700 cursor-pointer">
+              <span className="font-semibold text-blue-900">Full Access</span>
+              <span className="block text-xs text-slate-600 mt-0.5">
+                Grants access to all pages, subpages, and permissions in the system. Individual
+                permission checkboxes are ignored when this is enabled.
+              </span>
             </label>
           </div>
           <div className="flex gap-2 justify-end">
@@ -388,6 +458,11 @@ export function RolesPermissionsConfig() {
                     >
                       {role.is_active ? 'Active' : 'Inactive'}
                     </span>
+                    {role.has_full_access && (
+                      <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                        Full Access
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -588,6 +663,7 @@ export function RolesPermissionsConfig() {
     'config_expense_types': 'Type of Expense',
     'config_tax_rates': 'Withholding Tax Rates',
     'config_roles_permissions': 'Roles & Permission',
+    'config_api_integrations': 'API Integration',
   };
 
   const renderAssignTab = () => {
@@ -602,6 +678,9 @@ export function RolesPermissionsConfig() {
     const mainConfigPermission = permissions.find(p => p.name === 'Configuration' && p.module === 'configuration');
     const configSubPermissions = permissions.filter(p => p.name.startsWith('config_') && p.module === 'configuration');
     const hasConfigPermission = selectedRole && mainConfigPermission ? hasPermission(selectedRole, mainConfigPermission.id) : false;
+
+    const pcrPermission = permissions.find(p => p.name === 'Petty Cash Release');
+    const roleHasPcr = selectedRole && pcrPermission ? hasPermission(selectedRole, pcrPermission.id) : false;
 
     return (
       <div className="space-y-4">
@@ -656,6 +735,39 @@ export function RolesPermissionsConfig() {
                     );
                   })}
                 </div>
+
+                {module === 'petty_cash_release' && roleHasPcr && (
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <h5 className="font-medium text-slate-700 mb-1 text-sm">Companies for Petty Cash Release</h5>
+                    <p className="text-xs text-slate-500 mb-3">
+                      Users with this role will only see petty cash requests from the selected companies. Leave empty to grant access to all companies.
+                    </p>
+                    {companies.length === 0 ? (
+                      <div className="text-sm text-slate-500">No companies available.</div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {companies.map((c) => {
+                          const key = `${selectedRole}:${c.id}`;
+                          return (
+                            <label
+                              key={c.id}
+                              className="flex items-center gap-2 p-2 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={savingPcrCompany === key}
+                                checked={hasRolePcrCompany(selectedRole, c.id)}
+                                onChange={() => handleToggleRolePcrCompany(selectedRole, c.id)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="text-sm font-medium text-slate-700">{c.name}</div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {module === 'configuration' && hasConfigPermission && configSubPermissions.length > 0 && (
                   <div className="mt-6 pt-6 border-t border-slate-200">
@@ -767,69 +879,74 @@ export function RolesPermissionsConfig() {
     );
   };
 
-  const renderCompanyFormsTab = () => (
+  const renderCompanyPagesTab = () => (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-slate-900">Company Request Forms Permissions</h3>
+        <h3 className="text-lg font-semibold text-slate-900">Company Page Permissions</h3>
         <p className="text-sm text-slate-600 mt-1">
-          Control which request forms each company's users can submit. A form that is unchecked is not available to that company.
+          Control which pages and subpages each company's users can access. Pages that are unchecked will be hidden in the sidebar for users of that company. Admins and Full-Access roles bypass this filter.
         </p>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase sticky left-0 bg-slate-50 z-10">
-                  Company
-                </th>
-                {REQUEST_FORM_TYPES.map((form) => (
-                  <th
-                    key={form.key}
-                    className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase whitespace-nowrap"
-                  >
-                    {form.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {companies.length === 0 ? (
+      {PAGE_SECTIONS.map((section) => (
+        <div key={section.section} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="bg-slate-100 px-6 py-2 text-sm font-semibold text-slate-700">
+            {section.section}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50">
                 <tr>
-                  <td colSpan={REQUEST_FORM_TYPES.length + 1} className="px-6 py-8 text-center text-slate-500">
-                    No companies found
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase sticky left-0 bg-slate-50 z-10">
+                    Company
+                  </th>
+                  {section.items.map((page) => (
+                    <th
+                      key={page.key}
+                      className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase whitespace-nowrap"
+                    >
+                      {page.label}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                companies.map((company) => (
-                  <tr key={company.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900 sticky left-0 bg-white z-10">
-                      {company.name}
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {companies.length === 0 ? (
+                  <tr>
+                    <td colSpan={section.items.length + 1} className="px-6 py-8 text-center text-slate-500">
+                      No companies found
                     </td>
-                    {REQUEST_FORM_TYPES.map((form) => {
-                      const perm = getCompanyFormPerm(company.id, form.key);
-                      const enabled = perm ? perm.enabled : false;
-                      const key = `${company.id}:${form.key}`;
-                      return (
-                        <td key={form.key} className="px-6 py-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={enabled}
-                            disabled={savingFormPerm === key}
-                            onChange={() => handleToggleCompanyForm(company.id, form.key)}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                          />
-                        </td>
-                      );
-                    })}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  companies.map((company) => (
+                    <tr key={company.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900 sticky left-0 bg-white z-10">
+                        {company.name}
+                      </td>
+                      {section.items.map((page) => {
+                        const perm = getCompanyPagePerm(company.id, page.key);
+                        const enabled = perm ? perm.enabled : false;
+                        const key = `${company.id}:${page.key}`;
+                        return (
+                          <td key={page.key} className="px-4 py-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              disabled={savingPagePerm === key}
+                              onChange={() => handleToggleCompanyPage(company.id, page.key)}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 
@@ -879,16 +996,16 @@ export function RolesPermissionsConfig() {
             Assign Permissions
           </button>
           <button
-            onClick={() => setActiveTab('company_forms')}
+            onClick={() => setActiveTab('company_pages')}
             className={`px-4 py-2 font-medium border-b-2 transition whitespace-nowrap ${
-              activeTab === 'company_forms'
+              activeTab === 'company_pages'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
             <div className="flex items-center gap-2">
               <Building2 size={18} />
-              Company Request Forms Permissions
+              Company Page Permissions
             </div>
           </button>
         </nav>
@@ -898,7 +1015,7 @@ export function RolesPermissionsConfig() {
         {activeTab === 'roles' && renderRolesTab()}
         {activeTab === 'permissions' && renderPermissionsTab()}
         {activeTab === 'assign' && renderAssignTab()}
-        {activeTab === 'company_forms' && renderCompanyFormsTab()}
+        {activeTab === 'company_pages' && renderCompanyPagesTab()}
       </div>
     </div>
   );

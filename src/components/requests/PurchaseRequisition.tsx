@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
@@ -59,6 +59,8 @@ interface PurchaseReq {
   msbc_posting_date?: string;
   msbc_journal_batch_id?: string;
   msbc_error_message?: string;
+  current_approval_level?: number;
+  requester_id?: string;
 }
 
 export function PurchaseRequisition() {
@@ -946,7 +948,8 @@ export function PurchaseRequisition() {
           let flowsWithExecutive = await addExecutiveApprovalSteps(
             rawApprovalFlows,
             profile.id,
-            requestCompanyId
+            requestCompanyId,
+            !!formData.is_budgeted
           );
 
           // Filter out requester from approval flows
@@ -1193,7 +1196,8 @@ export function PurchaseRequisition() {
       let flowsWithExecutive = await addExecutiveApprovalSteps(
         rawApprovalFlows,
         profile.id,
-        requestCompanyId
+        requestCompanyId,
+        !!request.is_budgeted
       );
 
       // Filter out requester from approval flows
@@ -1255,6 +1259,52 @@ export function PurchaseRequisition() {
     }
   };
 
+  const handleCancelRequest = async (request: PurchaseReq) => {
+    if (request.status !== 'pending' || (request.current_approval_level ?? 0) !== 0) {
+      alert('This request can no longer be cancelled because an approver has already acted on it.');
+      return;
+    }
+    const docNo = request.document_no || request.pr_number;
+    if (!confirm(`Are you sure you want to cancel Purchase Requisition ${docNo}?\n\nThis action cannot be undone.`)) return;
+    const reason = prompt('Please provide a reason for cancelling this request:');
+    if (reason === null) return;
+    if (!reason.trim()) {
+      alert('A cancellation reason is required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('purchase_requisitions')
+        .update({ status: 'cancelled' })
+        .eq('id', request.id);
+      if (error) throw error;
+
+      await createApprovalLedgerEntry(
+        'Purchase Requisition',
+        request.id,
+        request.document_no || request.pr_number,
+        profile?.id || null,
+        profile?.full_name || 'Unknown',
+        'Requestor',
+        'Cancelled',
+        reason.trim(),
+        0
+      );
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+      alert(`Purchase Requisition ${docNo} has been cancelled successfully.`);
+      await loadRequests();
+    } catch (error: any) {
+      console.error('Error cancelling request:', error);
+      alert('Failed to cancel request: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-slate-100 text-slate-700',
@@ -1263,6 +1313,7 @@ export function PurchaseRequisition() {
       rejected: 'bg-red-100 text-red-700',
       in_procurement: 'bg-blue-100 text-blue-700',
       returned_to_maker: 'bg-amber-100 text-amber-700',
+      cancelled: 'bg-slate-200 text-slate-800',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
@@ -2507,16 +2558,30 @@ export function PurchaseRequisition() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          setViewingRequest(req);
-                          setShowViewModal(true);
-                        }}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
-                        title="View Request"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setViewingRequest(req);
+                            setShowViewModal(true);
+                          }}
+                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          title="View Request"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {req.status === 'pending'
+                          && (req.current_approval_level ?? 0) === 0
+                          && req.requester_id === profile?.id && (
+                          <button
+                            onClick={() => handleCancelRequest(req)}
+                            disabled={loading}
+                            className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Cancel Request"
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -2794,6 +2859,18 @@ export function PurchaseRequisition() {
                   >
                     <RefreshCw size={18} />
                     Edit & Resubmit
+                  </button>
+                )}
+                {viewingRequest.status === 'pending'
+                  && (viewingRequest.current_approval_level ?? 0) === 0
+                  && viewingRequest.requester_id === profile?.id && (
+                  <button
+                    onClick={() => handleCancelRequest(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Ban size={18} />
+                    Cancel Request
                   </button>
                 )}
                 {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && viewingRequest.purchase_type !== 'Purchase Order' && (

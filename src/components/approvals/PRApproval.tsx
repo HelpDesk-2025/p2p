@@ -152,7 +152,8 @@ export function PRApproval() {
         const flowsWithExecutive = await addExecutiveApprovalSteps(
           rawFlows,
           request.requester_id,
-          prCompanyId
+          prCompanyId,
+          !!request.is_budgeted
         );
 
         // Filter out the requester from approval flows

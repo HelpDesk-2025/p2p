@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
@@ -53,6 +53,7 @@ export function ReimbursementApproval() {
   const [listLoading, setListLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -247,7 +248,7 @@ export function ReimbursementApproval() {
         const rawFlows = await getApprovalFlow(
           reimbCompanyId,
           request.department || request.user_profiles?.department || profile.department || '',
-          'Reimbursement',
+          (request as any).request_type || 'Reimbursement',
           false,
           request.amount
         );
@@ -256,7 +257,8 @@ export function ReimbursementApproval() {
         const flowsWithExecutive = await addExecutiveApprovalSteps(
           rawFlows,
           request.requester_id,
-          reimbCompanyId
+          reimbCompanyId,
+          !!(request.is_budgeted ?? request.budgeted)
         );
 
         // Filter out the requester from approval flows
@@ -648,11 +650,75 @@ export function ReimbursementApproval() {
     }
   };
 
+  const handleReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
+    if (!canApprove()) {
+      alert('You are not authorized to perform this action at this level.');
+      return;
+    }
+    if (!comments.trim()) {
+      alert('Please provide a comment explaining the reason for returning this request.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to return this Reimbursement (${selectedRequest.reimb_number}) to the maker for revision?`)) {
+      return;
+    }
+
+    setReturning(true);
+    setLoading(true);
+    try {
+      const currentLevel = selectedRequest.current_approval_level;
+
+      const { error: updateError } = await supabase
+        .from('reimbursement_requests')
+        .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
+        .eq('id', selectedRequest.id);
+      if (updateError) throw updateError;
+
+      await createApprovalLedgerEntry(
+        'Reimbursement',
+        selectedRequest.id,
+        selectedRequest.reimb_number,
+        profile.id,
+        profile.full_name || 'Unknown',
+        currentApproverStep?.approver_type || 'Checker',
+        'Returned',
+        comments,
+        currentLevel + 1,
+        currentApproverStep?.for_checking || false
+      );
+
+      await sendApprovalEmail(
+        selectedRequest.user_profiles?.email || '',
+        selectedRequest.user_profiles?.full_name || 'User',
+        'Reimbursement',
+        selectedRequest.reimb_number,
+        selectedRequest.user_profiles?.full_name || 'Unknown',
+        selectedRequest.department,
+        selectedRequest.amount,
+        'Returned to Maker',
+        profile.full_name || 'Unknown',
+        comments
+      );
+
+      setShowModal(false);
+      setSelectedRequest(null);
+      setComments('');
+      loadRequests();
+    } catch (error: any) {
+      console.error('Error returning reimbursement to maker:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
+      setReturning(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-slate-900">Reimbursement Approvals</h2>
-        <p className="text-slate-600 mt-1">Review and approve reimbursement requests</p>
+        <h2 className="text-3xl font-bold text-slate-900">Reimbursement | Liquidation Approvals</h2>
+        <p className="text-slate-600 mt-1">Review and approve reimbursement | liquidation requests</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
@@ -1051,6 +1117,15 @@ export function ReimbursementApproval() {
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
                 </button>
               </div>
+              <button
+                onClick={handleReturnToMaker}
+                disabled={loading || flowsLoading || !canApprove() || !comments.trim()}
+                title={!comments.trim() ? 'Please add comments explaining what needs to be revised' : ''}
+                className="w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+              >
+                {returning ? <Loader2 size={20} className="animate-spin" /> : <CornerDownLeft size={20} />}
+                {returning ? 'Returning...' : 'Return to Maker'}
+              </button>
             </div>
           </div>
         </div>
