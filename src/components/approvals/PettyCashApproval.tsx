@@ -655,7 +655,7 @@ export function PettyCashApproval() {
             <table className="w-full hidden lg:table">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                 <tr>
-                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'PURPOSE', 'DATE', 'AMOUNT', 'LEVEL', 'ACTION'].map((h) => (
+                  {['PC NO.', 'REQUESTER', 'DEPARTMENT', 'REQUEST TYPE', 'EXPENSE CATEGORY', 'PURPOSE', 'DATE', 'AMOUNT', 'LEVEL', 'ACTION'].map((h) => (
                     <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -725,6 +725,16 @@ export function PettyCashApproval() {
                     {getSortIcon('department')}
                   </button>
                 </th>
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Request Type
+                  </span>
+                </th>
+                <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Expense Category
+                  </span>
+                </th>
                 <th className="px-3 xl:px-4 py-3.5 text-right whitespace-nowrap">
                   <button
                     onClick={() => handleSort('amount')}
@@ -770,6 +780,22 @@ export function PettyCashApproval() {
                   <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium max-w-[140px] truncate" title={request.department || request.user_profiles?.department || 'N/A'}>
                       {request.department || request.user_profiles?.department || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                      request.request_type === 'For Liquidation'
+                        ? 'bg-blue-100 text-blue-800'
+                        : request.request_type === 'For Reimbursement'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-teal-100 text-teal-800'
+                    }`}>
+                      {request.request_type || 'For Cash Advance'}
+                    </span>
+                  </td>
+                  <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                      {(request as any).expense_category || 'Department Expense'}
                     </span>
                   </td>
                   <td className="px-3 xl:px-4 py-3 text-right whitespace-nowrap">
