@@ -337,7 +337,11 @@ export function Canvass() {
       if (!confirmed) return;
     }
 
-    const description = prItem.item_description || prItem.description || '';
+    const description =
+      prItem.item_description ||
+      prItem.description ||
+      prItem.item_notes ||
+      '';
     const quantity = Number(prItem.quantity) || 0;
     const uom = prItem.unit || '';
 
