@@ -146,6 +146,7 @@ interface QuotationForm {
   bank_account_no: string;
   depository_bank: string;
   other_information: string;
+  payment_type: string;
   quotation_file?: File | null;
   quotation_file_path?: string;
 }
@@ -245,6 +246,7 @@ export function Canvass() {
     bank_account_no: '',
     depository_bank: '',
     other_information: '',
+    payment_type: 'Cash on Delivery',
     quotation_file: null,
   });
 
@@ -1810,6 +1812,22 @@ export function Canvass() {
                               )}
                             </div>
                           )}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Payment Type *</label>
+                          <select
+                            value={quotation.payment_type || 'Cash on Delivery'}
+                            onChange={(e) => {
+                              const newQuotations = [...quotations];
+                              newQuotations[idx].payment_type = e.target.value;
+                              setQuotations(newQuotations);
+                            }}
+                            className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                          >
+                            <option value="Cash on Delivery">Cash on Delivery</option>
+                            <option value="Terms">Terms</option>
+                          </select>
                         </div>
 
                         {/* Itemization Table */}
