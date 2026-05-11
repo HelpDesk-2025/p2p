@@ -12,6 +12,9 @@ import {
   Receipt,
   CheckSquare,
   ClipboardCheck,
+  PackageCheck,
+  FileCheck,
+  Calculator,
   Settings,
   LogOut,
   Menu,
@@ -63,6 +66,11 @@ export type ViewType =
   | 'config-withholding-tax-rates'
   | 'config-announcements'
   | 'config-api-integrations'
+  | 'config-p2p-settings'
+  | 'p2p-receiving'
+  | 'p2p-invoicing'
+  | 'p2p-accounting-posting'
+  | 'p2p-payments'
   | 'change-password'
   | 'user-manual'
   | 'approved-rejected';
@@ -184,6 +192,30 @@ const menuItems: MenuItem[] = [
     group: 'procurement',
   },
   {
+    id: 'p2p-receiving',
+    label: 'Receiving (GRN)',
+    icon: PackageCheck,
+    group: 'p2p',
+  },
+  {
+    id: 'p2p-invoicing',
+    label: 'Invoicing',
+    icon: FileCheck,
+    group: 'p2p',
+  },
+  {
+    id: 'p2p-accounting-posting',
+    label: 'Accounting Posting',
+    icon: Calculator,
+    group: 'p2p',
+  },
+  {
+    id: 'p2p-payments',
+    label: 'Payments',
+    icon: Banknote,
+    group: 'p2p',
+  },
+  {
     id: 'change-password',
     label: 'Change Password',
     icon: KeyRound,
@@ -208,6 +240,7 @@ const configItems: MenuItem[] = [
   { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: 'config_roles_permissions' },
   { id: 'config-announcements', label: 'Announcements', icon: Settings, permission: 'config_roles_permissions' },
   { id: 'config-api-integrations', label: 'API Integration', icon: Settings, permission: 'config_api_integrations' },
+  { id: 'config-p2p-settings', label: 'P2P Settings', icon: Settings },
 ];
 
 const VIEW_KEYS_EXEMPT_FROM_COMPANY_GATING: Set<string> = new Set([
@@ -285,12 +318,13 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     (item) => canAccessItem(item) && passesCompanyPageFilter(item)
   );
   const filteredConfigItems = configItems.filter(
-    (item) => canAccessItem(item) && passesCompanyPageFilter(item)
+    (item) => canAccessItem(item) && passesCompanyPageFilter(item) && (item.id !== 'config-p2p-settings' || profile?.role === 'admin')
   );
 
   const requestItems = filteredMenuItems.filter((item) => item.group === 'requests');
   const approvalItems = filteredMenuItems.filter((item) => item.group === 'approvals');
   const procurementItems = filteredMenuItems.filter((item) => item.group === 'procurement');
+  const p2pItems = filteredMenuItems.filter((item) => item.group === 'p2p');
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
@@ -376,6 +410,27 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                 </h3>
                 <div className="space-y-1">
                   {procurementItems.map((item) => (
+                    <NavItem
+                      key={item.id}
+                      item={item}
+                      active={currentView === item.id}
+                      onClick={() => {
+                        onViewChange(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {p2pItems.length > 0 && (
+              <div className="mt-6">
+                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  P2P Downstream
+                </h3>
+                <div className="space-y-1">
+                  {p2pItems.map((item) => (
                     <NavItem
                       key={item.id}
                       item={item}
