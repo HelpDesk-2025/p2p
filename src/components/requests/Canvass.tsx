@@ -106,6 +106,13 @@ interface QuotationItem {
   uom: string;
   unit_price: number;
   amount: number;
+  source_pr_item_id?: string;
+}
+
+interface PRItemUsageEntry {
+  canvass_number: string;
+  status: string;
+  request_date: string;
 }
 
 interface QuotationForm {
@@ -261,6 +268,92 @@ export function Canvass() {
     });
   };
 
+  // Fetch which PR items have been used in other canvass requests for the same PR
+  const loadPRItemUsage = async (prId: string, excludeCanvassId?: string) => {
+    try {
+      let query = supabase
+        .from('canvass_requests')
+        .select('id, canvass_number, status, request_date, suppliers')
+        .eq('pr_id', prId);
+
+      if (excludeCanvassId) {
+        query = query.neq('id', excludeCanvassId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const usage: Record<string, PRItemUsageEntry[]> = {};
+      (data || []).forEach((canvass: any) => {
+        if (canvass.status === 'cancelled') return;
+        const seenForCanvass = new Set<string>();
+        (canvass.suppliers || []).forEach((supplier: any) => {
+          (supplier?.items || []).forEach((item: any) => {
+            const sourceId = item?.source_pr_item_id;
+            if (!sourceId || seenForCanvass.has(sourceId)) return;
+            seenForCanvass.add(sourceId);
+            if (!usage[sourceId]) usage[sourceId] = [];
+            usage[sourceId].push({
+              canvass_number: canvass.canvass_number,
+              status: canvass.status,
+              request_date: canvass.request_date,
+            });
+          });
+        });
+      });
+      setPrItemUsage(usage);
+    } catch (err) {
+      console.error('Error loading PR item usage:', err);
+      setPrItemUsage({});
+    }
+  };
+
+  const getPRItemKey = (item: any, index: number): string => {
+    return item?.item_number || item?.id || `idx-${index}`;
+  };
+
+  const addPRItemToQuotations = (prItem: any, prItemKey: string) => {
+    const usage = prItemUsage[prItemKey] || [];
+    const alreadyInDraft = quotations.some(q =>
+      q.items.some(it => it.source_pr_item_id === prItemKey)
+    );
+
+    if (usage.length > 0 || alreadyInDraft) {
+      const parts: string[] = [];
+      if (alreadyInDraft) {
+        parts.push('This item has already been added to the current canvass draft.');
+      }
+      if (usage.length > 0) {
+        const details = usage
+          .map(u => `- ${u.canvass_number} (${u.status}, ${new Date(u.request_date).toLocaleDateString()})`)
+          .join('\n');
+        parts.push(`This item has been used in the following canvass request(s):\n${details}`);
+      }
+      parts.push('\nDo you still want to add it?');
+      const confirmed = window.confirm(parts.join('\n\n'));
+      if (!confirmed) return;
+    }
+
+    const description = prItem.item_description || prItem.description || '';
+    const quantity = Number(prItem.quantity) || 0;
+    const uom = prItem.unit || '';
+
+    setQuotations(prev => prev.map(q => ({
+      ...q,
+      items: [
+        ...q.items,
+        {
+          description,
+          quantity,
+          uom,
+          unit_price: 0,
+          amount: 0,
+          source_pr_item_id: prItemKey,
+        },
+      ],
+    })));
+  };
+
   // Helper function to update shared item fields (description, uom) across all quotations
   const updateSharedItemField = (
     quots: QuotationForm[],
@@ -285,6 +378,7 @@ export function Canvass() {
   ]);
   const [recommendedQuotationIndex, setRecommendedQuotationIndex] = useState<number | null>(null);
   const [recommendationRemarks, setRecommendationRemarks] = useState<string>('');
+  const [prItemUsage, setPrItemUsage] = useState<Record<string, PRItemUsageEntry[]>>({});
 
   useEffect(() => {
     loadRequests();
@@ -508,6 +602,12 @@ export function Canvass() {
     setViewingPR(null);
     setSelectedPRCompany('');
     setShowForm(true);
+
+    if (request.pr_id) {
+      loadPRItemUsage(request.pr_id, request.id);
+    } else {
+      setPrItemUsage({});
+    }
   };
 
   const handleSubmit = async (status: 'draft' | 'pending') => {
@@ -1244,6 +1344,12 @@ export function Canvass() {
       createEmptyQuotation(),
       createEmptyQuotation(),
     ]);
+
+    if (pr.id) {
+      loadPRItemUsage(pr.id);
+    } else {
+      setPrItemUsage({});
+    }
   };
 
   if (showPRSelection) {
@@ -1492,10 +1598,18 @@ export function Canvass() {
                               <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Unit</th>
                               <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Unit Price</th>
                               <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Total Amount</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Used In</th>
+                              <th className="px-3 py-2 text-left text-blue-900 whitespace-nowrap">Action</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-blue-100">
-                            {validItems.map((item: any, index: number) => (
+                            {validItems.map((item: any, index: number) => {
+                              const prItemKey = getPRItemKey(item, index);
+                              const usage = prItemUsage[prItemKey] || [];
+                              const addedToDraft = quotations.some(q =>
+                                q.items.some(it => it.source_pr_item_id === prItemKey)
+                              );
+                              return (
                               <tr key={index}>
                                 <td className="px-3 py-2 text-slate-900 whitespace-nowrap">{item.item_description || item.description || 'N/A'}</td>
                                 <td className="px-3 py-2 text-slate-700">{item.item_notes || '-'}</td>
@@ -1503,8 +1617,52 @@ export function Canvass() {
                                 <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{item.unit}</td>
                                 <td className="px-3 py-2 text-slate-700 whitespace-nowrap">₱{item.unit_price?.toFixed(2) || '0.00'}</td>
                                 <td className="px-3 py-2 text-slate-900 font-semibold whitespace-nowrap">₱{item.total_price?.toFixed(2) || '0.00'}</td>
+                                <td className="px-3 py-2">
+                                  {usage.length === 0 ? (
+                                    <span className="text-xs text-slate-400">—</span>
+                                  ) : (
+                                    <div className="flex flex-col gap-1">
+                                      {usage.map((u, i) => {
+                                        const statusColor =
+                                          u.status === 'approved'
+                                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                            : u.status === 'rejected'
+                                            ? 'bg-red-100 text-red-800 border-red-200'
+                                            : u.status === 'draft'
+                                            ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                            : 'bg-amber-100 text-amber-800 border-amber-200';
+                                        return (
+                                          <span
+                                            key={i}
+                                            className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${statusColor}`}
+                                            title={`Used in ${u.canvass_number} (${u.status}) on ${new Date(u.request_date).toLocaleDateString()}`}
+                                          >
+                                            <span className="font-mono">{u.canvass_number}</span>
+                                            <span className="capitalize opacity-80">· {u.status}</span>
+                                            <span className="opacity-70">· {new Date(u.request_date).toLocaleDateString()}</span>
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => addPRItemToQuotations(item, prItemKey)}
+                                    title={addedToDraft ? 'Already added — click to add again' : 'Add to all 3 quotations'}
+                                    className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition ${
+                                      addedToDraft
+                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                                        : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                                  >
+                                    <Plus size={16} />
+                                  </button>
+                                </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
