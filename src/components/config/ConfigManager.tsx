@@ -2800,19 +2800,49 @@ function VendorsList() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.expires_at) {
+        const expiresAtMs = session.expires_at * 1000;
+        const bufferMs = 60 * 1000;
+        if (Date.now() >= expiresAtMs - bufferMs) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData?.session) {
+            session = refreshData.session;
+          }
+        }
+      }
+
       if (!session) {
-        setError('No active session found. Please log in again.');
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData?.session ?? null;
+      }
+
+      if (!session) {
+        setError('Your session has expired. Please log in again.');
         return;
       }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors?company_id=${selectedCompanyId}`;
-      const response = await fetch(apiUrl, {
+      let response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
       });
+
+      if (response.status === 401) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshData?.session) {
+          session = refreshData.session;
+          response = await fetch(apiUrl, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        }
+      }
 
       const data = await response.json();
 
@@ -2999,19 +3029,49 @@ function ItemsList() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.expires_at) {
+        const expiresAtMs = session.expires_at * 1000;
+        const bufferMs = 60 * 1000;
+        if (Date.now() >= expiresAtMs - bufferMs) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData?.session) {
+            session = refreshData.session;
+          }
+        }
+      }
+
       if (!session) {
-        setError('No active session found. Please log in again.');
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData?.session ?? null;
+      }
+
+      if (!session) {
+        setError('Your session has expired. Please log in again.');
         return;
       }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-items?company_id=${selectedCompanyId}`;
-      const response = await fetch(apiUrl, {
+      let response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
       });
+
+      if (response.status === 401) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshData?.session) {
+          session = refreshData.session;
+          response = await fetch(apiUrl, {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        }
+      }
 
       const data = await response.json();
 
