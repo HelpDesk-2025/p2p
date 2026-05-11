@@ -261,6 +261,9 @@ export function Canvass() {
     return quots.map(quotation => {
       const newItems = [...quotation.items];
       newItems.splice(itemIndex, 1);
+      if (newItems.length === 0) {
+        newItems.push({ description: '', quantity: 1, uom: '', unit_price: 0, amount: 0 });
+      }
       return calculateQuotationValues({
         ...quotation,
         items: newItems
@@ -1885,18 +1888,16 @@ export function Canvass() {
                                       ₱{item.amount.toFixed(2)}
                                     </td>
                                     <td className="px-1.5 py-1.5">
-                                      {quotation.items.length > 1 && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setQuotations(removeItemFromAllQuotations(quotations, itemIdx));
-                                          }}
-                                          className="p-0.5 text-red-600 hover:bg-red-50 rounded transition"
-                                          title="Remove this item row from all quotations"
-                                        >
-                                          <X size={12} />
-                                        </button>
-                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setQuotations(removeItemFromAllQuotations(quotations, itemIdx));
+                                        }}
+                                        className="p-0.5 text-red-600 hover:bg-red-50 rounded transition"
+                                        title="Remove this item row from all quotations"
+                                      >
+                                        <X size={12} />
+                                      </button>
                                     </td>
                                   </tr>
                                 ))}
