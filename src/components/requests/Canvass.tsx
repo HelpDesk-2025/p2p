@@ -338,20 +338,29 @@ export function Canvass() {
     const quantity = Number(prItem.quantity) || 0;
     const uom = prItem.unit || '';
 
-    setQuotations(prev => prev.map(q => ({
-      ...q,
-      items: [
-        ...q.items,
-        {
-          description,
-          quantity,
-          uom,
-          unit_price: 0,
-          amount: 0,
-          source_pr_item_id: prItemKey,
-        },
-      ],
-    })));
+    setQuotations(prev => prev.map(q => {
+      const filtered = q.items.filter(it =>
+        !(
+          !it.source_pr_item_id &&
+          (!it.description || it.description.trim() === '') &&
+          (!it.unit_price || it.unit_price === 0)
+        )
+      );
+      return {
+        ...q,
+        items: [
+          ...filtered,
+          {
+            description,
+            quantity,
+            uom,
+            unit_price: 0,
+            amount: 0,
+            source_pr_item_id: prItemKey,
+          },
+        ],
+      };
+    }));
   };
 
   // Helper function to update shared item fields (description, uom) across all quotations
