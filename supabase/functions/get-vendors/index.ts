@@ -135,10 +135,20 @@ Deno.serve(async (req: Request) => {
     const isNotBlocked = (blocked: any) =>
       blocked === null || blocked === undefined || blocked === false || String(blocked).trim() === '';
 
+    const hasVendorPostingGroup = (v: any) => {
+      const value =
+        v?.vendorPostingGroup ??
+        v?.Vendor_Posting_Group ??
+        v?.vendor_posting_group;
+      return typeof value === 'string' && value.trim().length > 0;
+    };
+
+    const passesFilters = (v: any) => isNotBlocked(v.blocked) && hasVendorPostingGroup(v);
+
     const filteredVendors = Array.isArray(vendors?.value)
-      ? { ...vendors, value: vendors.value.filter((v: any) => isNotBlocked(v.blocked)) }
+      ? { ...vendors, value: vendors.value.filter(passesFilters) }
       : Array.isArray(vendors)
-      ? vendors.filter((v: any) => isNotBlocked(v.blocked))
+      ? vendors.filter(passesFilters)
       : vendors;
 
     return new Response(
