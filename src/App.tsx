@@ -22,11 +22,6 @@ import { ApprovalLedger } from './components/ApprovalLedger';
 import { ProcurementChecking } from './components/ProcurementChecking';
 import { ApprovedRejected } from './components/ApprovedRejected';
 import { UserManual } from './components/UserManual';
-import { Receiving } from './components/p2p/Receiving';
-import { Invoicing } from './components/p2p/Invoicing';
-import { AccountingPosting } from './components/p2p/AccountingPosting';
-import { Payments } from './components/p2p/Payments';
-import { P2PSettingsPage } from './components/p2p/P2PSettingsPage';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -131,16 +126,6 @@ function AppContent() {
         return <ConfigManager type="announcements" />;
       case 'config-api-integrations':
         return <ConfigManager type="api-integrations" />;
-      case 'config-p2p-settings':
-        return <P2PSettingsPage />;
-      case 'p2p-receiving':
-        return <Receiving />;
-      case 'p2p-invoicing':
-        return <Invoicing />;
-      case 'p2p-accounting-posting':
-        return <AccountingPosting />;
-      case 'p2p-payments':
-        return <Payments />;
       case 'change-password':
         return <ChangePassword />;
       default:
