@@ -10,7 +10,14 @@ import {
   statusBadgeClasses,
   writeAudit,
 } from '../../lib/p2pDownstream';
-import { Banknote, Plus, X, Loader2, Eye, Send, Save, Search, Ban } from 'lucide-react';
+import { Banknote, Plus, X, Loader2, Eye, Send, Save, Search, Ban, Store } from 'lucide-react';
+
+interface PaymentVendor {
+  id: string;
+  name: string;
+  terms: string;
+  notes?: string;
+}
 
 interface PaymentRow {
   id: string;
@@ -22,6 +29,8 @@ interface PaymentRow {
   amount_paid: number;
   reference_no: string;
   status: PaymentStatus;
+  vendor_name?: string | null;
+  vendor_terms?: string | null;
   ap_vouchers?: { apv_number: string; net_payable: number; invoice_id: string; supplier_invoices?: { invoice_number: string; canvass_requests?: { canvass_number: string } } };
 }
 
@@ -151,7 +160,7 @@ export function Payments() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {['Payment No.', 'APV', 'Invoice', 'Method', 'Date', 'Amount', 'Reference', 'Status', 'Action'].map((h) => (
+                  {['Payment No.', 'APV', 'Invoice', 'Vendor', 'Terms', 'Method', 'Date', 'Amount', 'Reference', 'Status', 'Action'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-bold text-slate-700 uppercase">{h}</th>
                   ))}
                 </tr>
@@ -162,6 +171,8 @@ export function Payments() {
                     <td className="px-4 py-3 font-mono font-bold text-sm">{p.payment_number}</td>
                     <td className="px-4 py-3 text-sm">{p.ap_vouchers?.apv_number || '\u2014'}</td>
                     <td className="px-4 py-3 text-sm">{p.ap_vouchers?.supplier_invoices?.invoice_number || '\u2014'}</td>
+                    <td className="px-4 py-3 text-sm">{(p as any).vendor_name || '\u2014'}</td>
+                    <td className="px-4 py-3 text-sm">{(p as any).vendor_terms ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">{(p as any).vendor_terms}</span> : '\u2014'}</td>
                     <td className="px-4 py-3 text-sm">{p.payment_method}</td>
                     <td className="px-4 py-3 text-sm">{formatDate(p.payment_date)}</td>
                     <td className="px-4 py-3 text-sm font-bold">{formatMoney(p.amount_paid)}</td>
@@ -203,6 +214,21 @@ function PaymentForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   const [reference, setReference] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [vendors, setVendors] = useState<PaymentVendor[]>([]);
+  const [vendorId, setVendorId] = useState('');
+  const [showAddVendor, setShowAddVendor] = useState(false);
+  const [newVendorName, setNewVendorName] = useState('');
+  const [newVendorTerms, setNewVendorTerms] = useState('Net 30');
+  const [newVendorNotes, setNewVendorNotes] = useState('');
+  const [addingVendor, setAddingVendor] = useState(false);
+
+  const loadVendors = async () => {
+    const { data } = await supabase
+      .from('payment_vendors')
+      .select('id, name, terms, notes')
+      .order('name');
+    setVendors((data || []) as PaymentVendor[]);
+  };
 
   useEffect(() => {
     (async () => {
@@ -212,7 +238,42 @@ function PaymentForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
         .eq('status', 'Posted');
       setApvs(data || []);
     })();
+    loadVendors();
   }, []);
+
+  const selectedVendor = vendors.find((v) => v.id === vendorId) || null;
+
+  const addVendor = async () => {
+    setError('');
+    if (!newVendorName.trim()) return setError('Vendor name is required.');
+    if (!newVendorTerms.trim()) return setError('Vendor terms are required.');
+    setAddingVendor(true);
+    try {
+      const { data, error: err } = await supabase
+        .from('payment_vendors')
+        .insert({
+          name: newVendorName.trim(),
+          terms: newVendorTerms.trim(),
+          notes: newVendorNotes.trim(),
+          created_by: profile?.id ?? null,
+        })
+        .select()
+        .maybeSingle();
+      if (err) throw err;
+      if (data) {
+        await loadVendors();
+        setVendorId(data.id);
+        setShowAddVendor(false);
+        setNewVendorName('');
+        setNewVendorTerms('Net 30');
+        setNewVendorNotes('');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to add vendor');
+    } finally {
+      setAddingVendor(false);
+    }
+  };
 
   useEffect(() => {
     const a = apvs.find((x) => x.id === apvId);
@@ -238,6 +299,9 @@ function PaymentForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
         apv_id: apvId,
         supplier_id: apv?.supplier_id ?? null,
         supplier_name: apv?.supplier_name ?? null,
+        vendor_id: selectedVendor?.id ?? null,
+        vendor_name: selectedVendor?.name ?? null,
+        vendor_terms: selectedVendor?.terms ?? null,
         payment_method: method,
         payment_date: date,
         amount_paid: amount,
@@ -296,6 +360,72 @@ function PaymentForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
               ))}
             </select>
           </div>
+          <div className="border border-slate-200 rounded-lg p-3 bg-slate-50/60 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-semibold text-slate-700 flex items-center gap-1">
+                <Store size={14} className="text-blue-600" /> Vendor <span className="text-slate-400 font-normal">(with terms)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAddVendor((s) => !s)}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+              >
+                <Plus size={12} /> {showAddVendor ? 'Close' : 'Add Vendor'}
+              </button>
+            </div>
+            <select
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+            >
+              <option value="">Select vendor...</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>{v.name} &middot; {v.terms}</option>
+              ))}
+            </select>
+            {selectedVendor && (
+              <div className="text-xs text-slate-600">
+                Terms: <span className="font-semibold text-slate-900">{selectedVendor.terms}</span>
+                {selectedVendor.notes ? <span className="text-slate-500"> &middot; {selectedVendor.notes}</span> : null}
+              </div>
+            )}
+            {showAddVendor && (
+              <div className="mt-2 p-3 bg-white border border-slate-200 rounded-lg space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Vendor Name <span className="text-rose-500">*</span></label>
+                    <input value={newVendorName} onChange={(e) => setNewVendorName(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Terms <span className="text-rose-500">*</span></label>
+                    <select value={newVendorTerms} onChange={(e) => setNewVendorTerms(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-sm bg-white">
+                      <option>COD</option>
+                      <option>Net 7</option>
+                      <option>Net 15</option>
+                      <option>Net 30</option>
+                      <option>Net 45</option>
+                      <option>Net 60</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
+                  <input value={newVendorNotes} onChange={(e) => setNewVendorNotes(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-sm" />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={addVendor}
+                    disabled={addingVendor}
+                    className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
+                  >
+                    {addingVendor ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Save Vendor
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Method</label>
@@ -389,6 +519,8 @@ function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose: () => 
           <div><span className="text-slate-500">Amount:</span> <span className="font-bold">{formatMoney(p.amount_paid)}</span></div>
           <div><span className="text-slate-500">Reference:</span> {p.reference_no || '\u2014'}</div>
           <div><span className="text-slate-500">Invoice:</span> {p.ap_vouchers?.supplier_invoices?.invoice_number}</div>
+          <div><span className="text-slate-500">Vendor:</span> {p.vendor_name || '\u2014'}</div>
+          <div><span className="text-slate-500">Terms:</span> {p.vendor_terms ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">{p.vendor_terms}</span> : '\u2014'}</div>
         </div>
         {p.status === 'Submitted' && (
           <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
@@ -401,3 +533,6 @@ function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose: () => 
     </div>
   );
 }
+
+
+export { Payments }
