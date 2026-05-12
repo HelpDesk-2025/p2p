@@ -1772,6 +1772,9 @@ export function Canvass() {
                             placeholder="Search vendors..."
                             className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                           />
+                          <p className="mt-1 text-[10px] text-slate-500 italic leading-tight">
+                            Note: If the Payee/Vendor does not appear in the options, it's either the payee/vendor is blocked or vendor posting group is blank.
+                          </p>
                           {showVendorDropdown[idx] && (
                             <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                               {vendors
