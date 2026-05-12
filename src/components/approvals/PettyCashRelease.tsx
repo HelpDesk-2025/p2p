@@ -555,54 +555,137 @@ export function PettyCashRelease() {
       'Company',
     ];
 
-    const escapeCsv = (val: any): string => {
+    const escapeHtml = (val: any): string => {
       if (val === null || val === undefined) return '';
-      const s = String(val);
-      if (/[",\n\r]/.test(s)) {
-        return `"${s.replace(/"/g, '""')}"`;
-      }
-      return s;
+      return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     };
 
-    const rows = selected.map((r) => {
-      const releasedStatus = !isReleaseEligible(r)
-        ? 'N/A'
-        : r.cash_released
-        ? 'Released'
-        : 'Pending';
-      const receivedStatus = !isReleaseEligible(r)
-        ? 'N/A'
-        : r.received_at
-        ? 'Received'
-        : 'Pending';
+    const statusBadgeStyle = (status: string): string => {
+      switch (status) {
+        case 'Released':
+          return 'background-color:#d1fae5;color:#065f46;font-weight:bold;';
+        case 'Received':
+          return 'background-color:#dbeafe;color:#1e40af;font-weight:bold;';
+        case 'Pending':
+          return 'background-color:#fef3c7;color:#92400e;font-weight:bold;';
+        case 'N/A':
+          return 'background-color:#f1f5f9;color:#64748b;';
+        default:
+          return '';
+      }
+    };
 
-      return [
-        r.pc_number,
-        r.user_profiles?.full_name || '',
-        r.user_profiles?.email || '',
-        r.department || r.user_profiles?.department || '',
-        Number(r.amount || 0).toFixed(2),
-        r.request_type || 'For Cash Advance',
-        getLinkedCashAdvancePcNumber(r) || '',
-        releasedStatus,
-        r.cash_released_at ? new Date(r.cash_released_at).toLocaleString() : '',
-        receivedStatus,
-        r.received_at ? new Date(r.received_at).toLocaleString() : '',
-        r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
-        r.purpose || '',
-        r.payee || '',
-        r.companies?.name || '',
-      ].map(escapeCsv).join(',');
-    });
+    const typeBadgeStyle = (t: string): string => {
+      switch (t) {
+        case 'For Liquidation':
+          return 'background-color:#dbeafe;color:#1e40af;font-weight:bold;';
+        case 'For Reimbursement':
+          return 'background-color:#fef3c7;color:#92400e;font-weight:bold;';
+        default:
+          return 'background-color:#ccfbf1;color:#115e59;font-weight:bold;';
+      }
+    };
 
-    const csv = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    let totalAmount = 0;
+
+    const rowsHtml = selected
+      .map((r, idx) => {
+        const releasedStatus = !isReleaseEligible(r)
+          ? 'N/A'
+          : r.cash_released
+          ? 'Released'
+          : 'Pending';
+        const receivedStatus = !isReleaseEligible(r)
+          ? 'N/A'
+          : r.received_at
+          ? 'Received'
+          : 'Pending';
+        const amt = Number(r.amount || 0);
+        totalAmount += amt;
+
+        const baseTd = 'border:1px solid #cbd5e1;padding:8px 10px;font-family:Calibri,Arial,sans-serif;font-size:11pt;';
+        const altBg = idx % 2 === 0 ? 'background-color:#ffffff;' : 'background-color:#f8fafc;';
+        const cellStyle = `${baseTd}${altBg}`;
+        const numStyle = `${cellStyle}text-align:right;mso-number-format:'\\#\\,\\#\\#0\\.00';`;
+        const monoStyle = `${cellStyle}font-family:Consolas,monospace;font-weight:bold;color:#0f172a;`;
+        const badge = (style: string) =>
+          `${cellStyle}text-align:center;${style}border-radius:4px;`;
+
+        return `<tr>
+          <td style="${monoStyle}">${escapeHtml(r.pc_number)}</td>
+          <td style="${cellStyle}">${escapeHtml(r.user_profiles?.full_name || '')}</td>
+          <td style="${cellStyle}color:#475569;">${escapeHtml(r.user_profiles?.email || '')}</td>
+          <td style="${cellStyle}">${escapeHtml(r.department || r.user_profiles?.department || '')}</td>
+          <td style="${numStyle}">${amt.toFixed(2)}</td>
+          <td style="${badge(typeBadgeStyle(r.request_type || 'For Cash Advance'))}">${escapeHtml(r.request_type || 'For Cash Advance')}</td>
+          <td style="${cellStyle}text-align:center;font-family:Consolas,monospace;color:#1d4ed8;">${escapeHtml(getLinkedCashAdvancePcNumber(r) || '')}</td>
+          <td style="${badge(statusBadgeStyle(releasedStatus))}">${escapeHtml(releasedStatus)}</td>
+          <td style="${cellStyle}color:#475569;">${escapeHtml(r.cash_released_at ? new Date(r.cash_released_at).toLocaleString() : '')}</td>
+          <td style="${badge(statusBadgeStyle(receivedStatus))}">${escapeHtml(receivedStatus)}</td>
+          <td style="${cellStyle}color:#475569;">${escapeHtml(r.received_at ? new Date(r.received_at).toLocaleString() : '')}</td>
+          <td style="${cellStyle}">${escapeHtml(r.request_date ? new Date(r.request_date).toLocaleDateString() : '')}</td>
+          <td style="${cellStyle}">${escapeHtml(r.purpose || '')}</td>
+          <td style="${cellStyle}">${escapeHtml(r.payee || '')}</td>
+          <td style="${cellStyle}">${escapeHtml(r.companies?.name || '')}</td>
+        </tr>`;
+      })
+      .join('');
+
+    const headerCellStyle =
+      'background-color:#1e3a8a;color:#ffffff;font-weight:bold;font-family:Calibri,Arial,sans-serif;font-size:11pt;padding:10px;border:1px solid #1e3a8a;text-align:center;';
+    const headerHtml = headers
+      .map((h) => `<th style="${headerCellStyle}">${escapeHtml(h)}</th>`)
+      .join('');
+
+    const titleStyle =
+      'font-family:Calibri,Arial,sans-serif;font-size:18pt;font-weight:bold;color:#0f172a;padding:8px 0;';
+    const subtitleStyle =
+      'font-family:Calibri,Arial,sans-serif;font-size:10pt;color:#64748b;padding:2px 0;';
+    const totalLabelStyle =
+      'border:1px solid #cbd5e1;padding:10px;background-color:#e2e8f0;font-weight:bold;text-align:right;font-family:Calibri,Arial,sans-serif;font-size:11pt;';
+    const totalValueStyle =
+      "border:1px solid #cbd5e1;padding:10px;background-color:#e2e8f0;font-weight:bold;text-align:right;font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#065f46;mso-number-format:'\\#\\,\\#\\#0\\.00';";
+
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8" />
+<!--[if gte mso 9]><xml>
+<x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Petty Cash Summary</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
+</xml><![endif]-->
+</head>
+<body>
+<div style="${titleStyle}">Petty Cash Release Summary</div>
+<div style="${subtitleStyle}">Generated on ${escapeHtml(new Date().toLocaleString())}</div>
+<div style="${subtitleStyle}">Total Records: ${selected.length}</div>
+<br />
+<table style="border-collapse:collapse;border:1px solid #cbd5e1;">
+  <thead><tr>${headerHtml}</tr></thead>
+  <tbody>
+    ${rowsHtml}
+    <tr>
+      <td colspan="4" style="${totalLabelStyle}">TOTAL</td>
+      <td style="${totalValueStyle}">${totalAmount.toFixed(2)}</td>
+      <td colspan="10" style="${totalLabelStyle}background-color:#e2e8f0;"></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>`;
+
+    const blob = new Blob(['\uFEFF', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     const now = new Date();
     const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
     a.href = url;
-    a.download = `Petty_Cash_Release_Summary_${stamp}.csv`;
+    a.download = `Petty_Cash_Release_Summary_${stamp}.xls`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
