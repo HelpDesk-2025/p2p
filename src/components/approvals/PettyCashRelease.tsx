@@ -538,7 +538,6 @@ export function PettyCashRelease() {
     }
 
     const headers = [
-      'Exported',
       'PC No.',
       'Requester',
       'Email',
@@ -578,7 +577,6 @@ export function PettyCashRelease() {
         : 'Pending';
 
       return [
-        r.exported_at ? `Exported (${new Date(r.exported_at).toLocaleString()})` : 'Not yet',
         r.pc_number,
         r.user_profiles?.full_name || '',
         r.user_profiles?.email || '',
