@@ -533,9 +533,19 @@ export function ApprovalFlowSetupConfig() {
       </div>
 
       {showForm && (
-        <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8 mb-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-slate-900">
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowForm(false);
+              setEditingSetupId(null);
+              setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
+            }
+          }}
+        >
+        <div className="bg-gradient-to-br from-white to-slate-50 rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-6xl my-4 sm:my-8 max-h-[95vh] flex flex-col">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white/80 backdrop-blur rounded-t-xl sm:rounded-t-2xl">
+            <h3 className="text-lg sm:text-2xl font-bold text-slate-900">
               {editingSetupId ? "Edit Approval Flow Setup" : "New Approval Flow Setup"}
             </h3>
             <button
@@ -544,11 +554,12 @@ export function ApprovalFlowSetupConfig() {
                 setEditingSetupId(null);
                 setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
               }}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
+              className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors p-2"
             >
-              <X size={24} />
+              <X size={22} />
             </button>
           </div>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
           <div className="grid grid-cols-1 gap-4">
             <div className="grid grid-cols-3 gap-4">
@@ -982,6 +993,8 @@ export function ApprovalFlowSetupConfig() {
             </>
             );
           })()}
+          </div>
+        </div>
         </div>
       )}
 
