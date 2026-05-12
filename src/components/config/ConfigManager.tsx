@@ -3791,11 +3791,30 @@ function WithholdingTaxRatesConfig({ data, reload }: { data: any[]; reload: () =
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-900">
-            {editingId ? 'Edit Withholding Tax Rate' : 'Add Withholding Tax Rate'}
-          </h3>
-
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCancel();
+          }}
+        >
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl my-4 sm:my-8 max-h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white rounded-t-xl sm:rounded-t-2xl">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                  {editingId ? 'Edit Withholding Tax Rate' : 'Add Withholding Tax Rate'}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  {editingId ? 'Update withholding tax rate details' : 'Create a new withholding tax rate'}
+                </p>
+              </div>
+              <button
+                onClick={handleCancel}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors p-2"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
             <input
@@ -3839,14 +3858,15 @@ function WithholdingTaxRatesConfig({ data, reload }: { data: any[]; reload: () =
             />
             <span className="text-sm text-slate-700">Active</span>
           </label>
-
-          <div className="flex gap-2">
-            <button onClick={handleAdd} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              {editingId ? 'Update' : 'Save'}
-            </button>
-            <button onClick={handleCancel} className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">
-              Cancel
-            </button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-white rounded-b-xl sm:rounded-b-2xl">
+              <button onClick={handleCancel} className="px-4 py-2 border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={handleAdd} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
+                {editingId ? 'Update' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}
