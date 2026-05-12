@@ -737,18 +737,31 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       </div>
 
       {showForm && (
-        <div className="bg-gradient-to-br from-white to-slate-50 rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 p-4 sm:p-6 lg:p-8 mb-4 sm:mb-8 space-y-4 sm:space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">
-              {editingId ? "Edit User Profile" : "Add New User"}
-            </h3>
-            <button
-              onClick={handleCancel}
-              className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-            >
-              <X size={20} className="sm:w-6 sm:h-6" />
-            </button>
-          </div>
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !updating) handleCancel();
+          }}
+        >
+          <div className="bg-gradient-to-br from-white to-slate-50 rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl my-4 sm:my-8 max-h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-200 bg-white/80 backdrop-blur rounded-t-xl sm:rounded-t-2xl sticky top-0 z-10">
+              <div>
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">
+                  {editingId ? "Edit User Profile" : "Add New User"}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  {editingId ? "Update the selected user's details and permissions" : "Create a new user account"}
+                </p>
+              </div>
+              <button
+                onClick={handleCancel}
+                disabled={updating}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors p-2 disabled:opacity-50"
+              >
+                <X size={20} className="sm:w-6 sm:h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-1.5 sm:space-y-2">
@@ -1191,22 +1204,24 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-200">
-            <button
-              onClick={editingId ? handleUpdate : handleAdd}
-              disabled={updating}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {updating ? <Loader2 size={16} className="sm:w-[18px] sm:h-[18px] animate-spin" /> : <Save size={16} className="sm:w-[18px] sm:h-[18px]" />}
-              {updating ? "Updating..." : editingId ? "Update User" : "Create User"}
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={updating}
-              className="px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-slate-300 text-slate-700 font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 lg:px-8 py-4 border-t border-slate-200 bg-white/80 backdrop-blur rounded-b-xl sm:rounded-b-2xl sticky bottom-0">
+              <button
+                onClick={handleCancel}
+                disabled={updating}
+                className="px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-slate-300 text-slate-700 font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingId ? handleUpdate : handleAdd}
+                disabled={updating}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {updating ? <Loader2 size={16} className="sm:w-[18px] sm:h-[18px] animate-spin" /> : <Save size={16} className="sm:w-[18px] sm:h-[18px]" />}
+                {updating ? "Updating..." : editingId ? "Update User" : "Create User"}
+              </button>
+            </div>
           </div>
         </div>
       )}
