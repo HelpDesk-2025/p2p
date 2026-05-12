@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown, Filter } from 'lucide-react';
+import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown, Filter, FileSpreadsheet } from 'lucide-react';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
@@ -530,6 +530,86 @@ export function PettyCashRelease() {
     }
   };
 
+  const handleExportSummary = () => {
+    if (sortedRequests.length === 0) {
+      alert('There are no requests to export.');
+      return;
+    }
+
+    const headers = [
+      'Exported',
+      'PC No.',
+      'Requester',
+      'Email',
+      'Department',
+      'Amount',
+      'Type',
+      'Linked CA',
+      'Cash Released',
+      'Cash Released At',
+      'Cash Received',
+      'Cash Received At',
+      'Request Date',
+      'Purpose',
+      'Payee',
+      'Company',
+    ];
+
+    const escapeCsv = (val: any): string => {
+      if (val === null || val === undefined) return '';
+      const s = String(val);
+      if (/[",\n\r]/.test(s)) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const rows = sortedRequests.map((r) => {
+      const releasedStatus = !isReleaseEligible(r)
+        ? 'N/A'
+        : r.cash_released
+        ? 'Released'
+        : 'Pending';
+      const receivedStatus = !isReleaseEligible(r)
+        ? 'N/A'
+        : r.received_at
+        ? 'Received'
+        : 'Pending';
+
+      return [
+        r.exported_at ? `Exported (${new Date(r.exported_at).toLocaleString()})` : 'Not yet',
+        r.pc_number,
+        r.user_profiles?.full_name || '',
+        r.user_profiles?.email || '',
+        r.department || r.user_profiles?.department || '',
+        Number(r.amount || 0).toFixed(2),
+        r.request_type || 'For Cash Advance',
+        getLinkedCashAdvancePcNumber(r) || '',
+        releasedStatus,
+        r.cash_released_at ? new Date(r.cash_released_at).toLocaleString() : '',
+        receivedStatus,
+        r.received_at ? new Date(r.received_at).toLocaleString() : '',
+        r.request_date ? new Date(r.request_date).toLocaleDateString() : '',
+        r.purpose || '',
+        r.payee || '',
+        r.companies?.name || '',
+      ].map(escapeCsv).join(',');
+    });
+
+    const csv = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    a.href = url;
+    a.download = `Petty_Cash_Release_Summary_${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const downloadGeneratedPdf = async (filePath: string, fileName: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -600,6 +680,15 @@ export function PettyCashRelease() {
                 {getActiveFilterCount(filterValues)}
               </span>
             )}
+          </button>
+          <button
+            onClick={handleExportSummary}
+            disabled={listLoading || sortedRequests.length === 0}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+            title="Export the summary of the listed requests to an Excel-compatible (CSV) file"
+          >
+            <FileSpreadsheet size={18} />
+            Export Summary
           </button>
           <button
             onClick={handleExportBundle}
