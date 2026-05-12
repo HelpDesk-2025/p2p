@@ -1976,7 +1976,7 @@ export function PurchaseRequisition() {
                     disabled={loadingVendors}
                     required
                   />
-                  <p className="mt-1 text-xs text-slate-500 italic">
+                  <p className="mt-1 text-xs text-red-600 italic">
                     Note: If the Payee/Vendor does not appear in the options, it's either the payee/vendor is blocked or vendor posting group is blank.
                   </p>
                   {showVendorDropdown && !loadingVendors && (
