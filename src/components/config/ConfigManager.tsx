@@ -2337,20 +2337,30 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
       </div>
 
       {showForm && (
-        <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8 mb-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-slate-900">
-              {editingId ? 'Edit Company' : 'Add Company'}
-            </h3>
-            <button
-              onClick={handleCancel}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="space-y-5">
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCancel();
+          }}
+        >
+          <div className="bg-gradient-to-br from-white to-slate-50 rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl my-4 sm:my-8 max-h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white/80 backdrop-blur rounded-t-xl sm:rounded-t-2xl">
+              <div>
+                <h3 className="text-lg sm:text-2xl font-bold text-slate-900">
+                  {editingId ? 'Edit Company' : 'Add Company'}
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  {editingId ? 'Update company details and configuration' : 'Create a new company'}
+                </p>
+              </div>
+              <button
+                onClick={handleCancel}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors p-2"
+              >
+                <X size={22} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-slate-700">Company Name</label>
               <input
@@ -2465,22 +2475,22 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
               />
               <p className="text-xs text-slate-500">Email address to notify when Purchase Order PRs are ready for canvass</p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30"
-            >
-              <Save size={18} />
-              {editingId ? 'Update Company' : 'Save Company'}
-            </button>
-            <button
-              onClick={handleCancel}
-              className="px-6 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all"
-            >
-              Cancel
-            </button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 px-6 py-4 border-t border-slate-200 bg-white/80 backdrop-blur rounded-b-xl sm:rounded-b-2xl">
+              <button
+                onClick={handleCancel}
+                className="px-6 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdd}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-200 transition-all shadow-lg shadow-blue-500/30"
+              >
+                <Save size={18} />
+                {editingId ? 'Update Company' : 'Save Company'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2535,20 +2545,45 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
                 onClick={() => toggleDepartments(company.id)}
                 className="w-full px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
               >
-                {showDepartments === company.id ? 'Hide Departments' : 'Manage Departments'}
+                Manage Departments
               </button>
-
-              {showDepartments === company.id && (
-                <DepartmentManager
-                  companyId={company.id}
-                  departments={departments}
-                  onReload={() => loadDepartments(company.id)}
-                />
-              )}
             </div>
           </div>
         ))}
       </div>
+
+      {showDepartments && (
+        <div
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDepartments(null);
+          }}
+        >
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl my-4 sm:my-8 max-h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white rounded-t-xl sm:rounded-t-2xl">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900">Manage Departments</h3>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  {data.find(c => c.id === showDepartments)?.name || ''}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDepartments(null)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors p-2"
+              >
+                <X size={22} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <DepartmentManager
+                companyId={showDepartments}
+                departments={departments}
+                onReload={() => loadDepartments(showDepartments)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
