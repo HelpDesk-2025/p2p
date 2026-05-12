@@ -531,8 +531,9 @@ export function PettyCashRelease() {
   };
 
   const handleExportSummary = () => {
-    if (sortedRequests.length === 0) {
-      alert('There are no requests to export.');
+    const selected = sortedRequests.filter((r) => selectedIds.has(r.id));
+    if (selected.length === 0) {
+      alert('Please select at least one request to export.');
       return;
     }
 
@@ -564,7 +565,7 @@ export function PettyCashRelease() {
       return s;
     };
 
-    const rows = sortedRequests.map((r) => {
+    const rows = selected.map((r) => {
       const releasedStatus = !isReleaseEligible(r)
         ? 'N/A'
         : r.cash_released
@@ -683,12 +684,12 @@ export function PettyCashRelease() {
           </button>
           <button
             onClick={handleExportSummary}
-            disabled={listLoading || sortedRequests.length === 0}
+            disabled={listLoading || selectedIds.size === 0}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
-            title="Export the summary of the listed requests to an Excel-compatible (CSV) file"
+            title="Export the summary of the selected requests to an Excel-compatible (CSV) file"
           >
             <FileSpreadsheet size={18} />
-            Export Summary
+            {selectedIds.size > 0 ? `Export Summary (${selectedIds.size})` : 'Export Summary'}
           </button>
           <button
             onClick={handleExportBundle}
