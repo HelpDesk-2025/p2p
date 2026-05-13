@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown, Filter, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown, Filter, FileSpreadsheet, ClipboardList, Printer } from 'lucide-react';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
@@ -86,6 +86,10 @@ export function PettyCashRelease() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [showPreviewSetupModal, setShowPreviewSetupModal] = useState(false);
+  const [previewSetup, setPreviewSetup] = useState<FilterValues>({});
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState<PettyCashReq[]>([]);
 
   const filterColumns: FilterColumn[] = [
     {
@@ -764,6 +768,18 @@ export function PettyCashRelease() {
             )}
           </button>
           <button
+            onClick={() => {
+              setPreviewSetup({ ...filterValues });
+              setShowPreviewSetupModal(true);
+            }}
+            disabled={listLoading}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+            title="Set up filters and preview a styled summary"
+          >
+            <ClipboardList size={18} />
+            Preview Summary
+          </button>
+          <button
             onClick={handleExportSummary}
             disabled={listLoading || selectedIds.size === 0}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
@@ -795,6 +811,190 @@ export function PettyCashRelease() {
         values={filterValues}
         onApply={(v) => { setFilterValues(v); setCurrentPage(1); }}
       />
+
+      <FilterModal
+        isOpen={showPreviewSetupModal}
+        onClose={() => setShowPreviewSetupModal(false)}
+        columns={filterColumns}
+        values={previewSetup}
+        onApply={(v) => {
+          setPreviewSetup(v);
+          const filtered = applyFilters(requests, v, filterColumns, getFilterFieldValue);
+          setPreviewData(filtered);
+          setShowPreviewModal(true);
+        }}
+      />
+
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-800 to-slate-900">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <ClipboardList size={20} />
+                  Petty Cash Release Summary Preview
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {previewData.length} record{previewData.length !== 1 ? 's' : ''} matching the configured filters
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition text-sm font-semibold"
+                >
+                  <Printer size={16} />
+                  Print
+                </button>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="p-2 text-white hover:bg-white/10 rounded-lg transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 bg-slate-50 print:bg-white print:p-0">
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 print:shadow-none print:border-0">
+                <div className="px-6 py-5 border-b border-slate-200">
+                  <h2 className="text-2xl font-bold text-slate-900">Petty Cash Release Summary</h2>
+                  <p className="text-sm text-slate-500 mt-1">Generated on {new Date().toLocaleString()}</p>
+                </div>
+
+                {previewData.length === 0 ? (
+                  <div className="p-12 text-center text-slate-500">
+                    No records match the configured filters.
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-800 text-white">
+                            <th className="px-3 py-2.5 text-left font-semibold">PC No.</th>
+                            <th className="px-3 py-2.5 text-left font-semibold">Requester</th>
+                            <th className="px-3 py-2.5 text-left font-semibold">Department</th>
+                            <th className="px-3 py-2.5 text-right font-semibold">Amount</th>
+                            <th className="px-3 py-2.5 text-center font-semibold">Type</th>
+                            <th className="px-3 py-2.5 text-center font-semibold">Linked CA</th>
+                            <th className="px-3 py-2.5 text-center font-semibold">Cash Released</th>
+                            <th className="px-3 py-2.5 text-center font-semibold">Cash Received</th>
+                            <th className="px-3 py-2.5 text-left font-semibold">Request Date</th>
+                            <th className="px-3 py-2.5 text-left font-semibold">Purpose</th>
+                            <th className="px-3 py-2.5 text-left font-semibold">Payee</th>
+                            <th className="px-3 py-2.5 text-left font-semibold">Company</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewData.map((r, idx) => {
+                            const status = computeStatus(r);
+                            const released = !isReleaseEligible(r) ? 'N/A' : r.cash_released ? 'Released' : 'Pending';
+                            const received = !isReleaseEligible(r) ? 'N/A' : r.received_at ? 'Received' : 'Pending';
+                            const typeBadge =
+                              r.request_type === 'For Liquidation' ? 'bg-blue-100 text-blue-800'
+                              : r.request_type === 'For Reimbursement' ? 'bg-amber-100 text-amber-800'
+                              : 'bg-teal-100 text-teal-800';
+                            const statusBadge = (s: string) =>
+                              s === 'Released' ? 'bg-emerald-100 text-emerald-800'
+                              : s === 'Received' ? 'bg-blue-100 text-blue-800'
+                              : s === 'Pending' ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-600';
+                            return (
+                              <tr key={r.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                <td className="px-3 py-2 font-mono font-semibold text-slate-900">{r.pc_number}</td>
+                                <td className="px-3 py-2 text-slate-800">{r.user_profiles?.full_name || ''}</td>
+                                <td className="px-3 py-2 text-slate-700">{r.department || r.user_profiles?.department || ''}</td>
+                                <td className="px-3 py-2 text-right font-mono text-slate-900">
+                                  {Number(r.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${typeBadge}`}>
+                                    {r.request_type || 'For Cash Advance'}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-center font-mono text-blue-700">{getLinkedCashAdvancePcNumber(r) || ''}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusBadge(released)}`}>
+                                    {released}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${statusBadge(received)}`}>
+                                    {received}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-slate-700">
+                                  {r.request_date ? new Date(r.request_date).toLocaleDateString() : ''}
+                                </td>
+                                <td className="px-3 py-2 text-slate-700 max-w-[200px] truncate" title={r.purpose}>{r.purpose || ''}</td>
+                                <td className="px-3 py-2 text-slate-700">{r.payee || ''}</td>
+                                <td className="px-3 py-2 text-slate-700">{r.companies?.name || ''}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-slate-100 border-t-2 border-slate-300">
+                            <td colSpan={3} className="px-3 py-3 text-right font-bold text-slate-900">TOTAL</td>
+                            <td className="px-3 py-3 text-right font-mono font-bold text-emerald-700">
+                              {previewData.reduce((s, r) => s + Number(r.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td colSpan={8}></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-6 bg-slate-50 border-t border-slate-200">
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Total Records</div>
+                        <div className="text-2xl font-bold text-slate-900 mt-1">{previewData.length}</div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Total Amount</div>
+                        <div className="text-2xl font-bold text-emerald-700 mt-1">
+                          {previewData.reduce((s, r) => s + Number(r.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Released</div>
+                        <div className="text-2xl font-bold text-blue-700 mt-1">
+                          {previewData.filter((r) => isReleaseEligible(r) && r.cash_released).length}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide">Pending Release</div>
+                        <div className="text-2xl font-bold text-amber-700 mt-1">
+                          {previewData.filter((r) => isReleaseEligible(r) && !r.cash_released).length}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-white">
+              <button
+                onClick={() => {
+                  setShowPreviewModal(false);
+                  setShowPreviewSetupModal(true);
+                }}
+                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-semibold"
+              >
+                Edit Setup
+              </button>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
