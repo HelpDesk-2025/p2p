@@ -135,6 +135,13 @@ export function PettyCashRelease() {
         { value: 'For Liquidation', label: 'For Liquidation' },
       ],
     },
+    {
+      key: 'hide_linked_ca',
+      label: 'Hide Linked CA in Liquidation',
+      type: 'checkbox',
+      description: 'Hide the original Cash Advance row when its Liquidation is shown.',
+      showWhen: (v) => (v.request_type || '').split(',').includes('For Liquidation'),
+    },
     { key: 'linked_ca', label: 'Linked CA', type: 'text' },
     {
       key: 'cash_released',
@@ -394,7 +401,19 @@ export function PettyCashRelease() {
     return requestsById.get(r.linked_petty_cash_id)?.pc_number ?? null;
   };
 
-  const filteredRequests = applyFilters(requests, filterValues, filterColumns, getFilterFieldValue);
+  let filteredRequests = applyFilters(requests, filterValues, filterColumns, getFilterFieldValue);
+
+  if (
+    filterValues.hide_linked_ca === 'true' &&
+    (filterValues.request_type || '').split(',').includes('For Liquidation')
+  ) {
+    const linkedCaIds = new Set(
+      filteredRequests
+        .filter((r) => r.request_type === 'For Liquidation' && r.linked_petty_cash_id)
+        .map((r) => r.linked_petty_cash_id as string)
+    );
+    filteredRequests = filteredRequests.filter((r) => !linkedCaIds.has(r.id));
+  }
 
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any;
