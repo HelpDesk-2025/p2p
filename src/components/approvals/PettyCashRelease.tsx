@@ -401,19 +401,23 @@ export function PettyCashRelease() {
     return requestsById.get(r.linked_petty_cash_id)?.pc_number ?? null;
   };
 
-  let filteredRequests = applyFilters(requests, filterValues, filterColumns, getFilterFieldValue);
+  const applyAllFilters = (vals: FilterValues): PettyCashReq[] => {
+    let result = applyFilters(requests, vals, filterColumns, getFilterFieldValue);
+    if (
+      vals.hide_linked_ca === 'true' &&
+      (vals.request_type || '').split(',').includes('For Liquidation')
+    ) {
+      const linkedCaIds = new Set(
+        result
+          .filter((r) => r.request_type === 'For Liquidation' && r.linked_petty_cash_id)
+          .map((r) => r.linked_petty_cash_id as string)
+      );
+      result = result.filter((r) => !linkedCaIds.has(r.id));
+    }
+    return result;
+  };
 
-  if (
-    filterValues.hide_linked_ca === 'true' &&
-    (filterValues.request_type || '').split(',').includes('For Liquidation')
-  ) {
-    const linkedCaIds = new Set(
-      filteredRequests
-        .filter((r) => r.request_type === 'For Liquidation' && r.linked_petty_cash_id)
-        .map((r) => r.linked_petty_cash_id as string)
-    );
-    filteredRequests = filteredRequests.filter((r) => !linkedCaIds.has(r.id));
-  }
+  const filteredRequests = applyAllFilters(filterValues);
 
   const sortedRequests = [...filteredRequests].sort((a, b) => {
     let aVal: any;
@@ -858,8 +862,7 @@ export function PettyCashRelease() {
         values={previewSetup}
         onApply={(v) => {
           setPreviewSetup(v);
-          const filtered = applyFilters(requests, v, filterColumns, getFilterFieldValue);
-          setPreviewData(filtered);
+          setPreviewData(applyAllFilters(v));
           setShowPreviewModal(true);
         }}
       />
