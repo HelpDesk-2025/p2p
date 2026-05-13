@@ -91,6 +91,26 @@ export function PettyCashRelease() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewData, setPreviewData] = useState<PettyCashReq[]>([]);
 
+  const requesterOptions = Array.from(
+    new Set(
+      requests
+        .map((r) => r.user_profiles?.full_name)
+        .filter((v): v is string => !!v && v.trim() !== '')
+    )
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => ({ value: name, label: name }));
+
+  const departmentOptions = Array.from(
+    new Set(
+      requests
+        .map((r) => r.department || r.user_profiles?.department)
+        .filter((v): v is string => !!v && v.trim() !== '')
+    )
+  )
+    .sort((a, b) => a.localeCompare(b))
+    .map((dept) => ({ value: dept, label: dept }));
+
   const filterColumns: FilterColumn[] = [
     {
       key: 'exported',
@@ -102,8 +122,8 @@ export function PettyCashRelease() {
       ],
     },
     { key: 'pc_number', label: 'PC No.', type: 'text' },
-    { key: 'requester', label: 'Requester', type: 'text' },
-    { key: 'department', label: 'Department', type: 'text' },
+    { key: 'requester', label: 'Requester', type: 'select', options: requesterOptions },
+    { key: 'department', label: 'Department', type: 'select', options: departmentOptions },
     { key: 'amount', label: 'Amount', type: 'number' },
     {
       key: 'request_type',
