@@ -4,7 +4,7 @@ import { X, Filter, RotateCcw } from 'lucide-react';
 export interface FilterColumn {
   key: string;
   label: string;
-  type: 'text' | 'select' | 'date' | 'number' | 'dateRange';
+  type: 'text' | 'select' | 'multiSelect' | 'date' | 'number' | 'dateRange';
   options?: { value: string; label: string }[];
 }
 
@@ -123,6 +123,37 @@ export default function FilterModal({ isOpen, onClose, columns, values, onApply 
                 </select>
               )}
 
+              {col.type === 'multiSelect' && (
+                <div className="border border-slate-300 rounded-lg p-2 bg-white space-y-1.5 max-h-48 overflow-y-auto">
+                  {col.options?.map((opt) => {
+                    const selected = (localValues[col.key] || '').split(',').filter(Boolean);
+                    const isChecked = selected.includes(opt.value);
+                    return (
+                      <label
+                        key={opt.value}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...selected, opt.value]
+                              : selected.filter((v) => v !== opt.value);
+                            handleChange(col.key, next.join(','));
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                        />
+                        <span className="text-slate-700">{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                  {(!col.options || col.options.length === 0) && (
+                    <div className="text-xs text-slate-400 px-2 py-1">No options available</div>
+                  )}
+                </div>
+              )}
+
               {col.type === 'date' && (
                 <input
                   type="date"
@@ -204,6 +235,14 @@ export function applyFilters<T extends Record<string, any>>(
         if (!filterVal) return true;
         const fieldVal = String(getFieldValue(item, col.key) || '').toLowerCase();
         return fieldVal === filterVal.toLowerCase();
+      }
+
+      if (col.type === 'multiSelect') {
+        const raw = filterValues[col.key] || '';
+        const selected = raw.split(',').filter(Boolean).map((v) => v.toLowerCase());
+        if (selected.length === 0) return true;
+        const fieldVal = String(getFieldValue(item, col.key) || '').toLowerCase();
+        return selected.includes(fieldVal);
       }
 
       if (col.type === 'date') {

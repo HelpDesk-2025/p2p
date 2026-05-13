@@ -139,7 +139,7 @@ export function PettyCashRelease() {
     {
       key: 'cash_released',
       label: 'Cash Released',
-      type: 'select',
+      type: 'multiSelect',
       options: [
         { value: 'released', label: 'Released' },
         { value: 'pending', label: 'Pending' },
@@ -149,7 +149,7 @@ export function PettyCashRelease() {
     {
       key: 'cash_received',
       label: 'Cash Received',
-      type: 'select',
+      type: 'multiSelect',
       options: [
         { value: 'received', label: 'Received' },
         { value: 'pending', label: 'Pending' },
