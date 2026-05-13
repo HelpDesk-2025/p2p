@@ -128,7 +128,7 @@ export function PettyCashRelease() {
     {
       key: 'request_type',
       label: 'Type',
-      type: 'select',
+      type: 'multiSelect',
       options: [
         { value: 'For Cash Advance', label: 'For Cash Advance' },
         { value: 'For Reimbursement', label: 'For Reimbursement' },
