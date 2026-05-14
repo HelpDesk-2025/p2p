@@ -247,24 +247,38 @@ export function PurchaseOrder() {
       showToast('error', 'Selected canvass has no winning vendor.');
       return;
     }
-    const winnerItems: POItem[] = (winner.items || []).map((it: any) => {
+    const ewtTotal = Number(winner.ewt || 0);
+    const sourceItems: any[] = Array.isArray(winner.items) ? winner.items : [];
+    const itemsLineTotal = sourceItems.reduce(
+      (sum, it: any) => sum + Number(it.quantity || 0) * Number(it.unit_price || 0),
+      0,
+    );
+    const winnerItems: POItem[] = sourceItems.map((it: any, idx: number) => {
       const qty = Number(it.quantity || 0);
       const price = Number(it.unit_price || 0);
+      const lineTotal = Number((qty * price).toFixed(2));
+      const lineEwt = itemsLineTotal > 0
+        ? Number(((lineTotal / itemsLineTotal) * ewtTotal).toFixed(2))
+        : (idx === 0 ? ewtTotal : 0);
       return {
         item_description: it.description || '',
         unit_of_measure: it.uom || '',
         quantity: qty,
         unit_price: price,
-        total_price: Number((qty * price).toFixed(2)),
-        ewt_amount: 0,
+        total_price: lineTotal,
+        ewt_amount: lineEwt,
         pr_item_id: '',
         remarks: '',
       };
     });
-    const subtotal = winnerItems.reduce((sum, it) => sum + it.total_price, 0);
     const vatable = !!winner.vatable;
-    const vat = vatable ? Number((subtotal * 0.12).toFixed(2)) : 0;
-    const total = Number((subtotal + vat).toFixed(2));
+    const subtotal = vatable
+      ? Number(Number(winner.net_of_vat || 0).toFixed(2))
+      : Number(winnerItems.reduce((sum, it) => sum + it.total_price, 0).toFixed(2));
+    const vat = vatable
+      ? Number(Number(winner.vat_12 || 0).toFixed(2))
+      : 0;
+    const total = Number((subtotal + vat - ewtTotal).toFixed(2));
 
     setDraftCanvass(c);
     setDraftItems(winnerItems);
@@ -299,10 +313,13 @@ export function PurchaseOrder() {
     setView('create');
   };
 
-  const recomputeTotals = (items: POItem[], vatable: boolean) => {
-    const subtotal = items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
-    const vat = vatable ? Number((subtotal * 0.12).toFixed(2)) : 0;
-    return { subtotal: Number(subtotal.toFixed(2)), vat, total: Number((subtotal + vat).toFixed(2)) };
+  const recomputeTotals = (items: POItem[], subtotal: number, vat: number) => {
+    const ewt = items.reduce((sum, it) => sum + Number(it.ewt_amount || 0), 0);
+    return {
+      subtotal: Number(subtotal.toFixed(2)),
+      vat: Number(vat.toFixed(2)),
+      total: Number((subtotal + vat - ewt).toFixed(2)),
+    };
   };
 
   const updateDraftField = <K extends keyof PurchaseOrder>(key: K, value: PurchaseOrder[K]) => {
@@ -540,9 +557,10 @@ export function PurchaseOrder() {
       const price = Number(merged.unit_price || 0);
       merged.total_price = Number((qty * price).toFixed(2));
       copy[idx] = merged;
-      const vatable = (draftPO.vat_amount || 0) > 0;
-      const totals = recomputeTotals(copy, vatable);
-      setDraftPO((p) => ({ ...p, subtotal: totals.subtotal, vat_amount: totals.vat, total_amount: totals.total }));
+      const subtotal = Number(draftPO.subtotal || 0);
+      const vat = Number(draftPO.vat_amount || 0);
+      const totals = recomputeTotals(copy, subtotal, vat);
+      setDraftPO((p) => ({ ...p, total_amount: totals.total }));
       return copy;
     });
   };
@@ -1033,7 +1051,7 @@ function CreateView({
         <div className="mt-3 flex justify-end">
           <div className="w-72 space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-600">Subtotal</span>
+              <span className="text-slate-600">Net of VAT</span>
               <span className="tabular-nums">{fmtMoney(Number(po.subtotal || 0))}</span>
             </div>
             <div className="flex justify-between">
@@ -1045,7 +1063,7 @@ function CreateView({
               <span className="tabular-nums">{fmtMoney(items.reduce((s, it) => s + Number(it.ewt_amount || 0), 0))}</span>
             </div>
             <div className="flex justify-between font-semibold text-base border-t border-slate-200 pt-1">
-              <span>Total</span>
+              <span>Net Payable</span>
               <span className="tabular-nums">{fmtMoney(Number(po.total_amount || 0))}</span>
             </div>
           </div>
@@ -1178,11 +1196,11 @@ function DetailView({
         <div className="mt-3 flex justify-end">
           <div className="w-72 space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-600">Subtotal</span>
+              <span className="text-slate-600">Net of VAT</span>
               <span className="tabular-nums">{fmtMoney(Number(po.subtotal))}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-600">VAT</span>
+              <span className="text-slate-600">VAT (12%)</span>
               <span className="tabular-nums">{fmtMoney(Number(po.vat_amount))}</span>
             </div>
             <div className="flex justify-between">
@@ -1190,7 +1208,7 @@ function DetailView({
               <span className="tabular-nums">{fmtMoney(items.reduce((s, it) => s + Number(it.ewt_amount || 0), 0))}</span>
             </div>
             <div className="flex justify-between font-semibold text-base border-t border-slate-200 pt-1">
-              <span>Total</span>
+              <span>Net Payable</span>
               <span className="tabular-nums">{fmtMoney(Number(po.total_amount))}</span>
             </div>
           </div>
