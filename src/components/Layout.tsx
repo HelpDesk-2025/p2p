@@ -26,6 +26,7 @@ import {
   History,
   Package,
   PackageSearch,
+  FileCheck,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -44,6 +45,7 @@ export type ViewType =
   | 'po-request'
   | 'gr-list'
   | 'gr-tracker'
+  | 'invoice-list'
   | 'pr-approval'
   | 'po-approval'
   | 'canvass-approval'
@@ -140,6 +142,13 @@ const menuItems: MenuItem[] = [
     icon: PackageSearch,
     permission: MODULE_PERMISSIONS.GOODS_RECEIPT,
     group: 'receiving',
+  },
+  {
+    id: 'invoice-list',
+    label: 'Invoice & 3-Way Match',
+    icon: FileCheck,
+    permission: MODULE_PERMISSIONS.INVOICE_RECEIPT,
+    group: 'accounts-payable',
   },
   {
     id: 'pr-approval',
@@ -327,6 +336,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const approvalItems = filteredMenuItems.filter((item) => item.group === 'approvals');
   const procurementItems = filteredMenuItems.filter((item) => item.group === 'procurement');
   const receivingItems = filteredMenuItems.filter((item) => item.group === 'receiving');
+  const apItems = filteredMenuItems.filter((item) => item.group === 'accounts-payable');
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
@@ -412,6 +422,27 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                 </h3>
                 <div className="space-y-1">
                   {receivingItems.map((item) => (
+                    <NavItem
+                      key={item.id}
+                      item={item}
+                      active={currentView === item.id}
+                      onClick={() => {
+                        onViewChange(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {apItems.length > 0 && (
+              <div className="mt-6">
+                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Accounts Payable
+                </h3>
+                <div className="space-y-1">
+                  {apItems.map((item) => (
                     <NavItem
                       key={item.id}
                       item={item}

@@ -103,6 +103,7 @@ export const MODULE_PERMISSIONS = {
   REIMBURSEMENT: 'Reimbursement Request',
   PURCHASE_ORDER: 'Purchase Order Request',
   GOODS_RECEIPT: 'Goods Receipt View',
+  INVOICE_RECEIPT: 'Invoice Receipt View',
 
   // Approval Modules
   PR_APPROVAL: 'Purchase Requisition Approval',

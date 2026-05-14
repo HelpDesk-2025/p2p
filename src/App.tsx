@@ -13,6 +13,7 @@ import { Reimbursement } from './components/requests/Reimbursement';
 import { PurchaseOrder } from './components/requests/PurchaseOrder';
 import { GoodsReceipt } from './components/requests/GoodsReceipt';
 import { POReceiptTracker } from './components/POReceiptTracker';
+import { VendorInvoice } from './components/requests/VendorInvoice';
 import { PRApproval } from './components/approvals/PRApproval';
 import { POApproval } from './components/approvals/POApproval';
 import { CanvassApproval } from './components/approvals/CanvassApproval';
@@ -86,6 +87,8 @@ function AppContent() {
         return <GoodsReceipt />;
       case 'gr-tracker':
         return <POReceiptTracker />;
+      case 'invoice-list':
+        return <VendorInvoice />;
       case 'pr-approval':
         return <PRApproval />;
       case 'po-approval':
