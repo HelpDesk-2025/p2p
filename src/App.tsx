@@ -14,10 +14,6 @@ import { PurchaseOrder } from './components/requests/PurchaseOrder';
 import { GoodsReceipt } from './components/requests/GoodsReceipt';
 import { POReceiptTracker } from './components/POReceiptTracker';
 import { VendorInvoice } from './components/requests/VendorInvoice';
-import { APVoucher } from './components/payments/APVoucher';
-import { CheckVoucher } from './components/payments/CheckVoucher';
-import { PaymentSchedule } from './components/payments/PaymentSchedule';
-import { PaymentReports } from './components/payments/PaymentReports';
 import { PRApproval } from './components/approvals/PRApproval';
 import { POApproval } from './components/approvals/POApproval';
 import { CanvassApproval } from './components/approvals/CanvassApproval';
@@ -93,14 +89,6 @@ function AppContent() {
         return <POReceiptTracker />;
       case 'invoice-list':
         return <VendorInvoice />;
-      case 'apv-list':
-        return <APVoucher />;
-      case 'cv-list':
-        return <CheckVoucher />;
-      case 'payment-schedule':
-        return <PaymentSchedule />;
-      case 'payment-reports':
-        return <PaymentReports />;
       case 'pr-approval':
         return <PRApproval />;
       case 'po-approval':

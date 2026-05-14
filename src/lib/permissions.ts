@@ -132,17 +132,5 @@ export const MODULE_PERMISSIONS = {
   APPROVAL_LEDGER: 'Approval Ledger',
 
   // Reimbursement sub-pages
-  APPROVED_REJECTED: 'Approved and Rejected',
-
-  // Treasury / Payment Processing
-  AP_VOUCHER_VIEW: 'AP Voucher View',
-  AP_VOUCHER_CREATE: 'AP Voucher Create',
-  AP_VOUCHER_APPROVE: 'AP Voucher Approve',
-  CHECK_VOUCHER_VIEW: 'Check Voucher View',
-  CHECK_VOUCHER_CREATE: 'Check Voucher Create',
-  CHECK_VOUCHER_APPROVE: 'Check Voucher Approve',
-  CHECK_VOUCHER_RELEASE: 'Check Voucher Release',
-  PAYMENT_SCHEDULE_VIEW: 'Payment Schedule View',
-  PAYMENT_REPORTS_VIEW: 'Payment Reports View',
-  PO_CLOSURE_MANAGE: 'PO Closure Manage'
+  APPROVED_REJECTED: 'Approved and Rejected'
 } as const;

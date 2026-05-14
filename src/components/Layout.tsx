@@ -27,9 +27,6 @@ import {
   Package,
   PackageSearch,
   FileCheck,
-  FileSpreadsheet,
-  CalendarClock,
-  BarChart3,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -49,10 +46,6 @@ export type ViewType =
   | 'gr-list'
   | 'gr-tracker'
   | 'invoice-list'
-  | 'apv-list'
-  | 'cv-list'
-  | 'payment-schedule'
-  | 'payment-reports'
   | 'pr-approval'
   | 'po-approval'
   | 'canvass-approval'
@@ -156,34 +149,6 @@ const menuItems: MenuItem[] = [
     icon: FileCheck,
     permission: MODULE_PERMISSIONS.INVOICE_RECEIPT,
     group: 'accounts-payable',
-  },
-  {
-    id: 'apv-list',
-    label: 'AP Vouchers',
-    icon: FileSpreadsheet,
-    permission: MODULE_PERMISSIONS.AP_VOUCHER_VIEW,
-    group: 'accounts-payable',
-  },
-  {
-    id: 'payment-schedule',
-    label: 'Payment Schedule',
-    icon: CalendarClock,
-    permission: MODULE_PERMISSIONS.PAYMENT_SCHEDULE_VIEW,
-    group: 'treasury',
-  },
-  {
-    id: 'cv-list',
-    label: 'Check Vouchers',
-    icon: Banknote,
-    permission: MODULE_PERMISSIONS.CHECK_VOUCHER_VIEW,
-    group: 'treasury',
-  },
-  {
-    id: 'payment-reports',
-    label: 'Payment Reports',
-    icon: BarChart3,
-    permission: MODULE_PERMISSIONS.PAYMENT_REPORTS_VIEW,
-    group: 'treasury',
   },
   {
     id: 'pr-approval',
@@ -372,7 +337,6 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const procurementItems = filteredMenuItems.filter((item) => item.group === 'procurement');
   const receivingItems = filteredMenuItems.filter((item) => item.group === 'receiving');
   const apItems = filteredMenuItems.filter((item) => item.group === 'accounts-payable');
-  const treasuryItems = filteredMenuItems.filter((item) => item.group === 'treasury');
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
@@ -479,27 +443,6 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                 </h3>
                 <div className="space-y-1">
                   {apItems.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      item={item}
-                      active={currentView === item.id}
-                      onClick={() => {
-                        onViewChange(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {treasuryItems.length > 0 && (
-              <div className="mt-6">
-                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Treasury
-                </h3>
-                <div className="space-y-1">
-                  {treasuryItems.map((item) => (
                     <NavItem
                       key={item.id}
                       item={item}
