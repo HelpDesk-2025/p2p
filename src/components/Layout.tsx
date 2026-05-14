@@ -24,6 +24,8 @@ import {
   ScrollText,
   AlertTriangle,
   History,
+  Package,
+  PackageSearch,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -40,6 +42,8 @@ export type ViewType =
   | 'cash-advance-request'
   | 'reimbursement-request'
   | 'po-request'
+  | 'gr-list'
+  | 'gr-tracker'
   | 'pr-approval'
   | 'po-approval'
   | 'canvass-approval'
@@ -122,6 +126,20 @@ const menuItems: MenuItem[] = [
     icon: ShoppingCart,
     permission: MODULE_PERMISSIONS.PURCHASE_ORDER,
     group: 'requests',
+  },
+  {
+    id: 'gr-list',
+    label: 'Goods Receipt',
+    icon: Package,
+    permission: MODULE_PERMISSIONS.GOODS_RECEIPT,
+    group: 'receiving',
+  },
+  {
+    id: 'gr-tracker',
+    label: 'PO Receipt Tracker',
+    icon: PackageSearch,
+    permission: MODULE_PERMISSIONS.GOODS_RECEIPT,
+    group: 'receiving',
   },
   {
     id: 'pr-approval',
@@ -308,6 +326,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   const requestItems = filteredMenuItems.filter((item) => item.group === 'requests');
   const approvalItems = filteredMenuItems.filter((item) => item.group === 'approvals');
   const procurementItems = filteredMenuItems.filter((item) => item.group === 'procurement');
+  const receivingItems = filteredMenuItems.filter((item) => item.group === 'receiving');
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
@@ -372,6 +391,27 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                 </h3>
                 <div className="space-y-1">
                   {approvalItems.map((item) => (
+                    <NavItem
+                      key={item.id}
+                      item={item}
+                      active={currentView === item.id}
+                      onClick={() => {
+                        onViewChange(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {receivingItems.length > 0 && (
+              <div className="mt-6">
+                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Receiving
+                </h3>
+                <div className="space-y-1">
+                  {receivingItems.map((item) => (
                     <NavItem
                       key={item.id}
                       item={item}

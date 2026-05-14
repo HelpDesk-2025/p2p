@@ -102,6 +102,7 @@ export const MODULE_PERMISSIONS = {
   PETTY_CASH: 'Petty Cash Request',
   REIMBURSEMENT: 'Reimbursement Request',
   PURCHASE_ORDER: 'Purchase Order Request',
+  GOODS_RECEIPT: 'Goods Receipt View',
 
   // Approval Modules
   PR_APPROVAL: 'Purchase Requisition Approval',

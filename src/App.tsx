@@ -11,6 +11,8 @@ import { Canvass } from './components/requests/Canvass';
 import { CashAdvance } from './components/requests/CashAdvance';
 import { Reimbursement } from './components/requests/Reimbursement';
 import { PurchaseOrder } from './components/requests/PurchaseOrder';
+import { GoodsReceipt } from './components/requests/GoodsReceipt';
+import { POReceiptTracker } from './components/POReceiptTracker';
 import { PRApproval } from './components/approvals/PRApproval';
 import { POApproval } from './components/approvals/POApproval';
 import { CanvassApproval } from './components/approvals/CanvassApproval';
@@ -80,6 +82,10 @@ function AppContent() {
         return <Reimbursement />;
       case 'po-request':
         return <PurchaseOrder />;
+      case 'gr-list':
+        return <GoodsReceipt />;
+      case 'gr-tracker':
+        return <POReceiptTracker />;
       case 'pr-approval':
         return <PRApproval />;
       case 'po-approval':
