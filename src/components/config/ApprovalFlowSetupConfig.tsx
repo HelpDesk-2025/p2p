@@ -607,6 +607,7 @@ export function ApprovalFlowSetupConfig() {
                 >
                   <option value="Purchase Requisition">Purchase Requisition</option>
                   <option value="Canvass">Canvass</option>
+                  <option value="Purchase Order">Purchase Order</option>
                   <option value="Petty Cash">Petty Cash</option>
                   <option value="Cash Advance">Cash Advance</option>
                   <option value="Reimbursement">Reimbursement</option>
@@ -1059,6 +1060,7 @@ export function ApprovalFlowSetupConfig() {
                 <option value="">All Request Types</option>
                 <option value="Purchase Requisition">Purchase Requisition</option>
                 <option value="Canvass">Canvass</option>
+                <option value="Purchase Order">Purchase Order</option>
                 <option value="Petty Cash">Petty Cash</option>
                 <option value="Cash Advance">Cash Advance</option>
                 <option value="Reimbursement">Reimbursement</option>
