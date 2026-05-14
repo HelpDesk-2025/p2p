@@ -646,7 +646,7 @@ export function ApprovalFlowSetupConfig() {
 
           {editingSetupId && selectedCompany && (() => {
             const isPettyCash = formData.request_type === 'Petty Cash';
-            const workflowTypes = isPettyCash ? [1, 2] : [1, 2, 3];
+            const workflowTypes = isPettyCash ? [1, 2, 3] : [1, 2, 3];
             const presidentAmountLabel = selectedCompany.president_min_amount
               ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })
               : '0';
@@ -676,7 +676,7 @@ export function ApprovalFlowSetupConfig() {
                 </div>
               )}
 
-              <div className={`grid grid-cols-1 ${isPettyCash ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4`}>
+              <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4`}>
                 {workflowTypes.map((workflowType) => {
                   const colors = [
                     { bg: "from-red-50 to-orange-50", border: "border-red-200", btn: "bg-red-500 hover:bg-red-600", badge: "bg-red-100 text-red-800", ring: "focus:ring-red-500", borderLight: "border-red-200", borderDark: "border-red-300" },
@@ -685,10 +685,10 @@ export function ApprovalFlowSetupConfig() {
                   ][workflowType - 1];
 
                   const titles = isPettyCash
-                    ? ["Department Expense", "ManCom Expense"]
+                    ? ["Department Expense", "ManCom Expense", "CEO Expense"]
                     : ["Unbudgeted", `Budgeted <${presidentAmountLabel}`, `Budgeted >${presidentAmountLabel}`];
                   const subtitles = isPettyCash
-                    ? ["Routine department-level expenses", "Requires ManCom-level approval"]
+                    ? ["Routine department-level expenses", "Requires ManCom-level approval", "Requires CEO-level approval"]
                     : ["No budget allocation", `Less than ₱${presidentAmountLabel}`, `More than ₱${presidentAmountLabel}`];
 
                   const workflowSteps = currentSteps.filter(s => s.workflow_type === workflowType).sort((a, b) => a.sequence - b.sequence);
