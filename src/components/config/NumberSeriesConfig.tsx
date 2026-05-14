@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Trash2, Edit2, X, Hash, Building2 } from 'lucide-react';
+import { Plus, Save, Trash2, CreditCard as Edit2, X, Hash, Building2 } from 'lucide-react';
 
 interface NumberSeries {
   id: string;
@@ -27,6 +27,7 @@ const SERIES_NAME_OPTIONS = [
   'Petty Cash',
   'Reimbursement',
   'Cash Advance',
+  'Purchase Order',
 ];
 
 export function NumberSeriesConfig() {
