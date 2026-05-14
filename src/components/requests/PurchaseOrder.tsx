@@ -36,6 +36,7 @@ interface POItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  ewt_amount: number;
   pr_item_id: string;
   remarks: string;
 }
@@ -51,6 +52,7 @@ interface PurchaseOrder {
   vendor_contact: string;
   vendor_email: string;
   vendor_tin: string;
+  vendor_bank_account: string;
   company_id: string | null;
   department: string;
   requested_by: string | null;
@@ -59,6 +61,7 @@ interface PurchaseOrder {
   expected_delivery_date: string | null;
   delivery_address: string;
   payment_terms: string;
+  payment_terms_custom: string;
   delivery_terms: string;
   remarks: string;
   subtotal: number;
@@ -251,6 +254,7 @@ export function PurchaseOrder() {
         quantity: qty,
         unit_price: price,
         total_price: Number((qty * price).toFixed(2)),
+        ewt_amount: 0,
         pr_item_id: '',
         remarks: '',
       };
@@ -271,6 +275,7 @@ export function PurchaseOrder() {
       vendor_contact: winner.contact_no || '',
       vendor_email: winner.email_address || '',
       vendor_tin: winner.tin || '',
+      vendor_bank_account: winner.bank_account || '',
       company_id: c.company_id,
       department: c.department || '',
       requested_by: c.requester_id,
@@ -278,6 +283,7 @@ export function PurchaseOrder() {
       expected_delivery_date: '',
       delivery_address: '',
       payment_terms: 'Net 30',
+      payment_terms_custom: '',
       delivery_terms: '',
       remarks: '',
       subtotal,
@@ -333,6 +339,7 @@ export function PurchaseOrder() {
             vendor_contact: draftPO.vendor_contact,
             vendor_email: draftPO.vendor_email,
             vendor_tin: draftPO.vendor_tin,
+            vendor_bank_account: draftPO.vendor_bank_account || '',
             company_id: draftPO.company_id,
             department: draftPO.department,
             requested_by: draftPO.requested_by,
@@ -341,6 +348,7 @@ export function PurchaseOrder() {
             expected_delivery_date: draftPO.expected_delivery_date,
             delivery_address: draftPO.delivery_address,
             payment_terms: draftPO.payment_terms,
+            payment_terms_custom: draftPO.payment_terms_custom || '',
             delivery_terms: draftPO.delivery_terms,
             remarks: draftPO.remarks,
             subtotal: draftPO.subtotal,
@@ -365,6 +373,7 @@ export function PurchaseOrder() {
         quantity: it.quantity,
         unit_price: it.unit_price,
         total_price: it.total_price,
+        ewt_amount: Number(it.ewt_amount || 0),
         pr_item_id: it.pr_item_id || '',
         remarks: it.remarks || '',
       }));
@@ -867,6 +876,15 @@ function CreateView({
               className={INPUT_CLS}
             />
           </Field>
+          <Field label="Bank Account">
+            <input
+              type="text"
+              value={po.vendor_bank_account || ''}
+              onChange={(e) => onChange('vendor_bank_account', e.target.value)}
+              className={INPUT_CLS}
+              placeholder="Bank name / account number"
+            />
+          </Field>
         </Section>
 
         <Section title="PO Details">
@@ -914,6 +932,17 @@ function CreateView({
               <input value={po.department || ''} readOnly className={READONLY_CLS} />
             </Field>
           </div>
+          {po.payment_terms === 'Custom' && (
+            <Field label="Payment Terms (Custom) *">
+              <input
+                type="text"
+                value={po.payment_terms_custom || ''}
+                onChange={(e) => onChange('payment_terms_custom', e.target.value)}
+                className={INPUT_CLS}
+                placeholder="e.g., 30% downpayment, balance upon delivery"
+              />
+            </Field>
+          )}
           <Field label="Delivery Terms">
             <textarea
               rows={2}
@@ -943,6 +972,7 @@ function CreateView({
                 <th className="px-3 py-2 text-right">Qty</th>
                 <th className="px-3 py-2 text-right">Unit Price</th>
                 <th className="px-3 py-2 text-right">Total</th>
+                <th className="px-3 py-2 text-right">EWT</th>
                 <th className="px-3 py-2">Remarks</th>
               </tr>
             </thead>
@@ -954,6 +984,16 @@ function CreateView({
                   <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toFixed(2)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.unit_price)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.total_price)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={Number(it.ewt_amount || 0)}
+                      onChange={(e) => onItemChange(idx, { ewt_amount: Number(e.target.value || 0) })}
+                      className="w-24 px-2 py-1 border border-slate-200 rounded text-xs text-right tabular-nums"
+                    />
+                  </td>
                   <td className="px-3 py-2">
                     <input
                       value={it.remarks}
@@ -1065,12 +1105,13 @@ function DetailView({
           <KV label="Contact" value={po.vendor_contact || '—'} />
           <KV label="Email" value={po.vendor_email || '—'} />
           <KV label="TIN" value={po.vendor_tin || '—'} />
+          <KV label="Bank Account" value={po.vendor_bank_account || '—'} />
         </Section>
         <Section title="PO Details">
           <KV label="PO Date" value={po.po_date} />
           <KV label="Expected Delivery" value={po.expected_delivery_date || '—'} />
           <KV label="Delivery Address" value={po.delivery_address || '—'} />
-          <KV label="Payment Terms" value={po.payment_terms} />
+          <KV label="Payment Terms" value={po.payment_terms === 'Custom' ? `Custom: ${po.payment_terms_custom || '—'}` : po.payment_terms} />
           <KV label="Delivery Terms" value={po.delivery_terms || '—'} />
           <KV label="Department" value={po.department || '—'} />
           <KV label="Remarks" value={po.remarks || '—'} />
@@ -1087,6 +1128,7 @@ function DetailView({
                 <th className="px-3 py-2 text-right">Qty</th>
                 <th className="px-3 py-2 text-right">Unit Price</th>
                 <th className="px-3 py-2 text-right">Total</th>
+                <th className="px-3 py-2 text-right">EWT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1097,6 +1139,7 @@ function DetailView({
                   <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toFixed(2)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(it.unit_price))}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(it.total_price))}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(it.ewt_amount || 0))}</td>
                 </tr>
               ))}
             </tbody>
