@@ -452,9 +452,7 @@ export function PurchaseOrder() {
         status: 'pending',
       },
     ]);
-    await su
-  }
-}pabase
+    await supabase
       .from('purchase_orders')
       .update({
         current_approver_id: first.approver_id,
