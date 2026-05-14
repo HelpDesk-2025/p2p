@@ -53,6 +53,8 @@ interface PurchaseOrder {
   vendor_email: string;
   vendor_tin: string;
   vendor_bank_account: string;
+  vendor_bank_name: string;
+  vendor_bank_address: string;
   company_id: string | null;
   department: string;
   requested_by: string | null;
@@ -276,6 +278,8 @@ export function PurchaseOrder() {
       vendor_email: winner.email_address || '',
       vendor_tin: winner.tin || '',
       vendor_bank_account: winner.bank_account || '',
+      vendor_bank_name: winner.bank_name || '',
+      vendor_bank_address: winner.bank_address || '',
       company_id: c.company_id,
       department: c.department || '',
       requested_by: c.requester_id,
@@ -340,6 +344,8 @@ export function PurchaseOrder() {
             vendor_email: draftPO.vendor_email,
             vendor_tin: draftPO.vendor_tin,
             vendor_bank_account: draftPO.vendor_bank_account || '',
+            vendor_bank_name: draftPO.vendor_bank_name || '',
+            vendor_bank_address: draftPO.vendor_bank_address || '',
             company_id: draftPO.company_id,
             department: draftPO.department,
             requested_by: draftPO.requested_by,
@@ -876,13 +882,31 @@ function CreateView({
               className={INPUT_CLS}
             />
           </Field>
+          <Field label="Bank Name">
+            <input
+              type="text"
+              value={po.vendor_bank_name || ''}
+              onChange={(e) => onChange('vendor_bank_name', e.target.value)}
+              className={INPUT_CLS}
+              placeholder="e.g., BDO"
+            />
+          </Field>
           <Field label="Bank Account">
             <input
               type="text"
               value={po.vendor_bank_account || ''}
               onChange={(e) => onChange('vendor_bank_account', e.target.value)}
               className={INPUT_CLS}
-              placeholder="Bank name / account number"
+              placeholder="Account number"
+            />
+          </Field>
+          <Field label="Bank Address">
+            <textarea
+              rows={2}
+              value={po.vendor_bank_address || ''}
+              onChange={(e) => onChange('vendor_bank_address', e.target.value)}
+              className={INPUT_CLS}
+              placeholder="Branch / address"
             />
           </Field>
         </Section>
@@ -1105,7 +1129,9 @@ function DetailView({
           <KV label="Contact" value={po.vendor_contact || '—'} />
           <KV label="Email" value={po.vendor_email || '—'} />
           <KV label="TIN" value={po.vendor_tin || '—'} />
+          <KV label="Bank Name" value={po.vendor_bank_name || '—'} />
           <KV label="Bank Account" value={po.vendor_bank_account || '—'} />
+          <KV label="Bank Address" value={po.vendor_bank_address || '—'} />
         </Section>
         <Section title="PO Details">
           <KV label="PO Date" value={po.po_date} />
