@@ -10,7 +10,9 @@ import { PettyCash } from './components/requests/PettyCash';
 import { Canvass } from './components/requests/Canvass';
 import { CashAdvance } from './components/requests/CashAdvance';
 import { Reimbursement } from './components/requests/Reimbursement';
+import { PurchaseOrder } from './components/requests/PurchaseOrder';
 import { PRApproval } from './components/approvals/PRApproval';
+import { POApproval } from './components/approvals/POApproval';
 import { CanvassApproval } from './components/approvals/CanvassApproval';
 import { PettyCashApproval } from './components/approvals/PettyCashApproval';
 import { CashAdvanceApproval } from './components/approvals/CashAdvanceApproval';
@@ -76,8 +78,12 @@ function AppContent() {
         return <CashAdvance />;
       case 'reimbursement-request':
         return <Reimbursement />;
+      case 'po-request':
+        return <PurchaseOrder />;
       case 'pr-approval':
         return <PRApproval />;
+      case 'po-approval':
+        return <POApproval />;
       case 'canvass-approval':
         return <CanvassApproval />;
       case 'petty-cash-approval':

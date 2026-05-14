@@ -10,6 +10,7 @@ import {
   Wallet,
   Banknote,
   Receipt,
+  ShoppingCart,
   CheckSquare,
   ClipboardCheck,
   Settings,
@@ -38,7 +39,9 @@ export type ViewType =
   | 'petty-cash-request'
   | 'cash-advance-request'
   | 'reimbursement-request'
+  | 'po-request'
   | 'pr-approval'
+  | 'po-approval'
   | 'canvass-approval'
   | 'petty-cash-approval'
   | 'cash-advance-approval'
@@ -114,6 +117,13 @@ const menuItems: MenuItem[] = [
     group: 'requests',
   },
   {
+    id: 'po-request',
+    label: 'Purchase Order',
+    icon: ShoppingCart,
+    permission: MODULE_PERMISSIONS.PURCHASE_ORDER,
+    group: 'requests',
+  },
+  {
     id: 'pr-approval',
     label: 'PR Approval',
     icon: CheckSquare,
@@ -146,6 +156,13 @@ const menuItems: MenuItem[] = [
     label: 'Reimbursement | Liquidation Approval',
     icon: CheckSquare,
     permission: MODULE_PERMISSIONS.REIMBURSEMENT_APPROVAL,
+    group: 'approvals',
+  },
+  {
+    id: 'po-approval',
+    label: 'PO Approval',
+    icon: CheckSquare,
+    permission: MODULE_PERMISSIONS.PO_APPROVAL,
     group: 'approvals',
   },
   {

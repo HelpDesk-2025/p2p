@@ -101,6 +101,7 @@ export const MODULE_PERMISSIONS = {
   CASH_ADVANCE: 'Cash Advance Request',
   PETTY_CASH: 'Petty Cash Request',
   REIMBURSEMENT: 'Reimbursement Request',
+  PURCHASE_ORDER: 'Purchase Order Request',
 
   // Approval Modules
   PR_APPROVAL: 'Purchase Requisition Approval',
@@ -108,6 +109,7 @@ export const MODULE_PERMISSIONS = {
   CASH_ADVANCE_APPROVAL: 'Cash Advance Approval',
   PETTY_CASH_APPROVAL: 'Petty Cash Approval',
   REIMBURSEMENT_APPROVAL: 'Reimbursement Approval',
+  PO_APPROVAL: 'Purchase Order Approval',
   SME_APPROVAL: 'Subject Matter Approval',
   PETTY_CASH_RELEASE: 'Petty Cash Release',
 
