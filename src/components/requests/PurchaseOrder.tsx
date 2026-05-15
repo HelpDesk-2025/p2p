@@ -1047,8 +1047,12 @@ function CreateView({
               <span className="text-slate-600">VAT (12%)</span>
               <span className="tabular-nums">{fmtMoney(Number(po.vat_amount || 0))}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">EWT</span>
+              <span className="tabular-nums">{fmtMoney(items.reduce((s, it) => s + Number(it.ewt_amount || 0), 0))}</span>
+            </div>
             <div className="flex justify-between font-semibold text-base border-t border-slate-200 pt-1">
-              <span>Total Amount</span>
+              <span>Net Payable</span>
               <span className="tabular-nums">{fmtMoney(Number(po.total_amount || 0))}</span>
             </div>
           </div>
@@ -1186,8 +1190,12 @@ function DetailView({
               <span className="text-slate-600">VAT (12%)</span>
               <span className="tabular-nums">{fmtMoney(Number(po.vat_amount))}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">EWT</span>
+              <span className="tabular-nums">{fmtMoney(items.reduce((s, it) => s + Number(it.ewt_amount || 0), 0))}</span>
+            </div>
             <div className="flex justify-between font-semibold text-base border-t border-slate-200 pt-1">
-              <span>Total Amount</span>
+              <span>Net Payable</span>
               <span className="tabular-nums">{fmtMoney(Number(po.total_amount))}</span>
             </div>
           </div>
