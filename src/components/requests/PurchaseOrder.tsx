@@ -181,6 +181,7 @@ export function PurchaseOrder() {
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchEmail, setDispatchEmail] = useState('');
+  const [draftPONumber, setDraftPONumber] = useState('');
 
   const showToast = (type: ToastMsg['type'], text: string) => {
     const id = Date.now();
@@ -240,7 +241,7 @@ export function PurchaseOrder() {
     setAvailableCanvasses(((canvData || []) as CanvassRow[]).filter((c) => !usedIds.has(c.id)));
   };
 
-  const startCreateFromCanvass = (c: CanvassRow) => {
+  const startCreateFromCanvass = async (c: CanvassRow) => {
     const winningIndex = typeof c.recommended_quotation_index === 'number' ? c.recommended_quotation_index : 0;
     const winner = Array.isArray(c.suppliers) ? c.suppliers[winningIndex] : null;
     if (!winner) {
@@ -311,6 +312,18 @@ export function PurchaseOrder() {
     });
     setShowCanvassPicker(false);
     setView('create');
+
+    // Generate PO number from number series
+    try {
+      const { data: poNum, error: numErr } = await supabase.rpc('generate_po_number', {
+        p_company_id: c.company_id || null,
+      });
+      if (!numErr && poNum) {
+        setDraftPONumber(poNum as string);
+      }
+    } catch (err) {
+      console.error('Error pre-generating PO number:', err);
+    }
   };
 
   const recomputeTotals = (items: POItem[], subtotal: number, vat: number) => {
@@ -339,11 +352,14 @@ export function PurchaseOrder() {
 
     setSaving(true);
     try {
-      const { data: poNumberData, error: numErr } = await supabase.rpc('generate_po_number', {
-        p_company_id: draftPO.company_id || null,
-      });
-      if (numErr) throw numErr;
-      const poNumber = poNumberData as string;
+      let poNumber = draftPONumber;
+      if (!poNumber) {
+        const { data: poNumberData, error: numErr } = await supabase.rpc('generate_po_number', {
+          p_company_id: draftPO.company_id || null,
+        });
+        if (numErr) throw numErr;
+        poNumber = poNumberData as string;
+      }
 
       const initialStatus: POStatus = submit ? 'pending_approval' : 'draft';
 
@@ -634,6 +650,7 @@ export function PurchaseOrder() {
           <CreateView
             canvass={draftCanvass}
             po={draftPO}
+            poNumber={draftPONumber}
             items={draftItems}
             onChange={updateDraftField}
             onItemChange={updateItem}
@@ -848,6 +865,7 @@ function ListView({
 function CreateView({
   canvass,
   po,
+  poNumber,
   items,
   onChange,
   onItemChange,
@@ -858,6 +876,7 @@ function CreateView({
 }: {
   canvass: CanvassRow;
   po: Partial<PurchaseOrder>;
+  poNumber: string;
   items: POItem[];
   onChange: <K extends keyof PurchaseOrder>(key: K, val: PurchaseOrder[K]) => void;
   onItemChange: (idx: number, patch: Partial<POItem>) => void;
@@ -869,9 +888,15 @@ function CreateView({
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Source Canvass</p>
-          <p className="text-sm font-medium text-blue-900">{canvass.canvass_number}</p>
+        <div className="flex items-center gap-6">
+          <div>
+            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">PO Number</p>
+            <p className="text-sm font-bold text-blue-900 font-mono">{poNumber || 'Generating...'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Source Canvass</p>
+            <p className="text-sm font-medium text-blue-900">{canvass.canvass_number}</p>
+          </div>
         </div>
         <BudgetBadge status={(po.budget_status as PurchaseOrder['budget_status']) || 'no_budget'} />
       </div>
