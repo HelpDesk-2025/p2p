@@ -193,19 +193,25 @@ export function ApprovalFlowSetupConfig() {
   }, [formData.company_id, companies, editingSetupId]);
 
   useEffect(() => {
-    if (!editingSetupId && formData.company_id && formData.department && formData.request_type) {
-      const selectedCompany = companies.find(c => c.id === formData.company_id);
-      if (selectedCompany) {
-        const autoName = `${selectedCompany.name} - ${formData.department} - ${formData.request_type}`;
-        setFormData(prev => ({ ...prev, name: autoName }));
+    if (!editingSetupId && formData.company_id && formData.request_type) {
+      const needsDepartment = formData.request_type !== 'Purchase Order';
+      if (!needsDepartment || formData.department) {
+        const selectedCompany = companies.find(c => c.id === formData.company_id);
+        if (selectedCompany) {
+          const autoName = needsDepartment
+            ? `${selectedCompany.name} - ${formData.department} - ${formData.request_type}`
+            : `${selectedCompany.name} - ${formData.request_type}`;
+          setFormData(prev => ({ ...prev, name: autoName }));
+        }
       }
     }
   }, [formData.company_id, formData.department, formData.request_type, companies, editingSetupId]);
 
   const handleSaveSetup = async () => {
     try {
-      if (!formData.company_id || !formData.department || !formData.request_type) {
-        alert("Please select a company, department, and request type");
+      const needsDepartment = formData.request_type !== 'Purchase Order';
+      if (!formData.company_id || (needsDepartment && !formData.department) || !formData.request_type) {
+        alert(needsDepartment ? "Please select a company, department, and request type" : "Please select a company and request type");
         return;
       }
 
@@ -580,6 +586,7 @@ export function ApprovalFlowSetupConfig() {
                 </select>
               </div>
 
+              {formData.request_type !== 'Purchase Order' && (
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Department *</label>
                 <select
@@ -596,12 +603,16 @@ export function ApprovalFlowSetupConfig() {
                   ))}
                 </select>
               </div>
+              )}
 
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Request Type *</label>
                 <select
                   value={formData.request_type}
-                  onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, request_type: val, department: val === 'Purchase Order' ? '' : formData.department });
+                  }}
                   className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white disabled:bg-slate-100"
                   disabled={!!editingSetupId}
                 >
