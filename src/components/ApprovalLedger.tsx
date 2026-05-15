@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar, CreditCard as Edit3, Check, X } from 'lucide-react';
 
 interface ApprovalEntry {
   id: string;
@@ -16,6 +16,7 @@ interface ApprovalEntry {
   approval_date: string;
   sequence: number;
   created_at: string;
+  for_checking?: boolean;
 }
 
 export function ApprovalLedger() {
@@ -27,6 +28,11 @@ export function ApprovalLedger() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editApproverType, setEditApproverType] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     loadApprovalLedger();
@@ -49,6 +55,51 @@ export function ApprovalLedger() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const startEditing = (entry: ApprovalEntry) => {
+    setEditingId(entry.id);
+    setEditApproverType(entry.approver_type || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditApproverType('');
+  };
+
+  const saveApproverType = async (entry: ApprovalEntry) => {
+    setSaving(true);
+    try {
+      const isChecker = editApproverType.toLowerCase().includes('(checker)');
+      const { error } = await supabase
+        .from('approval_ledger')
+        .update({ approver_type: editApproverType, for_checking: isChecker })
+        .eq('id', entry.id);
+
+      if (error) throw error;
+
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entry.id ? { ...e, approver_type: editApproverType, for_checking: isChecker } : e
+        )
+      );
+      setEditingId(null);
+      setEditApproverType('');
+    } catch (error) {
+      console.error('Error updating approver type:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getApproverTypeOptions = (entry: ApprovalEntry) => {
+    const name = entry.approver_name;
+    return [
+      `${name} (Approver)`,
+      `${name} (Checker)`,
+      'Requestor',
+      'Specific User',
+    ];
   };
 
   const getActionIcon = (action: string) => {
@@ -243,7 +294,7 @@ export function ApprovalLedger() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
+                  <tr key={entry.id} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Calendar size={16} className="text-slate-400" />
@@ -274,7 +325,44 @@ export function ApprovalLedger() {
                       <div className="text-sm font-medium text-slate-900">{entry.approver_name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-slate-600">{entry.approver_type || '-'}</span>
+                      {editingId === entry.id ? (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={editApproverType}
+                            onChange={(e) => setEditApproverType(e.target.value)}
+                            className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            {getApproverTypeOptions(entry).map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => saveApproverType(entry)}
+                            disabled={saving}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded transition"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-slate-600">{entry.approver_type || '-'}</span>
+                          {isAdmin && (
+                            <button
+                              onClick={() => startEditing(entry)}
+                              className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition opacity-0 group-hover:opacity-100"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
