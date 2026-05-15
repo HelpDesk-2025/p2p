@@ -1014,7 +1014,6 @@ function CreateView({
                 <th className="px-3 py-2 text-right">Qty</th>
                 <th className="px-3 py-2 text-right">Unit Price</th>
                 <th className="px-3 py-2 text-right">Total</th>
-                <th className="px-3 py-2 text-right">EWT</th>
                 <th className="px-3 py-2">Remarks</th>
               </tr>
             </thead>
@@ -1026,16 +1025,6 @@ function CreateView({
                   <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toFixed(2)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.unit_price)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.total_price)}</td>
-                  <td className="px-3 py-2 text-right">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={Number(it.ewt_amount || 0)}
-                      onChange={(e) => onItemChange(idx, { ewt_amount: Number(e.target.value || 0) })}
-                      className="w-24 px-2 py-1 border border-slate-200 rounded text-xs text-right tabular-nums"
-                    />
-                  </td>
                   <td className="px-3 py-2">
                     <input
                       value={it.remarks}
@@ -1058,12 +1047,8 @@ function CreateView({
               <span className="text-slate-600">VAT (12%)</span>
               <span className="tabular-nums">{fmtMoney(Number(po.vat_amount || 0))}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">EWT</span>
-              <span className="tabular-nums">{fmtMoney(items.reduce((s, it) => s + Number(it.ewt_amount || 0), 0))}</span>
-            </div>
             <div className="flex justify-between font-semibold text-base border-t border-slate-200 pt-1">
-              <span>Net Payable</span>
+              <span>Total Amount</span>
               <span className="tabular-nums">{fmtMoney(Number(po.total_amount || 0))}</span>
             </div>
           </div>
@@ -1176,7 +1161,6 @@ function DetailView({
                 <th className="px-3 py-2 text-right">Qty</th>
                 <th className="px-3 py-2 text-right">Unit Price</th>
                 <th className="px-3 py-2 text-right">Total</th>
-                <th className="px-3 py-2 text-right">EWT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1187,7 +1171,6 @@ function DetailView({
                   <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity).toFixed(2)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(it.unit_price))}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(it.total_price))}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(it.ewt_amount || 0))}</td>
                 </tr>
               ))}
             </tbody>
@@ -1203,12 +1186,8 @@ function DetailView({
               <span className="text-slate-600">VAT (12%)</span>
               <span className="tabular-nums">{fmtMoney(Number(po.vat_amount))}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">EWT</span>
-              <span className="tabular-nums">{fmtMoney(items.reduce((s, it) => s + Number(it.ewt_amount || 0), 0))}</span>
-            </div>
             <div className="flex justify-between font-semibold text-base border-t border-slate-200 pt-1">
-              <span>Net Payable</span>
+              <span>Total Amount</span>
               <span className="tabular-nums">{fmtMoney(Number(po.total_amount))}</span>
             </div>
           </div>
