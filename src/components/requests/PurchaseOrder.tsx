@@ -315,7 +315,8 @@ export function PurchaseOrder() {
 
     // Generate PO number from number series
     try {
-      const { data: poNum, error: numErr } = await supabase.rpc('generate_po_number', {
+      const { data: poNum, error: numErr } = await supabase.rpc('get_next_number', {
+        p_series_name: 'Purchase Order',
         p_company_id: c.company_id || null,
       });
       if (!numErr && poNum) {
@@ -354,7 +355,8 @@ export function PurchaseOrder() {
     try {
       let poNumber = draftPONumber;
       if (!poNumber) {
-        const { data: poNumberData, error: numErr } = await supabase.rpc('generate_po_number', {
+        const { data: poNumberData, error: numErr } = await supabase.rpc('get_next_number', {
+          p_series_name: 'Purchase Order',
           p_company_id: draftPO.company_id || null,
         });
         if (numErr) throw numErr;
