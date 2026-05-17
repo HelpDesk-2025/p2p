@@ -10,6 +10,7 @@ import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { regenerateRFP } from '../../lib/rfpGenerator';
+import XLSX from 'xlsx-js-style';
 
 interface PRItem {
   description: string;
@@ -2318,31 +2319,90 @@ export function PurchaseRequisition() {
         req.document_no || req.pr_number || '',
         req.companies?.name || '',
         req.department || '',
-        (req.description || req.purpose || '').replace(/"/g, '""'),
+        req.description || req.purpose || '',
         req.request_date ? new Date(req.request_date).toLocaleDateString('en-US') : '',
         req.date_required ? new Date(req.date_required).toLocaleDateString('en-US') : '',
         req.purchase_type || '',
-        (req.payee || '').replace(/"/g, '""'),
-        req.total_amount?.toFixed(2) || '0.00',
+        req.payee || '',
+        req.total_amount || 0,
         req.status || '',
         req.is_budgeted ? 'Budgeted' : 'Non-Budgeted',
       ]);
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-      ].join('\n');
+      const wb = XLSX.utils.book_new();
+      const wsData = [headers, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      const BOM = '\uFEFF';
-      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `purchase_requisitions_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Column widths
+      ws['!cols'] = [
+        { wch: 18 }, // Document No.
+        { wch: 20 }, // Company
+        { wch: 16 }, // Department
+        { wch: 35 }, // Description
+        { wch: 14 }, // Request Date
+        { wch: 14 }, // Date Required
+        { wch: 12 }, // Type
+        { wch: 25 }, // Payee
+        { wch: 15 }, // Total Amount
+        { wch: 16 }, // Status
+        { wch: 16 }, // Budget Status
+      ];
+
+      // Style header row
+      const headerStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '1E40AF' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          top: { style: 'thin', color: { rgb: '000000' } },
+          bottom: { style: 'thin', color: { rgb: '000000' } },
+          left: { style: 'thin', color: { rgb: '000000' } },
+          right: { style: 'thin', color: { rgb: '000000' } },
+        }
+      };
+
+      const dataStyle = {
+        border: {
+          top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          right: { style: 'thin', color: { rgb: 'D1D5DB' } },
+        },
+        alignment: { vertical: 'center', wrapText: true },
+      };
+
+      const amountStyle = {
+        ...dataStyle,
+        numFmt: '#,##0.00',
+        alignment: { horizontal: 'right', vertical: 'center' },
+      };
+
+      // Apply styles to all cells
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[cellRef]) ws[cellRef] = { v: '', t: 's' };
+          if (R === 0) {
+            ws[cellRef].s = headerStyle;
+          } else if (C === 8) {
+            ws[cellRef].s = amountStyle;
+            ws[cellRef].t = 'n';
+            ws[cellRef].z = '#,##0.00';
+          } else {
+            ws[cellRef].s = {
+              ...dataStyle,
+              fill: R % 2 === 0 ? { fgColor: { rgb: 'F8FAFC' } } : undefined,
+            };
+          }
+        }
+      }
+
+      // Freeze header row
+      ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Purchase Requisitions');
+      XLSX.writeFile(wb, `purchase_requisitions_${new Date().toISOString().split('T')[0]}.xlsx`);
 
       setShowExportModal(false);
       setExportFilterValues({});
