@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet } from 'lucide-react';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
@@ -93,6 +93,11 @@ export function PurchaseRequisition() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
+
+  // Export
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFilterValues, setExportFilterValues] = useState<FilterValues>({});
+  const [exporting, setExporting] = useState(false);
 
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -2294,19 +2299,78 @@ export function PurchaseRequisition() {
     generateDocumentNo();
   };
 
+  const handleExport = () => {
+    setExporting(true);
+    try {
+      const exportFiltered = applyFilters(
+        requests,
+        exportFilterValues,
+        prFilterColumns,
+        prGetFieldValue
+      );
+
+      const headers = ['Document No.', 'Company', 'Department', 'Description', 'Request Date', 'Date Required', 'Type', 'Payee', 'Total Amount', 'Status'];
+      const rows = exportFiltered.map((req: any) => [
+        req.document_no || req.pr_number || '',
+        req.companies?.name || '',
+        req.department || '',
+        (req.description || req.purpose || '').replace(/"/g, '""'),
+        req.request_date ? new Date(req.request_date).toLocaleDateString('en-US') : '',
+        req.date_required ? new Date(req.date_required).toLocaleDateString('en-US') : '',
+        req.purchase_type || '',
+        (req.payee || '').replace(/"/g, '""'),
+        req.total_amount?.toFixed(2) || '0.00',
+        req.status || '',
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `purchase_requisitions_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setShowExportModal(false);
+      setExportFilterValues({});
+    } catch (error: any) {
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 w-full max-w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
-          <button
-            onClick={handleNewRequest}
-            className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="sm:hidden">New</span>
-            <span className="hidden sm:inline">New Request</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm sm:text-base transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">Export to Excel</span>
+            </button>
+            <button
+              onClick={handleNewRequest}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+            >
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">New Request</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2929,6 +2993,107 @@ export function PurchaseRequisition() {
         values={filterValues}
         onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
       />
+
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowExportModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Export to Excel</h3>
+                  <p className="text-sm text-slate-500">Filter data before exporting</p>
+                </div>
+              </div>
+              <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {prFilterColumns.map((col) => (
+                <div key={col.key} className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-700">{col.label}</label>
+                  {col.type === 'text' && (
+                    <input
+                      type="text"
+                      value={exportFilterValues[col.key] || ''}
+                      onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
+                      placeholder={`Filter by ${col.label.toLowerCase()}...`}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                    />
+                  )}
+                  {col.type === 'select' && (
+                    <select
+                      value={exportFilterValues[col.key] || ''}
+                      onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
+                    >
+                      <option value="">All</option>
+                      {col.options?.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
+                  {col.type === 'dateRange' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={exportFilterValues[col.key + '_from'] || ''}
+                        onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key + '_from']: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                      />
+                      <input
+                        type="date"
+                        value={exportFilterValues[col.key + '_to'] || ''}
+                        onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key + '_to']: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  )}
+                  {col.type === 'number' && (
+                    <input
+                      type="number"
+                      value={exportFilterValues[col.key] || ''}
+                      onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
+                      placeholder={`Filter by ${col.label.toLowerCase()}...`}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 rounded-b-2xl flex items-center justify-between">
+              <button
+                onClick={() => setExportFilterValues({})}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Reset Filters
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Export
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
