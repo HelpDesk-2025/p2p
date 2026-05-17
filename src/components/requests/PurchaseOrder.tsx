@@ -245,21 +245,32 @@ export function PurchaseOrder() {
       const from = exportVals.request_date_from;
       const to = exportVals.request_date_to;
 
-      let query = supabase
-        .from('purchase_orders')
-        .select('*')
-        .gte('po_date', from)
-        .lte('po_date', to + 'T23:59:59')
-        .is('deleted_at', null)
-        .order('po_date', { ascending: false })
-        .limit(10000);
+      const allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (exportVals.status) query = query.eq('status', exportVals.status);
+      while (hasMore) {
+        let query = supabase
+          .from('purchase_orders')
+          .select('*')
+          .gte('po_date', from + 'T00:00:00')
+          .lte('po_date', to + 'T23:59:59')
+          .is('deleted_at', null)
+          .order('po_date', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      const { data, error } = await query;
-      if (error) throw error;
+        if (exportVals.status) query = query.eq('status', exportVals.status);
 
-      let filtered = data || [];
+        const { data, error } = await query;
+        if (error) throw error;
+
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === pageSize;
+        page++;
+      }
+
+      let filtered = allData;
       if (exportVals.po_number) filtered = filtered.filter((o: any) => o.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
       if (exportVals.vendor_name) filtered = filtered.filter((o: any) => o.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
       if (exportVals.department) filtered = filtered.filter((o: any) => o.department.toLowerCase().includes(exportVals.department.toLowerCase()));

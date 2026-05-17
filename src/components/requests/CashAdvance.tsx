@@ -1712,20 +1712,31 @@ export function CashAdvance() {
       const from = exportVals.request_date_from;
       const to = exportVals.request_date_to;
 
-      let query = supabase
-        .from('cash_advance_requests')
-        .select('*, companies(name)')
-        .gte('request_date', from)
-        .lte('request_date', to + 'T23:59:59')
-        .order('request_date', { ascending: false })
-        .limit(10000);
+      const allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (exportVals.status) query = query.eq('status', exportVals.status);
+      while (hasMore) {
+        let query = supabase
+          .from('cash_advance_requests')
+          .select('*, companies(name)')
+          .gte('request_date', from + 'T00:00:00')
+          .lte('request_date', to + 'T23:59:59')
+          .order('request_date', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      const { data, error } = await query;
-      if (error) throw error;
+        if (exportVals.status) query = query.eq('status', exportVals.status);
 
-      let filtered = data || [];
+        const { data, error } = await query;
+        if (error) throw error;
+
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === pageSize;
+        page++;
+      }
+
+      let filtered = allData;
       if (exportVals.ca_number) filtered = filtered.filter((r: any) => (r.ca_number || '').toLowerCase().includes(exportVals.ca_number.toLowerCase()));
       if (exportVals.company_name) filtered = filtered.filter((r: any) => (r.companies?.name || '').toLowerCase().includes(exportVals.company_name.toLowerCase()));
       if (exportVals.purpose) filtered = filtered.filter((r: any) => (r.purpose || '').toLowerCase().includes(exportVals.purpose.toLowerCase()));
