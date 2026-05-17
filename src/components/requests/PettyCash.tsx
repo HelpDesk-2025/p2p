@@ -2168,11 +2168,31 @@ export function PettyCash() {
     );
   }
 
-  const handleExport = (exportVals: FilterValues) => {
+  const handleExport = async (exportVals: FilterValues) => {
     setExporting(true);
     try {
-      const exportFiltered = applyFilters(requests, exportVals, pcFilterColumns, pcGetFieldValue);
-      const rows = exportFiltered.map((req: any) => [
+      const from = exportVals.request_date_from;
+      const to = exportVals.request_date_to;
+
+      let query = supabase
+        .from('petty_cash_requests')
+        .select('*, companies(name)')
+        .gte('request_date', from)
+        .lte('request_date', to + 'T23:59:59')
+        .order('request_date', { ascending: false });
+
+      if (exportVals.status) query = query.eq('status', exportVals.status);
+      if (exportVals.request_type) query = query.eq('request_type', exportVals.request_type);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let filtered = data || [];
+      if (exportVals.pc_number) filtered = filtered.filter((r: any) => (r.pc_number || '').toLowerCase().includes(exportVals.pc_number.toLowerCase()));
+      if (exportVals.company_name) filtered = filtered.filter((r: any) => (r.companies?.name || '').toLowerCase().includes(exportVals.company_name.toLowerCase()));
+      if (exportVals.purpose) filtered = filtered.filter((r: any) => (r.purpose || '').toLowerCase().includes(exportVals.purpose.toLowerCase()));
+
+      const rows = filtered.map((req: any) => [
         req.pc_number || '',
         req.companies?.name || '',
         req.department || '',

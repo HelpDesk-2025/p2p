@@ -239,16 +239,31 @@ export function PurchaseOrder() {
     ]},
   ];
 
-  const handleExport = (exportVals: FilterValues) => {
+  const handleExport = async (exportVals: FilterValues) => {
     setExporting(true);
     try {
-      let filtered = orders;
-      if (exportVals.po_number) filtered = filtered.filter(o => o.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
-      if (exportVals.vendor_name) filtered = filtered.filter(o => o.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
-      if (exportVals.department) filtered = filtered.filter(o => o.department.toLowerCase().includes(exportVals.department.toLowerCase()));
-      if (exportVals.status) filtered = filtered.filter(o => o.status === exportVals.status);
+      const from = exportVals.request_date_from;
+      const to = exportVals.request_date_to;
 
-      const rows = filtered.map((o) => [
+      let query = supabase
+        .from('purchase_orders')
+        .select('*')
+        .gte('po_date', from)
+        .lte('po_date', to + 'T23:59:59')
+        .is('deleted_at', null)
+        .order('po_date', { ascending: false });
+
+      if (exportVals.status) query = query.eq('status', exportVals.status);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let filtered = data || [];
+      if (exportVals.po_number) filtered = filtered.filter((o: any) => o.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
+      if (exportVals.vendor_name) filtered = filtered.filter((o: any) => o.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
+      if (exportVals.department) filtered = filtered.filter((o: any) => o.department.toLowerCase().includes(exportVals.department.toLowerCase()));
+
+      const rows = filtered.map((o: any) => [
         o.po_number || '',
         o.vendor_name || '',
         o.department || '',

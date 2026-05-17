@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Download, Loader2, FileSpreadsheet } from 'lucide-react';
+import { X, Download, Loader2, FileSpreadsheet, Calendar } from 'lucide-react';
 import { FilterColumn, FilterValues } from './FilterModal';
 
 interface ExportModalProps {
@@ -13,17 +13,26 @@ interface ExportModalProps {
 
 export default function ExportModal({ isOpen, onClose, columns, onExport, title = 'Export to Excel', exporting = false }: ExportModalProps) {
   const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [dateError, setDateError] = useState('');
 
   if (!isOpen) return null;
 
   const handleExport = () => {
+    if (!filterValues['request_date_from'] || !filterValues['request_date_to']) {
+      setDateError('Please select both start and end dates for the request date range.');
+      return;
+    }
+    setDateError('');
     onExport(filterValues);
   };
 
   const handleClose = () => {
     setFilterValues({});
+    setDateError('');
     onClose();
   };
+
+  const otherColumns = columns.filter(c => c.key !== 'request_date');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -36,7 +45,7 @@ export default function ExportModal({ isOpen, onClose, columns, onExport, title 
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-              <p className="text-sm text-slate-500">Filter data before exporting</p>
+              <p className="text-sm text-slate-500">Select date range and optional filters</p>
             </div>
           </div>
           <button onClick={handleClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
@@ -44,63 +53,98 @@ export default function ExportModal({ isOpen, onClose, columns, onExport, title 
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
-          {columns.map((col) => (
-            <div key={col.key} className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700">{col.label}</label>
-              {col.type === 'text' && (
-                <input
-                  type="text"
-                  value={filterValues[col.key] || ''}
-                  onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
-                  placeholder={`Filter by ${col.label.toLowerCase()}...`}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                />
-              )}
-              {col.type === 'select' && (
-                <select
-                  value={filterValues[col.key] || ''}
-                  onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
-                >
-                  <option value="">All</option>
-                  {col.options?.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              )}
-              {col.type === 'dateRange' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={filterValues[col.key + '_from'] || ''}
-                    onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key + '_from']: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                  />
-                  <input
-                    type="date"
-                    value={filterValues[col.key + '_to'] || ''}
-                    onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key + '_to']: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                  />
-                </div>
-              )}
-              {col.type === 'number' && (
-                <input
-                  type="number"
-                  value={filterValues[col.key] || ''}
-                  onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
-                  placeholder={`Filter by ${col.label.toLowerCase()}...`}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                />
-              )}
+        <div className="p-6 space-y-5">
+          {/* Date Range - Required */}
+          <div className="space-y-2 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <label className="text-sm font-semibold text-blue-900">Request Date Range <span className="text-red-500">*</span></label>
             </div>
-          ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">From</label>
+                <input
+                  type="date"
+                  value={filterValues['request_date_from'] || ''}
+                  onChange={(e) => { setFilterValues(prev => ({ ...prev, request_date_from: e.target.value })); setDateError(''); }}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">To</label>
+                <input
+                  type="date"
+                  value={filterValues['request_date_to'] || ''}
+                  onChange={(e) => { setFilterValues(prev => ({ ...prev, request_date_to: e.target.value })); setDateError(''); }}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
+            {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
+          </div>
+
+          {/* Other Filters - Optional */}
+          {otherColumns.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Additional Filters (Optional)</p>
+              {otherColumns.map((col) => (
+                <div key={col.key} className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-700">{col.label}</label>
+                  {col.type === 'text' && (
+                    <input
+                      type="text"
+                      value={filterValues[col.key] || ''}
+                      onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
+                      placeholder={`Filter by ${col.label.toLowerCase()}...`}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                    />
+                  )}
+                  {col.type === 'select' && (
+                    <select
+                      value={filterValues[col.key] || ''}
+                      onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
+                    >
+                      <option value="">All</option>
+                      {col.options?.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  )}
+                  {col.type === 'dateRange' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={filterValues[col.key + '_from'] || ''}
+                        onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key + '_from']: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                      />
+                      <input
+                        type="date"
+                        value={filterValues[col.key + '_to'] || ''}
+                        onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key + '_to']: e.target.value }))}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                  )}
+                  {col.type === 'number' && (
+                    <input
+                      type="number"
+                      value={filterValues[col.key] || ''}
+                      onChange={(e) => setFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
+                      placeholder={`Filter by ${col.label.toLowerCase()}...`}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 rounded-b-2xl flex items-center justify-between">
           <button
-            onClick={() => setFilterValues({})}
+            onClick={() => { setFilterValues({}); setDateError(''); }}
             className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
           >
             Reset Filters

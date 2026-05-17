@@ -223,16 +223,30 @@ export function GoodsReceipt() {
     ]},
   ];
 
-  const handleExport = (exportVals: FilterValues) => {
+  const handleExport = async (exportVals: FilterValues) => {
     setExporting(true);
     try {
-      let filtered = grs;
-      if (exportVals.gr_number) filtered = filtered.filter(g => g.gr_number.toLowerCase().includes(exportVals.gr_number.toLowerCase()));
-      if (exportVals.po_number) filtered = filtered.filter(g => g.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
-      if (exportVals.vendor_name) filtered = filtered.filter(g => g.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
-      if (exportVals.status) filtered = filtered.filter(g => g.status === exportVals.status);
+      const from = exportVals.request_date_from;
+      const to = exportVals.request_date_to;
 
-      const rows = filtered.map((g) => [
+      let query = supabase
+        .from('goods_receipts')
+        .select('*')
+        .gte('receipt_date', from)
+        .lte('receipt_date', to + 'T23:59:59')
+        .order('receipt_date', { ascending: false });
+
+      if (exportVals.status) query = query.eq('status', exportVals.status);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let filtered = data || [];
+      if (exportVals.gr_number) filtered = filtered.filter((g: any) => g.gr_number.toLowerCase().includes(exportVals.gr_number.toLowerCase()));
+      if (exportVals.po_number) filtered = filtered.filter((g: any) => g.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
+      if (exportVals.vendor_name) filtered = filtered.filter((g: any) => g.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
+
+      const rows = filtered.map((g: any) => [
         g.gr_number || '',
         g.po_number || '',
         g.vendor_name || '',

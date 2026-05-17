@@ -2304,17 +2304,33 @@ export function PurchaseRequisition() {
     generateDocumentNo();
   };
 
-  const handleExport = (exportVals: FilterValues) => {
+  const handleExport = async (exportVals: FilterValues) => {
     setExporting(true);
     try {
-      const exportFiltered = applyFilters(
-        requests,
-        exportVals,
-        prFilterColumns,
-        prGetFieldValue
-      );
+      const from = exportVals.request_date_from;
+      const to = exportVals.request_date_to;
 
-      const rows = exportFiltered.map((req: any) => [
+      let query = supabase
+        .from('purchase_requisitions')
+        .select('*, companies(name)')
+        .gte('request_date', from)
+        .lte('request_date', to + 'T23:59:59')
+        .order('request_date', { ascending: false });
+
+      if (exportVals.status) query = query.eq('status', exportVals.status);
+      if (exportVals.purchase_type) query = query.eq('purchase_type', exportVals.purchase_type);
+      if (exportVals.is_budgeted) query = query.eq('is_budgeted', exportVals.is_budgeted === 'true');
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let filtered = data || [];
+      if (exportVals.document_no) filtered = filtered.filter((r: any) => (r.document_no || r.pr_number || '').toLowerCase().includes(exportVals.document_no.toLowerCase()));
+      if (exportVals.company_name) filtered = filtered.filter((r: any) => (r.companies?.name || '').toLowerCase().includes(exportVals.company_name.toLowerCase()));
+      if (exportVals.description) filtered = filtered.filter((r: any) => (r.description || r.purpose || '').toLowerCase().includes(exportVals.description.toLowerCase()));
+      if (exportVals.payee) filtered = filtered.filter((r: any) => (r.payee || '').toLowerCase().includes(exportVals.payee.toLowerCase()));
+
+      const rows = filtered.map((req: any) => [
         req.document_no || req.pr_number || '',
         req.companies?.name || '',
         req.department || '',

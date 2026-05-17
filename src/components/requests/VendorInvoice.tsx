@@ -265,16 +265,30 @@ export function VendorInvoice() {
     ]},
   ];
 
-  const handleExport = (exportVals: FilterValues) => {
+  const handleExport = async (exportVals: FilterValues) => {
     setExporting(true);
     try {
-      let filtered = invoices;
-      if (exportVals.invoice_ref_number) filtered = filtered.filter(i => i.invoice_ref_number.toLowerCase().includes(exportVals.invoice_ref_number.toLowerCase()));
-      if (exportVals.po_number) filtered = filtered.filter(i => i.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
-      if (exportVals.vendor_name) filtered = filtered.filter(i => i.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
-      if (exportVals.status) filtered = filtered.filter(i => i.status === exportVals.status);
+      const from = exportVals.request_date_from;
+      const to = exportVals.request_date_to;
 
-      const rows = filtered.map((i) => [
+      let query = supabase
+        .from('vendor_invoices')
+        .select('*')
+        .gte('invoice_date', from)
+        .lte('invoice_date', to + 'T23:59:59')
+        .order('invoice_date', { ascending: false });
+
+      if (exportVals.status) query = query.eq('status', exportVals.status);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let filtered = data || [];
+      if (exportVals.invoice_ref_number) filtered = filtered.filter((i: any) => i.invoice_ref_number.toLowerCase().includes(exportVals.invoice_ref_number.toLowerCase()));
+      if (exportVals.po_number) filtered = filtered.filter((i: any) => i.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
+      if (exportVals.vendor_name) filtered = filtered.filter((i: any) => i.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
+
+      const rows = filtered.map((i: any) => [
         i.invoice_ref_number || '',
         i.po_number || '',
         i.vendor_name || '',
