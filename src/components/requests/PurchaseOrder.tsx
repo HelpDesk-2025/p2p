@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus,
   Search,
@@ -13,13 +13,19 @@ import {
   ChevronRight,
   Trash2,
   FileSpreadsheet,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  SlidersHorizontal,
+  Eye,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
 import ExportModal from '../ExportModal';
-import { FilterColumn, FilterValues } from '../FilterModal';
+import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
+import Pagination from '../Pagination';
 
 type POStatus =
   | 'draft'
@@ -172,10 +178,16 @@ export function PurchaseOrder() {
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<POStatus | 'all'>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('po_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25);
   const [activeOrder, setActiveOrder] = useState<PurchaseOrder | null>(null);
   const [activeItems, setActiveItems] = useState<POItem[]>([]);
   const [showCanvassPicker, setShowCanvassPicker] = useState(false);
@@ -214,18 +226,35 @@ export function PurchaseOrder() {
     setLoading(false);
   };
 
-  const filteredOrders = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return orders.filter((o) => {
-      if (statusFilter !== 'all' && o.status !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        o.po_number.toLowerCase().includes(q) ||
-        o.vendor_name.toLowerCase().includes(q) ||
-        o.department.toLowerCase().includes(q)
-      );
-    });
-  }, [orders, search, statusFilter]);
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
+  };
+
+  const poFilterColumns: FilterColumn[] = [
+    { key: 'po_number', label: 'PO No.', type: 'text' },
+    { key: 'vendor_name', label: 'Vendor', type: 'text' },
+    { key: 'department', label: 'Department', type: 'text' },
+    { key: 'po_date', label: 'PO Date', type: 'dateRange' },
+    { key: 'total_amount', label: 'Amount', type: 'number' },
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'pending_approval', label: 'Pending' },
+      { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
+      { value: 'dispatched', label: 'Dispatched' }, { value: 'partially_received', label: 'Partially Received' },
+      { value: 'fully_received', label: 'Fully Received' }, { value: 'closed', label: 'Closed' },
+    ]},
+  ];
 
   const poExportColumns: FilterColumn[] = [
     { key: 'po_number', label: 'PO No.', type: 'text' },
@@ -238,6 +267,52 @@ export function PurchaseOrder() {
       { value: 'fully_received', label: 'Fully Received' }, { value: 'closed', label: 'Closed' },
     ]},
   ];
+
+  const poGetFieldValue = (item: any, key: string) => {
+    return item[key] ?? '';
+  };
+
+  const filteredOrders = applyFilters(
+    orders.filter((o) => {
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        o.po_number.toLowerCase().includes(term) ||
+        o.vendor_name.toLowerCase().includes(term) ||
+        o.department.toLowerCase().includes(term) ||
+        o.status.toLowerCase().includes(term) ||
+        String(o.total_amount).includes(term)
+      );
+    }),
+    filterValues,
+    poFilterColumns,
+    poGetFieldValue
+  );
+
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    let aVal: any = a[sortColumn as keyof PurchaseOrder];
+    let bVal: any = b[sortColumn as keyof PurchaseOrder];
+
+    if (aVal == null) aVal = '';
+    if (bVal == null) bVal = '';
+
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => setCurrentPage(page);
+  const handleItemsPerPageChange = (n: number) => { setItemsPerPage(n); setCurrentPage(1); };
 
   const handleExport = async (exportVals: FilterValues) => {
     setExporting(true);
@@ -688,6 +763,7 @@ export function PurchaseOrder() {
         </div>
       )}
 
+      {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
@@ -723,21 +799,238 @@ export function PurchaseOrder() {
             )}
           </div>
         </div>
+      </div>
 
-        {view === 'list' && (
-          <ListView
-            orders={filteredOrders}
-            loading={loading}
-            search={search}
-            onSearch={setSearch}
-            statusFilter={statusFilter}
-            onStatusFilter={setStatusFilter}
-            onOpen={openDetail}
-            onDownload={handleDownloadPdf}
-          />
-        )}
+      {/* List View */}
+      {view === 'list' && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
+          <div className="px-4 py-3 border-b border-slate-200">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setSearchTerm(searchInput); setCurrentPage(1); } }}
+                  placeholder="Search by PO number, vendor, department, status..."
+                  className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => { setSearchInput(''); setSearchTerm(''); setCurrentPage(1); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => { setSearchTerm(searchInput); setCurrentPage(1); }}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden sm:inline">Search</span>
+              </button>
+              <button
+                onClick={() => setShowFilterModal(true)}
+                className={`relative px-4 py-2 text-sm border rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                  getActiveFilterCount(filterValues) > 0
+                    ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">Filter</span>
+                {getActiveFilterCount(filterValues) > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {getActiveFilterCount(filterValues)}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
 
-        {view === 'create' && draftCanvass && (
+          {loading ? (
+            <div className="px-6 py-16 text-center text-slate-500 text-sm">
+              <Loader2 className="animate-spin inline mr-2" size={16} /> Loading purchase orders...
+            </div>
+          ) : (
+            <>
+              {/* Mobile Card View */}
+              <div className="lg:hidden w-full max-w-full overflow-x-hidden">
+                {paginatedOrders.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-sm text-slate-500">
+                    No purchase orders found
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-200 w-full">
+                    {paginatedOrders.map((o) => (
+                      <div key={o.id} className="p-4 hover:bg-slate-50 transition-colors w-full">
+                        <div className="space-y-3 w-full overflow-hidden">
+                          <div className="flex items-start justify-between gap-2 w-full min-w-0">
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">PO Number</div>
+                              <div className="font-mono font-bold text-sm text-slate-900 truncate">{o.po_number}</div>
+                            </div>
+                            <StatusBadge status={o.status} />
+                          </div>
+
+                          <div className="w-full min-w-0">
+                            <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Vendor</div>
+                            <div className="text-sm text-slate-700 line-clamp-2 break-words">{o.vendor_name}</div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 w-full">
+                            <div className="min-w-0 overflow-hidden">
+                              <div className="text-xs font-medium text-slate-500 mb-1">PO Date</div>
+                              <div className="text-sm text-slate-900 truncate">
+                                {o.po_date ? new Date(o.po_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                              </div>
+                            </div>
+                            <div className="min-w-0 overflow-hidden">
+                              <div className="text-xs font-medium text-slate-500 mb-1">Department</div>
+                              <div className="text-sm text-slate-900 truncate">{o.department || '-'}</div>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 w-full min-w-0">
+                            <div className="text-xs font-medium text-slate-500 mb-1">Total Amount</div>
+                            <div className="text-lg font-bold text-slate-900 break-all">
+                              ₱{fmtMoney(Number(o.total_amount))}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => openDetail(o)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
+                          >
+                            <Eye className="w-4 h-4 flex-shrink-0" />
+                            <span className="truncate">View Details</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-auto flex-1">
+                <table className="w-full border-collapse">
+                  <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+                    <tr>
+                      <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                        <button onClick={() => handleSort('po_number')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                          PO No. {getSortIcon('po_number')}
+                        </button>
+                      </th>
+                      <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                        <button onClick={() => handleSort('vendor_name')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                          Vendor {getSortIcon('vendor_name')}
+                        </button>
+                      </th>
+                      <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                        <button onClick={() => handleSort('department')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                          Department {getSortIcon('department')}
+                        </button>
+                      </th>
+                      <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                        <button onClick={() => handleSort('po_date')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                          PO Date {getSortIcon('po_date')}
+                        </button>
+                      </th>
+                      <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                        <button onClick={() => handleSort('total_amount')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
+                          Amount {getSortIcon('total_amount')}
+                        </button>
+                      </th>
+                      <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                        <button onClick={() => handleSort('status')} className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors w-full">
+                          Status {getSortIcon('status')}
+                        </button>
+                      </th>
+                      <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap">
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Action</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
+                          No purchase orders found
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedOrders.map((o, index) => (
+                        <tr key={o.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                          <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                            <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={o.po_number}>
+                              {o.po_number}
+                            </span>
+                          </td>
+                          <td className="px-3 xl:px-4 py-3">
+                            <span className="text-sm text-slate-700 truncate block max-w-[200px]" title={o.vendor_name}>
+                              {o.vendor_name}
+                            </span>
+                          </td>
+                          <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                            <span className="text-sm text-slate-700">{o.department || '-'}</span>
+                          </td>
+                          <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                            <span className="text-sm text-slate-700">
+                              {o.po_date ? new Date(o.po_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                            </span>
+                          </td>
+                          <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                            <span className="text-sm font-bold text-slate-900">₱{fmtMoney(Number(o.total_amount))}</span>
+                          </td>
+                          <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                            <StatusBadge status={o.status} />
+                          </td>
+                          <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                onClick={() => openDetail(o)}
+                                className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                                title="View Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDownloadPdf(o); }}
+                                className="inline-flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all"
+                                title="Download PDF"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {sortedOrders.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={sortedOrders.length}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {view === 'create' && draftCanvass && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
           <CreateView
             canvass={draftCanvass}
             po={draftPO}
@@ -750,9 +1043,11 @@ export function PurchaseOrder() {
             saving={saving}
             paymentTerms={PAYMENT_TERMS}
           />
-        )}
+        </div>
+      )}
 
-        {view === 'detail' && activeOrder && (
+      {view === 'detail' && activeOrder && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
           <DetailView
             po={activeOrder}
             items={activeItems}
@@ -765,8 +1060,8 @@ export function PurchaseOrder() {
             onCancel={cancelPO}
             onDownload={() => handleDownloadPdf(activeOrder)}
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {showCanvassPicker && (
         <Modal title="Select Approved Canvass Summary" onClose={() => setShowCanvassPicker(false)}>
@@ -838,6 +1133,16 @@ export function PurchaseOrder() {
         </Modal>
       )}
 
+      {showFilterModal && (
+        <FilterModal
+          isOpen={showFilterModal}
+          onClose={() => setShowFilterModal(false)}
+          columns={poFilterColumns}
+          values={filterValues}
+          onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
+        />
+      )}
+
       <ExportModal
         isOpen={showExportModal}
         onClose={() => { setShowExportModal(false); setExporting(false); }}
@@ -849,117 +1154,6 @@ export function PurchaseOrder() {
   );
 }
 
-function ListView({
-  orders,
-  loading,
-  search,
-  onSearch,
-  statusFilter,
-  onStatusFilter,
-  onOpen,
-  onDownload,
-}: {
-  orders: PurchaseOrder[];
-  loading: boolean;
-  search: string;
-  onSearch: (v: string) => void;
-  statusFilter: POStatus | 'all';
-  onStatusFilter: (s: POStatus | 'all') => void;
-  onOpen: (po: PurchaseOrder) => void;
-  onDownload: (po: PurchaseOrder) => void;
-}) {
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="flex-1 min-w-[220px] relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            placeholder="Search PO number, vendor, department..."
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => onStatusFilter(e.target.value as POStatus | 'all')}
-          className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-        >
-          <option value="all">All Statuses</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {loading ? (
-        <div className="py-16 text-center text-slate-500 text-sm">
-          <Loader2 className="animate-spin inline mr-2" size={16} /> Loading purchase orders...
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="py-16 text-center text-slate-500 text-sm">
-          <FileText className="mx-auto mb-3 text-slate-300" size={36} />
-          No purchase orders match your filter.
-        </div>
-      ) : (
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
-                <th className="px-3 py-2">PO Number</th>
-                <th className="px-3 py-2">Vendor</th>
-                <th className="px-3 py-2">Department</th>
-                <th className="px-3 py-2 text-right">Total</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Budget</th>
-                <th className="px-3 py-2">PO Date</th>
-                <th className="px-3 py-2">Expected Delivery</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.map((o) => (
-                <tr
-                  key={o.id}
-                  onClick={() => onOpen(o)}
-                  className="cursor-pointer hover:bg-slate-50 transition"
-                >
-                  <td className="px-3 py-2 font-medium text-slate-900">{o.po_number}</td>
-                  <td className="px-3 py-2 text-slate-700">{o.vendor_name}</td>
-                  <td className="px-3 py-2 text-slate-700">{o.department || '—'}</td>
-                  <td className="px-3 py-2 text-right text-slate-900 tabular-nums">
-                    {fmtMoney(Number(o.total_amount))}
-                  </td>
-                  <td className="px-3 py-2">
-                    <StatusBadge status={o.status} />
-                  </td>
-                  <td className="px-3 py-2">
-                    <BudgetBadge status={o.budget_status} />
-                  </td>
-                  <td className="px-3 py-2 text-slate-600">{o.po_date}</td>
-                  <td className="px-3 py-2 text-slate-600">{o.expected_delivery_date || '—'}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDownload(o);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 text-xs"
-                    >
-                      <Download size={14} /> PDF
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function CreateView({
   canvass,
