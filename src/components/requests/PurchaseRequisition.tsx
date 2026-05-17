@@ -1351,7 +1351,7 @@ export function PurchaseRequisition() {
     { key: 'company_name', label: 'Company', type: 'select', options: companies.map(c => ({ value: c.name, label: c.name })) },
     { key: 'description', label: 'Description', type: 'text' },
     { key: 'request_date', label: 'Request Date', type: 'dateRange' },
-    { key: 'purchase_type', label: 'Type', type: 'select', options: [{ value: 'Goods', label: 'Goods' }, { value: 'Services', label: 'Services' }] },
+    { key: 'purchase_type', label: 'Type', type: 'select', options: [{ value: 'Purchase Order', label: 'Purchase Order' }, { value: 'Non-Purchase Order', label: 'Non-Purchase Order' }] },
     { key: 'payee', label: 'Payee', type: 'text' },
     { key: 'total_amount', label: 'Amount', type: 'number' },
     { key: 'status', label: 'Status', type: 'select', options: [
