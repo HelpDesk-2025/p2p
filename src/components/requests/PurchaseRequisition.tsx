@@ -5,12 +5,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet } from 'lucide-react';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
+import ExportModal from '../ExportModal';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { uploadAttachments, uploadLargeFile } from '../../lib/storageHelper';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { regenerateRFP } from '../../lib/rfpGenerator';
-import XLSX from 'xlsx-js-style';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 
 interface PRItem {
   description: string;
@@ -97,7 +98,6 @@ export function PurchaseRequisition() {
 
   // Export
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportFilterValues, setExportFilterValues] = useState<FilterValues>({});
   const [exporting, setExporting] = useState(false);
 
   // Sorting
@@ -2304,17 +2304,16 @@ export function PurchaseRequisition() {
     generateDocumentNo();
   };
 
-  const handleExport = () => {
+  const handleExport = (exportVals: FilterValues) => {
     setExporting(true);
     try {
       const exportFiltered = applyFilters(
         requests,
-        exportFilterValues,
+        exportVals,
         prFilterColumns,
         prGetFieldValue
       );
 
-      const headers = ['Document No.', 'Company', 'Department', 'Description', 'Request Date', 'Date Required', 'Type', 'Payee', 'Total Amount', 'Status', 'Budget Status'];
       const rows = exportFiltered.map((req: any) => [
         req.document_no || req.pr_number || '',
         req.companies?.name || '',
@@ -2329,83 +2328,21 @@ export function PurchaseRequisition() {
         req.is_budgeted ? 'Budgeted' : 'Non-Budgeted',
       ]);
 
-      const wb = XLSX.utils.book_new();
-      const wsData = [headers, ...rows];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-      // Column widths
-      ws['!cols'] = [
-        { wch: 18 }, // Document No.
-        { wch: 20 }, // Company
-        { wch: 16 }, // Department
-        { wch: 35 }, // Description
-        { wch: 14 }, // Request Date
-        { wch: 14 }, // Date Required
-        { wch: 12 }, // Type
-        { wch: 25 }, // Payee
-        { wch: 15 }, // Total Amount
-        { wch: 16 }, // Status
-        { wch: 16 }, // Budget Status
-      ];
-
-      // Style header row
-      const headerStyle = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '1E40AF' } },
-        alignment: { horizontal: 'center', vertical: 'center' },
-        border: {
-          top: { style: 'thin', color: { rgb: '000000' } },
-          bottom: { style: 'thin', color: { rgb: '000000' } },
-          left: { style: 'thin', color: { rgb: '000000' } },
-          right: { style: 'thin', color: { rgb: '000000' } },
-        }
-      };
-
-      const dataStyle = {
-        border: {
-          top: { style: 'thin', color: { rgb: 'D1D5DB' } },
-          bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
-          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
-          right: { style: 'thin', color: { rgb: 'D1D5DB' } },
-        },
-        alignment: { vertical: 'center', wrapText: true },
-      };
-
-      const amountStyle = {
-        ...dataStyle,
-        numFmt: '#,##0.00',
-        alignment: { horizontal: 'right', vertical: 'center' },
-      };
-
-      // Apply styles to all cells
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      for (let R = range.s.r; R <= range.e.r; R++) {
-        for (let C = range.s.c; C <= range.e.c; C++) {
-          const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cellRef]) ws[cellRef] = { v: '', t: 's' };
-          if (R === 0) {
-            ws[cellRef].s = headerStyle;
-          } else if (C === 8) {
-            ws[cellRef].s = amountStyle;
-            ws[cellRef].t = 'n';
-            ws[cellRef].z = '#,##0.00';
-          } else {
-            ws[cellRef].s = {
-              ...dataStyle,
-              fill: R % 2 === 0 ? { fgColor: { rgb: 'F8FAFC' } } : undefined,
-            };
-          }
-        }
-      }
-
-      // Freeze header row
-      ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-
-      XLSX.utils.book_append_sheet(wb, ws, 'Purchase Requisitions');
-      XLSX.writeFile(wb, `purchase_requisitions_${new Date().toISOString().split('T')[0]}.xlsx`);
+      exportToStyledExcel(rows, [
+        { header: 'Document No.', width: 18 },
+        { header: 'Company', width: 20 },
+        { header: 'Department', width: 16 },
+        { header: 'Description', width: 35 },
+        { header: 'Request Date', width: 14 },
+        { header: 'Date Required', width: 14 },
+        { header: 'Type', width: 12 },
+        { header: 'Payee', width: 25 },
+        { header: 'Total Amount', width: 15, isAmount: true },
+        { header: 'Status', width: 16 },
+        { header: 'Budget Status', width: 16 },
+      ], 'Purchase Requisitions', `purchase_requisitions_${new Date().toISOString().split('T')[0]}.xlsx`);
 
       setShowExportModal(false);
-      setExportFilterValues({});
     } catch (error: any) {
       alert('Export failed: ' + error.message);
     } finally {
@@ -3059,106 +2996,13 @@ export function PurchaseRequisition() {
         onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
       />
 
-      {showExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowExportModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Export to Excel</h3>
-                  <p className="text-sm text-slate-500">Filter data before exporting</p>
-                </div>
-              </div>
-              <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-slate-500" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {prFilterColumns.map((col) => (
-                <div key={col.key} className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700">{col.label}</label>
-                  {col.type === 'text' && (
-                    <input
-                      type="text"
-                      value={exportFilterValues[col.key] || ''}
-                      onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
-                      placeholder={`Filter by ${col.label.toLowerCase()}...`}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                    />
-                  )}
-                  {col.type === 'select' && (
-                    <select
-                      value={exportFilterValues[col.key] || ''}
-                      onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none bg-white"
-                    >
-                      <option value="">All</option>
-                      {col.options?.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  )}
-                  {col.type === 'dateRange' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="date"
-                        value={exportFilterValues[col.key + '_from'] || ''}
-                        onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key + '_from']: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                      />
-                      <input
-                        type="date"
-                        value={exportFilterValues[col.key + '_to'] || ''}
-                        onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key + '_to']: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-                  )}
-                  {col.type === 'number' && (
-                    <input
-                      type="number"
-                      value={exportFilterValues[col.key] || ''}
-                      onChange={(e) => setExportFilterValues(prev => ({ ...prev, [col.key]: e.target.value }))}
-                      placeholder={`Filter by ${col.label.toLowerCase()}...`}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 rounded-b-2xl flex items-center justify-between">
-              <button
-                onClick={() => setExportFilterValues({})}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                Reset Filters
-              </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowExportModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleExport}
-                  disabled={exporting}
-                  className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Export
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => { setShowExportModal(false); setExporting(false); }}
+        columns={prFilterColumns}
+        onExport={(vals) => { handleExport(vals); }}
+        exporting={exporting}
+      />
     </div>
   );
 }

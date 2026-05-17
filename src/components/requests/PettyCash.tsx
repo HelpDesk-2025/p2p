@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, Check, RefreshCw, Upload, Paperclip, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll, sendApprovalEmail, getLastApproverContact } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generatePettyCashForm } from '../../lib/pettyCashFormGenerator';
@@ -9,6 +9,8 @@ import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import { PDFDocument } from 'pdf-lib';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
+import ExportModal from '../ExportModal';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 
 interface PaymentMode {
@@ -128,6 +130,8 @@ export function PettyCash() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -2164,36 +2168,84 @@ export function PettyCash() {
     );
   }
 
+  const handleExport = (exportVals: FilterValues) => {
+    setExporting(true);
+    try {
+      const exportFiltered = applyFilters(requests, exportVals, pcFilterColumns, pcGetFieldValue);
+      const rows = exportFiltered.map((req: any) => [
+        req.pc_number || '',
+        req.companies?.name || '',
+        req.department || '',
+        req.purpose || '',
+        req.request_date ? new Date(req.request_date).toLocaleDateString('en-US') : '',
+        req.request_type || '',
+        req.expense_category || '',
+        req.payee || '',
+        req.amount || 0,
+        req.status || '',
+        req.budgeted ? 'Budgeted' : 'Non-Budgeted',
+      ]);
+      exportToStyledExcel(rows, [
+        { header: 'PC No.', width: 18 },
+        { header: 'Company', width: 20 },
+        { header: 'Department', width: 16 },
+        { header: 'Purpose', width: 30 },
+        { header: 'Request Date', width: 14 },
+        { header: 'Request Type', width: 16 },
+        { header: 'Expense Category', width: 18 },
+        { header: 'Payee', width: 25 },
+        { header: 'Amount', width: 15, isAmount: true },
+        { header: 'Status', width: 16 },
+        { header: 'Budget Status', width: 16 },
+      ], 'Petty Cash Requests', `petty_cash_requests_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setShowExportModal(false);
+    } catch (error: any) {
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Requests</h2>
-          <button
-            onClick={() => {
-              setShowForm(true);
-              setExpenseItems([{ date: '', description: '', amount: 0 }]);
-              setFormData({
-                document_no: '',
-                payee: '',
-                purpose: '',
-                amount: 0,
-                date_needed: '',
-                date_of_transactions: '',
-                budgeted: true,
-                payment_mode_id: '',
-                request_type: 'For Cash Advance',
-                no_of_pax: 0,
-                expense_category: 'Department Expense',
-              });
-              generateDocumentNo();
-            }}
-            className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="sm:hidden">New</span>
-            <span className="hidden sm:inline">New Request</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm sm:text-base transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">Export to Excel</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowForm(true);
+                setExpenseItems([{ date: '', description: '', amount: 0 }]);
+                setFormData({
+                  document_no: '',
+                  payee: '',
+                  purpose: '',
+                  amount: 0,
+                  date_needed: '',
+                  date_of_transactions: '',
+                  budgeted: true,
+                  payment_mode_id: '',
+                  request_type: 'For Cash Advance',
+                  no_of_pax: 0,
+                  expense_category: 'Department Expense',
+                });
+                generateDocumentNo();
+              }}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+            >
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">New Request</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2869,6 +2921,14 @@ export function PettyCash() {
         columns={pcFilterColumns}
         values={filterValues}
         onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
+      />
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => { setShowExportModal(false); setExporting(false); }}
+        columns={pcFilterColumns}
+        onExport={handleExport}
+        exporting={exporting}
       />
     </div>
   );

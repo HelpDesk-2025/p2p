@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban } from 'lucide-react';
+import { Plus, Save, Send, Eye, FileText, X, Download, CreditCard as Edit, Loader2, RefreshCw, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { uploadLargeFile } from '../../lib/storageHelper';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
+import ExportModal from '../ExportModal';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 
 interface ExpenseItem {
   date: string;
@@ -79,6 +81,8 @@ export function Reimbursement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -1552,22 +1556,64 @@ export function Reimbursement() {
     );
   }
 
+  const handleExport = (exportVals: FilterValues) => {
+    setExporting(true);
+    try {
+      const exportFiltered = applyFilters(requests, exportVals, reimbFilterColumns, reimbGetFieldValue);
+      const rows = exportFiltered.map((req: any) => [
+        req.reimb_number || '',
+        req.companies?.name || '',
+        req.department || '',
+        req.purpose || '',
+        req.request_date ? new Date(req.request_date).toLocaleDateString('en-US') : '',
+        req.amount || 0,
+        req.status || '',
+        req.budgeted ? 'Budgeted' : 'Non-Budgeted',
+      ]);
+      exportToStyledExcel(rows, [
+        { header: 'Reimb No.', width: 18 },
+        { header: 'Company', width: 20 },
+        { header: 'Department', width: 16 },
+        { header: 'Purpose', width: 30 },
+        { header: 'Request Date', width: 14 },
+        { header: 'Amount', width: 15, isAmount: true },
+        { header: 'Status', width: 16 },
+        { header: 'Budget Status', width: 16 },
+      ], 'Reimbursement Requests', `reimbursement_requests_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setShowExportModal(false);
+    } catch (error: any) {
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Reimbursement/Liquidation Requests</h2>
-          <button
-            onClick={() => {
-              setShowForm(true);
-              generateDocumentNo();
-            }}
-            className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="sm:hidden">New</span>
-            <span className="hidden sm:inline">New Request</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm sm:text-base transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">Export to Excel</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowForm(true);
+                generateDocumentNo();
+              }}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+            >
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">New Request</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2118,6 +2164,14 @@ export function Reimbursement() {
         columns={reimbFilterColumns}
         values={filterValues}
         onApply={(vals) => { setFilterValues(vals); setCurrentPage(1); }}
+      />
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => { setShowExportModal(false); setExporting(false); }}
+        columns={reimbFilterColumns}
+        onExport={handleExport}
+        exporting={exporting}
       />
     </div>
   );

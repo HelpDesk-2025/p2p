@@ -12,10 +12,14 @@ import {
   Loader2,
   ChevronRight,
   Trash2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
+import ExportModal from '../ExportModal';
+import { FilterColumn, FilterValues } from '../FilterModal';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 
 type POStatus =
   | 'draft'
@@ -170,6 +174,8 @@ export function PurchaseOrder() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<POStatus | 'all'>('all');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [activeOrder, setActiveOrder] = useState<PurchaseOrder | null>(null);
   const [activeItems, setActiveItems] = useState<POItem[]>([]);
   const [showCanvassPicker, setShowCanvassPicker] = useState(false);
@@ -220,6 +226,53 @@ export function PurchaseOrder() {
       );
     });
   }, [orders, search, statusFilter]);
+
+  const poExportColumns: FilterColumn[] = [
+    { key: 'po_number', label: 'PO No.', type: 'text' },
+    { key: 'vendor_name', label: 'Vendor', type: 'text' },
+    { key: 'department', label: 'Department', type: 'text' },
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'pending_approval', label: 'Pending' },
+      { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
+      { value: 'dispatched', label: 'Dispatched' }, { value: 'partially_received', label: 'Partially Received' },
+      { value: 'fully_received', label: 'Fully Received' }, { value: 'closed', label: 'Closed' },
+    ]},
+  ];
+
+  const handleExport = (exportVals: FilterValues) => {
+    setExporting(true);
+    try {
+      let filtered = orders;
+      if (exportVals.po_number) filtered = filtered.filter(o => o.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
+      if (exportVals.vendor_name) filtered = filtered.filter(o => o.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
+      if (exportVals.department) filtered = filtered.filter(o => o.department.toLowerCase().includes(exportVals.department.toLowerCase()));
+      if (exportVals.status) filtered = filtered.filter(o => o.status === exportVals.status);
+
+      const rows = filtered.map((o) => [
+        o.po_number || '',
+        o.vendor_name || '',
+        o.department || '',
+        o.po_date ? new Date(o.po_date).toLocaleDateString('en-US') : '',
+        o.delivery_date ? new Date(o.delivery_date).toLocaleDateString('en-US') : '',
+        o.total_amount || 0,
+        o.status || '',
+      ]);
+      exportToStyledExcel(rows, [
+        { header: 'PO No.', width: 18 },
+        { header: 'Vendor', width: 25 },
+        { header: 'Department', width: 16 },
+        { header: 'PO Date', width: 14 },
+        { header: 'Delivery Date', width: 14 },
+        { header: 'Total Amount', width: 15, isAmount: true },
+        { header: 'Status', width: 18 },
+      ], 'Purchase Orders', `purchase_orders_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setShowExportModal(false);
+    } catch (error: any) {
+      alert('Export failed: ' + (error as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openCanvassPicker = async () => {
     setShowCanvassPicker(true);
@@ -624,13 +677,22 @@ export function PurchaseOrder() {
               </button>
             )}
             {view === 'list' && (
-              <button
-                onClick={openCanvassPicker}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
-              >
-                <Plus size={16} />
-                New Purchase Order
-              </button>
+              <>
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+                >
+                  <FileSpreadsheet size={16} />
+                  Export to Excel
+                </button>
+                <button
+                  onClick={openCanvassPicker}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
+                >
+                  <Plus size={16} />
+                  New Purchase Order
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -748,6 +810,14 @@ export function PurchaseOrder() {
           </div>
         </Modal>
       )}
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => { setShowExportModal(false); setExporting(false); }}
+        columns={poExportColumns}
+        onExport={handleExport}
+        exporting={exporting}
+      />
     </div>
   );
 }

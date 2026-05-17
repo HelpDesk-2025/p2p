@@ -13,11 +13,15 @@ import {
   Upload,
   ChevronRight,
   Package,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { uploadAttachments, downloadAttachment } from '../../lib/storageHelper';
 import { generateGRNPdf } from '../../lib/grPdfGenerator';
+import ExportModal from '../ExportModal';
+import { FilterColumn, FilterValues } from '../FilterModal';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 
 type GRStatus = 'draft' | 'confirmed' | 'cancelled';
 type ReceiptType = 'full' | 'partial';
@@ -142,6 +146,8 @@ export function GoodsReceipt() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<GRStatus | 'all'>('all');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showPoPicker, setShowPoPicker] = useState(false);
   const [poOptions, setPoOptions] = useState<POOption[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -206,6 +212,53 @@ export function GoodsReceipt() {
       );
     });
   }, [grs, search, statusFilter]);
+
+  const grExportColumns: FilterColumn[] = [
+    { key: 'gr_number', label: 'GR No.', type: 'text' },
+    { key: 'po_number', label: 'PO No.', type: 'text' },
+    { key: 'vendor_name', label: 'Vendor', type: 'text' },
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'confirmed', label: 'Confirmed' },
+      { value: 'cancelled', label: 'Cancelled' },
+    ]},
+  ];
+
+  const handleExport = (exportVals: FilterValues) => {
+    setExporting(true);
+    try {
+      let filtered = grs;
+      if (exportVals.gr_number) filtered = filtered.filter(g => g.gr_number.toLowerCase().includes(exportVals.gr_number.toLowerCase()));
+      if (exportVals.po_number) filtered = filtered.filter(g => g.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
+      if (exportVals.vendor_name) filtered = filtered.filter(g => g.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
+      if (exportVals.status) filtered = filtered.filter(g => g.status === exportVals.status);
+
+      const rows = filtered.map((g) => [
+        g.gr_number || '',
+        g.po_number || '',
+        g.vendor_name || '',
+        g.receipt_date ? new Date(g.receipt_date).toLocaleDateString('en-US') : '',
+        g.receipt_type || '',
+        g.overall_condition || '',
+        g.warehouse_location || '',
+        g.status || '',
+      ]);
+      exportToStyledExcel(rows, [
+        { header: 'GR No.', width: 18 },
+        { header: 'PO No.', width: 18 },
+        { header: 'Vendor', width: 25 },
+        { header: 'Receipt Date', width: 14 },
+        { header: 'Receipt Type', width: 16 },
+        { header: 'Condition', width: 14 },
+        { header: 'Warehouse', width: 18 },
+        { header: 'Status', width: 14 },
+      ], 'Goods Receipts', `goods_receipts_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setShowExportModal(false);
+    } catch (error: any) {
+      alert('Export failed: ' + (error as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openPoPicker = async () => {
     setShowPoPicker(true);
@@ -581,6 +634,15 @@ export function GoodsReceipt() {
                 Back to list
               </button>
             )}
+            {view === 'list' && (
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+              >
+                <FileSpreadsheet size={16} />
+                Export to Excel
+              </button>
+            )}
             {view === 'list' && isFullAccess && (
               <button
                 onClick={openPoPicker}
@@ -669,6 +731,14 @@ export function GoodsReceipt() {
           )}
         </Modal>
       )}
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => { setShowExportModal(false); setExporting(false); }}
+        columns={grExportColumns}
+        onExport={handleExport}
+        exporting={exporting}
+      />
     </div>
   );
 }

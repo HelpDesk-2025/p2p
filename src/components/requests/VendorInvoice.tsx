@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Search, Loader2, Send, Download, FileText, X, Trash2, Upload,
-  Receipt, AlertTriangle, CheckCircle2, ChevronRight, Calendar,
+  Receipt, AlertTriangle, CheckCircle2, ChevronRight, Calendar, FileSpreadsheet,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { uploadAttachments, downloadAttachment } from '../../lib/storageHelper';
 import { generateInvoiceMatchPdf } from '../../lib/invoiceMatchPdfGenerator';
+import ExportModal from '../ExportModal';
+import { FilterColumn, FilterValues } from '../FilterModal';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 
 type InvoiceStatus = 'draft' | 'pending_matching' | 'matched' | 'exception' | 'posted' | 'cancelled';
 type MatchStatus = 'matched' | 'mismatched' | 'pending_review' | 'resolved';
@@ -163,6 +166,8 @@ export function VendorInvoice() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showPoPicker, setShowPoPicker] = useState(false);
   const [poOptions, setPoOptions] = useState<POOption[]>([]);
   const [activeInvoice, setActiveInvoice] = useState<Invoice | null>(null);
@@ -248,6 +253,58 @@ export function VendorInvoice() {
       );
     });
   }, [invoices, search, statusFilter]);
+
+  const invoiceExportColumns: FilterColumn[] = [
+    { key: 'invoice_ref_number', label: 'Invoice Ref No.', type: 'text' },
+    { key: 'po_number', label: 'PO No.', type: 'text' },
+    { key: 'vendor_name', label: 'Vendor', type: 'text' },
+    { key: 'status', label: 'Status', type: 'select', options: [
+      { value: 'draft', label: 'Draft' }, { value: 'submitted', label: 'Submitted' },
+      { value: 'matched', label: 'Matched' }, { value: 'discrepancy', label: 'Discrepancy' },
+      { value: 'resolved', label: 'Resolved' }, { value: 'cancelled', label: 'Cancelled' },
+    ]},
+  ];
+
+  const handleExport = (exportVals: FilterValues) => {
+    setExporting(true);
+    try {
+      let filtered = invoices;
+      if (exportVals.invoice_ref_number) filtered = filtered.filter(i => i.invoice_ref_number.toLowerCase().includes(exportVals.invoice_ref_number.toLowerCase()));
+      if (exportVals.po_number) filtered = filtered.filter(i => i.po_number.toLowerCase().includes(exportVals.po_number.toLowerCase()));
+      if (exportVals.vendor_name) filtered = filtered.filter(i => i.vendor_name.toLowerCase().includes(exportVals.vendor_name.toLowerCase()));
+      if (exportVals.status) filtered = filtered.filter(i => i.status === exportVals.status);
+
+      const rows = filtered.map((i) => [
+        i.invoice_ref_number || '',
+        i.po_number || '',
+        i.vendor_name || '',
+        i.invoice_number || '',
+        i.invoice_date ? new Date(i.invoice_date).toLocaleDateString('en-US') : '',
+        i.due_date ? new Date(i.due_date).toLocaleDateString('en-US') : '',
+        i.total_amount || 0,
+        i.net_payable || 0,
+        i.match_status || '',
+        i.status || '',
+      ]);
+      exportToStyledExcel(rows, [
+        { header: 'Invoice Ref No.', width: 18 },
+        { header: 'PO No.', width: 18 },
+        { header: 'Vendor', width: 25 },
+        { header: 'Invoice No.', width: 16 },
+        { header: 'Invoice Date', width: 14 },
+        { header: 'Due Date', width: 14 },
+        { header: 'Total Amount', width: 15, isAmount: true },
+        { header: 'Net Payable', width: 15, isAmount: true },
+        { header: 'Match Status', width: 14 },
+        { header: 'Status', width: 14 },
+      ], 'Vendor Invoices', `vendor_invoices_${new Date().toISOString().split('T')[0]}.xlsx`);
+      setShowExportModal(false);
+    } catch (error: any) {
+      alert('Export failed: ' + (error as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openPoPicker = async () => {
     setShowPoPicker(true);
@@ -664,12 +721,20 @@ export function VendorInvoice() {
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">AP invoice encoding, matching, and exception handling</p>
           </div>
-          <button
-            onClick={openPoPicker}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-          >
-            <Plus size={16} /> New Invoice
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+            >
+              <FileSpreadsheet size={16} /> Export to Excel
+            </button>
+            <button
+              onClick={openPoPicker}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+            >
+              <Plus size={16} /> New Invoice
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -1190,6 +1255,14 @@ export function VendorInvoice() {
           </div>
         </div>
       )}
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => { setShowExportModal(false); setExporting(false); }}
+        columns={invoiceExportColumns}
+        onExport={handleExport}
+        exporting={exporting}
+      />
     </div>
   );
 }
