@@ -2315,7 +2315,8 @@ export function PurchaseRequisition() {
         .select('*, companies(name)')
         .gte('request_date', from)
         .lte('request_date', to + 'T23:59:59')
-        .order('request_date', { ascending: false });
+        .order('request_date', { ascending: false })
+        .limit(10000);
 
       if (exportVals.status) query = query.eq('status', exportVals.status);
       if (exportVals.purchase_type) query = query.eq('purchase_type', exportVals.purchase_type);

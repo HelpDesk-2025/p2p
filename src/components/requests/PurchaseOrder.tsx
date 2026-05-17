@@ -251,7 +251,8 @@ export function PurchaseOrder() {
         .gte('po_date', from)
         .lte('po_date', to + 'T23:59:59')
         .is('deleted_at', null)
-        .order('po_date', { ascending: false });
+        .order('po_date', { ascending: false })
+        .limit(10000);
 
       if (exportVals.status) query = query.eq('status', exportVals.status);
 

@@ -234,7 +234,8 @@ export function GoodsReceipt() {
         .select('*')
         .gte('receipt_date', from)
         .lte('receipt_date', to + 'T23:59:59')
-        .order('receipt_date', { ascending: false });
+        .order('receipt_date', { ascending: false })
+        .limit(10000);
 
       if (exportVals.status) query = query.eq('status', exportVals.status);
 

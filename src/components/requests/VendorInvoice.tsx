@@ -276,7 +276,8 @@ export function VendorInvoice() {
         .select('*')
         .gte('invoice_date', from)
         .lte('invoice_date', to + 'T23:59:59')
-        .order('invoice_date', { ascending: false });
+        .order('invoice_date', { ascending: false })
+        .limit(10000);
 
       if (exportVals.status) query = query.eq('status', exportVals.status);
 
