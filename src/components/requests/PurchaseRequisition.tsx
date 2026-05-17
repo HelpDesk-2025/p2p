@@ -1358,12 +1358,16 @@ export function PurchaseRequisition() {
       { value: 'approved', label: 'Approved' }, { value: 'rejected', label: 'Rejected' },
       { value: 'in_procurement', label: 'In Procurement' },
     ]},
+    { key: 'is_budgeted', label: 'Budget Status', type: 'select', options: [
+      { value: 'true', label: 'Budgeted' }, { value: 'false', label: 'Non-Budgeted' },
+    ]},
   ];
 
   const prGetFieldValue = (item: any, key: string) => {
     if (key === 'document_no') return item.document_no || item.pr_number || '';
     if (key === 'company_name') return item.companies?.name || '';
     if (key === 'description') return item.description || item.purpose || '';
+    if (key === 'is_budgeted') return String(item.is_budgeted);
     return item[key];
   };
 
@@ -2309,7 +2313,7 @@ export function PurchaseRequisition() {
         prGetFieldValue
       );
 
-      const headers = ['Document No.', 'Company', 'Department', 'Description', 'Request Date', 'Date Required', 'Type', 'Payee', 'Total Amount', 'Status'];
+      const headers = ['Document No.', 'Company', 'Department', 'Description', 'Request Date', 'Date Required', 'Type', 'Payee', 'Total Amount', 'Status', 'Budget Status'];
       const rows = exportFiltered.map((req: any) => [
         req.document_no || req.pr_number || '',
         req.companies?.name || '',
@@ -2321,6 +2325,7 @@ export function PurchaseRequisition() {
         (req.payee || '').replace(/"/g, '""'),
         req.total_amount?.toFixed(2) || '0.00',
         req.status || '',
+        req.is_budgeted ? 'Budgeted' : 'Non-Budgeted',
       ]);
 
       const csvContent = [
