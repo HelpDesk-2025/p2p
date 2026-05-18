@@ -66,6 +66,7 @@ interface PurchaseOrder {
   vendor_bank_name: string;
   vendor_bank_address: string;
   company_id: string | null;
+  company_name: string;
   department: string;
   requested_by: string | null;
   prepared_by: string | null;
@@ -216,13 +217,17 @@ export function PurchaseOrder() {
     setLoading(true);
     const { data, error } = await supabase
       .from('purchase_orders')
-      .select('*')
+      .select('*, companies ( name )')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
     if (error) {
       showToast('error', `Failed to load POs: ${error.message}`);
     } else {
-      setOrders((data || []) as PurchaseOrder[]);
+      const mapped = (data || []).map((row: any) => ({
+        ...row,
+        company_name: row.companies?.name || '',
+      }));
+      setOrders(mapped as PurchaseOrder[]);
     }
     setLoading(false);
   };
@@ -452,6 +457,7 @@ export function PurchaseOrder() {
       vendor_bank_name: winner.bank_name || '',
       vendor_bank_address: winner.bank_address || '',
       company_id: c.company_id,
+      company_name: c.companies?.name || '',
       department: c.department || '',
       requested_by: c.requester_id,
       po_date: new Date().toISOString().slice(0, 10),
@@ -1191,6 +1197,10 @@ function CreateView({
             <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Source Canvass</p>
             <p className="text-sm font-medium text-blue-900">{canvass.canvass_number}</p>
           </div>
+          <div>
+            <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Company</p>
+            <p className="text-sm font-medium text-blue-900">{canvass.companies?.name || '—'}</p>
+          </div>
         </div>
         <BudgetBadge status={(po.budget_status as PurchaseOrder['budget_status']) || 'no_budget'} />
       </div>
@@ -1276,23 +1286,26 @@ function CreateView({
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Payment Terms">
-              <select
-                value={po.payment_terms || 'Net 30'}
-                onChange={(e) => onChange('payment_terms', e.target.value)}
-                className={INPUT_CLS}
-              >
-                {paymentTerms.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+            <Field label="Company">
+              <input value={po.company_name || ''} readOnly className={READONLY_CLS} />
             </Field>
             <Field label="Department">
               <input value={po.department || ''} readOnly className={READONLY_CLS} />
             </Field>
           </div>
+          <Field label="Payment Terms">
+            <select
+              value={po.payment_terms || 'Net 30'}
+              onChange={(e) => onChange('payment_terms', e.target.value)}
+              className={INPUT_CLS}
+            >
+              {paymentTerms.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Field>
           {po.payment_terms === 'Custom' && (
             <Field label="Payment Terms (Custom) *">
               <input
@@ -1464,12 +1477,13 @@ function DetailView({
           <KV label="Bank Address" value={po.vendor_bank_address || '—'} />
         </Section>
         <Section title="PO Details">
+          <KV label="Company" value={po.company_name || '—'} />
+          <KV label="Department" value={po.department || '—'} />
           <KV label="PO Date" value={po.po_date} />
           <KV label="Expected Delivery" value={po.expected_delivery_date || '—'} />
           <KV label="Delivery Address" value={po.delivery_address || '—'} />
           <KV label="Payment Terms" value={po.payment_terms === 'Custom' ? `Custom: ${po.payment_terms_custom || '—'}` : po.payment_terms} />
           <KV label="Delivery Terms" value={po.delivery_terms || '—'} />
-          <KV label="Department" value={po.department || '—'} />
           <KV label="Remarks" value={po.remarks || '—'} />
         </Section>
       </div>
