@@ -12,6 +12,10 @@ export async function generateAndUploadPOMergedPdf(
     vendor_contact: string;
     vendor_email: string;
     vendor_tin: string;
+    vendor_bank_name?: string;
+    vendor_bank_account?: string;
+    vendor_bank_address?: string;
+    company_name?: string;
     department: string;
     po_date: string;
     expected_delivery_date: string | null;
@@ -114,6 +118,10 @@ export async function generateAndUploadPOMergedPdf(
       vendor_contact: po.vendor_contact,
       vendor_email: po.vendor_email,
       vendor_tin: po.vendor_tin,
+      vendor_bank_name: po.vendor_bank_name,
+      vendor_bank_account: po.vendor_bank_account,
+      vendor_bank_address: po.vendor_bank_address,
+      company_name: po.company_name,
       department: po.department,
       po_date: po.po_date,
       expected_delivery_date: po.expected_delivery_date,
