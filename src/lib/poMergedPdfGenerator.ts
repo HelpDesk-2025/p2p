@@ -23,6 +23,8 @@ export async function generateAndUploadPOMergedPdf(
     vat_amount: number;
     total_amount: number;
     canvass_request_id: string | null;
+    company_id?: string | null;
+    prepared_by?: string | null;
   },
   items: Array<{
     item_description: string;
@@ -32,6 +34,76 @@ export async function generateAndUploadPOMergedPdf(
     total_price: number;
   }>
 ): Promise<string> {
+  // Fetch the last approver (excluding validators/checkers) from approval flow
+  let approverName: string | undefined;
+  let approverEsig: string | null | undefined;
+  let preparedByName: string | undefined;
+  let preparedByEsig: string | null | undefined;
+
+  if (po.company_id) {
+    // Get approval flows for this PO, excluding for_checking steps
+    const { data: flows } = await supabase
+      .from('approval_flow_setups')
+      .select('sequence, user_id, for_checking')
+      .eq('company_id', po.company_id)
+      .eq('department', po.department)
+      .eq('request_type', 'Purchase Order')
+      .order('sequence', { ascending: false });
+
+    if (flows && flows.length > 0) {
+      // Find last non-checker step
+      const lastApproverFlow = flows.find(f => !f.for_checking);
+      if (lastApproverFlow?.user_id) {
+        const { data: approverProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, e_sig, signature_path')
+          .eq('id', lastApproverFlow.user_id)
+          .maybeSingle();
+
+        if (approverProfile) {
+          approverName = approverProfile.full_name || undefined;
+          if (approverProfile.signature_path) {
+            const { data: sigFile } = await supabase.storage
+              .from('attachments')
+              .download(approverProfile.signature_path);
+            if (sigFile) {
+              const arrayBuffer = await sigFile.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              approverEsig = `data:${sigFile.type};base64,${base64}`;
+            }
+          } else if (approverProfile.e_sig) {
+            approverEsig = approverProfile.e_sig;
+          }
+        }
+      }
+    }
+  }
+
+  // Fetch prepared by user info
+  if (po.prepared_by) {
+    const { data: prepProfile } = await supabase
+      .from('user_profiles')
+      .select('full_name, e_sig, signature_path')
+      .eq('id', po.prepared_by)
+      .maybeSingle();
+
+    if (prepProfile) {
+      preparedByName = prepProfile.full_name || undefined;
+      if (prepProfile.signature_path) {
+        const { data: sigFile } = await supabase.storage
+          .from('attachments')
+          .download(prepProfile.signature_path);
+        if (sigFile) {
+          const arrayBuffer = await sigFile.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          preparedByEsig = `data:${sigFile.type};base64,${base64}`;
+        }
+      } else if (prepProfile.e_sig) {
+        preparedByEsig = prepProfile.e_sig;
+      }
+    }
+  }
+
   // 1. Generate PO Form PDF
   const poFormBlob = await generatePurchaseOrderPdf(
     {
@@ -51,6 +123,10 @@ export async function generateAndUploadPOMergedPdf(
       subtotal: po.subtotal,
       vat_amount: po.vat_amount,
       total_amount: po.total_amount,
+      approver_name: approverName,
+      approver_esig: approverEsig,
+      prepared_by_name: preparedByName,
+      prepared_by_esig: preparedByEsig,
     },
     items
   );

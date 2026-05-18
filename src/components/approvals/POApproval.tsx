@@ -452,6 +452,8 @@ export function POApproval() {
                 vat_amount: Number(selectedRequest.vat_amount),
                 total_amount: Number(selectedRequest.total_amount),
                 canvass_request_id: selectedRequest.canvass_request_id,
+                company_id: selectedRequest.company_id,
+                prepared_by: selectedRequest.prepared_by,
               },
               items.map((item) => ({
                 item_description: item.item_description,

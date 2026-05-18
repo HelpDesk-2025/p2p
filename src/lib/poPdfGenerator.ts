@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFImage } from 'pdf-lib';
 
 interface POForPdf {
   po_number: string;
@@ -17,6 +17,10 @@ interface POForPdf {
   subtotal: number;
   vat_amount: number;
   total_amount: number;
+  approver_name?: string;
+  approver_esig?: string | null;
+  prepared_by_name?: string;
+  prepared_by_esig?: string | null;
 }
 
 interface POItemForPdf {
@@ -25,6 +29,17 @@ interface POItemForPdf {
   quantity: number;
   unit_price: number;
   total_price: number;
+}
+
+async function embedSignature(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
+  const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+  const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+  const base64 = esigData.split(',')[1] || esigData;
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+    return pdfDoc.embedJpg(bytes);
+  }
+  return pdfDoc.embedPng(bytes);
 }
 
 function clean(s: string | null | undefined): string {
@@ -166,24 +181,56 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
   }
 
   // Signatories block
-  y = Math.min(y, 140);
+  y = Math.min(y, 160);
   const sigW = (width - margin * 2 - 30) / 3;
-  const sigBlocks = ['Prepared By', 'Approved By', 'Received By'];
-  sigBlocks.forEach((label, idx) => {
+  const sigBlocks: Array<{ label: string; name?: string; esig?: string | null }> = [
+    { label: 'Prepared By', name: po.prepared_by_name, esig: po.prepared_by_esig },
+    { label: 'Approved By', name: po.approver_name, esig: po.approver_esig },
+    { label: 'Received By' },
+  ];
+
+  for (let idx = 0; idx < sigBlocks.length; idx++) {
+    const block = sigBlocks[idx];
     const x = margin + idx * (sigW + 15);
+
+    // Draw e-signature above the line if available
+    if (block.esig) {
+      try {
+        const sigImage = await embedSignature(pdf, block.esig);
+        const sigHeight = 40;
+        const sigWidth = Math.min(sigW - 10, sigHeight * (sigImage.width / sigImage.height));
+        page.drawImage(sigImage, {
+          x: x + (sigW - sigWidth) / 2,
+          y: y + 4,
+          width: sigWidth,
+          height: sigHeight,
+        });
+      } catch (e) {
+        // Signature embed failed, skip
+      }
+    }
+
+    // Line
     page.drawLine({
       start: { x, y },
       end: { x: x + sigW, y },
       thickness: 0.6,
       color: rgb(0.4, 0.4, 0.4),
     });
-    page.drawText(label, { x, y: y - 12, size: 9, font: bold, color: rgb(0.3, 0.3, 0.3) });
-  });
+
+    // Name below line
+    if (block.name) {
+      page.drawText(clean(block.name), { x, y: y - 12, size: 9, font: bold, color: rgb(0.1, 0.1, 0.1) });
+      page.drawText(block.label, { x, y: y - 24, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
+    } else {
+      page.drawText(block.label, { x, y: y - 12, size: 9, font: bold, color: rgb(0.3, 0.3, 0.3) });
+    }
+  }
 
   // Footer
   page.drawText('Terms & Conditions: This Purchase Order is subject to the terms agreed upon by both parties.', {
     x: margin,
-    y: 40,
+    y: 30,
     size: 7,
     font,
     color: rgb(0.5, 0.5, 0.5),
