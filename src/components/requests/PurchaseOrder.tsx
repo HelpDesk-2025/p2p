@@ -23,6 +23,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
+import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import ExportModal from '../ExportModal';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
@@ -1555,6 +1556,16 @@ function DetailView({
           </div>
         </div>
       </Section>
+
+      {po.company_id && po.status !== 'draft' && (
+        <ApprovalProgressTracker
+          requestType="Purchase Order"
+          requestId={po.id}
+          requestNumber={po.po_number}
+          companyId={po.company_id}
+          department={po.department}
+        />
+      )}
     </div>
   );
 }
