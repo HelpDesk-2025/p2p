@@ -22,6 +22,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
+import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import ExportModal from '../ExportModal';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
@@ -611,34 +612,54 @@ export function PurchaseOrder() {
   };
 
   const routeToFirstApprover = async (po: PurchaseOrder) => {
-    const { data: matrix } = await supabase
-      .from('po_approval_matrix')
-      .select('*')
-      .eq('is_active', true)
-      .or(`company_id.eq.${po.company_id},company_id.is.null`)
-      .order('approval_level', { ascending: true });
-    const applicable = (matrix || []).filter((m: any) => {
-      const min = Number(m.min_amount || 0);
-      const max = m.max_amount === null ? Infinity : Number(m.max_amount);
-      return po.total_amount >= min && po.total_amount <= max;
-    });
-    const first = applicable[0];
-    if (!first) return;
-    await supabase.from('po_approvals').insert([
-      {
-        purchase_order_id: po.id,
-        approver_id: first.approver_id,
-        approval_level: first.approval_level || 1,
-        status: 'pending',
-      },
-    ]);
+    if (!po.company_id || !po.department) {
+      console.error('Missing company_id or department for approval routing');
+      return;
+    }
+
+    const approvalFlows = await getApprovalFlow(
+      po.company_id,
+      po.department,
+      'Purchase Order',
+      false,
+      po.total_amount
+    );
+
+    if (!approvalFlows || approvalFlows.length === 0) {
+      throw new Error('No approval flow configured for Purchase Order. Please contact administrator.');
+    }
+
+    await createApprovalLedgerEntry(
+      'Purchase Order',
+      po.id,
+      po.po_number,
+      user!.id,
+      profile?.full_name || 'Unknown',
+      'Requestor',
+      'Submitted',
+      'Initial submission',
+      0
+    );
+
     await supabase
       .from('purchase_orders')
-      .update({
-        current_approver_id: first.approver_id,
-        current_approval_level: first.approval_level || 1,
-      })
+      .update({ current_approval_level: 0 })
       .eq('id', po.id);
+
+    const firstApprover = approvalFlows[0];
+    await sendApprovalEmailToAll(
+      firstApprover,
+      po.company_id,
+      po.department,
+      'Purchase Order',
+      po.po_number,
+      profile?.full_name || 'Unknown',
+      po.total_amount,
+      'Submitted',
+      undefined,
+      undefined,
+      firstApprover.approver_type
+    );
   };
 
   const openDetail = async (po: PurchaseOrder) => {

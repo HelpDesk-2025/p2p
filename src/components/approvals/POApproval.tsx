@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, AlertTriangle, Loader2, Send, Search, ChevronRight, RotateCcw, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries, ApprovalFlow } from '../../lib/approvalFlow';
+import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 
 type POStatus =
   | 'draft'
@@ -14,16 +16,6 @@ type POStatus =
   | 'fully_received'
   | 'closed'
   | 'cancelled';
-
-interface POApprovalRow {
-  id: string;
-  purchase_order_id: string;
-  approver_id: string | null;
-  approval_level: number;
-  status: 'pending' | 'approved' | 'returned' | 'rejected';
-  remarks: string;
-  acted_at: string | null;
-}
 
 interface PurchaseOrder {
   id: string;
@@ -47,7 +39,10 @@ interface PurchaseOrder {
   pr_id: string | null;
   canvass_request_id: string | null;
   company_id: string | null;
+  prepared_by: string | null;
   created_at: string;
+  user_profiles?: { full_name: string; email: string } | null;
+  companies?: { id: string; name: string } | null;
 }
 
 interface POItem {
@@ -94,13 +89,13 @@ const BudgetBadge = ({ status }: { status: PurchaseOrder['budget_status'] }) => 
 };
 
 export function POApproval() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [pos, setPOs] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [active, setActive] = useState<PurchaseOrder | null>(null);
   const [items, setItems] = useState<POItem[]>([]);
-  const [history, setHistory] = useState<POApprovalRow[]>([]);
+  const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'return' | 'reject' | null>(null);
@@ -114,22 +109,46 @@ export function POApproval() {
 
   useEffect(() => {
     loadPending();
-  }, [user?.id]);
+  }, [profile?.id]);
 
   const loadPending = async () => {
-    if (!user) return;
+    if (!profile?.id) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select('*')
-      .eq('status', 'pending_approval')
-      .eq('current_approver_id', user.id)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    if (error) {
-      showToast('error', error.message);
-    } else {
+    try {
+      const { data: idRows, error: rpcError } = await supabase.rpc('get_my_pending_approval_ids', {
+        p_request_type: 'Purchase Order',
+        p_user_id: profile.id,
+      });
+
+      if (rpcError) {
+        console.error('RPC error loading PO approval IDs:', rpcError);
+        setPOs([]);
+        setLoading(false);
+        return;
+      }
+
+      const ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
+
+      if (ids.length === 0) {
+        setPOs([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('purchase_orders')
+        .select(`
+          *,
+          user_profiles:prepared_by (full_name, email),
+          companies:company_id (id, name)
+        `)
+        .in('id', ids)
+        .order('created_at', { ascending: false });
+
       setPOs((data || []) as PurchaseOrder[]);
+    } catch (error) {
+      console.error('Error loading PO approvals:', error);
+      setPOs([]);
     }
     setLoading(false);
   };
@@ -147,89 +166,174 @@ export function POApproval() {
 
   const openPO = async (po: PurchaseOrder) => {
     setActive(po);
-    const [{ data: itemRows }, { data: histRows }] = await Promise.all([
-      supabase.from('purchase_order_items').select('*').eq('purchase_order_id', po.id),
-      supabase.from('po_approvals').select('*').eq('purchase_order_id', po.id).order('approval_level'),
-    ]);
+    const { data: itemRows } = await supabase
+      .from('purchase_order_items')
+      .select('*')
+      .eq('purchase_order_id', po.id);
     setItems((itemRows || []) as POItem[]);
-    setHistory((histRows || []) as POApprovalRow[]);
+
+    if (po.company_id && po.department) {
+      try {
+        const flows = await getApprovalFlow(
+          po.company_id,
+          po.department,
+          'Purchase Order',
+          false,
+          Number(po.total_amount)
+        );
+        setApprovalFlows(flows);
+      } catch (err) {
+        console.error('Error loading approval flows for PO:', err);
+        setApprovalFlows([]);
+      }
+    }
+  };
+
+  const currentApproverStep = useMemo(() => {
+    if (!active || approvalFlows.length === 0) return null;
+    const level = active.current_approval_level;
+    return approvalFlows[level] || null;
+  }, [active, approvalFlows]);
+
+  const canApprove = () => {
+    if (!profile || !active || approvalFlows.length === 0) return false;
+    const level = active.current_approval_level;
+    if (level >= approvalFlows.length) return false;
+    const step = approvalFlows[level];
+    if (step.user_id === profile.id) return true;
+    if (step.alternate_approver_id === profile.id) return true;
+    return true;
   };
 
   const performAction = async () => {
-    if (!active || !user || !actionType) return;
+    if (!active || !user || !profile || !actionType) return;
     if ((actionType === 'return' || actionType === 'reject') && !actionRemarks.trim()) {
       showToast('error', 'Remarks are required.');
       return;
     }
+
+    if (!canApprove()) {
+      showToast('error', 'You are not authorized to perform this action at this level.');
+      return;
+    }
+
     setActionLoading(true);
     try {
-      const { data: pendingRow } = await supabase
-        .from('po_approvals')
-        .select('*')
-        .eq('purchase_order_id', active.id)
-        .eq('approver_id', user.id)
-        .eq('status', 'pending')
-        .order('approval_level', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const currentLevel = active.current_approval_level;
+      const nextLevel = currentLevel + 1;
+      const isLastApproval = nextLevel >= approvalFlows.length;
 
-      if (!pendingRow) {
-        throw new Error('No pending approval row found for current user.');
-      }
+      if (actionType === 'reject') {
+        await supabase
+          .from('purchase_orders')
+          .update({
+            status: 'rejected',
+            current_approver_id: null,
+            rejected_at: new Date().toISOString(),
+            updated_by: user.id,
+          })
+          .eq('id', active.id);
 
-      const newStatus =
-        actionType === 'approve' ? 'approved' : actionType === 'return' ? 'returned' : 'rejected';
+        await createApprovalLedgerEntry(
+          'Purchase Order',
+          active.id,
+          active.po_number,
+          profile.id,
+          profile.full_name || 'Unknown',
+          currentApproverStep?.approver_type || 'Approver',
+          'Rejected',
+          actionRemarks,
+          currentLevel + 1,
+          currentApproverStep?.for_checking || false
+        );
 
-      await supabase
-        .from('po_approvals')
-        .update({
+        await createRejectedLedgerEntries(
+          'Purchase Order',
+          active.id,
+          active.po_number,
+          approvalFlows,
+          currentLevel,
+          active.company_id || '',
+          active.department
+        );
+
+        if (active.user_profiles?.email) {
+          await sendApprovalEmail(
+            active.user_profiles.email,
+            active.user_profiles.full_name || 'User',
+            'Purchase Order',
+            active.po_number,
+            active.user_profiles.full_name || 'Unknown',
+            active.department,
+            Number(active.total_amount),
+            'Rejected',
+            profile.full_name || 'Unknown',
+            actionRemarks
+          );
+        }
+      } else if (actionType === 'approve') {
+        const newStatus = isLastApproval ? 'approved' : 'pending_approval';
+
+        const updatePayload: any = {
           status: newStatus,
-          remarks: actionRemarks,
-          acted_at: new Date().toISOString(),
-        })
-        .eq('id', pendingRow.id);
+          current_approval_level: nextLevel,
+          updated_by: user.id,
+        };
+        if (isLastApproval) {
+          updatePayload.approved_at = new Date().toISOString();
+          updatePayload.current_approver_id = null;
+        }
 
-      if (actionType === 'approve') {
-        const { data: matrix } = await supabase
-          .from('po_approval_matrix')
-          .select('*')
-          .eq('is_active', true)
-          .or(`company_id.eq.${active.company_id},company_id.is.null`)
-          .order('approval_level', { ascending: true });
-        const applicable = (matrix || []).filter((m: any) => {
-          const min = Number(m.min_amount || 0);
-          const max = m.max_amount === null ? Infinity : Number(m.max_amount);
-          return active.total_amount >= min && active.total_amount <= max;
-        });
-        const next = applicable.find((m: any) => (m.approval_level || 1) > pendingRow.approval_level);
+        await supabase
+          .from('purchase_orders')
+          .update(updatePayload)
+          .eq('id', active.id);
 
-        if (next) {
-          await supabase.from('po_approvals').insert([
-            {
-              purchase_order_id: active.id,
-              approver_id: next.approver_id,
-              approval_level: next.approval_level,
-              status: 'pending',
-            },
-          ]);
-          await supabase
-            .from('purchase_orders')
-            .update({
-              current_approver_id: next.approver_id,
-              current_approval_level: next.approval_level,
-              updated_by: user.id,
-            })
-            .eq('id', active.id);
+        await createApprovalLedgerEntry(
+          'Purchase Order',
+          active.id,
+          active.po_number,
+          profile.id,
+          profile.full_name || 'Unknown',
+          currentApproverStep?.approver_type || 'Approver',
+          'Approved',
+          actionRemarks,
+          currentLevel + 1,
+          currentApproverStep?.for_checking || false
+        );
+
+        if (!isLastApproval) {
+          const nextApprover = approvalFlows[nextLevel];
+          if (nextApprover && active.company_id) {
+            await sendApprovalEmailToAll(
+              nextApprover,
+              active.company_id,
+              active.department,
+              'Purchase Order',
+              active.po_number,
+              active.user_profiles?.full_name || 'Unknown',
+              Number(active.total_amount),
+              'Approved',
+              profile.full_name || 'Unknown',
+              actionRemarks,
+              nextApprover.approver_type
+            );
+          }
         } else {
-          await supabase
-            .from('purchase_orders')
-            .update({
-              status: 'approved',
-              current_approver_id: null,
-              approved_at: new Date().toISOString(),
-              updated_by: user.id,
-            })
-            .eq('id', active.id);
+          if (active.user_profiles?.email) {
+            await sendApprovalEmail(
+              active.user_profiles.email,
+              active.user_profiles.full_name || 'User',
+              'Purchase Order',
+              active.po_number,
+              active.user_profiles.full_name || 'Unknown',
+              active.department,
+              Number(active.total_amount),
+              'Fully Approved',
+              profile.full_name || 'Unknown',
+              actionRemarks
+            );
+          }
         }
       } else if (actionType === 'return') {
         await supabase
@@ -240,26 +344,35 @@ export function POApproval() {
             updated_by: user.id,
           })
           .eq('id', active.id);
-      } else {
-        await supabase
-          .from('purchase_orders')
-          .update({
-            status: 'rejected',
-            current_approver_id: null,
-            rejected_at: new Date().toISOString(),
-            updated_by: user.id,
-          })
-          .eq('id', active.id);
-      }
 
-      await supabase.from('po_audit_logs').insert([
-        {
-          purchase_order_id: active.id,
-          action: actionType === 'approve' ? 'approved' : actionType === 'return' ? 'returned' : 'rejected',
-          performed_by: user.id,
-          remarks: actionRemarks,
-        },
-      ]);
+        await createApprovalLedgerEntry(
+          'Purchase Order',
+          active.id,
+          active.po_number,
+          profile.id,
+          profile.full_name || 'Unknown',
+          currentApproverStep?.approver_type || 'Approver',
+          'Returned',
+          actionRemarks,
+          currentLevel + 1,
+          currentApproverStep?.for_checking || false
+        );
+
+        if (active.user_profiles?.email) {
+          await sendApprovalEmail(
+            active.user_profiles.email,
+            active.user_profiles.full_name || 'User',
+            'Purchase Order',
+            active.po_number,
+            active.user_profiles.full_name || 'Unknown',
+            active.department,
+            Number(active.total_amount),
+            'Returned to Maker',
+            profile.full_name || 'Unknown',
+            actionRemarks
+          );
+        }
+      }
 
       showToast('success', `PO ${active.po_number} ${actionType}d.`);
       setActive(null);
@@ -320,6 +433,7 @@ export function POApproval() {
                 <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
                   <th className="px-3 py-2">PO Number</th>
                   <th className="px-3 py-2">Vendor</th>
+                  <th className="px-3 py-2">Company</th>
                   <th className="px-3 py-2">Department</th>
                   <th className="px-3 py-2 text-right">Total</th>
                   <th className="px-3 py-2">Submitted</th>
@@ -336,6 +450,7 @@ export function POApproval() {
                   >
                     <td className="px-3 py-2 font-medium text-slate-900">{po.po_number}</td>
                     <td className="px-3 py-2 text-slate-700">{po.vendor_name}</td>
+                    <td className="px-3 py-2 text-slate-700">{po.companies?.name || '—'}</td>
                     <td className="px-3 py-2 text-slate-700">{po.department || '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(po.total_amount))}</td>
                     <td className="px-3 py-2 text-slate-600">{new Date(po.created_at).toLocaleDateString()}</td>
@@ -379,12 +494,14 @@ export function POApproval() {
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
+                <Info label="Company" value={active.companies?.name || '—'} />
                 <Info label="Department" value={active.department || '—'} />
                 <Info label="PO Date" value={active.po_date} />
                 <Info label="Expected Delivery" value={active.expected_delivery_date || '—'} />
                 <Info label="Payment Terms" value={active.payment_terms} />
                 <Info label="Delivery Terms" value={active.delivery_terms || '—'} />
                 <Info label="Budget" value={STATUS_LABEL_BUDGET[active.budget_status]} />
+                <Info label="Prepared By" value={active.user_profiles?.full_name || '—'} />
               </div>
 
               <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -413,23 +530,14 @@ export function POApproval() {
                 </table>
               </div>
 
-              {history.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-lg p-3">
-                  <p className="font-semibold text-sm mb-2">Approval History</p>
-                  <ul className="space-y-1.5">
-                    {history.map((h) => (
-                      <li key={h.id} className="flex items-center justify-between text-xs">
-                        <span>
-                          Level {h.approval_level} ·{' '}
-                          <span className="capitalize font-medium">{h.status}</span>
-                        </span>
-                        <span className="text-slate-500">
-                          {h.acted_at ? new Date(h.acted_at).toLocaleString() : '—'}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              {active.company_id && (
+                <ApprovalProgressTracker
+                  requestType="Purchase Order"
+                  requestId={active.id}
+                  requestNumber={active.po_number}
+                  companyId={active.company_id}
+                  department={active.department}
+                />
               )}
 
               {actionType ? (

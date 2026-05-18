@@ -184,6 +184,7 @@ export function ApprovalProgressTracker({
       'Petty Cash': 'petty_cash_requests',
       'Reimbursement': 'reimbursement_requests',
       'Cash Advance': 'cash_advance_requests',
+      'Purchase Order': 'purchase_orders',
     };
     return typeMap[requestType] || 'purchase_requisitions';
   };
