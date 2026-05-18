@@ -100,6 +100,7 @@ interface PurchaseRequisition {
   requester_id?: string;
   requester_name?: string;
   pr_requester?: { full_name?: string | null; email?: string | null } | null;
+  companies?: { name: string } | null;
 }
 
 interface QuotationItem {
@@ -463,7 +464,7 @@ export function Canvass() {
   const loadAvailablePRs = async () => {
     let query = supabase
       .from('purchase_requisitions')
-      .select('*, pr_requester:requester_id ( full_name, email )')
+      .select('*, pr_requester:requester_id ( full_name, email ), companies ( name )')
       .eq('ready_for_canvass', true)
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
@@ -1397,6 +1398,7 @@ export function Canvass() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document No.</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
@@ -1406,7 +1408,7 @@ export function Canvass() {
               <tbody className="divide-y divide-slate-200">
                 {availablePRs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                       No purchase requisitions ready for canvass
                     </td>
                   </tr>
@@ -1416,6 +1418,7 @@ export function Canvass() {
                       <td className="px-6 py-4 text-sm font-mono font-medium text-slate-900">
                         {pr.document_no || pr.pr_number}
                       </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{pr.companies?.name || '-'}</td>
                       <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">
@@ -1457,6 +1460,10 @@ export function Canvass() {
                   >
                     Select
                   </button>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase mb-1">Company</p>
+                  <p className="text-sm text-slate-700">{pr.companies?.name || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-slate-500 uppercase mb-1">Description</p>
