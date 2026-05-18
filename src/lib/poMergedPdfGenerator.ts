@@ -45,39 +45,55 @@ export async function generateAndUploadPOMergedPdf(
   let preparedByName: string | undefined;
   let preparedByEsig: string | null | undefined;
 
+  async function resolveSignature(profile: { signature_path?: string | null; e_sig?: string | null }): Promise<string | null> {
+    if (profile.signature_path) {
+      if (profile.signature_path.startsWith('data:')) {
+        return profile.signature_path;
+      }
+      const { data: sigFile } = await supabase.storage
+        .from('attachments')
+        .download(profile.signature_path);
+      if (sigFile) {
+        const arrayBuffer = await sigFile.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        return `data:${sigFile.type};base64,${base64}`;
+      }
+    }
+    if (profile.e_sig) {
+      return profile.e_sig;
+    }
+    return null;
+  }
+
   if (po.company_id) {
-    // Get approval flows for this PO, excluding for_checking steps
-    const { data: flows } = await supabase
+    // Get approval flows for this PO via approval_flows joined with setups
+    const { data: flowSetups } = await supabase
       .from('approval_flow_setups')
-      .select('sequence, user_id, for_checking')
+      .select('id')
       .eq('company_id', po.company_id)
-      .eq('department', po.department)
-      .eq('request_type', 'Purchase Order')
-      .order('sequence', { ascending: false });
+      .eq('department_id', po.department)
+      .eq('request_type', 'Purchase Order');
 
-    if (flows && flows.length > 0) {
-      // Find last non-checker step
-      const lastApproverFlow = flows.find(f => !f.for_checking);
-      if (lastApproverFlow?.user_id) {
-        const { data: approverProfile } = await supabase
-          .from('user_profiles')
-          .select('full_name, e_sig, signature_path')
-          .eq('id', lastApproverFlow.user_id)
-          .maybeSingle();
+    if (flowSetups && flowSetups.length > 0) {
+      const setupIds = flowSetups.map(s => s.id);
+      const { data: flows } = await supabase
+        .from('approval_flows')
+        .select('sequence, user_id, for_checking')
+        .in('approval_flow_setup_id', setupIds)
+        .order('sequence', { ascending: false });
 
-        if (approverProfile) {
-          approverName = approverProfile.full_name || undefined;
-          if (approverProfile.signature_path) {
-            const { data: sigFile } = await supabase.storage
-              .from('attachments')
-              .download(approverProfile.signature_path);
-            if (sigFile) {
-              const arrayBuffer = await sigFile.arrayBuffer();
-              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-              approverEsig = `data:${sigFile.type};base64,${base64}`;
-            }
-          } else if (approverProfile.e_sig) {
-            approverEsig = approverProfile.e_sig;
+      if (flows && flows.length > 0) {
+        const lastApproverFlow = flows.find(f => !f.for_checking);
+        if (lastApproverFlow?.user_id) {
+          const { data: approverProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, e_sig, signature_path')
+            .eq('id', lastApproverFlow.user_id)
+            .maybeSingle();
+
+          if (approverProfile) {
+            approverName = approverProfile.full_name || undefined;
+            approverEsig = await resolveSignature(approverProfile);
           }
         }
       }
@@ -94,18 +110,7 @@ export async function generateAndUploadPOMergedPdf(
 
     if (prepProfile) {
       preparedByName = prepProfile.full_name || undefined;
-      if (prepProfile.signature_path) {
-        const { data: sigFile } = await supabase.storage
-          .from('attachments')
-          .download(prepProfile.signature_path);
-        if (sigFile) {
-          const arrayBuffer = await sigFile.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          preparedByEsig = `data:${sigFile.type};base64,${base64}`;
-        }
-      } else if (prepProfile.e_sig) {
-        preparedByEsig = prepProfile.e_sig;
-      }
+      preparedByEsig = await resolveSignature(prepProfile);
     }
   }
 
