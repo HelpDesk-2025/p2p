@@ -152,7 +152,7 @@ export function POApproval() {
         .from('purchase_orders')
         .select(`
           *,
-          user_profiles:prepared_by (full_name, email),
+          user_profiles!purchase_orders_prepared_by_fkey (full_name, email),
           companies:company_id (id, name)
         `)
         .in('id', ids)
