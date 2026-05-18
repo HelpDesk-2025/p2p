@@ -152,13 +152,32 @@ export function POApproval() {
         .from('purchase_orders')
         .select(`
           *,
-          user_profiles!purchase_orders_prepared_by_fkey (full_name, email),
           companies:company_id (id, name)
         `)
         .in('id', ids)
         .order('created_at', { ascending: false });
 
-      setPOs((data || []) as PurchaseOrder[]);
+      const poList = (data || []) as PurchaseOrder[];
+
+      // Fetch preparer profiles separately since prepared_by FK points to auth.users
+      const preparerIds = [...new Set(poList.map(p => p.prepared_by).filter(Boolean))] as string[];
+      if (preparerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email')
+          .in('id', preparerIds);
+        if (profiles) {
+          const profileMap = new Map(profiles.map(p => [p.id, p]));
+          poList.forEach(po => {
+            if (po.prepared_by && profileMap.has(po.prepared_by)) {
+              const prof = profileMap.get(po.prepared_by)!;
+              po.user_profiles = { full_name: prof.full_name, email: prof.email };
+            }
+          });
+        }
+      }
+
+      setPOs(poList);
     } catch (error) {
       console.error('Error loading PO approvals:', error);
       setPOs([]);
