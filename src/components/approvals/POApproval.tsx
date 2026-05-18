@@ -738,23 +738,6 @@ export function POApproval() {
               </div>
 
               <div className="p-4 sm:p-6 space-y-5">
-                {/* Header: PO Number + Status Badges */}
-                <div className="bg-white border border-slate-200 rounded-lg p-4 sm:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <h4 className="text-lg font-bold text-slate-900 font-mono">{selectedRequest.po_number}</h4>
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColor}`}>
-                          {statusLabel}
-                        </span>
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${budgetColor}`}>
-                          {budgetLabel}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Two-column: Vendor + PO Details */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   {/* Vendor Card */}
