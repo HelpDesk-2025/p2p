@@ -58,7 +58,6 @@ Deno.serve(async (req: Request) => {
       .from('purchase_orders')
       .select(`
         *,
-        requester:user_profiles!requested_by(full_name, email),
         company:companies!company_id(id, name, api_id, accounting_notification_email),
         pr:purchase_requisitions!pr_id(description, purpose, document_no)
       `)
@@ -67,6 +66,17 @@ Deno.serve(async (req: Request) => {
 
     if (poError || !po) {
       throw new Error(`Failed to fetch PO: ${poError?.message}`);
+    }
+
+    // Fetch requester profile separately (FK is to auth.users, not user_profiles)
+    let requesterProfile: { full_name: string; email: string } | null = null;
+    if (po.requested_by) {
+      const { data: profile } = await supabaseClient
+        .from('user_profiles')
+        .select('full_name, email')
+        .eq('id', po.requested_by)
+        .maybeSingle();
+      requesterProfile = profile;
     }
 
     console.log('PO Data:', {
@@ -293,7 +303,7 @@ Deno.serve(async (req: Request) => {
 
     // Send email notifications
     const emailRecipients: string[] = [];
-    if (po.requester?.email) emailRecipients.push(po.requester.email);
+    if (requesterProfile?.email) emailRecipients.push(requesterProfile.email);
     if (po.company?.accounting_notification_email) emailRecipients.push(po.company.accounting_notification_email);
 
     for (const recipient of emailRecipients) {
@@ -307,10 +317,10 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             to: recipient,
             subject: `P2P - Purchase Order ${po.po_number} Posted to MSBC`,
-            recipientName: recipient === po.requester?.email ? po.requester?.full_name : 'Accounting Team',
+            recipientName: recipient === requesterProfile?.email ? requesterProfile?.full_name : 'Accounting Team',
             requestType: 'Purchase Order',
             documentNo: po.po_number,
-            requesterName: po.requester?.full_name || 'N/A',
+            requesterName: requesterProfile?.full_name || 'N/A',
             department: po.department || 'N/A',
             totalAmount: netPayable,
             action: 'Posted to MSBC',
