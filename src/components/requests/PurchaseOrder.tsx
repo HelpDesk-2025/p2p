@@ -18,6 +18,7 @@ import {
   ArrowDown,
   SlidersHorizontal,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -200,6 +201,7 @@ export function PurchaseOrder() {
   const [draftPO, setDraftPO] = useState<Partial<PurchaseOrder>>({});
   const [draftItems, setDraftItems] = useState<POItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [reposting, setReposting] = useState(false);
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchEmail, setDispatchEmail] = useState('');
@@ -750,6 +752,64 @@ export function PurchaseOrder() {
     setView('list');
   };
 
+  const handlePreviewMergedPdf = async () => {
+    if (!activeOrder?.merged_pdf_path) return;
+    const { data } = await supabase.storage.from('attachments').createSignedUrl(activeOrder.merged_pdf_path, 300);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+  };
+
+  const handleDownloadMergedPdf = async () => {
+    if (!activeOrder?.merged_pdf_path) return;
+    const { data } = await supabase.storage.from('attachments').download(activeOrder.merged_pdf_path);
+    if (data) {
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeOrder.po_number}_merged.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleRepostToMsbc = async () => {
+    if (!activeOrder) return;
+    if (!confirm('Repost this PO to MSBC?')) return;
+    setReposting(true);
+    try {
+      await supabase
+        .from('purchase_orders')
+        .update({ msbc_sync_status: 'syncing', msbc_sync_error: null })
+        .eq('id', activeOrder.id);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-po-to-msbc`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ poId: activeOrder.id }),
+      });
+      if (!res.ok) {
+        const errBody = await res.text();
+        throw new Error(errBody || `HTTP ${res.status}`);
+      }
+      showToast('success', 'PO reposted to MSBC successfully.');
+      // Refresh order data
+      const { data: updated } = await supabase.from('purchase_orders').select('*').eq('id', activeOrder.id).maybeSingle();
+      if (updated) setActiveOrder(updated as PurchaseOrder);
+    } catch (err: any) {
+      showToast('error', `Repost failed: ${err.message}`);
+      await supabase
+        .from('purchase_orders')
+        .update({ msbc_sync_status: 'failed', msbc_sync_error: err.message })
+        .eq('id', activeOrder.id);
+    } finally {
+      setReposting(false);
+    }
+  };
+
   // Edit a draft item line (only certain fields editable)
   const updateItem = (idx: number, patch: Partial<POItem>) => {
     setDraftItems((prev) => {
@@ -1088,6 +1148,10 @@ export function PurchaseOrder() {
             }}
             onCancel={cancelPO}
             onDownload={() => handleDownloadPdf(activeOrder)}
+            onPreviewMergedPdf={handlePreviewMergedPdf}
+            onDownloadMergedPdf={handleDownloadMergedPdf}
+            onRepostToMsbc={handleRepostToMsbc}
+            reposting={reposting}
           />
         </div>
       )}
