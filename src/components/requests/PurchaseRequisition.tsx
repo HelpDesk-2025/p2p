@@ -1193,7 +1193,9 @@ export function PurchaseRequisition() {
         request.department,
         'Purchase Requisition',
         request.is_budgeted,
-        request.total_amount
+        request.total_amount,
+        undefined,
+        request.purchase_type
       );
 
       if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
