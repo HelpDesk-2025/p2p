@@ -16,6 +16,7 @@ interface POForPdf {
   remarks: string;
   subtotal: number;
   vat_amount: number;
+  ewt_amount?: number;
   total_amount: number;
   approver_name?: string;
   approver_esig?: string | null;
@@ -162,7 +163,11 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
   };
   drawTotal('Subtotal', fmtMoney(Number(po.subtotal)));
   drawTotal('VAT (12%)', fmtMoney(Number(po.vat_amount)));
-  drawTotal('TOTAL AMOUNT', fmtMoney(Number(po.total_amount)), true);
+  const ewtAmount = Number(po.ewt_amount || 0);
+  if (ewtAmount > 0) {
+    drawTotal('EWT', `(${fmtMoney(ewtAmount)})`);
+  }
+  drawTotal('NET PAYABLE', fmtMoney(Number(po.total_amount)), true);
 
   y -= 12;
 

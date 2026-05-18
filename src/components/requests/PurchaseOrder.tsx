@@ -23,6 +23,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
+import { generateAndUploadPOMergedPdf } from '../../lib/poMergedPdfGenerator';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import ExportModal from '../ExportModal';
@@ -93,6 +94,9 @@ interface PurchaseOrder {
   cancellation_reason: string;
   dispatched_at: string | null;
   pdf_path: string;
+  merged_pdf_path?: string | null;
+  msbc_sync_status?: string | null;
+  msbc_sync_error?: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -202,6 +206,7 @@ export function PurchaseOrder() {
   const [draftItems, setDraftItems] = useState<POItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [reposting, setReposting] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [trackerKey, setTrackerKey] = useState(0);
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
@@ -680,7 +685,8 @@ export function PurchaseOrder() {
     if (!activeOrder || !user) return;
     setSaving(true);
     try {
-      const pdfBlob = await generatePurchaseOrderPdf(activeOrder, activeItems);
+      const ewtTotal = activeItems.reduce((s, it) => s + Number(it.ewt_amount || 0), 0);
+      const pdfBlob = await generatePurchaseOrderPdf({ ...activeOrder, ewt_amount: ewtTotal }, activeItems);
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -718,7 +724,9 @@ export function PurchaseOrder() {
       .from('purchase_order_items')
       .select('*')
       .eq('purchase_order_id', po.id);
-    const pdfBlob = await generatePurchaseOrderPdf(po, (items || []) as POItem[]);
+    const poItems = (items || []) as POItem[];
+    const ewtTotal = poItems.reduce((s, it) => s + Number(it.ewt_amount || 0), 0);
+    const pdfBlob = await generatePurchaseOrderPdf({ ...po, ewt_amount: ewtTotal }, poItems);
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
     a.href = url;
@@ -769,6 +777,50 @@ export function PurchaseOrder() {
       a.download = `${activeOrder.po_number}_merged.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleRegeneratePdf = async () => {
+    if (!activeOrder) return;
+    setRegenerating(true);
+    try {
+      const { data: itemsData } = await supabase
+        .from('purchase_order_items')
+        .select('*')
+        .eq('purchase_order_id', activeOrder.id);
+      const poItems = (itemsData || []) as POItem[];
+
+      const mergedPath = await generateAndUploadPOMergedPdf(
+        {
+          id: activeOrder.id,
+          po_number: activeOrder.po_number,
+          vendor_name: activeOrder.vendor_name,
+          vendor_address: activeOrder.vendor_address,
+          vendor_contact: activeOrder.vendor_contact,
+          vendor_email: activeOrder.vendor_email,
+          vendor_tin: activeOrder.vendor_tin,
+          department: activeOrder.department,
+          po_date: activeOrder.po_date,
+          expected_delivery_date: activeOrder.expected_delivery_date,
+          delivery_address: activeOrder.delivery_address,
+          payment_terms: activeOrder.payment_terms,
+          delivery_terms: activeOrder.delivery_terms,
+          remarks: activeOrder.remarks,
+          subtotal: activeOrder.subtotal,
+          vat_amount: activeOrder.vat_amount,
+          total_amount: activeOrder.total_amount,
+          canvass_request_id: activeOrder.canvass_request_id,
+          company_id: activeOrder.company_id,
+          prepared_by: activeOrder.prepared_by,
+        },
+        poItems,
+      );
+      setActiveOrder({ ...activeOrder, merged_pdf_path: mergedPath } as PurchaseOrder);
+      showToast('success', 'Document regenerated successfully.');
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to regenerate document.');
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -1153,7 +1205,9 @@ export function PurchaseOrder() {
             onPreviewMergedPdf={handlePreviewMergedPdf}
             onDownloadMergedPdf={handleDownloadMergedPdf}
             onRepostToMsbc={handleRepostToMsbc}
+            onRegeneratePdf={handleRegeneratePdf}
             reposting={reposting}
+            regenerating={regenerating}
             trackerKey={trackerKey}
           />
         </div>
@@ -1512,7 +1566,9 @@ function DetailView({
   onPreviewMergedPdf,
   onDownloadMergedPdf,
   onRepostToMsbc,
+  onRegeneratePdf,
   reposting,
+  regenerating,
   trackerKey,
 }: {
   po: PurchaseOrder;
@@ -1525,7 +1581,9 @@ function DetailView({
   onPreviewMergedPdf: () => void;
   onDownloadMergedPdf: () => void;
   onRepostToMsbc: () => void;
+  onRegeneratePdf: () => void;
   reposting: boolean;
+  regenerating: boolean;
   trackerKey: number;
 }) {
   return (
@@ -1607,6 +1665,14 @@ function DetailView({
                   </button>
                 </>
               )}
+              <button
+                onClick={onRegeneratePdf}
+                disabled={regenerating}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                {regenerating ? 'Regenerating...' : 'Regenerate Document'}
+              </button>
               <button
                 onClick={onRepostToMsbc}
                 disabled={reposting}

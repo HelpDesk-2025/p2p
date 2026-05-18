@@ -105,6 +105,7 @@ export async function generateAndUploadPOMergedPdf(
   }
 
   // 1. Generate PO Form PDF
+  const ewtTotal = items.reduce((sum, it) => sum + Number((it as any).ewt_amount || 0), 0);
   const poFormBlob = await generatePurchaseOrderPdf(
     {
       po_number: po.po_number,
@@ -122,6 +123,7 @@ export async function generateAndUploadPOMergedPdf(
       remarks: po.remarks,
       subtotal: po.subtotal,
       vat_amount: po.vat_amount,
+      ewt_amount: ewtTotal,
       total_amount: po.total_amount,
       approver_name: approverName,
       approver_esig: approverEsig,
