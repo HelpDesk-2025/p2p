@@ -1442,6 +1442,10 @@ function DetailView({
   onDispatch,
   onCancel,
   onDownload,
+  onPreviewMergedPdf,
+  onDownloadMergedPdf,
+  onRepostToMsbc,
+  reposting,
 }: {
   po: PurchaseOrder;
   items: POItem[];
@@ -1450,6 +1454,10 @@ function DetailView({
   onDispatch: () => void;
   onCancel: () => void;
   onDownload: () => void;
+  onPreviewMergedPdf: () => void;
+  onDownloadMergedPdf: () => void;
+  onRepostToMsbc: () => void;
+  reposting: boolean;
 }) {
   return (
     <div className="space-y-6">
