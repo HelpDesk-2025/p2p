@@ -78,6 +78,7 @@ export function POApproval() {
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
+  const [linkedPR, setLinkedPR] = useState<{ purpose: string; description: string } | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -165,12 +166,32 @@ export function POApproval() {
     setShowModal(true);
     setComments('');
     setFlowsLoading(true);
+    setLinkedPR(null);
 
     const { data: itemRows } = await supabase
       .from('purchase_order_items')
       .select('*')
       .eq('purchase_order_id', po.id);
     setItems((itemRows || []) as POItem[]);
+
+    // Fetch linked PR purpose/description via canvass_request or direct pr_id
+    let prId = po.pr_id;
+    if (!prId && po.canvass_request_id) {
+      const { data: canvass } = await supabase
+        .from('canvass_requests')
+        .select('pr_id')
+        .eq('id', po.canvass_request_id)
+        .maybeSingle();
+      if (canvass?.pr_id) prId = canvass.pr_id;
+    }
+    if (prId) {
+      const { data: pr } = await supabase
+        .from('purchase_requisitions')
+        .select('purpose, description')
+        .eq('id', prId)
+        .maybeSingle();
+      if (pr) setLinkedPR({ purpose: pr.purpose || '', description: pr.description || '' });
+    }
 
     if (po.company_id && po.department) {
       try {
@@ -775,6 +796,29 @@ export function POApproval() {
                     </div>
                   </div>
                 </div>
+
+                {/* Linked PR Purpose & Description */}
+                {linkedPR && (linkedPR.purpose || linkedPR.description) && (
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                      <h5 className="text-sm font-bold text-blue-700">PR Details</h5>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {linkedPR.purpose && (
+                        <div className="px-4 py-3">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Purpose</p>
+                          <p className="text-sm text-slate-900 whitespace-pre-wrap">{linkedPR.purpose}</p>
+                        </div>
+                      )}
+                      {linkedPR.description && (
+                        <div className="px-4 py-3">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</p>
+                          <p className="text-sm text-slate-900 whitespace-pre-wrap">{linkedPR.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Line Items */}
                 {items.length > 0 && (
