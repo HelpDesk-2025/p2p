@@ -496,96 +496,6 @@ export function ApprovalProgressTracker({
           );
         })}
 
-        {/* MSBC Sending step shown inline for Purchase Order requests */}
-        {(requestType === 'Purchase Order') && (
-          <div className="relative">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 z-10">
-                <div
-                  className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
-                    msbcSyncStatus === 'synced' ? 'border-green-600 bg-green-50' :
-                    msbcSyncStatus === 'syncing' ? 'border-blue-600 bg-blue-50' :
-                    msbcSyncStatus === 'failed' ? 'border-red-600 bg-red-50' :
-                    'border-gray-200 bg-white'
-                  }`}
-                >
-                  {msbcSyncStatus === 'synced' ? (
-                    <CheckCircle className="text-green-600" size={24} />
-                  ) : msbcSyncStatus === 'syncing' ? (
-                    <Send className="text-blue-600 animate-pulse" size={24} />
-                  ) : msbcSyncStatus === 'failed' ? (
-                    <XCircle className="text-red-600" size={24} />
-                  ) : (
-                    <Circle className="text-gray-300" size={24} />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-slate-900">
-                    Sending Request to MSBC
-                  </span>
-                  {status !== 'approved' && !msbcSyncStatus && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
-                      Not yet reached
-                    </span>
-                  )}
-                  {status === 'approved' && (!msbcSyncStatus || msbcSyncStatus === 'pending') && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
-                      Pending
-                    </span>
-                  )}
-                  {msbcSyncStatus === 'syncing' && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                      Syncing...
-                    </span>
-                  )}
-                  {msbcSyncStatus === 'synced' && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                      Sent Successfully
-                    </span>
-                  )}
-                  {msbcSyncStatus === 'failed' && (
-                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
-                      Failed
-                    </span>
-                  )}
-                </div>
-
-                {msbcSyncStatus === 'synced' && msbcSyncDate && (
-                  <div className="mt-2">
-                    <p className="text-sm text-slate-600">System</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {new Date(msbcSyncDate).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-
-                {msbcSyncStatus === 'failed' && msbcSyncError && (
-                  <div className="mt-2">
-                    <p className="text-sm text-slate-600">System</p>
-                    <p className="text-sm text-red-700 mt-2 p-3 bg-red-50 rounded border border-red-200 italic">
-                      "{msbcSyncError}"
-                    </p>
-                  </div>
-                )}
-
-                {status !== 'approved' && !msbcSyncStatus && (
-                  <p className="text-sm text-slate-500 mt-1">Not yet reached</p>
-                )}
-
-                {status === 'approved' && (!msbcSyncStatus || msbcSyncStatus === 'pending') && (
-                  <p className="text-sm text-slate-500 mt-1">Waiting to send to MSBC...</p>
-                )}
-
-                {msbcSyncStatus === 'syncing' && (
-                  <p className="text-sm text-slate-500 mt-1">Sending request to MSBC...</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {status === 'approved' && (
@@ -597,8 +507,7 @@ export function ApprovalProgressTracker({
 
           {/* Hide MSBC sync for Purchase Order type PRs and Petty Cash */}
           {!((requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') && purchaseType === 'Purchase Order') &&
-           !(requestType === 'Petty Cash' || requestType === 'petty_cash') &&
-           !(requestType === 'Purchase Order') && (
+           !(requestType === 'Petty Cash' || requestType === 'petty_cash') && (
             <div className="relative">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 z-10">
