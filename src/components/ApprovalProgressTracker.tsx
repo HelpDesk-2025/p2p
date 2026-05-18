@@ -230,7 +230,7 @@ export function ApprovalProgressTracker({
     const ledgerEntry = ledgerEntries.find(e => e.sequence === index + 1);
     if (ledgerEntry && ledgerEntry.action === 'Approved') return 'approved';
     if (index < currentApprovalLevel && !ledgerEntry) return 'approved';
-    if (index === currentApprovalLevel && status === 'pending') return 'current';
+    if (index === currentApprovalLevel && (status === 'pending' || status === 'pending_approval')) return 'current';
     return 'pending';
   };
 
