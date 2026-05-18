@@ -22,7 +22,13 @@ interface PurchaseOrder {
   id: string;
   po_number: string;
   vendor_name: string;
+  vendor_address: string;
+  vendor_contact: string;
   vendor_email: string;
+  vendor_tin: string;
+  vendor_bank_name: string;
+  vendor_bank_account: string;
+  vendor_bank_address: string;
   department: string;
   total_amount: number;
   budget_status: 'within_budget' | 'over_budget' | 'no_budget';
@@ -53,6 +59,7 @@ interface POItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  ewt_amount: number;
   remarks: string;
 }
 
@@ -697,181 +704,220 @@ export function POApproval() {
         )}
       </div>
 
-      {showModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">Review Purchase Order</h3>
-                <p className="text-sm text-slate-600 mt-1">{selectedRequest.po_number}</p>
-              </div>
-              <button
-                onClick={() => { if (!loading) setShowModal(false); }}
-                disabled={loading}
-                className="p-2 hover:bg-slate-100 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      {showModal && selectedRequest && (() => {
+        const fmtMoney = (n: number) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const ewtTotal = items.reduce((sum, it) => sum + Number(it.ewt_amount || 0), 0);
+        const netOfVat = Number(selectedRequest.subtotal);
+        const vat12 = Number(selectedRequest.vat_amount);
+        const netPayable = Number(selectedRequest.total_amount);
 
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        const budgetLabel = selectedRequest.budget_status === 'within_budget' ? 'Within Budget'
+          : selectedRequest.budget_status === 'over_budget' ? 'Over Budget' : 'No Budget Allocated';
+        const budgetColor = selectedRequest.budget_status === 'within_budget' ? 'text-green-700 bg-green-50 border-green-200'
+          : selectedRequest.budget_status === 'over_budget' ? 'text-red-700 bg-red-50 border-red-200' : 'text-amber-700 bg-amber-50 border-amber-200';
+        const statusLabel = selectedRequest.status === 'pending_approval' ? 'Pending Approval'
+          : selectedRequest.status.charAt(0).toUpperCase() + selectedRequest.status.slice(1).replace(/_/g, ' ');
+        const statusColor = selectedRequest.status === 'pending_approval' ? 'text-amber-700 bg-amber-50 border-amber-200'
+          : selectedRequest.status === 'approved' ? 'text-green-700 bg-green-50 border-green-200' : 'text-red-700 bg-red-50 border-red-200';
+
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">PO Number</label>
-                  <p className="text-slate-900 font-mono">{selectedRequest.po_number}</p>
+                  <h3 className="text-xl font-bold text-slate-900">Review Purchase Order</h3>
+                  <p className="text-sm text-slate-600 mt-1">{selectedRequest.po_number}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Company</label>
-                  <p className="text-slate-900">{selectedRequest.companies?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Department</label>
-                  <p className="text-slate-900">{selectedRequest.department || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Prepared By</label>
-                  <p className="text-slate-900">{selectedRequest.user_profiles?.full_name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Vendor</label>
-                  <p className="text-slate-900">{selectedRequest.vendor_name}</p>
-                  <p className="text-xs text-slate-500">{selectedRequest.vendor_email || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Budget Status</label>
-                  <p className="text-slate-900">
-                    {selectedRequest.budget_status === 'within_budget' ? 'Within Budget' : selectedRequest.budget_status === 'over_budget' ? 'Over Budget' : 'No Budget'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">PO Date</label>
-                  <p className="text-slate-900">{selectedRequest.po_date ? new Date(selectedRequest.po_date).toLocaleDateString() : 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Expected Delivery</label>
-                  <p className="text-slate-900">{selectedRequest.expected_delivery_date ? new Date(selectedRequest.expected_delivery_date).toLocaleDateString() : 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Payment Terms</label>
-                  <p className="text-slate-900">{selectedRequest.payment_terms || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Delivery Terms</label>
-                  <p className="text-slate-900">{selectedRequest.delivery_terms || 'N/A'}</p>
-                </div>
+                <button
+                  onClick={() => { if (!loading) setShowModal(false); }}
+                  disabled={loading}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Subtotal</label>
-                  <p className="text-slate-900 font-bold">₱{Number(selectedRequest.subtotal).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">VAT</label>
-                  <p className="text-slate-900 font-bold">₱{Number(selectedRequest.vat_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Total Amount</label>
-                  <p className="text-slate-900 font-bold text-lg">₱{Number(selectedRequest.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                </div>
-              </div>
-
-              {selectedRequest.remarks && (
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Remarks</label>
-                  <p className="text-slate-900">{selectedRequest.remarks}</p>
-                </div>
-              )}
-
-              {items.length > 0 && (
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-3 block">Line Items</label>
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">Description</th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-slate-700">UOM</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold text-slate-700">Qty</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold text-slate-700">Unit Price</th>
-                          <th className="px-4 py-2 text-right text-xs font-semibold text-slate-700">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {items.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-4 py-2 text-sm text-slate-900">{item.item_description}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700">{item.unit_of_measure}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700 text-right">{Number(item.quantity).toFixed(2)}</td>
-                            <td className="px-4 py-2 text-sm text-slate-700 text-right">₱{Number(item.unit_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                            <td className="px-4 py-2 text-sm text-slate-900 font-semibold text-right">₱{Number(item.total_price).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <div className="p-4 sm:p-6 space-y-5">
+                {/* Header: PO Number + Status Badges */}
+                <div className="bg-white border border-slate-200 rounded-lg p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-900 font-mono">{selectedRequest.po_number}</h4>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${budgetColor}`}>
+                          {budgetLabel}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {selectedRequest.company_id && (
-                <ApprovalProgressTracker
-                  requestType="Purchase Order"
-                  requestId={selectedRequest.id}
-                  requestNumber={selectedRequest.po_number}
-                  companyId={selectedRequest.company_id}
-                  department={selectedRequest.department}
-                />
-              )}
+                {/* Two-column: Vendor + PO Details */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  {/* Vendor Card */}
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                      <h5 className="text-sm font-bold text-blue-700">Vendor</h5>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      <DetailRow label="Name" value={selectedRequest.vendor_name} />
+                      <DetailRow label="Address" value={selectedRequest.vendor_address || '—'} />
+                      <DetailRow label="Contact" value={selectedRequest.vendor_contact || '—'} />
+                      <DetailRow label="Email" value={selectedRequest.vendor_email || '—'} />
+                      <DetailRow label="TIN" value={selectedRequest.vendor_tin || '—'} />
+                      <DetailRow label="Bank Name" value={selectedRequest.vendor_bank_name || '—'} />
+                      <DetailRow label="Bank Account" value={selectedRequest.vendor_bank_account || '—'} />
+                      <DetailRow label="Bank Address" value={selectedRequest.vendor_bank_address || '—'} />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Comments</label>
-                <textarea
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  placeholder="Add your comments here..."
-                />
-              </div>
-
-              {!canApprove() && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <p className="text-sm text-amber-800">
-                    You are not authorized to approve this request at the current approval level.
-                  </p>
+                  {/* PO Details Card */}
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                      <h5 className="text-sm font-bold text-blue-700">PO Details</h5>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      <DetailRow label="Company" value={selectedRequest.companies?.name || '—'} />
+                      <DetailRow label="Department" value={selectedRequest.department || '—'} />
+                      <DetailRow label="Prepared By" value={selectedRequest.user_profiles?.full_name || '—'} />
+                      <DetailRow label="PO Date" value={selectedRequest.po_date || '—'} />
+                      <DetailRow label="Expected Delivery" value={selectedRequest.expected_delivery_date || '—'} />
+                      <DetailRow label="Delivery Address" value={selectedRequest.delivery_address || '—'} />
+                      <DetailRow label="Payment Terms" value={selectedRequest.payment_terms || '—'} />
+                      <DetailRow label="Delivery Terms" value={selectedRequest.delivery_terms || '—'} />
+                      {selectedRequest.remarks && <DetailRow label="Remarks" value={selectedRequest.remarks} />}
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
-                <button
-                  onClick={() => handleAction('approved')}
-                  disabled={loading || flowsLoading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                >
-                  {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
-                </button>
-                <button
-                  onClick={() => handleAction('rejected')}
-                  disabled={loading || flowsLoading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                >
-                  {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
-                </button>
-                <button
-                  onClick={handleReturnToMaker}
-                  disabled={loading || flowsLoading || !canApprove()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
-                >
-                  {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  {returning ? 'Returning...' : 'Return to Maker'}
-                </button>
+                {/* Line Items */}
+                {items.length > 0 && (
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                      <h5 className="text-sm font-bold text-blue-700">Line Items</h5>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200">
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Description</th>
+                            <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">UOM</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Qty</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Unit Price</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {items.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-2.5 text-sm text-slate-900">{item.item_description}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-600">{item.unit_of_measure}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-700 text-right tabular-nums">{Number(item.quantity).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-700 text-right tabular-nums">{fmtMoney(Number(item.unit_price))}</td>
+                              <td className="px-4 py-2.5 text-sm text-slate-900 font-medium text-right tabular-nums">{fmtMoney(Number(item.total_price))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Totals Summary */}
+                    <div className="border-t border-slate-200 px-4 py-3">
+                      <div className="flex flex-col items-end space-y-1">
+                        <div className="flex items-center gap-8 text-sm">
+                          <span className="text-blue-600 font-medium">Net of VAT</span>
+                          <span className="text-slate-900 tabular-nums font-medium">{fmtMoney(netOfVat)}</span>
+                        </div>
+                        <div className="flex items-center gap-8 text-sm">
+                          <span className="text-blue-600 font-medium">VAT (12%)</span>
+                          <span className="text-slate-900 tabular-nums font-medium">{fmtMoney(vat12)}</span>
+                        </div>
+                        {ewtTotal > 0 && (
+                          <div className="flex items-center gap-8 text-sm">
+                            <span className="text-blue-600 font-medium">EWT</span>
+                            <span className="text-slate-900 tabular-nums font-medium">{fmtMoney(ewtTotal)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-8 text-sm pt-1 border-t border-slate-200 mt-1">
+                          <span className="text-slate-900 font-bold">Net Payable</span>
+                          <span className="text-slate-900 tabular-nums font-bold">{fmtMoney(netPayable)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedRequest.company_id && (
+                  <ApprovalProgressTracker
+                    requestType="Purchase Order"
+                    requestId={selectedRequest.id}
+                    requestNumber={selectedRequest.po_number}
+                    companyId={selectedRequest.company_id}
+                    department={selectedRequest.department}
+                  />
+                )}
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Comments</label>
+                  <textarea
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    placeholder="Add your comments here..."
+                  />
+                </div>
+
+                {!canApprove() && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-sm text-amber-800">
+                      You are not authorized to approve this request at the current approval level.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    onClick={() => handleAction('approved')}
+                    disabled={loading || flowsLoading || !canApprove()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  >
+                    {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => handleAction('rejected')}
+                    disabled={loading || flowsLoading || !canApprove()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  >
+                    {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
+                  </button>
+                  <button
+                    onClick={handleReturnToMaker}
+                    disabled={loading || flowsLoading || !canApprove()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  >
+                    {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+                    {returning ? 'Returning...' : 'Return to Maker'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2.5">
+      <span className="text-sm text-slate-600">{label}</span>
+      <span className="text-sm text-slate-900 font-medium text-right max-w-[60%] truncate" title={value}>{value}</span>
     </div>
   );
 }
