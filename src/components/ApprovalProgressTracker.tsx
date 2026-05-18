@@ -71,19 +71,22 @@ export function ApprovalProgressTracker({
           setPurchaseType(data.purchase_type || null);
         }
 
+        // Normalize requester ID - purchase_orders uses requested_by instead of requester_id
+        const requesterId = data.requester_id || data.requested_by;
+
         // Get company_id from user profile if not in request
         let companyId = data.company_id;
-        if (!companyId && data.requester_id) {
+        if (!companyId && requesterId) {
           const { data: profileData } = await supabase
             .from('user_profiles')
             .select('company_id')
-            .eq('id', data.requester_id)
+            .eq('id', requesterId)
             .single();
           companyId = profileData?.company_id;
         }
 
         // Load approval flows for this request
-        if (companyId) {
+        if (companyId && requesterId) {
           try {
             const { getApprovalFlow, filterApprovalFlowsForRequester, addExecutiveApprovalSteps } = await import('../lib/approvalFlow');
             // Handle both column names: is_budgeted (PR, Canvass) and budgeted (Petty Cash, Reimbursement, Cash Advance)
@@ -119,7 +122,7 @@ export function ApprovalProgressTracker({
               ? (rawFlows || [])
               : await addExecutiveApprovalSteps(
                   rawFlows || [],
-                  data.requester_id,
+                  requesterId,
                   companyId,
                   isBudgeted
                 );
@@ -129,7 +132,7 @@ export function ApprovalProgressTracker({
             // Filter out requester from approval flows
             const flows = await filterApprovalFlowsForRequester(
               flowsWithExecutive || [],
-              data.requester_id,
+              requesterId,
               data.department || '',
               companyId
             );
