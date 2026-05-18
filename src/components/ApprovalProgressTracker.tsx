@@ -99,13 +99,16 @@ export function ApprovalProgressTracker({
 
             const isPettyCash = requestType === 'Petty Cash' || requestType === 'petty_cash';
 
+            const isPR = requestType === 'Purchase Requisition' || requestType === 'purchase_requisition';
+
             const rawFlows = await getApprovalFlow(
               companyId,
               data.department || '',
               requestType,
               isBudgeted,
               data.total_amount || data.amount || 0,
-              isPettyCash ? (data.expense_category || 'Department Expense') : undefined
+              isPettyCash ? (data.expense_category || 'Department Expense') : undefined,
+              isPR ? (data.purchase_type || undefined) : undefined
             );
 
             console.log('Raw flows loaded:', rawFlows?.length || 0);

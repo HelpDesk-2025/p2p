@@ -23,6 +23,8 @@ interface ApprovalStep {
   sequence: number;
   days_to_approve: number;
   for_checking: boolean;
+  applies_to_po: boolean;
+  applies_to_non_po: boolean;
 }
 
 export function ApprovalFlowSetupConfig() {
@@ -45,7 +47,9 @@ export function ApprovalFlowSetupConfig() {
     user_id: "",
     alternate_approver_id: "",
     days_to_approve: "3",
-    for_checking: false
+    for_checking: false,
+    applies_to_po: true,
+    applies_to_non_po: true
   });
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [alternateUserSearchQuery, setAlternateUserSearchQuery] = useState("");
@@ -280,6 +284,11 @@ export function ApprovalFlowSetupConfig() {
         return;
       }
 
+      if (!newStepData.applies_to_po && !newStepData.applies_to_non_po) {
+        alert("At least one purchase type must be selected (PO or Non-PO)");
+        return;
+      }
+
       const payload = {
         approval_flow_setup_id: editingSetupId,
         workflow_type: workflowType,
@@ -289,6 +298,8 @@ export function ApprovalFlowSetupConfig() {
         sequence: nextSequence,
         days_to_approve: parseInt(newStepData.days_to_approve),
         for_checking: newStepData.for_checking,
+        applies_to_po: newStepData.applies_to_po,
+        applies_to_non_po: newStepData.applies_to_non_po,
         is_required: true,
         is_active: true
       };
@@ -298,7 +309,7 @@ export function ApprovalFlowSetupConfig() {
       if (!insertedStep) throw new Error("Failed to create approval step");
 
       setAddingStepToWorkflow(null);
-      setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
+      setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false, applies_to_po: true, applies_to_non_po: true });
       setUserSearchQuery("");
       setAlternateUserSearchQuery("");
       await loadStepsForSetup(editingSetupId);
@@ -314,7 +325,9 @@ export function ApprovalFlowSetupConfig() {
       user_id: step.user_id || "",
       alternate_approver_id: step.alternate_approver_id || "",
       days_to_approve: step.days_to_approve.toString(),
-      for_checking: step.for_checking || false
+      for_checking: step.for_checking || false,
+      applies_to_po: step.applies_to_po ?? true,
+      applies_to_non_po: step.applies_to_non_po ?? true
     });
     setUserSearchQuery("");
     setAlternateUserSearchQuery("");
@@ -330,12 +343,19 @@ export function ApprovalFlowSetupConfig() {
         return;
       }
 
+      if (!newStepData.applies_to_po && !newStepData.applies_to_non_po) {
+        alert("At least one purchase type must be selected (PO or Non-PO)");
+        return;
+      }
+
       const payload = {
         approver_type: "Specific User",
         user_id: newStepData.user_id,
         alternate_approver_id: newStepData.alternate_approver_id || null,
         days_to_approve: parseInt(newStepData.days_to_approve),
-        for_checking: newStepData.for_checking
+        for_checking: newStepData.for_checking,
+        applies_to_po: newStepData.applies_to_po,
+        applies_to_non_po: newStepData.applies_to_non_po
       };
 
       const { error } = await supabase
@@ -347,7 +367,7 @@ export function ApprovalFlowSetupConfig() {
 
       setEditingStepId(null);
       setAddingStepToWorkflow(null);
-      setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
+      setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false, applies_to_po: true, applies_to_non_po: true });
       setUserSearchQuery("");
       setAlternateUserSearchQuery("");
       if (editingSetupId) await loadStepsForSetup(editingSetupId);
@@ -720,7 +740,7 @@ export function ApprovalFlowSetupConfig() {
                         <button
                           onClick={() => {
                             setEditingStepId(null);
-                            setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
+                            setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false, applies_to_po: true, applies_to_non_po: true });
                             setUserSearchQuery("");
                             setAlternateUserSearchQuery("");
                             setAddingStepToWorkflow(workflowType);
@@ -815,6 +835,32 @@ export function ApprovalFlowSetupConfig() {
                             </label>
                           </div>
 
+                          {formData.request_type === 'Purchase Requisition' && (
+                            <div className="space-y-1 border-t border-slate-200 pt-2 mt-1">
+                              <label className="text-xs font-semibold text-slate-700">Applies to Purchase Type</label>
+                              <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={newStepData.applies_to_po}
+                                    onChange={(e) => setNewStepData({ ...newStepData, applies_to_po: e.target.checked })}
+                                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-xs text-slate-700">Purchase Order</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={newStepData.applies_to_non_po}
+                                    onChange={(e) => setNewStepData({ ...newStepData, applies_to_non_po: e.target.checked })}
+                                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-xs text-slate-700">Non-Purchase Order</span>
+                                </label>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleAddStep(workflowType)}
@@ -825,7 +871,7 @@ export function ApprovalFlowSetupConfig() {
                             <button
                               onClick={() => {
                                 setAddingStepToWorkflow(null);
-                                setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
+                                setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false, applies_to_po: true, applies_to_non_po: true });
                                 setUserSearchQuery("");
                                 setAlternateUserSearchQuery("");
                               }}
@@ -920,6 +966,32 @@ export function ApprovalFlowSetupConfig() {
                             </label>
                           </div>
 
+                          {formData.request_type === 'Purchase Requisition' && (
+                            <div className="space-y-1 border-t border-slate-200 pt-2 mt-1">
+                              <label className="text-xs font-semibold text-slate-700">Applies to Purchase Type</label>
+                              <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={newStepData.applies_to_po}
+                                    onChange={(e) => setNewStepData({ ...newStepData, applies_to_po: e.target.checked })}
+                                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-xs text-slate-700">Purchase Order</span>
+                                </label>
+                                <label className="flex items-center gap-1.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={newStepData.applies_to_non_po}
+                                    onChange={(e) => setNewStepData({ ...newStepData, applies_to_non_po: e.target.checked })}
+                                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-xs text-slate-700">Non-Purchase Order</span>
+                                </label>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleUpdateStep(workflowType)}
@@ -931,7 +1003,7 @@ export function ApprovalFlowSetupConfig() {
                               onClick={() => {
                                 setEditingStepId(null);
                                 setAddingStepToWorkflow(null);
-                                setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false });
+                                setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false, applies_to_po: true, applies_to_non_po: true });
                                 setUserSearchQuery("");
                                 setAlternateUserSearchQuery("");
                               }}
@@ -969,9 +1041,15 @@ export function ApprovalFlowSetupConfig() {
                                       </span>
                                     </div>
                                   )}
-                                  <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                  <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                     <span>{step.days_to_approve} days</span>
                                     {step.for_checking && <span className="text-amber-600 font-medium">Checker</span>}
+                                    {formData.request_type === 'Purchase Requisition' && !(step.applies_to_po && step.applies_to_non_po) && (
+                                      <span className="text-blue-600 font-medium">
+                                        {step.applies_to_po && !step.applies_to_non_po ? 'PO Only' : ''}
+                                        {step.applies_to_non_po && !step.applies_to_po ? 'Non-PO Only' : ''}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1 ml-2 shrink-0">

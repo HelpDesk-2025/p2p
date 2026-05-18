@@ -145,7 +145,9 @@ export function PRApproval() {
           request.department,
           'Purchase Requisition',
           request.is_budgeted,
-          request.total_amount
+          request.total_amount,
+          undefined,
+          request.purchase_type
         );
 
         // Inject executive approvers if requester is Executive type

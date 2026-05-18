@@ -14,6 +14,8 @@ export interface ApprovalFlow {
   alternate_approver_id?: string | null;
   approval_flow_setup_id: string;
   for_checking?: boolean;
+  applies_to_po?: boolean;
+  applies_to_non_po?: boolean;
 }
 
 export interface ApprovalFlowSetup {
@@ -31,13 +33,23 @@ export const WORKFLOW_TYPES = {
   BUDGETED_ABOVE_MIN: 3,
 };
 
+function filterByPurchaseType(flows: ApprovalFlow[], purchaseType?: string): ApprovalFlow[] {
+  if (!purchaseType) return flows;
+  return flows.filter((f) => {
+    if (purchaseType === 'Purchase Order') return f.applies_to_po !== false;
+    if (purchaseType === 'Non-Purchase Order') return f.applies_to_non_po !== false;
+    return true;
+  });
+}
+
 export async function getApprovalFlow(
   companyId: string,
   department: string,
   requestType: string,
   isBudgeted: boolean,
   totalAmount: number,
-  expenseCategory?: string
+  expenseCategory?: string,
+  purchaseType?: string
 ): Promise<ApprovalFlow[]> {
   try {
     console.log('STRICT APPROVAL FLOW CHECK with params:', {
@@ -120,7 +132,8 @@ export async function getApprovalFlow(
       }
 
       if (flows && flows.length > 0) {
-        return flows;
+        const filtered = filterByPurchaseType(flows, purchaseType);
+        if (filtered.length > 0) return filtered;
       }
     }
 
@@ -157,7 +170,7 @@ export async function getApprovalFlow(
       throw new Error(`No approval steps configured for workflow type ${workflowType}`);
     }
 
-    return flows;
+    return filterByPurchaseType(flows, purchaseType);
   } catch (error) {
     console.error('Error in getApprovalFlow:', error);
     throw error;
