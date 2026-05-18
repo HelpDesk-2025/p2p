@@ -32,6 +32,7 @@ export async function generateAndUploadPOMergedPdf(
     quantity: number;
     unit_price: number;
     total_price: number;
+    ewt_amount?: number;
   }>
 ): Promise<string> {
   // Fetch the last approver (excluding validators/checkers) from approval flow

@@ -16,6 +16,7 @@ interface POForPdf {
   remarks: string;
   subtotal: number;
   vat_amount: number;
+  ewt_amount?: number;
   total_amount: number;
   approver_name?: string;
   approver_esig?: string | null;
@@ -29,6 +30,7 @@ interface POItemForPdf {
   quantity: number;
   unit_price: number;
   total_price: number;
+  ewt_amount?: number;
 }
 
 async function embedSignature(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
@@ -160,9 +162,13 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
     page.drawText(value, { x: width - margin - 70, y, size: 10, font: f, color: rgb(0.1, 0.1, 0.1) });
     y -= 14;
   };
+  const ewtAmount = po.ewt_amount ?? items.reduce((sum, it) => sum + Number(it.ewt_amount || 0), 0);
   drawTotal('Subtotal', fmtMoney(Number(po.subtotal)));
   drawTotal('VAT (12%)', fmtMoney(Number(po.vat_amount)));
-  drawTotal('TOTAL AMOUNT', fmtMoney(Number(po.total_amount)), true);
+  if (ewtAmount > 0) {
+    drawTotal('EWT', fmtMoney(ewtAmount));
+  }
+  drawTotal('Net Payable', fmtMoney(Number(po.total_amount)), true);
 
   y -= 12;
 

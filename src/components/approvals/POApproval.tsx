@@ -455,12 +455,13 @@ export function POApproval() {
                 company_id: selectedRequest.company_id,
                 prepared_by: selectedRequest.prepared_by,
               },
-              items.map((item) => ({
+              items.map((item: any) => ({
                 item_description: item.item_description,
                 unit_of_measure: item.unit_of_measure,
                 quantity: Number(item.quantity),
                 unit_price: Number(item.unit_price),
                 total_price: Number(item.total_price),
+                ewt_amount: Number(item.ewt_amount || 0),
               }))
             );
 
