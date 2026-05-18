@@ -106,6 +106,7 @@ interface CanvassRow {
   recommended_quotation_index: number | null;
   suppliers: any;
   items: any;
+  companies?: { name: string } | null;
 }
 
 interface ToastMsg {
@@ -380,7 +381,7 @@ export function PurchaseOrder() {
     setShowCanvassPicker(true);
     const { data: canvData, error: canvErr } = await supabase
       .from('canvass_requests')
-      .select('id, canvass_number, pr_id, total_amount, department, company_id, requester_id, recommended_quotation_index, suppliers, items')
+      .select('id, canvass_number, pr_id, total_amount, department, company_id, requester_id, recommended_quotation_index, suppliers, items, companies ( name )')
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
     if (canvErr) {
@@ -1083,7 +1084,7 @@ export function PurchaseOrder() {
                     <div>
                       <div className="font-semibold text-slate-900 text-sm">{c.canvass_number}</div>
                       <div className="text-xs text-slate-500">
-                        {winner?.vendor_name || 'No vendor'} · {c.department || 'No department'}
+                        {c.companies?.name || 'No company'} · {winner?.vendor_name || 'No vendor'} · {c.department || 'No department'}
                       </div>
                     </div>
                     <div className="text-right">
