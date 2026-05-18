@@ -14,7 +14,7 @@ async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promi
 }
 
 // Global sanitization function for text that will be used in PDFs
-function sanitizeForPDF(text: string | null | undefined): string {
+export function sanitizeForPDF(text: string | null | undefined): string {
   if (!text) return '';
 
   const str = String(text);
@@ -42,19 +42,19 @@ function sanitizeForPDF(text: string | null | undefined): string {
   return sanitized;
 }
 
-interface PaymentModeLine {
+export interface PaymentModeLine {
   label: string;
   value: string;
 }
 
-interface ApprovalRecord {
+export interface ApprovalRecord {
   approver_name: string;
   approver_esig: string | null;
   approval_date: string;
   sequence: number;
 }
 
-interface RFPData {
+export interface RFPData {
   companyName: string;
   requestType: string;
   documentNumber: string;
@@ -330,7 +330,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   return pdfBytes;
 }
 
-interface CanvassSheetData {
+export interface CanvassSheetData {
   companyName: string;
   companyAddress: string;
   vatTin: string;
@@ -372,7 +372,7 @@ interface CanvassSheetData {
   approvals: ApprovalRecord[];
 }
 
-async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array> {
+export async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([612, 792]); // Portrait orientation
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);

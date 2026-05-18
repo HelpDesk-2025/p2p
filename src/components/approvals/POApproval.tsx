@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft, Download } from 'lucide-react';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries, ApprovalFlow } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
+import { generateAndUploadPOMergedPdf } from '../../lib/poMergedPdfGenerator';
 
 type POStatus =
   | 'draft'
@@ -48,6 +49,8 @@ interface PurchaseOrder {
   company_id: string | null;
   prepared_by: string | null;
   created_at: string;
+  merged_pdf_path: string | null;
+  msbc_sync_status: string | null;
   user_profiles?: { full_name: string; email: string } | null;
   companies?: { id: string; name: string } | null;
 }
@@ -420,6 +423,69 @@ export function POApproval() {
               profile.full_name || 'Unknown',
               comments
             );
+          }
+
+          // Generate merged PDF and post to MSBC
+          try {
+            await supabase
+              .from('purchase_orders')
+              .update({ msbc_sync_status: 'syncing' })
+              .eq('id', selectedRequest.id);
+
+            await generateAndUploadPOMergedPdf(
+              {
+                id: selectedRequest.id,
+                po_number: selectedRequest.po_number,
+                vendor_name: selectedRequest.vendor_name,
+                vendor_address: selectedRequest.vendor_address,
+                vendor_contact: selectedRequest.vendor_contact,
+                vendor_email: selectedRequest.vendor_email,
+                vendor_tin: selectedRequest.vendor_tin,
+                department: selectedRequest.department,
+                po_date: selectedRequest.po_date,
+                expected_delivery_date: selectedRequest.expected_delivery_date,
+                delivery_address: selectedRequest.delivery_address,
+                payment_terms: selectedRequest.payment_terms,
+                delivery_terms: selectedRequest.delivery_terms,
+                remarks: selectedRequest.remarks,
+                subtotal: Number(selectedRequest.subtotal),
+                vat_amount: Number(selectedRequest.vat_amount),
+                total_amount: Number(selectedRequest.total_amount),
+                canvass_request_id: selectedRequest.canvass_request_id,
+              },
+              items.map((item) => ({
+                item_description: item.item_description,
+                unit_of_measure: item.unit_of_measure,
+                quantity: Number(item.quantity),
+                unit_price: Number(item.unit_price),
+                total_price: Number(item.total_price),
+              }))
+            );
+
+            // Post to MSBC via edge function
+            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-po-to-msbc`;
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ poId: selectedRequest.id }),
+            }).catch((err) => {
+              console.error('MSBC posting request failed:', err);
+            });
+          } catch (pdfError) {
+            console.error('Error generating merged PDF or posting to MSBC:', pdfError);
+            await supabase
+              .from('purchase_orders')
+              .update({
+                msbc_sync_status: 'failed',
+                msbc_sync_error: pdfError instanceof Error ? pdfError.message : String(pdfError),
+              })
+              .eq('id', selectedRequest.id);
           }
         }
       }
@@ -884,6 +950,36 @@ export function POApproval() {
                     companyId={selectedRequest.company_id}
                     department={selectedRequest.department}
                   />
+                )}
+
+                {selectedRequest.merged_pdf_path && selectedRequest.status === 'approved' && (
+                  <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">Merged PO Document</p>
+                        <p className="text-xs text-slate-500 mt-0.5">PO Form + RFP + Canvass Summary + Quotation</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.storage
+                              .from('attachments')
+                              .download(selectedRequest.merged_pdf_path!);
+                            if (error) throw error;
+                            const url = URL.createObjectURL(data);
+                            window.open(url, '_blank');
+                          } catch (err) {
+                            console.error('Error downloading merged PDF:', err);
+                            alert('Failed to download the merged PDF.');
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Download size={16} />
+                        View / Download
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 <div>
