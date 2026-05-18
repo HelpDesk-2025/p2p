@@ -108,26 +108,39 @@ export function POApproval() {
   };
 
   useEffect(() => {
-    loadPending();
-  }, [profile?.id]);
+    if (user && profile?.id) {
+      loadPending();
+    }
+  }, [user, profile?.id]);
 
   const loadPending = async () => {
-    if (!profile?.id) return;
+    if (!profile?.id || !user) return;
     setLoading(true);
     try {
-      const { data: idRows, error: rpcError } = await supabase.rpc('get_my_pending_approval_ids', {
-        p_request_type: 'Purchase Order',
-        p_user_id: profile.id,
-      });
+      let ids: string[] = [];
 
-      if (rpcError) {
-        console.error('RPC error loading PO approval IDs:', rpcError);
-        setPOs([]);
-        setLoading(false);
-        return;
+      if (profile.role === 'admin') {
+        const { data: poRows } = await supabase
+          .from('purchase_orders')
+          .select('id')
+          .eq('status', 'pending_approval')
+          .is('deleted_at', null);
+        ids = (poRows || []).map((r) => r.id);
+      } else {
+        const { data: idRows, error: rpcError } = await supabase.rpc('get_my_pending_approval_ids', {
+          p_request_type: 'Purchase Order',
+          p_user_id: profile.id,
+        });
+
+        if (rpcError) {
+          console.error('RPC error loading PO approval IDs:', rpcError);
+          setPOs([]);
+          setLoading(false);
+          return;
+        }
+
+        ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
       }
-
-      const ids = (idRows || []).map((r: { request_id: string }) => r.request_id);
 
       if (ids.length === 0) {
         setPOs([]);
