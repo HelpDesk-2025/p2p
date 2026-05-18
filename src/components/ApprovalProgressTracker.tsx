@@ -325,7 +325,8 @@ export function ApprovalProgressTracker({
         {approvalFlows.length > 0 ? approvalFlows.map((flow, index) => {
           const stepStatus = getStepStatus(index);
           const ledgerEntry = getLedgerEntry(index + 1);
-          const isLast = index === approvalFlows.length - 1;
+          const hasMsbcStep = requestType === 'Purchase Order';
+          const isLast = index === approvalFlows.length - 1 && !hasMsbcStep;
 
           return (
             <div key={flow.id} className="relative">
@@ -499,20 +500,20 @@ export function ApprovalProgressTracker({
               <div className="flex-shrink-0 z-10">
                 <div
                   className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
-                    msbcSyncStatus === 'synced' ? 'bg-green-50 border-green-600' :
-                    msbcSyncStatus === 'syncing' ? 'bg-blue-50 border-blue-600' :
-                    msbcSyncStatus === 'failed' ? 'bg-red-50 border-red-600' :
-                    'bg-gray-50 border-gray-300'
+                    msbcSyncStatus === 'synced' ? 'border-green-600 bg-green-50' :
+                    msbcSyncStatus === 'syncing' ? 'border-blue-600 bg-blue-50' :
+                    msbcSyncStatus === 'failed' ? 'border-red-600 bg-red-50' :
+                    'border-gray-200 bg-white'
                   }`}
                 >
                   {msbcSyncStatus === 'synced' ? (
-                    <CheckCircle className="text-green-600" size={20} />
+                    <CheckCircle className="text-green-600" size={24} />
                   ) : msbcSyncStatus === 'syncing' ? (
-                    <Send className="text-blue-600 animate-pulse" size={20} />
+                    <Send className="text-blue-600 animate-pulse" size={24} />
                   ) : msbcSyncStatus === 'failed' ? (
-                    <XCircle className="text-red-600" size={20} />
+                    <XCircle className="text-red-600" size={24} />
                   ) : (
-                    <Send className="text-gray-400" size={20} />
+                    <Circle className="text-gray-300" size={24} />
                   )}
                 </div>
               </div>
@@ -550,34 +551,33 @@ export function ApprovalProgressTracker({
                 </div>
 
                 {msbcSyncStatus === 'synced' && msbcSyncDate && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Sent to MSBC on {new Date(msbcSyncDate).toLocaleString()}
-                  </p>
+                  <div className="mt-2">
+                    <p className="text-sm text-slate-600">System</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {new Date(msbcSyncDate).toLocaleString()}
+                    </p>
+                  </div>
                 )}
 
                 {msbcSyncStatus === 'failed' && msbcSyncError && (
-                  <div className="mt-2 p-3 bg-red-50 rounded border border-red-200">
-                    <p className="text-sm text-red-700 font-semibold">Error:</p>
-                    <p className="text-sm text-red-600 mt-1">{msbcSyncError}</p>
+                  <div className="mt-2">
+                    <p className="text-sm text-slate-600">System</p>
+                    <p className="text-sm text-red-700 mt-2 p-3 bg-red-50 rounded border border-red-200 italic">
+                      "{msbcSyncError}"
+                    </p>
                   </div>
                 )}
 
                 {status !== 'approved' && !msbcSyncStatus && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Will send to MSBC after full approval
-                  </p>
+                  <p className="text-sm text-slate-500 mt-1">Not yet reached</p>
                 )}
 
                 {status === 'approved' && (!msbcSyncStatus || msbcSyncStatus === 'pending') && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Waiting to send to MSBC...
-                  </p>
+                  <p className="text-sm text-slate-500 mt-1">Waiting to send to MSBC...</p>
                 )}
 
                 {msbcSyncStatus === 'syncing' && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Sending request to MSBC...
-                  </p>
+                  <p className="text-sm text-slate-500 mt-1">Sending request to MSBC...</p>
                 )}
               </div>
             </div>
