@@ -202,6 +202,7 @@ export function PurchaseOrder() {
   const [draftItems, setDraftItems] = useState<POItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [reposting, setReposting] = useState(false);
+  const [trackerKey, setTrackerKey] = useState(0);
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchEmail, setDispatchEmail] = useState('');
@@ -796,9 +797,10 @@ export function PurchaseOrder() {
         throw new Error(errBody || `HTTP ${res.status}`);
       }
       showToast('success', 'PO reposted to MSBC successfully.');
-      // Refresh order data
+      // Refresh order data and tracker
       const { data: updated } = await supabase.from('purchase_orders').select('*').eq('id', activeOrder.id).maybeSingle();
       if (updated) setActiveOrder(updated as PurchaseOrder);
+      setTrackerKey((k) => k + 1);
     } catch (err: any) {
       showToast('error', `Repost failed: ${err.message}`);
       await supabase
@@ -1687,6 +1689,7 @@ function DetailView({
 
       {po.company_id && po.status !== 'draft' && (
         <ApprovalProgressTracker
+          key={trackerKey}
           requestType="Purchase Order"
           requestId={po.id}
           requestNumber={po.po_number}
