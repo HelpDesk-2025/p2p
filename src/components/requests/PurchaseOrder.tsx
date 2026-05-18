@@ -1154,6 +1154,7 @@ export function PurchaseOrder() {
             onDownloadMergedPdf={handleDownloadMergedPdf}
             onRepostToMsbc={handleRepostToMsbc}
             reposting={reposting}
+            trackerKey={trackerKey}
           />
         </div>
       )}
@@ -1512,6 +1513,7 @@ function DetailView({
   onDownloadMergedPdf,
   onRepostToMsbc,
   reposting,
+  trackerKey,
 }: {
   po: PurchaseOrder;
   items: POItem[];
@@ -1524,6 +1526,7 @@ function DetailView({
   onDownloadMergedPdf: () => void;
   onRepostToMsbc: () => void;
   reposting: boolean;
+  trackerKey: number;
 }) {
   return (
     <div className="space-y-6">
