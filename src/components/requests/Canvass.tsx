@@ -1399,8 +1399,8 @@ export function Canvass() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Document No.</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Department</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
                 </tr>
@@ -1419,8 +1419,8 @@ export function Canvass() {
                         {pr.document_no || pr.pr_number}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">{pr.companies?.name || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">{pr.department}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{pr.description}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {new Date(pr.request_date).toLocaleString()}
                       </td>
