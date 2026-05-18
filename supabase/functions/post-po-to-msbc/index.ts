@@ -96,15 +96,8 @@ Deno.serve(async (req: Request) => {
       throw new Error('Company API ID not found. Please ensure the PO has a company with a valid API ID configured.');
     }
 
-    // Calculate Net Payable (total_amount includes VAT; subtract EWT)
-    // Fetch items to calculate EWT
-    const { data: poItems } = await supabaseClient
-      .from('purchase_order_items')
-      .select('total_price, ewt_amount')
-      .eq('purchase_order_id', poId);
-
-    const ewtTotal = (poItems || []).reduce((sum, item) => sum + (parseFloat(item.ewt_amount) || 0), 0);
-    const netPayable = parseFloat(po.total_amount) - ewtTotal;
+    // total_amount is already Net Payable (subtotal + VAT - EWT)
+    const netPayable = parseFloat(po.total_amount);
 
     const documentNumber = po.po_number;
     const batchNumber = documentNumber.replace(/^(PO)0+/, '$1');
