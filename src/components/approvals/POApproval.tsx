@@ -89,7 +89,7 @@ const BudgetBadge = ({ status }: { status: PurchaseOrder['budget_status'] }) => 
 };
 
 export function POApproval() {
-  const { user, profile } = useAuth();
+  const { user, profile, actualProfile, permissions } = useAuth();
   const [pos, setPOs] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -108,10 +108,8 @@ export function POApproval() {
   };
 
   useEffect(() => {
-    if (user && profile?.id) {
-      loadPending();
-    }
-  }, [user, profile?.id]);
+    loadPending();
+  }, [user, profile?.id, actualProfile?.role, permissions?.hasFullAccess]);
 
   const loadPending = async () => {
     if (!profile?.id || !user) return;
@@ -119,7 +117,9 @@ export function POApproval() {
     try {
       let ids: string[] = [];
 
-      if (profile.role === 'admin') {
+      const isAdmin = actualProfile?.role === 'admin' || profile.role === 'admin' || permissions?.hasFullAccess;
+
+      if (isAdmin) {
         const { data: poRows } = await supabase
           .from('purchase_orders')
           .select('id')
