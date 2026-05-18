@@ -441,10 +441,6 @@ export function POApproval() {
                 vendor_contact: selectedRequest.vendor_contact,
                 vendor_email: selectedRequest.vendor_email,
                 vendor_tin: selectedRequest.vendor_tin,
-                vendor_bank_name: selectedRequest.vendor_bank_name,
-                vendor_bank_account: selectedRequest.vendor_bank_account,
-                vendor_bank_address: selectedRequest.vendor_bank_address,
-                company_name: selectedRequest.companies?.name || '',
                 department: selectedRequest.department,
                 po_date: selectedRequest.po_date,
                 expected_delivery_date: selectedRequest.expected_delivery_date,
@@ -459,13 +455,12 @@ export function POApproval() {
                 company_id: selectedRequest.company_id,
                 prepared_by: selectedRequest.prepared_by,
               },
-              items.map((item: any) => ({
+              items.map((item) => ({
                 item_description: item.item_description,
                 unit_of_measure: item.unit_of_measure,
                 quantity: Number(item.quantity),
                 unit_price: Number(item.unit_price),
                 total_price: Number(item.total_price),
-                ewt_amount: Number(item.ewt_amount || 0),
               }))
             );
 

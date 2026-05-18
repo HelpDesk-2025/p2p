@@ -12,10 +12,6 @@ export async function generateAndUploadPOMergedPdf(
     vendor_contact: string;
     vendor_email: string;
     vendor_tin: string;
-    vendor_bank_name?: string;
-    vendor_bank_account?: string;
-    vendor_bank_address?: string;
-    company_name?: string;
     department: string;
     po_date: string;
     expected_delivery_date: string | null;
@@ -36,7 +32,6 @@ export async function generateAndUploadPOMergedPdf(
     quantity: number;
     unit_price: number;
     total_price: number;
-    ewt_amount?: number;
   }>
 ): Promise<string> {
   // Fetch the last approver (excluding validators/checkers) from approval flow
@@ -45,55 +40,39 @@ export async function generateAndUploadPOMergedPdf(
   let preparedByName: string | undefined;
   let preparedByEsig: string | null | undefined;
 
-  async function resolveSignature(profile: { signature_path?: string | null; e_sig?: string | null }): Promise<string | null> {
-    if (profile.signature_path) {
-      if (profile.signature_path.startsWith('data:')) {
-        return profile.signature_path;
-      }
-      const { data: sigFile } = await supabase.storage
-        .from('attachments')
-        .download(profile.signature_path);
-      if (sigFile) {
-        const arrayBuffer = await sigFile.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        return `data:${sigFile.type};base64,${base64}`;
-      }
-    }
-    if (profile.e_sig) {
-      return profile.e_sig;
-    }
-    return null;
-  }
-
   if (po.company_id) {
-    // Get approval flows for this PO via approval_flows joined with setups
-    const { data: flowSetups } = await supabase
+    // Get approval flows for this PO, excluding for_checking steps
+    const { data: flows } = await supabase
       .from('approval_flow_setups')
-      .select('id')
+      .select('sequence, user_id, for_checking')
       .eq('company_id', po.company_id)
-      .eq('department_id', po.department)
-      .eq('request_type', 'Purchase Order');
+      .eq('department', po.department)
+      .eq('request_type', 'Purchase Order')
+      .order('sequence', { ascending: false });
 
-    if (flowSetups && flowSetups.length > 0) {
-      const setupIds = flowSetups.map(s => s.id);
-      const { data: flows } = await supabase
-        .from('approval_flows')
-        .select('sequence, user_id, for_checking')
-        .in('approval_flow_setup_id', setupIds)
-        .order('sequence', { ascending: false });
+    if (flows && flows.length > 0) {
+      // Find last non-checker step
+      const lastApproverFlow = flows.find(f => !f.for_checking);
+      if (lastApproverFlow?.user_id) {
+        const { data: approverProfile } = await supabase
+          .from('user_profiles')
+          .select('full_name, e_sig, signature_path')
+          .eq('id', lastApproverFlow.user_id)
+          .maybeSingle();
 
-      if (flows && flows.length > 0) {
-        const lastApproverFlow = flows.find(f => !f.for_checking);
-        if (lastApproverFlow?.user_id) {
-          const { data: approverProfile } = await supabase
-            .from('user_profiles')
-            .select('full_name, e_sig, signature_path')
-            .eq('id', lastApproverFlow.user_id)
-            .maybeSingle();
-
-          if (approverProfile) {
-            approverName = approverProfile.full_name || undefined;
-            approverEsig = await resolveSignature(approverProfile);
+        if (approverProfile) {
+          approverName = approverProfile.full_name || undefined;
+          if (approverProfile.signature_path) {
+            const { data: sigFile } = await supabase.storage
+              .from('attachments')
+              .download(approverProfile.signature_path);
+            if (sigFile) {
+              const arrayBuffer = await sigFile.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+              approverEsig = `data:${sigFile.type};base64,${base64}`;
+            }
+          } else if (approverProfile.e_sig) {
+            approverEsig = approverProfile.e_sig;
           }
         }
       }
@@ -110,7 +89,18 @@ export async function generateAndUploadPOMergedPdf(
 
     if (prepProfile) {
       preparedByName = prepProfile.full_name || undefined;
-      preparedByEsig = await resolveSignature(prepProfile);
+      if (prepProfile.signature_path) {
+        const { data: sigFile } = await supabase.storage
+          .from('attachments')
+          .download(prepProfile.signature_path);
+        if (sigFile) {
+          const arrayBuffer = await sigFile.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          preparedByEsig = `data:${sigFile.type};base64,${base64}`;
+        }
+      } else if (prepProfile.e_sig) {
+        preparedByEsig = prepProfile.e_sig;
+      }
     }
   }
 
@@ -123,10 +113,6 @@ export async function generateAndUploadPOMergedPdf(
       vendor_contact: po.vendor_contact,
       vendor_email: po.vendor_email,
       vendor_tin: po.vendor_tin,
-      vendor_bank_name: po.vendor_bank_name,
-      vendor_bank_account: po.vendor_bank_account,
-      vendor_bank_address: po.vendor_bank_address,
-      company_name: po.company_name,
       department: po.department,
       po_date: po.po_date,
       expected_delivery_date: po.expected_delivery_date,

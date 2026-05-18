@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, PDFImage, PDFPage, PDFFont } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFImage } from 'pdf-lib';
 
 interface POForPdf {
   po_number: string;
@@ -7,10 +7,6 @@ interface POForPdf {
   vendor_contact: string;
   vendor_email: string;
   vendor_tin: string;
-  vendor_bank_name?: string;
-  vendor_bank_account?: string;
-  vendor_bank_address?: string;
-  company_name?: string;
   department: string;
   po_date: string;
   expected_delivery_date: string | null;
@@ -20,7 +16,6 @@ interface POForPdf {
   remarks: string;
   subtotal: number;
   vat_amount: number;
-  ewt_amount?: number;
   total_amount: number;
   approver_name?: string;
   approver_esig?: string | null;
@@ -34,7 +29,6 @@ interface POItemForPdf {
   quantity: number;
   unit_price: number;
   total_price: number;
-  ewt_amount?: number;
 }
 
 async function embedSignature(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
@@ -57,11 +51,6 @@ function fmtMoney(n: number): string {
   return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function rightAlignText(page: PDFPage, text: string, rightEdge: number, y: number, size: number, f: PDFFont, color = rgb(0.1, 0.1, 0.1)) {
-  const w = f.widthOfTextAtSize(text, size);
-  page.drawText(text, { x: rightEdge - w, y, size, font: f, color });
-}
-
 export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf[]): Promise<Blob> {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([612, 792]);
@@ -74,184 +63,125 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
 
   // Header
   page.drawText('PURCHASE ORDER', { x: margin, y, size: 18, font: bold, color: rgb(0.1, 0.2, 0.4) });
-  const poNumText = clean(po.po_number);
-  rightAlignText(page, poNumText, width - margin, y, 14, bold, rgb(0.1, 0.1, 0.1));
+  page.drawText(clean(po.po_number), {
+    x: width - margin - 130,
+    y,
+    size: 14,
+    font: bold,
+    color: rgb(0.1, 0.1, 0.1),
+  });
 
-  y -= 10;
+  y -= 8;
   page.drawLine({
     start: { x: margin, y },
     end: { x: width - margin, y },
-    thickness: 1.2,
-    color: rgb(0.15, 0.25, 0.45),
+    thickness: 1,
+    color: rgb(0.6, 0.6, 0.6),
   });
 
-  y -= 24;
+  y -= 22;
 
-  // Two-column section: Vendor (left) | PO Details (right)
-  const colGap = 14;
-  const colW = (width - margin * 2 - colGap) / 2;
+  // Vendor + PO meta
+  const colW = (width - margin * 2 - 16) / 2;
   const leftX = margin;
-  const rightX = margin + colW + colGap;
-  const rowH = 16;
-  const sectionLabelSize = 9;
-  const labelSize = 8;
-  const valueSize = 9;
+  const rightX = margin + colW + 16;
 
-  // Section titles
-  const sectionStartY = y;
-  page.drawText('Vendor', { x: leftX + 6, y, size: sectionLabelSize, font: bold, color: rgb(0.15, 0.25, 0.45) });
-  page.drawText('PO Details', { x: rightX + 6, y, size: sectionLabelSize, font: bold, color: rgb(0.15, 0.25, 0.45) });
-  y -= 6;
-
-  // Draw separator lines under section titles
-  page.drawLine({ start: { x: leftX, y }, end: { x: leftX + colW, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
-  page.drawLine({ start: { x: rightX, y }, end: { x: rightX + colW, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
-  y -= 14;
-
-  // Vendor rows (left)
-  const vendorRows = [
-    ['Name', po.vendor_name],
-    ['Address', po.vendor_address],
-    ['Contact', po.vendor_contact],
-    ['Email', po.vendor_email],
-    ['TIN', po.vendor_tin],
-    ['Bank Name', po.vendor_bank_name || ''],
-    ['Bank Account', po.vendor_bank_account || ''],
-    ['Bank Address', po.vendor_bank_address || ''],
-  ];
-
-  // PO Details rows (right)
-  const detailRows = [
-    ['Company', po.company_name || ''],
-    ['Department', po.department],
-    ['PO Date', po.po_date],
-    ['Expected Delivery', po.expected_delivery_date || ''],
-    ['Delivery Address', po.delivery_address],
-    ['Payment Terms', po.payment_terms],
-    ['Delivery Terms', po.delivery_terms],
-    ['Remarks', po.remarks],
-  ];
-
-  const maxRows = Math.max(vendorRows.length, detailRows.length);
-  const labelColor = rgb(0.3, 0.3, 0.3);
-  const valueColor = rgb(0.1, 0.1, 0.1);
-
-  for (let i = 0; i < maxRows; i++) {
-    if (i < vendorRows.length) {
-      const [label, value] = vendorRows[i];
-      page.drawText(label, { x: leftX + 6, y, size: labelSize, font, color: labelColor });
-      const cleanVal = clean(value) || '\u2014';
-      const truncVal = cleanVal.length > 32 ? cleanVal.slice(0, 30) + '...' : cleanVal;
-      rightAlignText(page, truncVal, leftX + colW - 6, y, valueSize, font, valueColor);
-    }
-    if (i < detailRows.length) {
-      const [label, value] = detailRows[i];
-      page.drawText(label, { x: rightX + 6, y, size: labelSize, font, color: labelColor });
-      const cleanVal = clean(value) || '\u2014';
-      const truncVal = cleanVal.length > 32 ? cleanVal.slice(0, 30) + '...' : cleanVal;
-      rightAlignText(page, truncVal, rightX + colW - 6, y, valueSize, font, valueColor);
-    }
-    y -= rowH;
-  }
-
-  // Draw border boxes around the sections
-  const sectionH = sectionStartY - y + 6;
-  page.drawRectangle({
-    x: leftX, y: y - 2, width: colW, height: sectionH,
-    borderColor: rgb(0.8, 0.8, 0.8), borderWidth: 0.6, color: undefined,
-  });
-  page.drawRectangle({
-    x: rightX, y: y - 2, width: colW, height: sectionH,
-    borderColor: rgb(0.8, 0.8, 0.8), borderWidth: 0.6, color: undefined,
-  });
-
-  y -= 20;
-
-  // Line Items section
-  page.drawText('Line Items', { x: leftX + 6, y, size: sectionLabelSize, font: bold, color: rgb(0.15, 0.25, 0.45) });
-  y -= 6;
-  page.drawLine({ start: { x: margin, y }, end: { x: width - margin, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
-  y -= 14;
-
-  // Column positions for line items
-  const tableW = width - margin * 2;
-  const descW = tableW * 0.38;
-  const uomW = tableW * 0.12;
-  const qtyW = tableW * 0.12;
-  const priceW = tableW * 0.19;
-  const totalW = tableW * 0.19;
-
-  const colPositions = [
-    { label: 'DESCRIPTION', x: margin + 6 },
-    { label: 'UOM', x: margin + descW },
-    { label: 'QTY', x: margin + descW + uomW },
-    { label: 'UNIT PRICE', x: margin + descW + uomW + qtyW },
-    { label: 'TOTAL', x: margin + descW + uomW + qtyW + priceW },
-  ];
-
-  // Table header background
-  page.drawRectangle({
-    x: margin, y: y - 4, width: tableW, height: 16,
-    color: rgb(0.94, 0.96, 0.98),
-  });
-
-  colPositions.forEach((c) => {
-    page.drawText(c.label, { x: c.x, y: y, size: 7.5, font: bold, color: rgb(0.3, 0.3, 0.4) });
-  });
-  y -= 18;
-
-  // Item rows
-  for (const it of items) {
-    if (y < 180) break;
-    const desc = clean(it.item_description);
-    const truncated = desc.length > 45 ? desc.slice(0, 43) + '...' : desc;
-    page.drawText(truncated, { x: colPositions[0].x, y, size: 8.5, font, color: valueColor });
-    page.drawText(clean(it.unit_of_measure) || '-', { x: colPositions[1].x, y, size: 8.5, font, color: valueColor });
-    page.drawText(Number(it.quantity).toFixed(2), { x: colPositions[2].x, y, size: 8.5, font, color: valueColor });
-    rightAlignText(page, fmtMoney(Number(it.unit_price)), colPositions[4].x - 10, y, 8.5, font, valueColor);
-    rightAlignText(page, fmtMoney(Number(it.total_price)), width - margin - 6, y, 8.5, font, valueColor);
-    y -= 15;
-  }
-
-  y -= 6;
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: width - margin, y },
-    thickness: 0.4,
-    color: rgb(0.85, 0.85, 0.85),
-  });
-  y -= 14;
-
-  // Totals (right-aligned)
-  const totalsLabelX = width - margin - 160;
-  const totalsValueX = width - margin - 6;
-  const ewtAmount = po.ewt_amount ?? items.reduce((sum, it) => sum + Number(it.ewt_amount || 0), 0);
-
-  const drawTotalRow = (label: string, value: string, isBold = false) => {
-    const f = isBold ? bold : font;
-    const lColor = isBold ? rgb(0.1, 0.1, 0.1) : rgb(0.35, 0.35, 0.35);
-    rightAlignText(page, label, totalsValueX - 80, y, 8.5, f, lColor);
-    rightAlignText(page, value, totalsValueX, y, 8.5, f, rgb(0.1, 0.1, 0.1));
-    y -= 14;
+  const drawLabel = (x: number, yy: number, label: string, value: string) => {
+    page.drawText(label, { x, y: yy, size: 8, font: bold, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(clean(value) || '-', { x, y: yy - 11, size: 10, font, color: rgb(0.1, 0.1, 0.1) });
   };
 
-  drawTotalRow('Net of VAT', fmtMoney(Number(po.subtotal)));
-  drawTotalRow('VAT (12%)', fmtMoney(Number(po.vat_amount)));
-  if (ewtAmount > 0) {
-    drawTotalRow('EWT', fmtMoney(ewtAmount));
-  }
-  drawTotalRow('Net Payable', fmtMoney(Number(po.total_amount)), true);
+  drawLabel(leftX, y, 'VENDOR', po.vendor_name);
+  drawLabel(rightX, y, 'PO DATE', po.po_date);
+  y -= 26;
+  drawLabel(leftX, y, 'ADDRESS', po.vendor_address);
+  drawLabel(rightX, y, 'EXPECTED DELIVERY', po.expected_delivery_date || '-');
+  y -= 26;
+  drawLabel(leftX, y, 'CONTACT', po.vendor_contact);
+  drawLabel(rightX, y, 'PAYMENT TERMS', po.payment_terms);
+  y -= 26;
+  drawLabel(leftX, y, 'TIN', po.vendor_tin);
+  drawLabel(rightX, y, 'DEPARTMENT', po.department);
+  y -= 26;
+  drawLabel(leftX, y, 'EMAIL', po.vendor_email);
+  drawLabel(rightX, y, 'DELIVERY ADDRESS', po.delivery_address);
+  y -= 32;
 
-  // Draw border box around line items + totals section
-  const lineItemsSectionBottom = y - 4;
-  const lineItemsSectionTop = sectionStartY - sectionH - 16;
+  // Items header
   page.drawRectangle({
-    x: margin, y: lineItemsSectionBottom, width: tableW, height: lineItemsSectionTop - lineItemsSectionBottom,
-    borderColor: rgb(0.8, 0.8, 0.8), borderWidth: 0.6, color: undefined,
+    x: margin,
+    y: y - 4,
+    width: width - margin * 2,
+    height: 18,
+    color: rgb(0.93, 0.95, 0.98),
   });
+  const cols = [
+    { label: 'DESCRIPTION', x: margin + 6, w: 220 },
+    { label: 'UOM', x: margin + 230, w: 40 },
+    { label: 'QTY', x: margin + 280, w: 40 },
+    { label: 'UNIT PRICE', x: margin + 330, w: 80 },
+    { label: 'TOTAL', x: margin + 420, w: 90 },
+  ];
+  cols.forEach((c) => {
+    page.drawText(c.label, { x: c.x, y: y + 2, size: 8, font: bold, color: rgb(0.3, 0.3, 0.3) });
+  });
+  y -= 22;
+
+  // Items rows
+  for (const it of items) {
+    if (y < 180) {
+      const newPage = pdf.addPage([612, 792]);
+      y = newPage.getSize().height - margin;
+    }
+    const desc = clean(it.item_description);
+    const truncated = desc.length > 38 ? desc.slice(0, 36) + '...' : desc;
+    page.drawText(truncated, { x: cols[0].x, y, size: 9, font, color: rgb(0.1, 0.1, 0.1) });
+    page.drawText(clean(it.unit_of_measure) || '-', { x: cols[1].x, y, size: 9, font });
+    page.drawText(Number(it.quantity).toFixed(2), { x: cols[2].x, y, size: 9, font });
+    page.drawText(fmtMoney(Number(it.unit_price)), { x: cols[3].x, y, size: 9, font });
+    page.drawText(fmtMoney(Number(it.total_price)), { x: cols[4].x, y, size: 9, font });
+    y -= 16;
+  }
+
+  y -= 6;
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: width - margin, y },
+    thickness: 0.6,
+    color: rgb(0.7, 0.7, 0.7),
+  });
+  y -= 16;
+
+  // Totals
+  const totalsX = width - margin - 220;
+  const drawTotal = (label: string, value: string, isBold = false) => {
+    const f = isBold ? bold : font;
+    page.drawText(label, { x: totalsX, y, size: 10, font: f, color: rgb(0.2, 0.2, 0.2) });
+    page.drawText(value, { x: width - margin - 70, y, size: 10, font: f, color: rgb(0.1, 0.1, 0.1) });
+    y -= 14;
+  };
+  drawTotal('Subtotal', fmtMoney(Number(po.subtotal)));
+  drawTotal('VAT (12%)', fmtMoney(Number(po.vat_amount)));
+  drawTotal('TOTAL AMOUNT', fmtMoney(Number(po.total_amount)), true);
+
+  y -= 12;
+
+  // Delivery & remarks
+  if (po.delivery_terms) {
+    page.drawText('Delivery Terms:', { x: margin, y, size: 9, font: bold });
+    y -= 12;
+    page.drawText(clean(po.delivery_terms).slice(0, 110), { x: margin, y, size: 9, font });
+    y -= 16;
+  }
+  if (po.remarks) {
+    page.drawText('Remarks:', { x: margin, y, size: 9, font: bold });
+    y -= 12;
+    page.drawText(clean(po.remarks).slice(0, 110), { x: margin, y, size: 9, font });
+    y -= 16;
+  }
 
   // Signatories block
-  y = Math.min(y - 30, 140);
+  y = Math.min(y, 160);
   const sigW = (width - margin * 2 - 30) / 3;
   const sigBlocks: Array<{ label: string; name?: string; esig?: string | null }> = [
     { label: 'Prepared By', name: po.prepared_by_name, esig: po.prepared_by_esig },
@@ -263,6 +193,7 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
     const block = sigBlocks[idx];
     const x = margin + idx * (sigW + 15);
 
+    // Draw e-signature above the line if available
     if (block.esig) {
       try {
         const sigImage = await embedSignature(pdf, block.esig);
@@ -275,10 +206,11 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
           height: sigHeight,
         });
       } catch (e) {
-        // skip
+        // Signature embed failed, skip
       }
     }
 
+    // Line
     page.drawLine({
       start: { x, y },
       end: { x: x + sigW, y },
@@ -286,6 +218,7 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
       color: rgb(0.4, 0.4, 0.4),
     });
 
+    // Name below line
     if (block.name) {
       page.drawText(clean(block.name), { x, y: y - 12, size: 9, font: bold, color: rgb(0.1, 0.1, 0.1) });
       page.drawText(block.label, { x, y: y - 24, size: 8, font, color: rgb(0.4, 0.4, 0.4) });

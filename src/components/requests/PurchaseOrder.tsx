@@ -23,7 +23,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
-import { generateAndUploadPOMergedPdf } from '../../lib/poMergedPdfGenerator';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import ExportModal from '../ExportModal';
@@ -203,7 +202,6 @@ export function PurchaseOrder() {
   const [draftItems, setDraftItems] = useState<POItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [reposting, setReposting] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
   const [trackerKey, setTrackerKey] = useState(0);
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
@@ -774,60 +772,6 @@ export function PurchaseOrder() {
     }
   };
 
-  const handleRegeneratePdf = async () => {
-    if (!activeOrder) return;
-    setRegenerating(true);
-    try {
-      const { data: items } = await supabase
-        .from('purchase_order_items')
-        .select('*')
-        .eq('purchase_order_id', activeOrder.id);
-
-      await generateAndUploadPOMergedPdf(
-        {
-          id: activeOrder.id,
-          po_number: activeOrder.po_number,
-          vendor_name: activeOrder.vendor_name,
-          vendor_address: activeOrder.vendor_address,
-          vendor_contact: activeOrder.vendor_contact,
-          vendor_email: activeOrder.vendor_email,
-          vendor_tin: activeOrder.vendor_tin,
-          vendor_bank_name: activeOrder.vendor_bank_name,
-          vendor_bank_account: activeOrder.vendor_bank_account,
-          vendor_bank_address: activeOrder.vendor_bank_address,
-          company_name: activeOrder.company_name,
-          department: activeOrder.department,
-          po_date: activeOrder.po_date,
-          expected_delivery_date: activeOrder.expected_delivery_date,
-          delivery_address: activeOrder.delivery_address,
-          payment_terms: activeOrder.payment_terms,
-          delivery_terms: activeOrder.delivery_terms,
-          remarks: activeOrder.remarks,
-          subtotal: Number(activeOrder.subtotal),
-          vat_amount: Number(activeOrder.vat_amount),
-          total_amount: Number(activeOrder.total_amount),
-          canvass_request_id: activeOrder.canvass_request_id,
-          company_id: activeOrder.company_id,
-          prepared_by: activeOrder.prepared_by,
-        },
-        (items || []).map((item: any) => ({
-          item_description: item.item_description,
-          unit_of_measure: item.unit_of_measure,
-          quantity: Number(item.quantity),
-          unit_price: Number(item.unit_price),
-          total_price: Number(item.total_price),
-          ewt_amount: Number(item.ewt_amount || 0),
-        }))
-      );
-      showToast('success', 'PDF regenerated successfully.');
-      loadOrders();
-    } catch (err: any) {
-      showToast('error', err.message || 'Failed to regenerate PDF.');
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
   const handleRepostToMsbc = async () => {
     if (!activeOrder) return;
     if (!confirm('Repost this PO to MSBC?')) return;
@@ -1209,9 +1153,7 @@ export function PurchaseOrder() {
             onPreviewMergedPdf={handlePreviewMergedPdf}
             onDownloadMergedPdf={handleDownloadMergedPdf}
             onRepostToMsbc={handleRepostToMsbc}
-            onRegeneratePdf={handleRegeneratePdf}
             reposting={reposting}
-            regenerating={regenerating}
             trackerKey={trackerKey}
           />
         </div>
@@ -1570,9 +1512,7 @@ function DetailView({
   onPreviewMergedPdf,
   onDownloadMergedPdf,
   onRepostToMsbc,
-  onRegeneratePdf,
   reposting,
-  regenerating,
   trackerKey,
 }: {
   po: PurchaseOrder;
@@ -1585,9 +1525,7 @@ function DetailView({
   onPreviewMergedPdf: () => void;
   onDownloadMergedPdf: () => void;
   onRepostToMsbc: () => void;
-  onRegeneratePdf: () => void;
   reposting: boolean;
-  regenerating: boolean;
   trackerKey: number;
 }) {
   return (
@@ -1669,14 +1607,6 @@ function DetailView({
                   </button>
                 </>
               )}
-              <button
-                onClick={onRegeneratePdf}
-                disabled={regenerating}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                {regenerating ? 'Regenerating...' : 'Regenerate PDF'}
-              </button>
               <button
                 onClick={onRepostToMsbc}
                 disabled={reposting}
