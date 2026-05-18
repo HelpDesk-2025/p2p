@@ -797,29 +797,6 @@ export function POApproval() {
                   </div>
                 </div>
 
-                {/* Linked PR Purpose & Description */}
-                {linkedPR && (linkedPR.purpose || linkedPR.description) && (
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-                      <h5 className="text-sm font-bold text-blue-700">PR Details</h5>
-                    </div>
-                    <div className="divide-y divide-slate-100">
-                      {linkedPR.purpose && (
-                        <div className="px-4 py-3">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Purpose</p>
-                          <p className="text-sm text-slate-900 whitespace-pre-wrap">{linkedPR.purpose}</p>
-                        </div>
-                      )}
-                      {linkedPR.description && (
-                        <div className="px-4 py-3">
-                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</p>
-                          <p className="text-sm text-slate-900 whitespace-pre-wrap">{linkedPR.description}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Line Items */}
                 {items.length > 0 && (
                   <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -872,6 +849,29 @@ export function POApproval() {
                           <span className="text-slate-900 tabular-nums font-bold">{fmtMoney(netPayable)}</span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Linked PR Purpose & Description */}
+                {linkedPR && (linkedPR.purpose || linkedPR.description) && (
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                      <h5 className="text-sm font-bold text-blue-700">PR Details</h5>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {linkedPR.purpose && (
+                        <div className="px-4 py-3">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Purpose</p>
+                          <p className="text-sm text-slate-900 whitespace-pre-wrap">{linkedPR.purpose}</p>
+                        </div>
+                      )}
+                      {linkedPR.description && (
+                        <div className="px-4 py-3">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Description</p>
+                          <p className="text-sm text-slate-900 whitespace-pre-wrap">{linkedPR.description}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
