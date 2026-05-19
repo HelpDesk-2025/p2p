@@ -1670,56 +1670,63 @@ function DetailView({
       </div>
 
       {['approved', 'dispatched'].includes(po.status) && (
-        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Generated Documents</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {po.merged_pdf_path ? 'Merged PO document available' : 'PO Form + RFP + Canvass Summary'}
-              </p>
-              {po.msbc_sync_status && (
-                <div className="mt-1.5">
-                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    po.msbc_sync_status === 'synced' ? 'bg-green-100 text-green-700' :
-                    po.msbc_sync_status === 'syncing' ? 'bg-blue-100 text-blue-700' :
-                    po.msbc_sync_status === 'failed' ? 'bg-red-100 text-red-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {po.msbc_sync_status === 'synced' ? 'Posted to MSBC' :
-                     po.msbc_sync_status === 'syncing' ? 'Syncing...' :
-                     po.msbc_sync_status === 'failed' ? 'MSBC Post Failed' : 'Pending'}
-                  </span>
-                  {po.msbc_sync_status === 'failed' && po.msbc_sync_error && (
-                    <p className="text-xs text-red-600 mt-1">{po.msbc_sync_error}</p>
-                  )}
-                </div>
-              )}
+        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 overflow-visible">
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">Generated Documents</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {po.merged_pdf_path ? 'Merged PO document available' : 'PO Form + RFP + Canvass Summary'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {po.merged_pdf_path && (
+                  <>
+                    <button
+                      onClick={onPreviewMergedPdf}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    >
+                      <Eye size={16} /> Preview
+                    </button>
+                    <button
+                      onClick={onDownloadMergedPdf}
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <Download size={16} /> Download
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={onRegeneratePdf}
+                  disabled={regenerating}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                  {regenerating ? 'Regenerating...' : 'Regenerate Document'}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {po.merged_pdf_path && (
-                <>
-                  <button
-                    onClick={onPreviewMergedPdf}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <Eye size={16} /> Preview
-                  </button>
-                  <button
-                    onClick={onDownloadMergedPdf}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    <Download size={16} /> Download
-                  </button>
-                </>
-              )}
-              <button
-                onClick={onRegeneratePdf}
-                disabled={regenerating}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                {regenerating ? 'Regenerating...' : 'Regenerate Document'}
-              </button>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-200">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">MSBC Integration</p>
+                {po.msbc_sync_status && (
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      po.msbc_sync_status === 'synced' ? 'bg-green-100 text-green-700' :
+                      po.msbc_sync_status === 'syncing' ? 'bg-blue-100 text-blue-700' :
+                      po.msbc_sync_status === 'failed' ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {po.msbc_sync_status === 'synced' ? 'Posted to MSBC' :
+                       po.msbc_sync_status === 'syncing' ? 'Syncing...' :
+                       po.msbc_sync_status === 'failed' ? 'MSBC Post Failed' : 'Pending'}
+                    </span>
+                    {po.msbc_sync_status === 'failed' && po.msbc_sync_error && (
+                      <p className="text-xs text-red-600 mt-1">{po.msbc_sync_error}</p>
+                    )}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={onRepostToMsbc}
                 disabled={reposting}
