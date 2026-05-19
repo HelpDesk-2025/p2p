@@ -62,7 +62,8 @@ export function ApprovalProgressTracker({
       if (data) {
         setCurrentApprovalLevel(data.current_approval_level || 0);
         setStatus(data.status || 'pending');
-        setMsbcSyncStatus(data.msbc_sync_status || (data.status === 'approved' ? 'pending' : ''));
+        const isApprovedOrBeyond = ['approved', 'dispatched', 'partially_received', 'fully_received', 'closed'].includes(data.status);
+        setMsbcSyncStatus(data.msbc_sync_status || (isApprovedOrBeyond ? 'pending' : ''));
         setMsbcSyncDate(data.msbc_sync_date || null);
         setMsbcSyncError(data.msbc_sync_error || null);
 
@@ -498,7 +499,7 @@ export function ApprovalProgressTracker({
 
       </div>
 
-      {status === 'approved' && (
+      {['approved', 'dispatched', 'partially_received', 'fully_received', 'closed'].includes(status) && (
         <div className="mt-6 pt-4 border-t border-slate-200 space-y-4">
           <div className="flex items-center gap-2 text-green-700">
             <CheckCircle size={20} />
