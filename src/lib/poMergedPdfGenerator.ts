@@ -86,13 +86,17 @@ export async function generateAndUploadPOMergedPdf(
     if (prepProfile) {
       preparedByName = prepProfile.full_name || undefined;
       if (prepProfile.signature_path) {
-        const { data: sigFile } = await supabase.storage
-          .from('attachments')
-          .download(prepProfile.signature_path);
-        if (sigFile) {
-          const arrayBuffer = await sigFile.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          preparedByEsig = `data:${sigFile.type};base64,${base64}`;
+        if (prepProfile.signature_path.startsWith('data:image')) {
+          preparedByEsig = prepProfile.signature_path;
+        } else {
+          const { data: sigFile } = await supabase.storage
+            .from('attachments')
+            .download(prepProfile.signature_path);
+          if (sigFile) {
+            const arrayBuffer = await sigFile.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            preparedByEsig = `data:${sigFile.type};base64,${base64}`;
+          }
         }
       } else if (prepProfile.e_sig) {
         preparedByEsig = prepProfile.e_sig;
