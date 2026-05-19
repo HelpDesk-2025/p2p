@@ -164,9 +164,7 @@ export async function generatePurchaseOrderPdf(po: POForPdf, items: POItemForPdf
   drawTotal('Subtotal', fmtMoney(Number(po.subtotal)));
   drawTotal('VAT (12%)', fmtMoney(Number(po.vat_amount)));
   const ewtAmount = Number(po.ewt_amount || 0);
-  if (ewtAmount > 0) {
-    drawTotal('EWT', `(${fmtMoney(ewtAmount)})`);
-  }
+  drawTotal('EWT', ewtAmount > 0 ? `(${fmtMoney(ewtAmount)})` : fmtMoney(0));
   drawTotal('NET PAYABLE', fmtMoney(Number(po.total_amount)), true);
 
   y -= 12;
