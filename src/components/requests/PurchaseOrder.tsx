@@ -1181,7 +1181,6 @@ export function PurchaseOrder() {
             items={draftItems}
             onChange={updateDraftField}
             onItemChange={updateItem}
-            onSave={() => saveDraftOrSubmit(false)}
             onSubmit={() => saveDraftOrSubmit(true)}
             saving={saving}
             paymentTerms={PAYMENT_TERMS}
@@ -1312,7 +1311,6 @@ function CreateView({
   items,
   onChange,
   onItemChange,
-  onSave,
   onSubmit,
   saving,
   paymentTerms,
@@ -1323,7 +1321,6 @@ function CreateView({
   items: POItem[];
   onChange: <K extends keyof PurchaseOrder>(key: K, val: PurchaseOrder[K]) => void;
   onItemChange: (idx: number, patch: Partial<POItem>) => void;
-  onSave: () => void;
   onSubmit: () => void;
   saving: boolean;
   paymentTerms: string[];
@@ -1535,14 +1532,6 @@ function CreateView({
       </Section>
 
       <div className="flex justify-end gap-2">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg disabled:opacity-50"
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-          Save as Draft
-        </button>
         <button
           onClick={onSubmit}
           disabled={saving}
