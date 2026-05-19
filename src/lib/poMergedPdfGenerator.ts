@@ -34,45 +34,41 @@ export async function generateAndUploadPOMergedPdf(
     total_price: number;
   }>
 ): Promise<string> {
-  // Fetch the last approver (excluding validators/checkers) from approval flow
+  // Fetch signatories from actual approval records
   let approverName: string | undefined;
   let approverEsig: string | null | undefined;
   let preparedByName: string | undefined;
   let preparedByEsig: string | null | undefined;
 
-  if (po.company_id) {
-    // Get approval flows for this PO, excluding for_checking steps
-    const { data: flows } = await supabase
-      .from('approval_flow_setups')
-      .select('sequence, user_id, for_checking')
-      .eq('company_id', po.company_id)
-      .eq('department', po.department)
-      .eq('request_type', 'Purchase Order')
-      .order('sequence', { ascending: false });
+  // Get actual approval records for this PO (who actually approved it)
+  const { data: poApprovalData } = await supabase
+    .rpc('get_approval_records_with_signatures', {
+      p_request_id: po.id,
+      p_request_type: 'Purchase Order',
+      p_requester_id: po.prepared_by || undefined,
+    });
 
-    if (flows && flows.length > 0) {
-      // Find last non-checker step
-      const lastApproverFlow = flows.find(f => !f.for_checking);
-      if (lastApproverFlow?.user_id) {
-        const { data: approverProfile } = await supabase
-          .from('user_profiles')
-          .select('full_name, e_sig, signature_path')
-          .eq('id', lastApproverFlow.user_id)
-          .maybeSingle();
+  const poApprovalRecords = Array.isArray(poApprovalData) ? poApprovalData : [];
 
-        if (approverProfile) {
-          approverName = approverProfile.full_name || undefined;
-          if (approverProfile.signature_path) {
-            const { data: sigFile } = await supabase.storage
-              .from('attachments')
-              .download(approverProfile.signature_path);
-            if (sigFile) {
-              const arrayBuffer = await sigFile.arrayBuffer();
-              const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-              approverEsig = `data:${sigFile.type};base64,${base64}`;
-            }
-          } else if (approverProfile.e_sig) {
-            approverEsig = approverProfile.e_sig;
+  if (poApprovalRecords.length > 0) {
+    // Last non-checker record is the final approver ("Approved By")
+    const lastApprover = [...poApprovalRecords]
+      .filter((r: any) => !r.for_checking)
+      .sort((a: any, b: any) => (b.sequence || 0) - (a.sequence || 0))[0];
+
+    if (lastApprover) {
+      approverName = lastApprover.approver_name || undefined;
+      if (lastApprover.approver_esig) {
+        if (lastApprover.approver_esig.startsWith('data:image')) {
+          approverEsig = lastApprover.approver_esig;
+        } else {
+          const { data: sigFile } = await supabase.storage
+            .from('attachments')
+            .download(lastApprover.approver_esig);
+          if (sigFile) {
+            const arrayBuffer = await sigFile.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            approverEsig = `data:${sigFile.type};base64,${base64}`;
           }
         }
       }
