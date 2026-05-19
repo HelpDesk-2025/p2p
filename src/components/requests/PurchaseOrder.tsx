@@ -211,6 +211,8 @@ export function PurchaseOrder() {
   const [toast, setToast] = useState<ToastMsg | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [dispatchEmail, setDispatchEmail] = useState('');
+  const [dispatchRemarks, setDispatchRemarks] = useState('');
+  const [isRedispatch, setIsRedispatch] = useState(false);
   const [draftPONumber, setDraftPONumber] = useState('');
 
   const showToast = (type: ToastMsg['type'], text: string) => {
@@ -683,35 +685,56 @@ export function PurchaseOrder() {
 
   const handleDispatch = async () => {
     if (!activeOrder || !user) return;
+    if (!dispatchEmail) {
+      showToast('error', 'Vendor email is required.');
+      return;
+    }
     setSaving(true);
     try {
-      const ewtTotal = activeItems.reduce((s, it) => s + Number(it.ewt_amount || 0), 0);
-      const pdfBlob = await generatePurchaseOrderPdf({ ...activeOrder, ewt_amount: ewtTotal }, activeItems);
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${activeOrder.po_number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dispatch-po-email`;
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          purchaseOrderId: activeOrder.id,
+          vendorEmail: dispatchEmail,
+          poNumber: activeOrder.po_number,
+          vendorName: activeOrder.vendor_name,
+          totalAmount: activeOrder.total_amount,
+          companyName: activeOrder.company_name,
+          remarks: dispatchRemarks || undefined,
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.message || result.error || 'Failed to send email');
 
-      await supabase
-        .from('purchase_orders')
-        .update({ status: 'dispatched', dispatched_at: new Date().toISOString(), updated_by: user.id })
-        .eq('id', activeOrder.id);
+      if (!isRedispatch) {
+        await supabase
+          .from('purchase_orders')
+          .update({ status: 'dispatched', dispatched_at: new Date().toISOString(), updated_by: user.id })
+          .eq('id', activeOrder.id);
+      }
 
       await supabase.from('po_audit_logs').insert([
         {
           purchase_order_id: activeOrder.id,
-          action: 'dispatched',
+          action: isRedispatch ? 're-dispatched' : 'dispatched',
           performed_by: user.id,
-          remarks: dispatchEmail ? `Dispatched to ${dispatchEmail}` : 'PDF downloaded',
+          remarks: `Emailed to ${dispatchEmail}${dispatchRemarks ? ` - ${dispatchRemarks}` : ''}`,
         },
       ]);
 
-      showToast('success', 'PO dispatched successfully.');
+      showToast('success', isRedispatch ? 'PO re-dispatched to vendor successfully.' : 'PO dispatched to vendor successfully.');
       setDispatchOpen(false);
+      setDispatchRemarks('');
+      setIsRedispatch(false);
       loadOrders();
-      setActiveOrder({ ...activeOrder, status: 'dispatched' });
+      if (!isRedispatch) {
+        setActiveOrder({ ...activeOrder, status: 'dispatched' });
+      }
     } catch (err: any) {
       showToast('error', err.message || 'Dispatch failed.');
     } finally {
@@ -1197,6 +1220,14 @@ export function PurchaseOrder() {
             isProcurement={profile?.role === ('procurement' as any) || profile?.role === 'admin'}
             onDispatch={() => {
               setDispatchEmail(activeOrder.vendor_email || '');
+              setDispatchRemarks('');
+              setIsRedispatch(false);
+              setDispatchOpen(true);
+            }}
+            onRedispatch={() => {
+              setDispatchEmail(activeOrder.vendor_email || '');
+              setDispatchRemarks('');
+              setIsRedispatch(true);
               setDispatchOpen(true);
             }}
             onCancel={cancelPO}
@@ -1248,8 +1279,15 @@ export function PurchaseOrder() {
       )}
 
       {dispatchOpen && activeOrder && (
-        <Modal title="Dispatch PO to Vendor" onClose={() => setDispatchOpen(false)}>
+        <Modal title={isRedispatch ? "Re-dispatch PO to Vendor" : "Dispatch PO to Vendor"} onClose={() => setDispatchOpen(false)}>
           <div className="space-y-3">
+            {isRedispatch && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <p className="text-xs text-amber-800">
+                  This PO has already been dispatched. Use this to resend the email if the vendor did not receive it or if the email address was incorrect.
+                </p>
+              </div>
+            )}
             <Field label="Vendor Email">
               <input
                 type="email"
@@ -1259,8 +1297,18 @@ export function PurchaseOrder() {
                 placeholder="vendor@example.com"
               />
             </Field>
+            <Field label="Remarks (optional)">
+              <textarea
+                value={dispatchRemarks}
+                onChange={(e) => setDispatchRemarks(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                rows={2}
+                placeholder="Any additional notes for the vendor..."
+              />
+            </Field>
             <p className="text-xs text-slate-500">
-              The PO PDF will be downloaded. Status changes to <strong>Dispatched</strong> and an audit entry is recorded.
+              The PO document will be emailed to the vendor as a PDF attachment using the system SMTP configuration.
+              {!isRedispatch && <> Status will change to <strong>Dispatched</strong>.</>}
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -1271,11 +1319,11 @@ export function PurchaseOrder() {
               </button>
               <button
                 onClick={handleDispatch}
-                disabled={saving}
+                disabled={saving || !dispatchEmail}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                Dispatch & Download
+                {isRedispatch ? 'Re-send Email' : 'Send to Vendor'}
               </button>
             </div>
           </div>
@@ -1550,6 +1598,7 @@ function DetailView({
   items,
   isProcurement,
   onDispatch,
+  onRedispatch,
   onCancel,
   onDownload,
   onPreviewMergedPdf,
@@ -1565,6 +1614,7 @@ function DetailView({
   currentUserId: string;
   isProcurement: boolean;
   onDispatch: () => void;
+  onRedispatch: () => void;
   onCancel: () => void;
   onDownload: () => void;
   onPreviewMergedPdf: () => void;
@@ -1598,6 +1648,14 @@ function DetailView({
               className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
             >
               <Mail size={16} /> Dispatch to Vendor
+            </button>
+          )}
+          {isProcurement && po.status === 'dispatched' && (
+            <button
+              onClick={onRedispatch}
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg border border-teal-200"
+            >
+              <RefreshCw size={16} /> Re-dispatch to Vendor
             </button>
           )}
           {isProcurement && !['cancelled', 'closed', 'rejected'].includes(po.status) && (
