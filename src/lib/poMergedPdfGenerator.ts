@@ -150,25 +150,38 @@ export async function generateAndUploadPOMergedPdf(
       .maybeSingle();
 
     if (canvass) {
-      // Generate RFP PDF
-      const rfpBytes = await buildCanvassRFP(canvass);
-      if (rfpBytes) pdfParts.push(rfpBytes);
+      let canvassIncluded = false;
 
-      // Generate Canvass Summary PDF
-      const canvassSheetBytes = await buildCanvassSheet(canvass);
-      if (canvassSheetBytes) pdfParts.push(canvassSheetBytes);
-
-      // Download winning vendor's quotation file
-      const winningIndex = canvass.recommended_quotation_index || 0;
-      const winningSupplier = canvass.suppliers?.[winningIndex];
-      if (winningSupplier?.quotation_file_path) {
-        const { data: quotationFile } = await supabase.storage
+      // Prefer the already-generated PDF (has complete signatories with e-signatures)
+      if (canvass.rfp_pdf_path) {
+        const { data: storedPdf } = await supabase.storage
           .from('attachments')
-          .download(winningSupplier.quotation_file_path);
+          .download(canvass.rfp_pdf_path);
+        if (storedPdf) {
+          const storedBytes = new Uint8Array(await storedPdf.arrayBuffer());
+          pdfParts.push(storedBytes);
+          canvassIncluded = true;
+        }
+      }
 
-        if (quotationFile) {
-          const quotationBytes = new Uint8Array(await quotationFile.arrayBuffer());
-          pdfParts.push(quotationBytes);
+      // Fallback: regenerate from scratch if stored PDF is unavailable
+      if (!canvassIncluded) {
+        const rfpBytes = await buildCanvassRFP(canvass);
+        if (rfpBytes) pdfParts.push(rfpBytes);
+
+        const canvassSheetBytes = await buildCanvassSheet(canvass);
+        if (canvassSheetBytes) pdfParts.push(canvassSheetBytes);
+
+        const winningIndex = canvass.recommended_quotation_index || 0;
+        const winningSupplier = canvass.suppliers?.[winningIndex];
+        if (winningSupplier?.quotation_file_path) {
+          const { data: quotationFile } = await supabase.storage
+            .from('attachments')
+            .download(winningSupplier.quotation_file_path);
+          if (quotationFile) {
+            const quotationBytes = new Uint8Array(await quotationFile.arrayBuffer());
+            pdfParts.push(quotationBytes);
+          }
         }
       }
     }
