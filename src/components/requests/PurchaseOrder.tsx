@@ -1669,7 +1669,7 @@ function DetailView({
         </div>
       </div>
 
-      {po.status === 'approved' && (
+      {['approved', 'dispatched'].includes(po.status) && (
         <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
