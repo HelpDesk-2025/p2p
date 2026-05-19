@@ -108,10 +108,16 @@ async function sendEmailWithAttachment(
     messageParts.push(`Content-Disposition: attachment; filename="${attachment.filename}"`);
     messageParts.push('');
 
-    const base64Content = btoa(String.fromCharCode(...attachment.content));
-    const chunkSize = 76;
-    for (let i = 0; i < base64Content.length; i += chunkSize) {
-      messageParts.push(base64Content.slice(i, i + chunkSize));
+    let binary = '';
+    const bytes = attachment.content;
+    const chunkLen = 8192;
+    for (let i = 0; i < bytes.length; i += chunkLen) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkLen));
+    }
+    const base64Content = btoa(binary);
+    const lineSize = 76;
+    for (let i = 0; i < base64Content.length; i += lineSize) {
+      messageParts.push(base64Content.slice(i, i + lineSize));
     }
     messageParts.push('');
     messageParts.push(`--${boundary}--`);
