@@ -445,43 +445,29 @@ export function GoodsReceipt() {
     }
     setSaving(true);
     try {
-      const { data: numData, error: numErr } = await supabase.rpc('generate_po_grn_number', {
+      const grStatus: GRStatus = confirming ? 'confirmed' : 'draft';
+
+      const { data: grJson, error: rpcErr } = await supabase.rpc('insert_po_grn_atomic', {
         p_company_id: draftPO.company_id || null,
+        p_purchase_order_id: draftPO.id,
+        p_po_number: draftPO.po_number || '',
+        p_vendor_id: draftPO.vendor_id || '',
+        p_vendor_name: draftPO.vendor_name || '',
+        p_received_by: user.id,
+        p_inspected_by: draftHeader.inspected_by || null,
+        p_receipt_date: draftHeader.receipt_date || new Date().toISOString().split('T')[0],
+        p_delivery_receipt_number: draftHeader.delivery_receipt_number || '',
+        p_receipt_type: computedReceiptType,
+        p_overall_condition: draftHeader.overall_condition || 'good',
+        p_warehouse_location: draftHeader.warehouse_location || '',
+        p_remarks: draftHeader.remarks || '',
+        p_status: grStatus,
+        p_confirmed_at: confirming ? new Date().toISOString() : null,
+        p_created_by: user.id,
       });
-      if (numErr) throw numErr;
-      const grNumber = numData as string;
-
-      const status: GRStatus = confirming ? 'confirmed' : 'draft';
-
-      const { data: inserted, error: insErr } = await supabase
-        .from('po_grns')
-        .insert([
-          {
-            gr_number: grNumber,
-            purchase_order_id: draftPO.id,
-            po_number: draftPO.po_number,
-            vendor_id: draftPO.vendor_id || '',
-            vendor_name: draftPO.vendor_name,
-            company_id: draftPO.company_id,
-            received_by: user.id,
-            inspected_by: draftHeader.inspected_by || null,
-            receipt_date: draftHeader.receipt_date,
-            delivery_receipt_number: draftHeader.delivery_receipt_number || '',
-            receipt_type: computedReceiptType,
-            overall_condition: draftHeader.overall_condition || 'good',
-            warehouse_location: draftHeader.warehouse_location || '',
-            remarks: draftHeader.remarks || '',
-            status,
-            confirmed_at: confirming ? new Date().toISOString() : null,
-            created_by: user.id,
-            updated_by: user.id,
-          },
-        ])
-        .select()
-        .maybeSingle();
-
-      if (insErr) throw insErr;
-      const newGR = inserted as GR;
+      if (rpcErr) throw rpcErr;
+      const newGR = grJson as GR;
+      const grNumber = newGR.gr_number;
 
       const itemRows = draftItems.map((it) => ({
         po_grn_id: newGR.id,
