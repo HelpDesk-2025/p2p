@@ -103,6 +103,11 @@ export const MODULE_PERMISSIONS = {
   REIMBURSEMENT: 'Reimbursement Request',
   PURCHASE_ORDER: 'Purchase Order Request',
   GOODS_RECEIPT: 'Goods Receipt View',
+  GOODS_RECEIPT_EDIT: 'Goods Receipt Edit',
+  GOODS_RECEIPT_LOCK: 'Goods Receipt Lock',
+  GOODS_RECEIPT_CANCEL: 'Goods Receipt Cancel',
+  GOODS_RECEIPT_CREATE: 'Goods Receipt Create',
+  GOODS_RECEIPT_CONFIRM: 'Goods Receipt Confirm',
   INVOICE_RECEIPT: 'Invoice Receipt View',
 
   // Approval Modules
