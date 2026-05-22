@@ -41,15 +41,26 @@ export function ApprovalLedger() {
   const loadApprovalLedger = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('approval_ledger')
-        .select('*')
-        .order('approval_date', { ascending: false });
+      const allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      const { data, error } = await query;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('approval_ledger')
+          .select('*')
+          .order('approval_date', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (error) throw error;
-      setEntries(data || []);
+        if (error) throw error;
+
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === pageSize;
+        page++;
+      }
+
+      setEntries(allData);
     } catch (error) {
       console.error('Error loading approval ledger:', error);
     } finally {

@@ -173,32 +173,42 @@ export function PurchaseRequisition() {
     try {
       if (!profile?.company_id && profile?.role !== 'admin') return;
 
-      let query = supabase
-        .from('purchase_requisitions')
-        .select(`
-          *,
-          pr_checklists (
-            pr_type,
-            item_name
-          ),
-          user_profiles!purchase_requisitions_requester_id_fkey(company_id),
-          companies!purchase_requisitions_company_id_fkey(id, name)
-        `)
-        .order('created_at', { ascending: false });
+      const allData: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      // Only filter by requester_id if user is not an admin
-      if (profile?.role !== 'admin') {
-        query = query.eq('requester_id', profile?.id);
+      while (hasMore) {
+        let query = supabase
+          .from('purchase_requisitions')
+          .select(`
+            *,
+            pr_checklists (
+              pr_type,
+              item_name
+            ),
+            user_profiles!purchase_requisitions_requester_id_fkey(company_id),
+            companies!purchase_requisitions_company_id_fkey(id, name)
+          `)
+          .order('created_at', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (profile?.role !== 'admin') {
+          query = query.eq('requester_id', profile?.id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        allData.push(...(data || []));
+        hasMore = (data?.length || 0) === pageSize;
+        page++;
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
 
       // For admin users, filter in-memory to show all requests
       const filteredRequests = profile.role === 'admin'
-        ? data
-        : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
+        ? allData
+        : allData.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
 
       setRequests(filteredRequests || []);
     } catch (error) {
