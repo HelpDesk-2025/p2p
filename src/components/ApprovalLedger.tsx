@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar, CreditCard as Edit3, Check, X } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar, CreditCard as Edit3, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ApprovalEntry {
   id: string;
@@ -31,6 +31,8 @@ export function ApprovalLedger() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editApproverType, setEditApproverType] = useState('');
   const [saving, setSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
   const isAdmin = profile?.role === 'admin';
 
@@ -143,7 +145,7 @@ export function ApprovalLedger() {
     }
   };
 
-  const filteredEntries = entries.filter((entry) => {
+  const filteredEntries = useMemo(() => entries.filter((entry) => {
     const matchesType = filterType === 'all' || entry.request_type === filterType;
     const matchesAction = filterAction === 'all' || entry.action === filterAction;
     const matchesSearch =
@@ -156,7 +158,17 @@ export function ApprovalLedger() {
     const matchesDateTo = !dateTo || entryDate <= dateTo;
 
     return matchesType && matchesAction && matchesSearch && matchesDateFrom && matchesDateTo;
-  });
+  }), [entries, filterType, filterAction, searchTerm, dateFrom, dateTo]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
+  const paginatedEntries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredEntries.slice(start, start + pageSize);
+  }, [filteredEntries, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, filterAction, searchTerm, dateFrom, dateTo]);
 
   const clearFilters = () => {
     setFilterType('all');
@@ -164,6 +176,7 @@ export function ApprovalLedger() {
     setSearchTerm('');
     setDateFrom('');
     setDateTo('');
+    setCurrentPage(1);
   };
 
   if (loading) {
@@ -273,133 +286,173 @@ export function ApprovalLedger() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Request Type
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Request Number
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Approver
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Approver Type
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Action
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Sequence
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Comments
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredEntries.map((entry) => (
-                  <tr key={entry.id} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-slate-400" />
-                        <div>
-                          <div className="text-sm font-medium text-slate-900">
-                            {new Date(entry.approval_date).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {new Date(entry.approval_date).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">
-                        {entry.request_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <FileText size={16} className="text-blue-600" />
-                        <span className="font-mono font-semibold text-slate-900 text-sm">
-                          {entry.request_number}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-slate-900">{entry.approver_name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingId === entry.id ? (
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={editApproverType}
-                            onChange={(e) => setEditApproverType(e.target.value)}
-                            className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            {getApproverTypeOptions(entry).map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => saveApproverType(entry)}
-                            disabled={saving}
-                            className="p-1 text-green-600 hover:bg-green-50 rounded transition"
-                          >
-                            <Check size={16} />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded transition"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-slate-600">{entry.approver_type || '-'}</span>
-                          {isAdmin && (
-                            <button
-                              onClick={() => startEditing(entry)}
-                              className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition opacity-0 group-hover:opacity-100"
-                            >
-                              <Edit3 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {getActionIcon(entry.action)}
-                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${getActionColor(entry.action)}`}>
-                          {entry.action}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-slate-900">
-                        {entry.sequence ? `#${entry.sequence}` : '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="max-w-xs">
-                        <p className="text-sm text-slate-600 line-clamp-2">
-                          {entry.comments || '-'}
-                        </p>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Request Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Request Number
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Approver
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Approver Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Sequence
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Comments
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedEntries.map((entry) => (
+                    <tr key={entry.id} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={16} className="text-slate-400" />
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {new Date(entry.approval_date).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {new Date(entry.approval_date).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">
+                          {entry.request_type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <FileText size={16} className="text-blue-600" />
+                          <span className="font-mono font-semibold text-slate-900 text-sm">
+                            {entry.request_number}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-slate-900">{entry.approver_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingId === entry.id ? (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={editApproverType}
+                              onChange={(e) => setEditApproverType(e.target.value)}
+                              className="px-2 py-1 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              {getApproverTypeOptions(entry).map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => saveApproverType(entry)}
+                              disabled={saving}
+                              className="p-1 text-green-600 hover:bg-green-50 rounded transition"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={cancelEditing}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-600">{entry.approver_type || '-'}</span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => startEditing(entry)}
+                                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition opacity-0 group-hover:opacity-100"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {getActionIcon(entry.action)}
+                          <span className={`px-3 py-1 rounded-lg text-xs font-bold ${getActionColor(entry.action)}`}>
+                            {entry.action}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-slate-900">
+                          {entry.sequence ? `#${entry.sequence}` : '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="max-w-xs">
+                          <p className="text-sm text-slate-600 line-clamp-2">
+                            {entry.comments || '-'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
+                <p className="text-sm text-slate-600">
+                  Page {currentPage} of {totalPages} ({filteredEntries.length} entries)
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    First
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Last
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
