@@ -2338,6 +2338,9 @@ export function PurchaseRequisition() {
           .order('request_date', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
+        if (profile?.role !== 'admin') {
+          query = query.eq('requester_id', profile?.id);
+        }
         if (exportVals.status) query = query.eq('status', exportVals.status);
         if (exportVals.purchase_type) query = query.eq('purchase_type', exportVals.purchase_type);
         if (exportVals.is_budgeted) query = query.eq('is_budgeted', exportVals.is_budgeted === 'true');
