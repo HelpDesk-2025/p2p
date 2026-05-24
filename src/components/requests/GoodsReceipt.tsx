@@ -254,6 +254,9 @@ export function GoodsReceipt() {
           .order('receipt_date', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
+        if (profile?.role !== 'admin') {
+          query = query.eq('received_by', profile?.id);
+        }
         if (exportVals.status) query = query.eq('status', exportVals.status);
 
         const { data, error } = await query;

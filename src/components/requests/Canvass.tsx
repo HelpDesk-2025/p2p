@@ -2411,6 +2411,9 @@ export function Canvass() {
           .order('request_date', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
+        if (!['admin', 'approver', 'procurement'].includes(profile?.role || '')) {
+          query = query.eq('requester_id', profile?.id);
+        }
         if (exportVals.status) query = query.eq('status', exportVals.status);
 
         const { data, error } = await query;

@@ -267,7 +267,23 @@ export function CashAdvance() {
     try {
       if (!profile) return;
 
-      if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
+      if (profile.role === 'admin') {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name, min_cash_advance')
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setCompanies(data || []);
+
+        if (!companiesInitialized.current && data && data.length > 0) {
+          const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
+          setSelectedCompanyId(defaultCompany.id);
+          loadDepartments(defaultCompany.id);
+          companiesInitialized.current = true;
+        }
+      } else if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
           .select('id, name, min_cash_advance')
@@ -285,16 +301,18 @@ export function CashAdvance() {
           companiesInitialized.current = true;
         }
       } else {
+        if (profile.company_id) {
+          const { data: companyData } = await supabase
+            .from('companies')
+            .select('id, name, min_cash_advance')
+            .eq('id', profile.company_id)
+            .maybeSingle();
+          if (companyData) setCompanies([companyData]);
+        }
         if (!companiesInitialized.current) {
           setSelectedCompanyId(profile.company_id || '');
           if (profile.company_id) {
             loadDepartments(profile.company_id);
-            const { data: companyData } = await supabase
-              .from('companies')
-              .select('id, name, min_cash_advance')
-              .eq('id', profile.company_id)
-              .maybeSingle();
-            if (companyData) setCompanies([companyData]);
           }
           companiesInitialized.current = true;
         }
@@ -1726,6 +1744,9 @@ export function CashAdvance() {
           .order('request_date', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
+        if (profile?.role !== 'admin') {
+          query = query.eq('requester_id', profile?.id);
+        }
         if (exportVals.status) query = query.eq('status', exportVals.status);
 
         const { data, error } = await query;
