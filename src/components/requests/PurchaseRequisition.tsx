@@ -355,7 +355,23 @@ export function PurchaseRequisition() {
     try {
       if (!profile) return;
 
-      if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
+      if (profile.role === 'admin') {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setCompanies(data || []);
+
+        if (!companiesInitialized.current && data && data.length > 0) {
+          const defaultCompany = data.find(c => c.id === profile.company_id) || data[0];
+          setSelectedCompanyId(defaultCompany.id);
+          loadDepartments(defaultCompany.id);
+          companiesInitialized.current = true;
+        }
+      } else if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
           .select('id, name')
@@ -373,6 +389,17 @@ export function PurchaseRequisition() {
           companiesInitialized.current = true;
         }
       } else {
+        if (profile.company_id) {
+          const { data, error } = await supabase
+            .from('companies')
+            .select('id, name')
+            .eq('id', profile.company_id)
+            .eq('is_active', true);
+
+          if (error) throw error;
+          setCompanies(data || []);
+        }
+
         if (!companiesInitialized.current) {
           setSelectedCompanyId(profile.company_id || '');
           setSelectedDepartment(profile.department || '');

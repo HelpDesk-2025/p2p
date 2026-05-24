@@ -17,6 +17,12 @@ interface ApprovalEntry {
   sequence: number;
   created_at: string;
   for_checking?: boolean;
+  company_id?: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
 }
 
 export function ApprovalLedger() {
@@ -32,13 +38,51 @@ export function ApprovalLedger() {
   const [editApproverType, setEditApproverType] = useState('');
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [filterCompany, setFilterCompany] = useState<string>('all');
   const pageSize = 50;
 
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
+    loadCompanies();
     loadApprovalLedger();
   }, []);
+
+  const loadCompanies = async () => {
+    try {
+      if (!profile) return;
+
+      if (profile.role === 'admin') {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setCompanies(data || []);
+      } else if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .in('id', profile.allowed_companies)
+          .eq('is_active', true)
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setCompanies(data || []);
+      } else if (profile.company_id) {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .eq('id', profile.company_id)
+          .eq('is_active', true);
+        if (error) throw error;
+        setCompanies(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  };
 
   const loadApprovalLedger = async () => {
     setLoading(true);
@@ -48,13 +92,24 @@ export function ApprovalLedger() {
       const pageSize = 1000;
       let hasMore = true;
 
+      const allowedCompanyIds = profile?.role === 'admin'
+        ? null
+        : (profile?.enable_multi_company_requests && profile?.allowed_companies?.length)
+          ? profile.allowed_companies
+          : profile?.company_id ? [profile.company_id] : null;
+
       while (hasMore) {
-        const { data, error } = await supabase
+        let query = supabase
           .from('approval_ledger')
           .select('*')
           .order('approval_date', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
+        if (allowedCompanyIds) {
+          query = query.in('company_id', allowedCompanyIds);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
 
         allData.push(...(data || []));
@@ -148,6 +203,7 @@ export function ApprovalLedger() {
   const filteredEntries = useMemo(() => entries.filter((entry) => {
     const matchesType = filterType === 'all' || entry.request_type === filterType;
     const matchesAction = filterAction === 'all' || entry.action === filterAction;
+    const matchesCompany = filterCompany === 'all' || entry.company_id === filterCompany;
     const matchesSearch =
       entry.request_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.approver_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -157,8 +213,8 @@ export function ApprovalLedger() {
     const matchesDateFrom = !dateFrom || entryDate >= dateFrom;
     const matchesDateTo = !dateTo || entryDate <= dateTo;
 
-    return matchesType && matchesAction && matchesSearch && matchesDateFrom && matchesDateTo;
-  }), [entries, filterType, filterAction, searchTerm, dateFrom, dateTo]);
+    return matchesType && matchesAction && matchesCompany && matchesSearch && matchesDateFrom && matchesDateTo;
+  }), [entries, filterType, filterAction, filterCompany, searchTerm, dateFrom, dateTo]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / pageSize));
   const paginatedEntries = useMemo(() => {
@@ -168,11 +224,12 @@ export function ApprovalLedger() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterType, filterAction, searchTerm, dateFrom, dateTo]);
+  }, [filterType, filterAction, filterCompany, searchTerm, dateFrom, dateTo]);
 
   const clearFilters = () => {
     setFilterType('all');
     setFilterAction('all');
+    setFilterCompany('all');
     setSearchTerm('');
     setDateFrom('');
     setDateTo('');
@@ -200,7 +257,21 @@ export function ApprovalLedger() {
           <h3 className="text-base sm:text-lg font-semibold text-slate-900">Filters</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Company</label>
+            <select
+              value={filterCompany}
+              onChange={(e) => setFilterCompany(e.target.value)}
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Companies</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 sm:mb-2">Request Type</label>
             <select
