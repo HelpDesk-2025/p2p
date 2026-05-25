@@ -269,6 +269,10 @@ export async function addExecutiveApprovalSteps(
     }
 
     console.log('Returning executive flows:', executiveFlows.length);
+    if (executiveFlows.length === 0) {
+      console.warn('Executive steps configured but no valid users found, falling back to department flow');
+      return approvalFlows;
+    }
     return executiveFlows;
   } catch (error) {
     console.error('Error adding executive approval steps:', error);
