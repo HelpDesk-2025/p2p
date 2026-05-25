@@ -93,7 +93,7 @@ export async function getApprovalFlow(
       } else {
         workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
       }
-    } else if (requestType === 'Petty Cash') {
+    } else if (requestType === 'Petty Cash' || requestType === 'Reimbursement' || requestType === 'Liquidation') {
       if (expenseCategory === 'CEO Expense') {
         workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
       } else if (expenseCategory === 'ManCom Expense') {
