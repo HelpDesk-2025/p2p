@@ -8,9 +8,10 @@ import { RolesPermissionsConfig } from './RolesPermissionsConfig';
 import { ImpersonationConfig } from './ImpersonationConfig';
 import { AnnouncementsConfig } from './AnnouncementsConfig';
 import { ApiIntegrationsConfig } from './ApiIntegrationsConfig';
+import { AuditTrailConfig } from './AuditTrailConfig';
 import Pagination from '../Pagination';
 
-type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation' | 'announcements' | 'api-integrations';
+type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation' | 'announcements' | 'api-integrations' | 'audit-trail';
 
 interface ConfigManagerProps {
   type: ConfigType;
@@ -104,6 +105,8 @@ export function ConfigManager({ type }: ConfigManagerProps) {
         return <AnnouncementsConfig />;
       case 'api-integrations':
         return <ApiIntegrationsConfig />;
+      case 'audit-trail':
+        return <AuditTrailConfig />;
       default:
         return <div>Select a configuration type</div>;
     }

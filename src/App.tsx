@@ -141,6 +141,8 @@ function AppContent() {
         return <ConfigManager type="announcements" />;
       case 'config-api-integrations':
         return <ConfigManager type="api-integrations" />;
+      case 'config-audit-trail':
+        return <ConfigManager type="audit-trail" />;
       case 'change-password':
         return <ChangePassword />;
       default:

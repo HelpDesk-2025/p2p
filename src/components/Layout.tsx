@@ -72,6 +72,7 @@ export type ViewType =
   | 'config-withholding-tax-rates'
   | 'config-announcements'
   | 'config-api-integrations'
+  | 'config-audit-trail'
   | 'change-password'
   | 'user-manual'
   | 'approved-rejected';
@@ -252,6 +253,7 @@ const configItems: MenuItem[] = [
   { id: 'config-roles-permissions', label: 'Roles & Permissions', icon: Settings, permission: 'config_roles_permissions' },
   { id: 'config-announcements', label: 'Announcements', icon: Settings, permission: 'config_roles_permissions' },
   { id: 'config-api-integrations', label: 'API Integration', icon: Settings, permission: 'config_api_integrations' },
+  { id: 'config-audit-trail', label: 'Audit Trail', icon: Settings, permission: 'config_audit_trail' },
 ];
 
 const VIEW_KEYS_EXEMPT_FROM_COMPANY_GATING: Set<string> = new Set([
