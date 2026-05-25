@@ -231,6 +231,18 @@ export function PRApproval() {
 
         const currentStep = await getNextApprover(flows, request.current_approval_level);
         setCurrentApproverStep(currentStep);
+
+        // Auto-correct: if request is pending but all steps are completed (requester was filtered from remaining steps)
+        if (request.status === 'pending' && request.current_approval_level >= flows.length && flows.length > 0) {
+          console.log('Auto-correcting stuck request: all approval steps completed but status is pending');
+          const { error: fixError } = await supabase
+            .from('purchase_requisitions')
+            .update({ status: 'approved' })
+            .eq('id', request.id);
+          if (!fixError) {
+            setSelectedRequest({ ...request, status: 'approved' });
+          }
+        }
       } catch (error) {
         console.error('Error loading approval flow:', error);
         setApprovalFlows([]);
@@ -247,6 +259,10 @@ export function PRApproval() {
     if (!profile) return false;
 
     if (profile.role === 'admin') {
+      // Admin can approve if there is actually a pending step
+      if (!currentApproverStep && selectedRequest && selectedRequest.current_approval_level >= approvalFlows.length) {
+        return false;
+      }
       return true;
     }
 
@@ -383,7 +399,9 @@ export function PRApproval() {
 
       const currentLevel = selectedRequest.current_approval_level;
       const nextLevel = currentLevel + 1;
-      const isLastApproval = nextLevel >= approvalFlows.length;
+      // Check if this is the last approval - also handle case where current level
+      // is already beyond the remaining flows (e.g., requester was filtered from a step)
+      const isLastApproval = nextLevel >= approvalFlows.length || currentLevel >= approvalFlows.length;
 
       // STRICT: If rejected, entire request is rejected
       if (action === 'rejected') {

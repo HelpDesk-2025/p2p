@@ -220,11 +220,16 @@ export function POApproval() {
 
   const canApprove = (): boolean => {
     if (!profile) return false;
-    if (actualProfile?.role === 'admin' || profile.role === 'admin' || permissions?.hasFullAccess) return true;
+    if (actualProfile?.role === 'admin' || profile.role === 'admin' || permissions?.hasFullAccess) {
+      if (!currentApproverStep && selectedRequest && selectedRequest.current_approval_level >= approvalFlows.length) {
+        return false;
+      }
+      return true;
+    }
     if (!currentApproverStep) return false;
     if (currentApproverStep.user_id === profile.id) return true;
     if (currentApproverStep.alternate_approver_id === profile.id) return true;
-    return true;
+    return false;
   };
 
   const handleSort = (column: string) => {
@@ -312,7 +317,7 @@ export function POApproval() {
     try {
       const currentLevel = selectedRequest.current_approval_level;
       const nextLevel = currentLevel + 1;
-      const isLastApproval = nextLevel >= approvalFlows.length;
+      const isLastApproval = nextLevel >= approvalFlows.length || currentLevel >= approvalFlows.length;
 
       if (action === 'rejected') {
         await supabase

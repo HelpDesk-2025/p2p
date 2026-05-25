@@ -196,11 +196,9 @@ export async function addExecutiveApprovalSteps(
     }
 
     if (requesterProfile.approver_type !== 'Executive') {
-      console.log('Requester is not Executive type, using department flow');
       return approvalFlows;
     }
 
-    console.log('Requester is Executive type, loading executive approval routing');
     const category = isBudgeted ? 'budgeted' : 'non_budgeted';
 
     const { data: dynamicSteps, error: stepsError } = await supabase
@@ -271,10 +269,6 @@ export async function addExecutiveApprovalSteps(
     }
 
     console.log('Returning executive flows:', executiveFlows.length);
-    if (executiveFlows.length === 0) {
-      console.warn('Executive steps configured but no valid users found, falling back to department flow');
-      return approvalFlows;
-    }
     return executiveFlows;
   } catch (error) {
     console.error('Error adding executive approval steps:', error);

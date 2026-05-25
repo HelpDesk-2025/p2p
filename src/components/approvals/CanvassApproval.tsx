@@ -236,6 +236,16 @@ export function CanvassApproval() {
 
         const currentStep = await getNextApprover(flows, request.current_approval_level);
         setCurrentApproverStep(currentStep);
+
+        if (request.status === 'pending' && request.current_approval_level >= flows.length && flows.length > 0) {
+          const { error: fixError } = await supabase
+            .from('canvass_requests')
+            .update({ status: 'approved' })
+            .eq('id', request.id);
+          if (!fixError) {
+            setSelectedRequest({ ...request, status: 'approved' });
+          }
+        }
       } catch (error) {
         console.error('Error loading approval flow:', error);
         setApprovalFlows([]);
@@ -252,6 +262,9 @@ export function CanvassApproval() {
     if (!profile || !selectedRequest) return false;
 
     if (profile.role === 'admin') {
+      if (!currentApproverStep && selectedRequest.current_approval_level >= approvalFlows.length) {
+        return false;
+      }
       return true;
     }
 
@@ -398,8 +411,9 @@ export function CanvassApproval() {
     setLoading(true);
 
     try {
-      const nextLevel = selectedRequest.current_approval_level + 1;
-      const isLastApproval = nextLevel >= approvalFlows.length;
+      const currentLevel = selectedRequest.current_approval_level;
+      const nextLevel = currentLevel + 1;
+      const isLastApproval = nextLevel >= approvalFlows.length || currentLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
       const updateData: any = {
