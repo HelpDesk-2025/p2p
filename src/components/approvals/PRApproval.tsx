@@ -1087,7 +1087,7 @@ export function PRApproval() {
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${selectedRequest.is_budgeted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                       {selectedRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}
                     </span>
-                    {canApprove() && !currentApproverStep?.for_checking && (
+                    {false && canApprove() && !currentApproverStep?.for_checking && (
                       <button
                         onClick={() => setShowBudgetChangeForm(!showBudgetChangeForm)}
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
