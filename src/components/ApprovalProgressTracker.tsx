@@ -291,7 +291,46 @@ export function ApprovalProgressTracker({
   const submitterEntry = ledgerEntries.find(e => e.sequence === 0);
   const approvalEntries = ledgerEntries.filter(e => e.sequence > 0);
 
-  if (approvalFlows.length === 0 && approvalEntries.length === 0) {
+  // Determine if we should use ledger entries as the source of truth for step display.
+  // This handles cases where the approval flow config changed after the request was submitted.
+  const maxLedgerSeq = approvalEntries.length > 0 ? Math.max(...approvalEntries.map(e => e.sequence)) : 0;
+  const isCompleted = ['approved', 'dispatched', 'partially_received', 'fully_received', 'closed', 'rejected'].includes(status);
+  const useLedgerAsSource = approvalEntries.length > 0 && approvalEntries.length !== approvalFlows.length && maxLedgerSeq > 0;
+
+  // Build effective steps: if ledger count mismatches computed flow, derive steps from ledger
+  const effectiveSteps: Array<{ label: string; forChecking: boolean; userId?: string; alternateId?: string }> = [];
+  if (useLedgerAsSource) {
+    // For completed requests, only show the actual steps that occurred
+    const stepCount = isCompleted ? maxLedgerSeq : Math.max(maxLedgerSeq, approvalFlows.length);
+    for (let seq = 1; seq <= stepCount; seq++) {
+      const entry = approvalEntries.find(e => e.sequence === seq);
+      if (entry) {
+        effectiveSteps.push({
+          label: entry.approver_type.replace(' (Approver)', '').replace(' (Checker)', ''),
+          forChecking: entry.approver_type.includes('Checker'),
+        });
+      } else if (approvalFlows[seq - 1]) {
+        const flow = approvalFlows[seq - 1];
+        effectiveSteps.push({
+          label: flow.user_id && approverNames[flow.user_id] ? approverNames[flow.user_id] : flow.approver_type,
+          forChecking: flow.for_checking || false,
+          userId: flow.user_id || undefined,
+          alternateId: flow.alternate_approver_id || undefined,
+        });
+      }
+    }
+  } else {
+    approvalFlows.forEach((flow) => {
+      effectiveSteps.push({
+        label: flow.user_id && approverNames[flow.user_id] ? approverNames[flow.user_id] : flow.approver_type,
+        forChecking: flow.for_checking || false,
+        userId: flow.user_id || undefined,
+        alternateId: flow.alternate_approver_id || undefined,
+      });
+    });
+  }
+
+  if (effectiveSteps.length === 0 && approvalEntries.length === 0) {
     return (
       <div className="bg-white rounded-lg p-6 border border-slate-200">
         <p className="text-slate-500">No approval flow configured for this request.</p>
@@ -326,14 +365,14 @@ export function ApprovalProgressTracker({
           </div>
         )}
 
-        {approvalFlows.length > 0 ? approvalFlows.map((flow, index) => {
+        {effectiveSteps.length > 0 ? effectiveSteps.map((step, index) => {
           const stepStatus = getStepStatus(index);
           const ledgerEntry = getLedgerEntry(index + 1);
           const hasMsbcStep = requestType === 'Purchase Order';
-          const isLast = index === approvalFlows.length - 1 && !hasMsbcStep;
+          const isLast = index === effectiveSteps.length - 1 && !hasMsbcStep;
 
           return (
-            <div key={flow.id} className="relative">
+            <div key={`step-${index}`} className="relative">
               {!isLast && (
                 <div
                   className={`absolute left-5 top-12 w-0.5 h-full -mb-4 ${
@@ -360,16 +399,14 @@ export function ApprovalProgressTracker({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-slate-900">
                       Step {index + 1}:{' '}
-                      {flow.user_id && approverNames[flow.user_id]
-                        ? approverNames[flow.user_id]
-                        : flow.approver_type}
-                      {flow.alternate_approver_id && approverNames[flow.alternate_approver_id] && (
+                      {step.label}
+                      {step.alternateId && approverNames[step.alternateId] && (
                         <span className="text-slate-500 font-normal">
-                          {' '}or {approverNames[flow.alternate_approver_id]}
+                          {' '}or {approverNames[step.alternateId]}
                         </span>
                       )}
                     </span>
-                    {flow.for_checking && (
+                    {step.forChecking && (
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">
                         For Validation
                       </span>
