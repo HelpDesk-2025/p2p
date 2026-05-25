@@ -92,7 +92,6 @@ export function Reimbursement() {
     payee: '',
     date_needed: '',
     purpose: '',
-    expense_category: 'Department Expense',
   });
 
   useEffect(() => {
@@ -487,7 +486,6 @@ export function Reimbursement() {
       payee: (request as any).payee || '',
       date_needed: (request as any).date_needed || '',
       purpose: request.purpose,
-      expense_category: (request as any).expense_category || 'Department Expense',
     });
     setExpenseItems(request.expense_items && request.expense_items.length > 0
       ? request.expense_items
@@ -558,7 +556,6 @@ export function Reimbursement() {
             amount: totalAmount,
             expense_items: expenseItems,
             request_type: requestType,
-            expense_category: formData.expense_category,
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
@@ -591,7 +588,6 @@ export function Reimbursement() {
             amount: totalAmount,
             expense_items: expenseItems,
             request_type: requestType,
-            expense_category: formData.expense_category,
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
@@ -636,8 +632,7 @@ export function Reimbursement() {
           requestDepartment,
           requestType,
           false,
-          totalAmount,
-          formData.expense_category
+          totalAmount
         );
 
         // Add executive approval steps if requester is Executive
@@ -695,7 +690,7 @@ export function Reimbursement() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '', expense_category: 'Department Expense' });
+      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '' });
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
       setRequestType('Reimbursement');
       setCashAdvance(0);
@@ -738,14 +733,12 @@ export function Reimbursement() {
 
       const department = request.department || profile?.department || '';
       const draftRequestType = (request as any).request_type || 'Reimbursement';
-      const draftExpenseCategory = (request as any).expense_category || 'Department Expense';
       const rawApprovalFlows = await getApprovalFlow(
         request.company_id,
         department,
         draftRequestType,
         false,
-        request.amount,
-        draftExpenseCategory
+        request.amount
       );
 
       if (!rawApprovalFlows || rawApprovalFlows.length === 0) {
@@ -1375,22 +1368,6 @@ export function Reimbursement() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Expense Category <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formData.expense_category}
-              onChange={(e) => setFormData({ ...formData, expense_category: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-              required
-            >
-              <option value="Department Expense">Department Expense</option>
-              <option value="ManCom Expense">ManCom Expense | Board Expense</option>
-            </select>
-            <p className="text-xs text-slate-500 mt-1">Determines which approval workflow is used.</p>
           </div>
 
           <div>
