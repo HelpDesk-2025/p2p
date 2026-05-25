@@ -6,6 +6,7 @@ import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmail, sendAppr
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateAndUploadPOMergedPdf } from '../../lib/poMergedPdfGenerator';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 type POStatus =
   | 'draft'
@@ -330,6 +331,20 @@ export function POApproval() {
           })
           .eq('id', selectedRequest.id);
 
+        // Fire-and-forget audit trail for rejection
+        logAuditTrail({
+          tableName: 'purchase_orders',
+          recordId: selectedRequest.id,
+          action: 'UPDATE',
+          module: 'approvals',
+          description: `Rejected purchase order ${selectedRequest.po_number}`,
+          oldValues: { status: selectedRequest.status, current_approver_id: selectedRequest.current_approver_id },
+          newValues: { status: 'rejected', current_approver_id: null },
+          performedBy: profile.id,
+          performedByName: profile.full_name || 'Unknown',
+          companyId: selectedRequest.company_id || null,
+        });
+
         await createApprovalLedgerEntry(
           'Purchase Order',
           selectedRequest.id,
@@ -383,6 +398,20 @@ export function POApproval() {
           .from('purchase_orders')
           .update(updatePayload)
           .eq('id', selectedRequest.id);
+
+        // Fire-and-forget audit trail for approval
+        logAuditTrail({
+          tableName: 'purchase_orders',
+          recordId: selectedRequest.id,
+          action: 'UPDATE',
+          module: 'approvals',
+          description: `Approved purchase order ${selectedRequest.po_number}`,
+          oldValues: { status: selectedRequest.status, current_approval_level: currentLevel },
+          newValues: { status: newStatus, current_approval_level: nextLevel },
+          performedBy: profile.id,
+          performedByName: profile.full_name || 'Unknown',
+          companyId: selectedRequest.company_id || null,
+        });
 
         await createApprovalLedgerEntry(
           'Purchase Order',
@@ -540,6 +569,20 @@ export function POApproval() {
           updated_by: user.id,
         })
         .eq('id', selectedRequest.id);
+
+      // Fire-and-forget audit trail for return to maker
+      logAuditTrail({
+        tableName: 'purchase_orders',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Returned purchase order ${selectedRequest.po_number} to maker`,
+        oldValues: { status: selectedRequest.status, current_approver_id: selectedRequest.current_approver_id },
+        newValues: { status: 'returned', current_approver_id: null },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || null,
+      });
 
       await createApprovalLedgerEntry(
         'Purchase Order',

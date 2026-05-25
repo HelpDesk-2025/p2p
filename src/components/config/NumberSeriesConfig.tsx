@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { Plus, Save, Trash2, CreditCard as Edit2, X, Hash, Building2 } from 'lucide-react';
 
 interface NumberSeries {
@@ -128,21 +129,37 @@ export function NumberSeriesConfig() {
       const format_example = updateFormatExample();
 
       if (editingId) {
+        const oldRecord = series.find((s) => s.id === editingId);
+        const updatePayload = {
+          series_name: formData.series_name,
+          prefix: formData.prefix,
+          next_number: formData.next_number,
+          number_length: formData.number_length,
+          format_example,
+          is_active: formData.is_active,
+        };
+
         const { error } = await supabase
           .from('number_series')
-          .update({
-            series_name: formData.series_name,
-            prefix: formData.prefix,
-            next_number: formData.next_number,
-            number_length: formData.number_length,
-            format_example,
-            is_active: formData.is_active,
-          })
+          .update(updatePayload)
           .eq('id', editingId);
 
         if (error) throw error;
+
+        logAuditTrail({
+          tableName: 'number_series',
+          recordId: editingId,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated number series: ${formData.series_name}`,
+          oldValues: oldRecord || null,
+          newValues: updatePayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: selectedCompanyId,
+        });
       } else {
-        const { error } = await supabase.from('number_series').insert({
+        const insertPayload = {
           series_name: formData.series_name,
           prefix: formData.prefix,
           next_number: formData.next_number,
@@ -150,9 +167,28 @@ export function NumberSeriesConfig() {
           format_example,
           is_active: formData.is_active,
           company_id: selectedCompanyId,
-        });
+        };
+
+        const { data: insertedData, error } = await supabase
+          .from('number_series')
+          .insert(insertPayload)
+          .select()
+          .maybeSingle();
 
         if (error) throw error;
+
+        logAuditTrail({
+          tableName: 'number_series',
+          recordId: insertedData?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created number series: ${formData.series_name}`,
+          oldValues: null,
+          newValues: insertPayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: selectedCompanyId,
+        });
       }
 
       resetForm();
@@ -180,11 +216,27 @@ export function NumberSeriesConfig() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this number series?')) return;
 
+    const oldRecord = series.find((s) => s.id === id);
+
     try {
       setLoading(true);
       const { error } = await supabase.from('number_series').delete().eq('id', id);
 
       if (error) throw error;
+
+      logAuditTrail({
+        tableName: 'number_series',
+        recordId: id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: `Deleted number series: ${oldRecord?.series_name || id}`,
+        oldValues: oldRecord || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+        companyId: selectedCompanyId,
+      });
+
       loadSeries();
     } catch (error: any) {
       console.error('Error deleting number series:', error);
@@ -195,6 +247,8 @@ export function NumberSeriesConfig() {
   };
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
+    const oldRecord = series.find((s) => s.id === id);
+
     try {
       const { error } = await supabase
         .from('number_series')
@@ -202,6 +256,20 @@ export function NumberSeriesConfig() {
         .eq('id', id);
 
       if (error) throw error;
+
+      logAuditTrail({
+        tableName: 'number_series',
+        recordId: id,
+        action: 'UPDATE',
+        module: 'configuration',
+        description: `Toggled number series status to ${!currentStatus ? 'active' : 'inactive'}: ${oldRecord?.series_name || id}`,
+        oldValues: { is_active: currentStatus },
+        newValues: { is_active: !currentStatus },
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+        companyId: selectedCompanyId,
+      });
+
       loadSeries();
     } catch (error: any) {
       console.error('Error updating status:', error);

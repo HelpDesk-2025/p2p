@@ -7,6 +7,7 @@ import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface ReimbursementReq {
   id: string;
@@ -430,15 +431,33 @@ export function ReimbursementApproval() {
       const isLastApproval = nextLevel >= approvalFlows.length || currentLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
+      const updateData = {
+        status: newStatus,
+        current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
+      };
+
       const { error: updateError } = await supabase
         .from('reimbursement_requests')
-        .update({
-          status: newStatus,
-          current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
-        })
+        .update(updateData)
         .eq('id', selectedRequest.id);
 
       if (updateError) throw updateError;
+
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'reimbursement_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: action === 'approved'
+          ? `Approved reimbursement request ${selectedRequest.reimb_number}`
+          : `Rejected reimbursement request ${selectedRequest.reimb_number}`,
+        oldValues: { status: selectedRequest.status, current_approval_level: selectedRequest.current_approval_level },
+        newValues: updateData,
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id,
+      });
 
       // For approval ledger, always use 'Reimbursement' (Liquidation is a type of Reimbursement)
       // The approval_ledger table constraint only allows specific values
@@ -688,6 +707,20 @@ export function ReimbursementApproval() {
         .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
         .eq('id', selectedRequest.id);
       if (updateError) throw updateError;
+
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'reimbursement_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Returned reimbursement request ${selectedRequest.reimb_number} to maker`,
+        oldValues: { status: selectedRequest.status, current_approval_level: selectedRequest.current_approval_level },
+        newValues: { status: 'returned_to_maker', current_approval_level: currentLevel },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id,
+      });
 
       await createApprovalLedgerEntry(
         'Reimbursement',

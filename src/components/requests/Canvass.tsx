@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { Plus, Save, Send, Eye, FileText, X, CreditCard as Edit, Loader2, Download, RefreshCw, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
@@ -793,6 +794,30 @@ export function Canvass() {
         }
       }
 
+      // Fire-and-forget audit trail
+      if (insertedRequest) {
+        const auditPayload = {
+          canvass_number: insertedRequest.canvass_number || formData.document_no,
+          company_id: selectedCompanyId,
+          total_amount: totalAmount,
+          status,
+        };
+        logAuditTrail({
+          tableName: 'canvass_requests',
+          recordId: insertedRequest.id,
+          action: editingRequest ? 'UPDATE' : 'CREATE',
+          module: 'requests',
+          description: editingRequest
+            ? `Updated Canvass ${insertedRequest.canvass_number} (${status})`
+            : `Created Canvass ${insertedRequest.canvass_number} (${status})`,
+          oldValues: editingRequest ? { id: editingRequest.id, status: editingRequest.status } : null,
+          newValues: auditPayload,
+          performedBy: profile?.id || user?.id || '',
+          performedByName: profile?.full_name || 'Unknown',
+          companyId: selectedCompanyId || null,
+        });
+      }
+
       if (status === 'pending' && insertedRequest && selectedCompanyId) {
         const department = selectedPR?.department || selectedDepartment || profile?.department || '';
         const rawApprovalFlows = await getApprovalFlow(
@@ -952,6 +977,20 @@ export function Canvass() {
 
       if (updateError) throw updateError;
 
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'canvass_requests',
+        recordId: request.id,
+        action: 'UPDATE',
+        module: 'requests',
+        description: `Submitted draft Canvass ${request.canvass_number} for approval`,
+        oldValues: { status: request.status },
+        newValues: { status: 'pending', current_approval_level: 0 },
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: request.company_id || null,
+      });
+
       if (isResubmission) {
         await supabase
           .from('approval_ledger')
@@ -1090,6 +1129,20 @@ export function Canvass() {
         .update({ status: 'cancelled' })
         .eq('id', request.id);
       if (error) throw error;
+
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'canvass_requests',
+        recordId: request.id,
+        action: 'UPDATE',
+        module: 'requests',
+        description: `Cancelled Canvass ${request.canvass_number}: ${reason.trim()}`,
+        oldValues: { status: request.status },
+        newValues: { status: 'cancelled' },
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: request.company_id || null,
+      });
 
       await createApprovalLedgerEntry(
         'Canvass',

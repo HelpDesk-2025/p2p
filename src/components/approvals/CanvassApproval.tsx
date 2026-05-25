@@ -6,6 +6,7 @@ import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForReque
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
 import Pagination from '../Pagination';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface CanvassReq {
   id: string;
@@ -437,6 +438,22 @@ export function CanvassApproval() {
 
       if (updateError) throw updateError;
 
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'canvass_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: action === 'approved'
+          ? `Approved canvass request ${selectedRequest.canvass_number}`
+          : `Rejected canvass request ${selectedRequest.canvass_number}`,
+        oldValues: { status: selectedRequest.status, current_approval_level: selectedRequest.current_approval_level },
+        newValues: updateData,
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id,
+      });
+
       // Save approver recommendation (for approved non-final levels)
       if (action === 'approved' && !isLastApproval && myRecommendedVendorIndex !== null) {
         const { error: recommendationError } = await supabase
@@ -600,6 +617,20 @@ export function CanvassApproval() {
         .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
         .eq('id', selectedRequest.id);
       if (updateError) throw updateError;
+
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'canvass_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Returned canvass request ${selectedRequest.canvass_number} to maker`,
+        oldValues: { status: selectedRequest.status, current_approval_level: selectedRequest.current_approval_level },
+        newValues: { status: 'returned_to_maker', current_approval_level: currentLevel },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id,
+      });
 
       await createApprovalLedgerEntry(
         'Canvass',

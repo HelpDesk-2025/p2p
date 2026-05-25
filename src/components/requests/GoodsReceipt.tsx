@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { hasPermission, MODULE_PERMISSIONS } from '../../lib/permissions';
 import { uploadAttachments, downloadAttachment } from '../../lib/storageHelper';
 import { generateGRNPdf } from '../../lib/grPdfGenerator';
@@ -562,6 +563,27 @@ export function GoodsReceipt() {
         },
       ]);
 
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'po_grns',
+        recordId: newGR.id,
+        action: 'CREATE',
+        module: 'requests',
+        description: `Created GR ${grNumber} for PO ${draftPO.po_number} (${confirming ? 'confirmed' : 'draft'})`,
+        oldValues: null,
+        newValues: {
+          gr_number: grNumber,
+          po_number: draftPO.po_number,
+          vendor_name: draftPO.vendor_name,
+          receipt_type: computedReceiptType,
+          status: grStatus,
+          company_id: draftPO.company_id,
+        },
+        performedBy: user.id,
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: draftPO.company_id || null,
+      });
+
       if (confirming) {
         await supabase.rpc('recompute_po_receipt_status', { p_po_id: draftPO.id });
       }
@@ -661,6 +683,20 @@ export function GoodsReceipt() {
           remarks: confirming && activeGR.status === 'draft' ? 'Confirmed receipt (edited)' : 'Edited receipt',
         },
       ]);
+
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'po_grns',
+        recordId: activeGR.id,
+        action: 'UPDATE',
+        module: 'requests',
+        description: `Updated GR ${activeGR.gr_number}${confirming && activeGR.status === 'draft' ? ' (confirmed)' : ''}`,
+        oldValues: { status: activeGR.status, receipt_date: activeGR.receipt_date },
+        newValues: updatePayload,
+        performedBy: user.id,
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: activeGR.company_id || null,
+      });
 
       if (confirming && activeGR.status === 'draft') {
         await supabase.rpc('recompute_po_receipt_status', { p_po_id: activeGR.purchase_order_id });

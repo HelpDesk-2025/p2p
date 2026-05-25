@@ -7,6 +7,7 @@ import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { generatePettyCashReleaseBundle } from '../../lib/pettyCashReleaseBundleExporter';
 import { sendApprovalEmail } from '../../lib/approvalFlow';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface ExpenseItem {
   date: string;
@@ -347,6 +348,20 @@ export function PettyCashRelease() {
         .eq('id', selectedRequest.id);
 
       if (error) throw error;
+
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'petty_cash_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Released petty cash ${selectedRequest.pc_number}`,
+        oldValues: selectedRequest,
+        newValues: { cash_released: true, cash_released_at: new Date().toISOString(), cash_released_by: profile.id },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id
+      });
 
       const requesterEmail = selectedRequest.user_profiles?.email;
       const requesterName = selectedRequest.user_profiles?.full_name || 'Requester';

@@ -9,6 +9,8 @@ import { ImpersonationConfig } from './ImpersonationConfig';
 import { AnnouncementsConfig } from './AnnouncementsConfig';
 import { ApiIntegrationsConfig } from './ApiIntegrationsConfig';
 import { AuditTrailConfig } from './AuditTrailConfig';
+import { logAuditTrail } from '../../lib/auditTrail';
+import { useAuth } from '../../contexts/AuthContext';
 import Pagination from '../Pagination';
 
 type ConfigType = 'approvers' | 'users' | 'checklists' | 'payment-modes' | 'holidays' | 'companies' | 'approval-flows' | 'number-series' | 'vendors-items' | 'smtp' | 'roles-permissions' | 'expense-types' | 'withholding-tax-rates' | 'impersonation' | 'announcements' | 'api-integrations' | 'audit-trail';
@@ -124,6 +126,7 @@ export function ConfigManager({ type }: ConfigManagerProps) {
 }
 
 function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -358,6 +361,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
         }
       }
 
+      logAuditTrail({ tableName: 'user_profiles', recordId: authData.user?.id || '', action: 'CREATE', module: 'configuration', description: `Created user "${formData.full_name}" (${formData.email})`, oldValues: null, newValues: { full_name: formData.full_name, email: formData.email, company: formData.company, department: formData.department, role: formData.role, approver_type: formData.approver_type, is_active: formData.is_active }, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       alert('User created successfully!');
       setShowForm(false);
       setFormData({
@@ -482,6 +486,8 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
       }
 
       console.log('Update result:', result);
+      const oldRecord = data.find(d => d.id === editingId);
+      logAuditTrail({ tableName: 'user_profiles', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated user "${formData.full_name}"`, oldValues: oldRecord, newValues: updateData, performedBy: profile?.id || '', performedByName: profile?.full_name || '', companyId: oldRecord?.company_id });
       alert('User updated successfully!' + (formData.email !== originalEmail ? ' Login email has been updated. The user should now use the new email to sign in.' : ''));
       setShowForm(false);
       setEditingId(null);
@@ -1486,6 +1492,7 @@ function UsersConfig({ data, reload }: { data: any[]; reload: () => void }) {
 }
 
 function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -1518,24 +1525,16 @@ function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void })
   const handleAdd = async () => {
     try {
       if (editingId) {
-        const { error } = await supabase.from('pr_checklists').update({
-          item_name: formData.item_name,
-          description: formData.description,
-          is_required: formData.is_required,
-          pr_type: formData.pr_type,
-          attachments: formData.attachments,
-        }).eq('id', editingId);
+        const oldRecord = data.find(d => d.id === editingId);
+        const newValues = { item_name: formData.item_name, description: formData.description, is_required: formData.is_required, pr_type: formData.pr_type, attachments: formData.attachments };
+        const { error } = await supabase.from('pr_checklists').update(newValues).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({ tableName: 'pr_checklists', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated checklist "${formData.item_name}"`, oldValues: oldRecord, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       } else {
-        const { error } = await supabase.from('pr_checklists').insert({
-          item_name: formData.item_name,
-          description: formData.description,
-          is_required: formData.is_required,
-          pr_type: formData.pr_type,
-          attachments: formData.attachments,
-          order_index: data.length,
-        });
+        const newValues = { item_name: formData.item_name, description: formData.description, is_required: formData.is_required, pr_type: formData.pr_type, attachments: formData.attachments, order_index: data.length };
+        const { data: inserted, error } = await supabase.from('pr_checklists').insert(newValues).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({ tableName: 'pr_checklists', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created checklist "${formData.item_name}"`, oldValues: null, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       }
       setShowForm(false);
       setEditingId(null);
@@ -1579,8 +1578,10 @@ function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void })
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this checklist item?')) return;
     try {
+      const oldRecord = data.find(d => d.id === id);
       const { error } = await supabase.from('pr_checklists').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({ tableName: 'pr_checklists', recordId: id, action: 'DELETE', module: 'configuration', description: `Deleted checklist "${oldRecord?.item_name || ''}"`, oldValues: oldRecord, newValues: null, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -1888,6 +1889,7 @@ function ChecklistsConfig({ data, reload }: { data: any[]; reload: () => void })
 }
 
 function PaymentModesConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -1901,20 +1903,16 @@ function PaymentModesConfig({ data, reload }: { data: any[]; reload: () => void 
 
   const handleAdd = async () => {
     try {
+      const newValues = { mode_name: formData.mode_name, description: formData.description, line_names: formData.line_names };
       if (editingId) {
-        const { error } = await supabase.from('payment_modes').update({
-          mode_name: formData.mode_name,
-          description: formData.description,
-          line_names: formData.line_names
-        }).eq('id', editingId);
+        const oldRecord = data.find(d => d.id === editingId);
+        const { error } = await supabase.from('payment_modes').update(newValues).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({ tableName: 'payment_modes', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated payment mode "${formData.mode_name}"`, oldValues: oldRecord, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       } else {
-        const { error } = await supabase.from('payment_modes').insert({
-          mode_name: formData.mode_name,
-          description: formData.description,
-          line_names: formData.line_names
-        });
+        const { data: inserted, error } = await supabase.from('payment_modes').insert(newValues).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({ tableName: 'payment_modes', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created payment mode "${formData.mode_name}"`, oldValues: null, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       }
       setShowForm(false);
       setEditingId(null);
@@ -1945,8 +1943,10 @@ function PaymentModesConfig({ data, reload }: { data: any[]; reload: () => void 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this payment mode?')) return;
     try {
+      const oldRecord = data.find(d => d.id === id);
       const { error } = await supabase.from('payment_modes').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({ tableName: 'payment_modes', recordId: id, action: 'DELETE', module: 'configuration', description: `Deleted payment mode "${oldRecord?.mode_name || ''}"`, oldValues: oldRecord, newValues: null, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -2219,6 +2219,7 @@ function PaymentModesConfig({ data, reload }: { data: any[]; reload: () => void 
 }
 
 function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -2237,7 +2238,8 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
   const handleAdd = async () => {
     try {
       if (editingId) {
-        const { error } = await supabase.from('companies').update({
+        const oldRecord = data.find(d => d.id === editingId);
+        const newValues = {
           name: formData.name,
           api_id: formData.api_id || null,
           president_min_amount: parseFloat(formData.president_min_amount) || 0,
@@ -2246,8 +2248,10 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           min_cash_advance: parseFloat(formData.min_cash_advance) || 3001,
           accounting_notification_email: formData.accounting_notification_email || null,
           procurement_notification_email: formData.procurement_notification_email || null
-        }).eq('id', editingId);
+        };
+        const { error } = await supabase.from('companies').update(newValues).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({ tableName: 'companies', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated company "${formData.name}"`, oldValues: oldRecord, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '', companyId: editingId });
       } else {
         const payload = {
           name: formData.name,
@@ -2259,8 +2263,9 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
           accounting_notification_email: formData.accounting_notification_email || null,
           procurement_notification_email: formData.procurement_notification_email || null
         };
-        const { error } = await supabase.from('companies').insert(payload);
+        const { data: inserted, error } = await supabase.from('companies').insert(payload).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({ tableName: 'companies', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created company "${formData.name}"`, oldValues: null, newValues: payload, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       }
       setShowForm(false);
       setEditingId(null);
@@ -2295,8 +2300,10 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this company?')) return;
     try {
+      const oldRecord = data.find(d => d.id === id);
       const { error } = await supabase.from('companies').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({ tableName: 'companies', recordId: id, action: 'DELETE', module: 'configuration', description: `Deleted company "${oldRecord?.name || ''}"`, oldValues: oldRecord, newValues: null, performedBy: profile?.id || '', performedByName: profile?.full_name || '', companyId: id });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -2592,25 +2599,24 @@ function CompaniesConfig({ data, reload }: { data: any[]; reload: () => void }) 
 }
 
 function DepartmentManager({ companyId, departments, onReload }: { companyId: string; departments: any[]; onReload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
 
   const handleAdd = async () => {
     try {
+      const newValues = { name: formData.name, description: formData.description };
       if (editingId) {
-        const { error } = await supabase.from('departments').update({
-          name: formData.name,
-          description: formData.description
-        }).eq('id', editingId);
+        const oldRecord = departments.find(d => d.id === editingId);
+        const { error } = await supabase.from('departments').update(newValues).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({ tableName: 'departments', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated department "${formData.name}"`, oldValues: oldRecord, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '', companyId });
       } else {
-        const { error } = await supabase.from('departments').insert({
-          company_id: companyId,
-          name: formData.name,
-          description: formData.description
-        });
+        const insertPayload = { company_id: companyId, ...newValues };
+        const { data: inserted, error } = await supabase.from('departments').insert(insertPayload).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({ tableName: 'departments', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created department "${formData.name}"`, oldValues: null, newValues: insertPayload, performedBy: profile?.id || '', performedByName: profile?.full_name || '', companyId });
       }
       setShowForm(false);
       setEditingId(null);
@@ -2639,8 +2645,10 @@ function DepartmentManager({ companyId, departments, onReload }: { companyId: st
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this department?')) return;
     try {
+      const oldRecord = departments.find(d => d.id === id);
       const { error } = await supabase.from('departments').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({ tableName: 'departments', recordId: id, action: 'DELETE', module: 'configuration', description: `Deleted department "${oldRecord?.name || ''}"`, oldValues: oldRecord, newValues: null, performedBy: profile?.id || '', performedByName: profile?.full_name || '', companyId });
       onReload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -2726,13 +2734,15 @@ function DepartmentManager({ companyId, departments, onReload }: { companyId: st
 }
 
 function HolidaysConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ holiday_date: '', holiday_name: '', is_recurring: false });
 
   const handleAdd = async () => {
     try {
-      const { error } = await supabase.from('holidays').insert(formData);
+      const { data: inserted, error } = await supabase.from('holidays').insert(formData).select().maybeSingle();
       if (error) throw error;
+      logAuditTrail({ tableName: 'holidays', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created holiday "${formData.holiday_name}" on ${formData.holiday_date}`, oldValues: null, newValues: formData, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       setShowForm(false);
       setFormData({ holiday_date: '', holiday_name: '', is_recurring: false });
       reload();
@@ -3313,6 +3323,7 @@ function ItemsList() {
 }
 
 function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -3327,22 +3338,16 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
 
   const handleAdd = async () => {
     try {
+      const newValues = { name: formData.name, description: formData.description, is_active: formData.is_active, sub_items: formData.sub_items };
       if (editingId) {
-        const { error } = await supabase.from('expense_types').update({
-          name: formData.name,
-          description: formData.description,
-          is_active: formData.is_active,
-          sub_items: formData.sub_items,
-        }).eq('id', editingId);
+        const oldRecord = data.find(d => d.id === editingId);
+        const { error } = await supabase.from('expense_types').update(newValues).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({ tableName: 'expense_types', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated expense type "${formData.name}"`, oldValues: oldRecord, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       } else {
-        const { error } = await supabase.from('expense_types').insert({
-          name: formData.name,
-          description: formData.description,
-          is_active: formData.is_active,
-          sub_items: formData.sub_items,
-        });
+        const { data: inserted, error } = await supabase.from('expense_types').insert(newValues).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({ tableName: 'expense_types', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created expense type "${formData.name}"`, oldValues: null, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       }
       setShowForm(false);
       setEditingId(null);
@@ -3429,8 +3434,10 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense type?')) return;
     try {
+      const oldRecord = data.find(d => d.id === id);
       const { error } = await supabase.from('expense_types').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({ tableName: 'expense_types', recordId: id, action: 'DELETE', module: 'configuration', description: `Deleted expense type "${oldRecord?.name || ''}"`, oldValues: oldRecord, newValues: null, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -3696,6 +3703,7 @@ function ExpenseTypesConfig({ data, reload }: { data: any[]; reload: () => void 
 }
 
 function WithholdingTaxRatesConfig({ data, reload }: { data: any[]; reload: () => void }) {
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -3716,22 +3724,16 @@ function WithholdingTaxRatesConfig({ data, reload }: { data: any[]; reload: () =
         return;
       }
 
+      const newValues = { name: formData.name, rate: parseFloat(formData.rate), description: formData.description, is_active: formData.is_active };
       if (editingId) {
-        const { error } = await supabase.from('withholding_tax_rates').update({
-          name: formData.name,
-          rate: parseFloat(formData.rate),
-          description: formData.description,
-          is_active: formData.is_active
-        }).eq('id', editingId);
+        const oldRecord = data.find(d => d.id === editingId);
+        const { error } = await supabase.from('withholding_tax_rates').update(newValues).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({ tableName: 'withholding_tax_rates', recordId: editingId, action: 'UPDATE', module: 'configuration', description: `Updated withholding tax rate "${formData.name}"`, oldValues: oldRecord, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       } else {
-        const { error } = await supabase.from('withholding_tax_rates').insert({
-          name: formData.name,
-          rate: parseFloat(formData.rate),
-          description: formData.description,
-          is_active: formData.is_active
-        });
+        const { data: inserted, error } = await supabase.from('withholding_tax_rates').insert(newValues).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({ tableName: 'withholding_tax_rates', recordId: inserted?.id || '', action: 'CREATE', module: 'configuration', description: `Created withholding tax rate "${formData.name}"`, oldValues: null, newValues, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       }
       setShowForm(false);
       setEditingId(null);
@@ -3772,8 +3774,10 @@ function WithholdingTaxRatesConfig({ data, reload }: { data: any[]; reload: () =
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this withholding tax rate?')) return;
     try {
+      const oldRecord = data.find(d => d.id === id);
       const { error } = await supabase.from('withholding_tax_rates').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({ tableName: 'withholding_tax_rates', recordId: id, action: 'DELETE', module: 'configuration', description: `Deleted withholding tax rate "${oldRecord?.name || ''}"`, oldValues: oldRecord, newValues: null, performedBy: profile?.id || '', performedByName: profile?.full_name || '' });
       reload();
     } catch (error: any) {
       alert('Error: ' + error.message);

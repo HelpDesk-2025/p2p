@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { Save, Mail, Shield, AlertCircle } from 'lucide-react';
 
 interface SmtpConfig {
@@ -17,6 +19,7 @@ interface SmtpConfig {
 }
 
 export function SmtpConfig() {
+  const { profile } = useAuth();
   const [config, setConfig] = useState<SmtpConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,36 +79,69 @@ export function SmtpConfig() {
 
     try {
       if (config.id) {
+        const oldValues = { ...config };
+        const updatePayload = {
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password,
+          encryption: config.encryption,
+          from_address: config.from_address,
+          from_name: config.from_name,
+          updated_at: new Date().toISOString(),
+        };
+
         const { error } = await supabase
           .from('smtp_configurations')
-          .update({
-            host: config.host,
-            port: config.port,
-            username: config.username,
-            password: config.password,
-            encryption: config.encryption,
-            from_address: config.from_address,
-            from_name: config.from_name,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq('id', config.id);
 
         if (error) throw error;
+
+        logAuditTrail({
+          tableName: 'smtp_configurations',
+          recordId: config.id,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated SMTP configuration`,
+          oldValues,
+          newValues: updatePayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: config.company_id,
+        });
       } else {
-        const { error } = await supabase
+        const insertPayload = {
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password,
+          encryption: config.encryption,
+          from_address: config.from_address,
+          from_name: config.from_name,
+          is_active: true,
+        };
+
+        const { data: insertedData, error } = await supabase
           .from('smtp_configurations')
-          .insert({
-            host: config.host,
-            port: config.port,
-            username: config.username,
-            password: config.password,
-            encryption: config.encryption,
-            from_address: config.from_address,
-            from_name: config.from_name,
-            is_active: true,
-          });
+          .insert(insertPayload)
+          .select()
+          .maybeSingle();
 
         if (error) throw error;
+
+        logAuditTrail({
+          tableName: 'smtp_configurations',
+          recordId: insertedData?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created SMTP configuration`,
+          oldValues: null,
+          newValues: insertPayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: insertedData?.company_id || null,
+        });
       }
 
       setMessage({ type: 'success', text: 'SMTP configuration saved successfully' });

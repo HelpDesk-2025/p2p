@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Plus, Trash2, Save, X, Shield, Key, Building2, CreditCard as Edit } from 'lucide-react';
+import { logAuditTrail } from '../../lib/auditTrail';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Role {
   id: string;
@@ -33,6 +35,7 @@ interface RolePermission {
 }
 
 export function RolesPermissionsConfig() {
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<'roles' | 'permissions' | 'assign' | 'company_pages'>('roles');
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -120,17 +123,43 @@ export function RolesPermissionsConfig() {
     setSavingPcrCompany(key);
     try {
       if (hasRolePcrCompany(roleId, companyId)) {
+        const oldValues = { role_id: roleId, company_id: companyId };
         const { error } = await supabase
           .from('role_petty_cash_release_companies')
           .delete()
           .eq('role_id', roleId)
           .eq('company_id', companyId);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'role_petty_cash_release_companies',
+          recordId: `${roleId}:${companyId}`,
+          action: 'DELETE',
+          module: 'configuration',
+          description: `Removed petty cash release company scope (role: ${roleId}, company: ${companyId})`,
+          oldValues,
+          newValues: null,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase
+        const payload = { role_id: roleId, company_id: companyId };
+        const { data: inserted, error } = await supabase
           .from('role_petty_cash_release_companies')
-          .insert([{ role_id: roleId, company_id: companyId }]);
+          .insert([payload])
+          .select()
+          .maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'role_petty_cash_release_companies',
+          recordId: inserted?.id || `${roleId}:${companyId}`,
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Added petty cash release company scope (role: ${roleId}, company: ${companyId})`,
+          oldValues: null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
       await loadRolePcrCompanies();
     } catch (error: any) {
@@ -157,16 +186,43 @@ export function RolesPermissionsConfig() {
     setSavingPagePerm(key);
     try {
       if (existing?.id) {
+        const oldValues = { company_id: existing.company_id, page_key: existing.page_key, enabled: existing.enabled };
+        const updatePayload = { enabled: !existing.enabled, updated_at: new Date().toISOString() };
         const { error } = await supabase
           .from('company_page_permissions')
-          .update({ enabled: !existing.enabled, updated_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq('id', existing.id);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'company_page_permissions',
+          recordId: existing.id,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated company page permission (company: ${companyId}, page: ${pageKey}, enabled: ${!existing.enabled})`,
+          oldValues,
+          newValues: updatePayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase
+        const payload = { company_id: companyId, page_key: pageKey, enabled: true };
+        const { data: inserted, error } = await supabase
           .from('company_page_permissions')
-          .insert([{ company_id: companyId, page_key: pageKey, enabled: true }]);
+          .insert([payload])
+          .select()
+          .maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'company_page_permissions',
+          recordId: inserted?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created company page permission (company: ${companyId}, page: ${pageKey}, enabled: true)`,
+          oldValues: null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
       await loadCompanyPagePerms();
     } catch (error: any) {
@@ -211,16 +267,41 @@ export function RolesPermissionsConfig() {
     setLoading(true);
     try {
       if (editingRole) {
+        const oldValues = { name: editingRole.name, description: editingRole.description, is_active: editingRole.is_active, has_full_access: editingRole.has_full_access };
         const { error } = await supabase
           .from('roles')
           .update(roleForm)
           .eq('id', editingRole.id);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'roles',
+          recordId: editingRole.id,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated role "${roleForm.name}"`,
+          oldValues,
+          newValues: roleForm,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('roles')
-          .insert([roleForm]);
+          .insert([roleForm])
+          .select()
+          .maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'roles',
+          recordId: inserted?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created role "${roleForm.name}"`,
+          oldValues: null,
+          newValues: roleForm,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
       setShowRoleForm(false);
       setEditingRole(null);
@@ -237,16 +318,41 @@ export function RolesPermissionsConfig() {
     setLoading(true);
     try {
       if (editingPermission) {
+        const oldValues = { name: editingPermission.name, description: editingPermission.description, module: editingPermission.module, is_active: editingPermission.is_active };
         const { error } = await supabase
           .from('permissions')
           .update(permissionForm)
           .eq('id', editingPermission.id);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'permissions',
+          recordId: editingPermission.id,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated permission "${permissionForm.name}"`,
+          oldValues,
+          newValues: permissionForm,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('permissions')
-          .insert([permissionForm]);
+          .insert([permissionForm])
+          .select()
+          .maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'permissions',
+          recordId: inserted?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created permission "${permissionForm.name}"`,
+          oldValues: null,
+          newValues: permissionForm,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
       setShowPermissionForm(false);
       setEditingPermission(null);
@@ -261,20 +367,44 @@ export function RolesPermissionsConfig() {
 
   const handleDeleteRole = async (id: string) => {
     if (!confirm('Are you sure you want to delete this role?')) return;
+    const oldRole = roles.find((r) => r.id === id);
     const { error } = await supabase.from('roles').delete().eq('id', id);
     if (error) {
       alert('Error deleting role: ' + error.message);
     } else {
+      logAuditTrail({
+        tableName: 'roles',
+        recordId: id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: `Deleted role "${oldRole?.name || id}"`,
+        oldValues: oldRole || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       loadRoles();
     }
   };
 
   const handleDeletePermission = async (id: string) => {
     if (!confirm('Are you sure you want to delete this permission?')) return;
+    const oldPermission = permissions.find((p) => p.id === id);
     const { error } = await supabase.from('permissions').delete().eq('id', id);
     if (error) {
       alert('Error deleting permission: ' + error.message);
     } else {
+      logAuditTrail({
+        tableName: 'permissions',
+        recordId: id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: `Deleted permission "${oldPermission?.name || id}"`,
+        oldValues: oldPermission || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       loadPermissions();
     }
   };
@@ -311,6 +441,7 @@ export function RolesPermissionsConfig() {
     const exists = hasPermission(roleId, permissionId);
 
     if (exists) {
+      const oldValues = { role_id: roleId, permission_id: permissionId };
       const { error } = await supabase
         .from('role_permissions')
         .delete()
@@ -319,15 +450,40 @@ export function RolesPermissionsConfig() {
       if (error) {
         alert('Error removing permission: ' + error.message);
       } else {
+        logAuditTrail({
+          tableName: 'role_permissions',
+          recordId: `${roleId}:${permissionId}`,
+          action: 'DELETE',
+          module: 'configuration',
+          description: `Removed permission "${permissionId}" from role "${roleId}"`,
+          oldValues,
+          newValues: null,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
         loadRolePermissions();
       }
     } else {
-      const { error } = await supabase
+      const payload = { role_id: roleId, permission_id: permissionId };
+      const { data: inserted, error } = await supabase
         .from('role_permissions')
-        .insert([{ role_id: roleId, permission_id: permissionId }]);
+        .insert([payload])
+        .select()
+        .maybeSingle();
       if (error) {
         alert('Error assigning permission: ' + error.message);
       } else {
+        logAuditTrail({
+          tableName: 'role_permissions',
+          recordId: inserted?.id || `${roleId}:${permissionId}`,
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Assigned permission "${permissionId}" to role "${roleId}"`,
+          oldValues: null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
         loadRolePermissions();
       }
     }

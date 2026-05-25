@@ -12,6 +12,7 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface PaymentMode {
   id: string;
@@ -657,6 +658,19 @@ export function PettyCash() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        logAuditTrail({
+          tableName: 'petty_cash_requests',
+          recordId: editingRequest.id,
+          action: 'UPDATE',
+          module: 'requests',
+          description: `Updated petty cash request ${editingRequest.pc_number}`,
+          oldValues: editingRequest,
+          newValues: insertedRequest,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: insertedRequest?.company_id || null,
+        });
       } else {
         const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
         const department = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
@@ -689,6 +703,19 @@ export function PettyCash() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        logAuditTrail({
+          tableName: 'petty_cash_requests',
+          recordId: insertedRequest?.id || '',
+          action: 'CREATE',
+          module: 'requests',
+          description: `Created petty cash request ${formData.document_no}`,
+          oldValues: null,
+          newValues: insertedRequest,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: insertedRequest?.company_id || null,
+        });
       }
 
       // Merge all new attachments into a single PDF and upload

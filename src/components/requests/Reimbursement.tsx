@@ -10,6 +10,7 @@ import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface ExpenseItem {
   date: string;
@@ -573,6 +574,20 @@ export function Reimbursement() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        // Audit trail for UPDATE
+        logAuditTrail({
+          tableName: 'reimbursement_requests',
+          recordId: editingRequest.id,
+          action: 'UPDATE',
+          module: 'requests',
+          description: `Updated reimbursement request ${editingRequest.reimb_number || editingRequest.id}`,
+          oldValues: editingRequest,
+          newValues: insertedRequest,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || 'Unknown',
+          companyId: insertedRequest.company_id || profile?.company_id || null,
+        });
       } else {
         const companyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
         const department = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
@@ -604,6 +619,20 @@ export function Reimbursement() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        // Audit trail for CREATE
+        logAuditTrail({
+          tableName: 'reimbursement_requests',
+          recordId: insertedRequest.id,
+          action: 'CREATE',
+          module: 'requests',
+          description: `Created reimbursement request ${insertedRequest.reimb_number || insertedRequest.id}`,
+          oldValues: null,
+          newValues: insertedRequest,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || 'Unknown',
+          companyId: insertedRequest.company_id || profile?.company_id || null,
+        });
 
         // Upload attachments after creating the request
         if (attachments.length > 0) {

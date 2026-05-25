@@ -12,6 +12,7 @@ import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { regenerateRFP } from '../../lib/rfpGenerator';
 import { exportToStyledExcel } from '../../lib/excelExporter';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface PRItem {
   description: string;
@@ -945,6 +946,20 @@ export function PurchaseRequisition() {
 
         if (error) throw error;
         insertedPR = data;
+
+        // Audit trail for UPDATE
+        logAuditTrail({
+          tableName: 'purchase_requisitions',
+          recordId: editingRequest.id,
+          action: 'UPDATE',
+          module: 'requests',
+          description: `Updated purchase requisition ${editingRequest.document_no || editingRequest.pr_number || editingRequest.id}`,
+          oldValues: editingRequest,
+          newValues: insertedPR,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || 'Unknown',
+          companyId: insertedPR.company_id || profile?.company_id || null,
+        });
       } else {
         // Create new request
         payload.document_no = formData.document_no;
@@ -961,6 +976,20 @@ export function PurchaseRequisition() {
 
         if (error) throw error;
         insertedPR = data;
+
+        // Audit trail for CREATE
+        logAuditTrail({
+          tableName: 'purchase_requisitions',
+          recordId: insertedPR.id,
+          action: 'CREATE',
+          module: 'requests',
+          description: `Created purchase requisition ${insertedPR.document_no || insertedPR.pr_number || insertedPR.id}`,
+          oldValues: null,
+          newValues: insertedPR,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || 'Unknown',
+          companyId: insertedPR.company_id || profile?.company_id || null,
+        });
       }
 
       if (status === 'pending' && insertedPR && requestCompanyId) {

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, X, ClipboardList, FileText, User, Download, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import Pagination from '../Pagination';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface SmeRequest {
   id: string;
@@ -128,6 +129,20 @@ export function SmeApproval() {
 
       if (smeError) throw smeError;
 
+      // Fire-and-forget audit trail logging for SME request update
+      logAuditTrail({
+        tableName: 'sme_requests',
+        recordId: viewingRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Approved SME request ${viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number}`,
+        oldValues: { status: viewingRequest.status, sme_comments: viewingRequest.sme_comments },
+        newValues: { status: 'reviewed', sme_comments: comments.trim() },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: null,
+      });
+
       // Update the purchase requisition ready_for_canvass status
       const { error: prError } = await supabase
         .from('purchase_requisitions')
@@ -135,6 +150,20 @@ export function SmeApproval() {
         .eq('id', viewingRequest.pr_id);
 
       if (prError) throw prError;
+
+      // Fire-and-forget audit trail logging for PR status update
+      logAuditTrail({
+        tableName: 'purchase_requisitions',
+        recordId: viewingRequest.pr_id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Approved SME request ${viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number}`,
+        oldValues: { ready_for_canvass: viewingRequest.purchase_requisitions?.ready_for_canvass },
+        newValues: { ready_for_canvass: true },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: null,
+      });
 
       // Send email notification to procurement if purchase_type is "Purchase Order"
       const { data: prData } = await supabase

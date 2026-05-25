@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { generateMsbcApiDocPdf, downloadBytesAsPdf } from '../../lib/msbcApiDocGenerator';
 import {
   Plus,
@@ -172,6 +174,7 @@ export function ApiIntegrationsConfig() {
 }
 
 function IntegrationsTab() {
+  const { profile } = useAuth();
   const [items, setItems] = useState<ApiIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -280,11 +283,34 @@ function IntegrationsTab() {
       };
 
       if (editingId) {
+        const oldItem = items.find((i) => i.id === editingId);
         const { error } = await supabase.from('api_integrations').update(payload).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'api_integrations',
+          recordId: editingId,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated API integration "${payload.name}"`,
+          oldValues: oldItem || null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase.from('api_integrations').insert(payload);
+        const { data: inserted, error } = await supabase.from('api_integrations').insert(payload).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'api_integrations',
+          recordId: inserted?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created API integration "${payload.name}"`,
+          oldValues: null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
 
       setMessage({ type: 'success', text: editingId ? 'Integration updated' : 'Integration added' });
@@ -300,8 +326,20 @@ function IntegrationsTab() {
   const remove = async (id: string) => {
     if (!confirm('Delete this integration? This cannot be undone.')) return;
     try {
+      const oldItem = items.find((i) => i.id === id);
       const { error } = await supabase.from('api_integrations').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({
+        tableName: 'api_integrations',
+        recordId: id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: `Deleted API integration "${oldItem?.name || id}"`,
+        oldValues: oldItem || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       await load();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to delete' });
@@ -310,11 +348,23 @@ function IntegrationsTab() {
 
   const toggleActive = async (item: ApiIntegration) => {
     try {
+      const newActive = !item.is_active;
       const { error } = await supabase
         .from('api_integrations')
-        .update({ is_active: !item.is_active, updated_at: new Date().toISOString() })
+        .update({ is_active: newActive, updated_at: new Date().toISOString() })
         .eq('id', item.id);
       if (error) throw error;
+      logAuditTrail({
+        tableName: 'api_integrations',
+        recordId: item.id,
+        action: 'UPDATE',
+        module: 'configuration',
+        description: `${newActive ? 'Enabled' : 'Disabled'} API integration "${item.name}"`,
+        oldValues: { is_active: item.is_active },
+        newValues: { is_active: newActive },
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       await load();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to update' });
@@ -840,6 +890,7 @@ function IntegrationsTab() {
 }
 
 function MsbcTab() {
+  const { profile } = useAuth();
   const EMPTY_POSTING: MsbcPosting = {
     id: '',
     msbc_document_no: '',
@@ -921,14 +972,37 @@ function MsbcTab() {
       };
 
       if (editingId) {
+        const oldItem = items.find((i) => i.id === editingId);
         const { error } = await supabase.from('msbc_postings').update(payload).eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'msbc_postings',
+          recordId: editingId,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated MSBC posting "${payload.msbc_document_no}"`,
+          oldValues: oldItem || null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
         setMessage({ type: 'success', text: 'MSBC posting updated in P2P' });
       } else {
         const { data: userData } = await supabase.auth.getUser();
         const insertPayload = { ...payload, created_by: userData.user?.id || null };
-        const { error } = await supabase.from('msbc_postings').insert(insertPayload);
+        const { data: inserted, error } = await supabase.from('msbc_postings').insert(insertPayload).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'msbc_postings',
+          recordId: inserted?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created MSBC posting "${payload.msbc_document_no}"`,
+          oldValues: null,
+          newValues: insertPayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
         setMessage({ type: 'success', text: 'MSBC data posted to P2P successfully' });
       }
 
@@ -944,8 +1018,20 @@ function MsbcTab() {
   const remove = async (id: string) => {
     if (!confirm('Delete this MSBC posting? This cannot be undone.')) return;
     try {
+      const oldItem = items.find((i) => i.id === id);
       const { error } = await supabase.from('msbc_postings').delete().eq('id', id);
       if (error) throw error;
+      logAuditTrail({
+        tableName: 'msbc_postings',
+        recordId: id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: `Deleted MSBC posting "${oldItem?.msbc_document_no || id}"`,
+        oldValues: oldItem || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       await load();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to delete' });
@@ -1208,6 +1294,7 @@ interface MsbcToken {
 type DevTab = 'overview' | 'post' | 'get';
 
 function MsbcDeveloperConnection() {
+  const { profile } = useAuth();
   const [expanded, setExpanded] = useState(true);
   const [devTab, setDevTab] = useState<DevTab>('overview');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -1258,13 +1345,25 @@ function MsbcDeveloperConnection() {
           .map((b) => b.toString(16).padStart(2, '0'))
           .join('');
 
+      const insertPayload = { name: newName.trim() || 'MSBC Integration', token, is_active: true };
       const { data, error } = await supabase
         .from('msbc_api_tokens')
-        .insert({ name: newName.trim() || 'MSBC Integration', token, is_active: true })
+        .insert(insertPayload)
         .select()
         .maybeSingle();
       if (error) throw error;
       if (data) {
+        logAuditTrail({
+          tableName: 'msbc_api_tokens',
+          recordId: data.id,
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Generated MSBC API token "${insertPayload.name}"`,
+          oldValues: null,
+          newValues: insertPayload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
         setRevealedTokenId(data.id);
         await loadTokens();
       }
@@ -1277,11 +1376,23 @@ function MsbcDeveloperConnection() {
 
   const toggleActive = async (t: MsbcToken) => {
     try {
+      const newActive = !t.is_active;
       const { error } = await supabase
         .from('msbc_api_tokens')
-        .update({ is_active: !t.is_active, updated_at: new Date().toISOString() })
+        .update({ is_active: newActive, updated_at: new Date().toISOString() })
         .eq('id', t.id);
       if (error) throw error;
+      logAuditTrail({
+        tableName: 'msbc_api_tokens',
+        recordId: t.id,
+        action: 'UPDATE',
+        module: 'configuration',
+        description: `${newActive ? 'Enabled' : 'Disabled'} MSBC API token "${t.name}"`,
+        oldValues: { is_active: t.is_active },
+        newValues: { is_active: newActive },
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       await loadTokens();
     } catch (err: any) {
       setError(err.message || 'Failed to update token');
@@ -1293,6 +1404,17 @@ function MsbcDeveloperConnection() {
     try {
       const { error } = await supabase.from('msbc_api_tokens').delete().eq('id', t.id);
       if (error) throw error;
+      logAuditTrail({
+        tableName: 'msbc_api_tokens',
+        recordId: t.id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: `Deleted MSBC API token "${t.name}"`,
+        oldValues: { id: t.id, name: t.name, is_active: t.is_active },
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       await loadTokens();
     } catch (err: any) {
       setError(err.message || 'Failed to delete token');

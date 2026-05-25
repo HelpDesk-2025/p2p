@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { Plus, CreditCard as Edit, Trash2, X, Megaphone, Info, AlertTriangle, AlertOctagon, CheckCircle2 } from 'lucide-react';
 
 type Priority = 'info' | 'success' | 'warning' | 'critical';
@@ -159,17 +160,40 @@ export function AnnouncementsConfig() {
         company_id: formData.company_id || null,
       };
       if (editingId) {
+        const oldItem = items.find((i) => i.id === editingId);
         const { error } = await supabase
           .from('announcements')
           .update({ ...payload, updated_at: new Date().toISOString() })
           .eq('id', editingId);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'announcements',
+          recordId: editingId,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: `Updated announcement "${payload.title}"`,
+          oldValues: oldItem || null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase.from('announcements').insert({
+        const { data: inserted, error } = await supabase.from('announcements').insert({
           ...payload,
           created_by: profile?.id,
-        });
+        }).select().maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'announcements',
+          recordId: inserted?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: `Created announcement "${payload.title}"`,
+          oldValues: null,
+          newValues: { ...payload, created_by: profile?.id },
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
       resetForm();
       setShowForm(false);
@@ -183,23 +207,47 @@ export function AnnouncementsConfig() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this announcement?')) return;
+    const oldItem = items.find((i) => i.id === id);
     const { error } = await supabase.from('announcements').delete().eq('id', id);
     if (error) {
       alert('Error: ' + error.message);
       return;
     }
+    logAuditTrail({
+      tableName: 'announcements',
+      recordId: id,
+      action: 'DELETE',
+      module: 'configuration',
+      description: `Deleted announcement "${oldItem?.title || id}"`,
+      oldValues: oldItem || null,
+      newValues: null,
+      performedBy: profile?.id || '',
+      performedByName: profile?.full_name || '',
+    });
     await loadAll();
   };
 
   const toggleActive = async (item: Announcement) => {
+    const newActive = !item.is_active;
     const { error } = await supabase
       .from('announcements')
-      .update({ is_active: !item.is_active, updated_at: new Date().toISOString() })
+      .update({ is_active: newActive, updated_at: new Date().toISOString() })
       .eq('id', item.id);
     if (error) {
       alert('Error: ' + error.message);
       return;
     }
+    logAuditTrail({
+      tableName: 'announcements',
+      recordId: item.id,
+      action: 'UPDATE',
+      module: 'configuration',
+      description: `${newActive ? 'Enabled' : 'Disabled'} announcement "${item.title}"`,
+      oldValues: { is_active: item.is_active },
+      newValues: { is_active: newActive },
+      performedBy: profile?.id || '',
+      performedByName: profile?.full_name || '',
+    });
     await loadAll();
   };
 

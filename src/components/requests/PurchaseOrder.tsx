@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { generatePurchaseOrderPdf } from '../../lib/poPdfGenerator';
 import { generateAndUploadPOMergedPdf } from '../../lib/poMergedPdfGenerator';
 import { getApprovalFlow, createApprovalLedgerEntry, sendApprovalEmailToAll } from '../../lib/approvalFlow';
@@ -608,6 +609,27 @@ export function PurchaseOrder() {
         },
       ]);
 
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'purchase_orders',
+        recordId: newPO.id,
+        action: 'CREATE',
+        module: 'requests',
+        description: `Created PO ${poNumber} (${initialStatus})`,
+        oldValues: null,
+        newValues: {
+          po_number: poNumber,
+          vendor_name: draftPO.vendor_name,
+          total_amount: draftPO.total_amount,
+          status: initialStatus,
+          company_id: draftPO.company_id,
+          department: draftPO.department,
+        },
+        performedBy: user.id,
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: draftPO.company_id || null,
+      });
+
       if (submit) {
         await routeToFirstApprover(newPO);
       }
@@ -730,6 +752,20 @@ export function PurchaseOrder() {
         },
       ]);
 
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'purchase_orders',
+        recordId: activeOrder.id,
+        action: 'UPDATE',
+        module: 'requests',
+        description: `${isRedispatch ? 'Re-dispatched' : 'Dispatched'} PO ${activeOrder.po_number} to ${dispatchEmail}`,
+        oldValues: { status: activeOrder.status },
+        newValues: { status: isRedispatch ? activeOrder.status : 'dispatched', dispatched_at: new Date().toISOString() },
+        performedBy: user.id,
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: activeOrder.company_id || null,
+      });
+
       showToast('success', isRedispatch ? 'PO re-dispatched to vendor successfully.' : 'PO dispatched to vendor successfully.');
       setDispatchOpen(false);
       setDispatchRemarks('');
@@ -782,6 +818,21 @@ export function PurchaseOrder() {
         remarks: reason,
       },
     ]);
+
+    // Fire-and-forget audit trail
+    logAuditTrail({
+      tableName: 'purchase_orders',
+      recordId: activeOrder.id,
+      action: 'UPDATE',
+      module: 'requests',
+      description: `Cancelled PO ${activeOrder.po_number}: ${reason}`,
+      oldValues: { status: activeOrder.status },
+      newValues: { status: 'cancelled', cancelled_at: new Date().toISOString(), cancellation_reason: reason },
+      performedBy: user.id,
+      performedByName: profile?.full_name || 'Unknown',
+      companyId: activeOrder.company_id || null,
+    });
+
     showToast('success', 'PO cancelled.');
     loadOrders();
     setView('list');

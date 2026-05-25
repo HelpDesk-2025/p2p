@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { Plus, CreditCard as Edit, Trash2, X, Search, Filter, ArrowUpDown } from "lucide-react";
 import Pagination from "../Pagination";
+import { logAuditTrail } from '../../lib/auditTrail';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ApprovalFlowSetup {
   id: string;
@@ -28,6 +30,7 @@ interface ApprovalStep {
 }
 
 export function ApprovalFlowSetupConfig() {
+  const { profile } = useAuth();
   const [setups, setSetups] = useState<ApprovalFlowSetup[]>([]);
   const [steps, setSteps] = useState<ApprovalStep[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -224,16 +227,41 @@ export function ApprovalFlowSetupConfig() {
       };
 
       if (editingSetupId) {
+        const oldSetup = setups.find(s => s.id === editingSetupId);
         const { error } = await supabase
           .from("approval_flow_setups")
           .update(payload)
           .eq("id", editingSetupId);
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'approval_flow_setups',
+          recordId: editingSetupId,
+          action: 'UPDATE',
+          module: 'configuration',
+          description: 'Updated approval flow setup',
+          oldValues: oldSetup || null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       } else {
-        const { error } = await supabase
+        const { data: insertedSetup, error } = await supabase
           .from("approval_flow_setups")
-          .insert(payload);
+          .insert(payload)
+          .select()
+          .maybeSingle();
         if (error) throw error;
+        logAuditTrail({
+          tableName: 'approval_flow_setups',
+          recordId: insertedSetup?.id || '',
+          action: 'CREATE',
+          module: 'configuration',
+          description: 'Created approval flow setup',
+          oldValues: null,
+          newValues: payload,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+        });
       }
 
       setShowForm(false);
@@ -249,11 +277,23 @@ export function ApprovalFlowSetupConfig() {
   const handleDeleteSetup = async (id: string) => {
     if (!confirm("Delete this approval flow setup and all its steps?")) return;
     try {
+      const oldSetup = setups.find(s => s.id === id);
       const { error } = await supabase
         .from("approval_flow_setups")
         .delete()
         .eq("id", id);
       if (error) throw error;
+      logAuditTrail({
+        tableName: 'approval_flow_setups',
+        recordId: id,
+        action: 'DELETE',
+        module: 'configuration',
+        description: 'Deleted approval flow setup',
+        oldValues: oldSetup || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
       await loadSetups();
       loadStepCounts();
     } catch (error: any) {
@@ -303,6 +343,18 @@ export function ApprovalFlowSetupConfig() {
       const { data: insertedStep, error } = await supabase.from("approval_flows").insert(payload).select().maybeSingle();
       if (error) throw error;
       if (!insertedStep) throw new Error("Failed to create approval step");
+
+      logAuditTrail({
+        tableName: 'approval_flows',
+        recordId: insertedStep.id,
+        action: 'CREATE',
+        module: 'configuration',
+        description: 'Created approval flow step',
+        oldValues: null,
+        newValues: payload,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
 
       setAddingStepToWorkflow(null);
       setNewStepData({ user_id: "", alternate_approver_id: "", days_to_approve: "3", for_checking: false, applies_to_po: true, applies_to_non_po: true });
@@ -354,12 +406,25 @@ export function ApprovalFlowSetupConfig() {
         applies_to_non_po: newStepData.applies_to_non_po
       };
 
+      const oldStep = steps.find(s => s.id === editingStepId);
       const { error } = await supabase
         .from("approval_flows")
         .update(payload)
         .eq("id", editingStepId);
 
       if (error) throw error;
+
+      logAuditTrail({
+        tableName: 'approval_flows',
+        recordId: editingStepId,
+        action: 'UPDATE',
+        module: 'configuration',
+        description: 'Updated approval flow step',
+        oldValues: oldStep || null,
+        newValues: payload,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
 
       setEditingStepId(null);
       setAddingStepToWorkflow(null);
@@ -376,12 +441,25 @@ export function ApprovalFlowSetupConfig() {
     if (!confirm("Are you sure you want to delete this step?")) return;
 
     try {
+      const oldStep = steps.find(s => s.id === stepId);
       const { error } = await supabase
         .from("approval_flows")
         .delete()
         .eq("id", stepId);
 
       if (error) throw error;
+
+      logAuditTrail({
+        tableName: 'approval_flows',
+        recordId: stepId,
+        action: 'DELETE',
+        module: 'configuration',
+        description: 'Deleted approval flow step',
+        oldValues: oldStep || null,
+        newValues: null,
+        performedBy: profile?.id || '',
+        performedByName: profile?.full_name || '',
+      });
 
       if (editingSetupId) await loadStepsForSetup(editingSetupId);
       loadStepCounts();

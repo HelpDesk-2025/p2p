@@ -6,6 +6,7 @@ import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForReque
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface PaymentModeLine {
   name: string;
@@ -557,6 +558,22 @@ export function CashAdvanceApproval() {
 
       if (updateError) throw updateError;
 
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'cash_advance_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: action === 'approved'
+          ? `Approved cash advance request ${selectedRequest.ca_number}`
+          : `Rejected cash advance request ${selectedRequest.ca_number}`,
+        oldValues: selectedRequest,
+        newValues: updateData,
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id
+      });
+
       const requestDepartment = selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A';
 
       if (action === 'rejected') {
@@ -675,6 +692,20 @@ export function CashAdvanceApproval() {
         .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
         .eq('id', selectedRequest.id);
       if (updateError) throw updateError;
+
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'cash_advance_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Returned cash advance request to maker`,
+        oldValues: selectedRequest,
+        newValues: { status: 'returned_to_maker', current_approval_level: currentLevel },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id
+      });
 
       await createApprovalLedgerEntry(
         'Cash Advance',

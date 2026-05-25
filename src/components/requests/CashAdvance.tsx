@@ -10,6 +10,7 @@ import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface PaymentModeLine {
   name: string;
@@ -596,6 +597,19 @@ export function CashAdvance() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        logAuditTrail({
+          tableName: 'cash_advance_requests',
+          recordId: editingRequest.id,
+          action: 'UPDATE',
+          module: 'requests',
+          description: `Updated cash advance request ${editingRequest.ca_number}`,
+          oldValues: editingRequest,
+          newValues: insertedRequest,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: insertedRequest?.company_id || null,
+        });
       } else {
         const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
         const requestDepartment = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
@@ -632,6 +646,19 @@ export function CashAdvance() {
 
         if (error) throw error;
         insertedRequest = data;
+
+        logAuditTrail({
+          tableName: 'cash_advance_requests',
+          recordId: insertedRequest?.id || '',
+          action: 'CREATE',
+          module: 'requests',
+          description: `Created cash advance request ${formData.document_no}`,
+          oldValues: null,
+          newValues: insertedRequest,
+          performedBy: profile?.id || '',
+          performedByName: profile?.full_name || '',
+          companyId: insertedRequest?.company_id || null,
+        });
       }
 
       if (status === 'pending' && insertedRequest) {

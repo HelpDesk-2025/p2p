@@ -7,6 +7,7 @@ import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 import Pagination from '../Pagination';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface PurchaseReq {
   id: string;
@@ -442,6 +443,20 @@ export function PRApproval() {
 
         if (updateError) throw updateError;
 
+        // Fire-and-forget audit trail for rejection
+        logAuditTrail({
+          tableName: 'purchase_requisitions',
+          recordId: selectedRequest.id,
+          action: 'UPDATE',
+          module: 'approvals',
+          description: `Rejected purchase requisition ${selectedRequest.document_no}`,
+          oldValues: { status: selectedRequest.status, current_approval_level: selectedRequest.current_approval_level },
+          newValues: { status: 'rejected', current_approval_level: currentLevel },
+          performedBy: profile.id,
+          performedByName: profile.full_name || 'Unknown',
+          companyId: selectedRequest.company_id || selectedRequest.user_profiles?.company_id || null,
+        });
+
         // Create ledger entry for this rejection
         await createApprovalLedgerEntry(
           'Purchase Requisition',
@@ -511,6 +526,20 @@ export function PRApproval() {
           .eq('id', selectedRequest.id);
 
         if (updateError) throw updateError;
+
+        // Fire-and-forget audit trail for approval
+        logAuditTrail({
+          tableName: 'purchase_requisitions',
+          recordId: selectedRequest.id,
+          action: 'UPDATE',
+          module: 'approvals',
+          description: `Approved purchase requisition ${selectedRequest.document_no}`,
+          oldValues: { status: selectedRequest.status, current_approval_level: currentLevel },
+          newValues: { status: newStatus, current_approval_level: nextLevel },
+          performedBy: profile.id,
+          performedByName: profile.full_name || 'Unknown',
+          companyId: selectedRequest.company_id || selectedRequest.user_profiles?.company_id || null,
+        });
 
         // Create ledger entry for this approval FIRST (before RFP generation)
         await createApprovalLedgerEntry(
@@ -710,6 +739,20 @@ export function PRApproval() {
         .eq('id', selectedRequest.id);
 
       if (updateError) throw updateError;
+
+      // Fire-and-forget audit trail for return to maker
+      logAuditTrail({
+        tableName: 'purchase_requisitions',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Returned purchase requisition ${selectedRequest.document_no} to maker`,
+        oldValues: { status: selectedRequest.status, current_approval_level: selectedRequest.current_approval_level },
+        newValues: { status: 'returned_to_maker', current_approval_level: currentLevel },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || selectedRequest.user_profiles?.company_id || null,
+      });
 
       await createApprovalLedgerEntry(
         'Purchase Requisition',

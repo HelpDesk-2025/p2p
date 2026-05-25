@@ -7,6 +7,7 @@ import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import Pagination from '../Pagination';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
+import { logAuditTrail } from '../../lib/auditTrail';
 
 interface ExpenseItem {
   date: string;
@@ -351,6 +352,22 @@ export function PettyCashApproval() {
 
       if (updateError) throw updateError;
 
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'petty_cash_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: action === 'approved'
+          ? `Approved petty cash request ${selectedRequest.pc_number}`
+          : `Rejected petty cash request ${selectedRequest.pc_number}`,
+        oldValues: selectedRequest,
+        newValues: { status: newStatus, current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id
+      });
+
       await createApprovalLedgerEntry(
         'Petty Cash',
         selectedRequest.id,
@@ -578,6 +595,20 @@ export function PettyCashApproval() {
         .update({ status: 'returned_to_maker', current_approval_level: currentLevel })
         .eq('id', selectedRequest.id);
       if (updateError) throw updateError;
+
+      // Fire-and-forget audit trail logging
+      logAuditTrail({
+        tableName: 'petty_cash_requests',
+        recordId: selectedRequest.id,
+        action: 'UPDATE',
+        module: 'approvals',
+        description: `Returned petty cash request to maker`,
+        oldValues: selectedRequest,
+        newValues: { status: 'returned_to_maker', current_approval_level: currentLevel },
+        performedBy: profile.id,
+        performedByName: profile.full_name || 'Unknown',
+        companyId: selectedRequest.company_id || profile.company_id
+      });
 
       await createApprovalLedgerEntry(
         'Petty Cash',

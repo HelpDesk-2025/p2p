@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { logAuditTrail } from '../../lib/auditTrail';
 import { uploadAttachments, downloadAttachment } from '../../lib/storageHelper';
 import { generateInvoiceMatchPdf } from '../../lib/invoiceMatchPdfGenerator';
 import ExportModal from '../ExportModal';
@@ -574,6 +575,28 @@ export function VendorInvoice() {
         action: submit ? 'submitted' : 'created',
         performed_by: user?.id,
         new_values: { status: submit ? 'pending_matching' : 'draft' },
+      });
+
+      // Fire-and-forget audit trail
+      logAuditTrail({
+        tableName: 'vendor_invoices',
+        recordId: created!.id,
+        action: 'CREATE',
+        module: 'requests',
+        description: `Created Invoice ${refNumber} for PO ${draftPO!.po_number} (${submit ? 'pending_matching' : 'draft'})`,
+        oldValues: null,
+        newValues: {
+          invoice_ref_number: refNumber,
+          po_number: draftPO!.po_number,
+          vendor_name: draftHeader.vendor_name,
+          total_amount: totals.total,
+          net_payable: totals.net,
+          status: submit ? 'pending_matching' : 'draft',
+          company_id: draftPO!.company_id,
+        },
+        performedBy: user?.id || '',
+        performedByName: profile?.full_name || 'Unknown',
+        companyId: draftPO!.company_id || null,
       });
 
       if (submit) {
