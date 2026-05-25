@@ -73,6 +73,7 @@ export function Reimbursement() {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [cashAdvance, setCashAdvance] = useState<number>(0);
   const [requestType, setRequestType] = useState<'Reimbursement' | 'Liquidation'>('Reimbursement');
+  const [expenseCategory, setExpenseCategory] = useState<string>('Department Expense');
   const [approvedRequests, setApprovedRequests] = useState<any[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>('');
   const [selectedRequestType, setSelectedRequestType] = useState<'Cash Advance' | 'Petty Cash' | ''>('');
@@ -492,6 +493,7 @@ export function Reimbursement() {
       : [{ date: '', description: '', amount: 0 }]
     );
     setRequestType((request as any).request_type || 'Reimbursement');
+    setExpenseCategory((request as any).expense_category || 'Department Expense');
     setCashAdvance((request as any).cash_advance || 0);
     setSelectedRequestId((request as any).linked_cash_advance_id || '');
     setSelectedRequestType((request as any).cash_advance_type || '');
@@ -556,6 +558,7 @@ export function Reimbursement() {
             amount: totalAmount,
             expense_items: expenseItems,
             request_type: requestType,
+            expense_category: expenseCategory,
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
@@ -588,6 +591,7 @@ export function Reimbursement() {
             amount: totalAmount,
             expense_items: expenseItems,
             request_type: requestType,
+            expense_category: expenseCategory,
             cash_advance: cashAdvance,
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
@@ -632,7 +636,8 @@ export function Reimbursement() {
           requestDepartment,
           requestType,
           false,
-          totalAmount
+          totalAmount,
+          expenseCategory
         );
 
         // Add executive approval steps if requester is Executive
@@ -693,6 +698,7 @@ export function Reimbursement() {
       setFormData({ document_no: '', payee: '', date_needed: '', purpose: '' });
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
       setRequestType('Reimbursement');
+      setExpenseCategory('Department Expense');
       setCashAdvance(0);
       setSelectedRequestId('');
       setSelectedRequestType('');
@@ -1322,17 +1328,35 @@ export function Reimbursement() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
-            <select
-              value={requestType}
-              onChange={(e) => setRequestType(e.target.value as 'Reimbursement' | 'Liquidation')}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-              required
-            >
-              <option value="Reimbursement">Reimbursement</option>
-              <option value="Liquidation">Liquidation</option>
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
+              <select
+                value={requestType}
+                onChange={(e) => setRequestType(e.target.value as 'Reimbursement' | 'Liquidation')}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                required
+              >
+                <option value="Reimbursement">Reimbursement</option>
+                <option value="Liquidation">Liquidation</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Expense Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={expenseCategory}
+                onChange={(e) => setExpenseCategory(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                required
+              >
+                <option value="Department Expense">Department Expense</option>
+                <option value="ManCom Expense">ManCom Expense | Board Expense</option>
+                <option value="CEO Expense">CEO Expense</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Determines which approval workflow is used.</p>
+            </div>
           </div>
 
           {requestType === 'Liquidation' && (
@@ -1919,6 +1943,10 @@ export function Reimbursement() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Request Type</label>
                   <p className="text-slate-900">{(viewingRequest as any).request_type || 'Reimbursement'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Expense Category</label>
+                  <p className="text-slate-900">{(viewingRequest as any).expense_category || 'Department Expense'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Payee</label>
