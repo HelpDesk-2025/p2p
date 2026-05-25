@@ -196,9 +196,11 @@ export async function addExecutiveApprovalSteps(
     }
 
     if (requesterProfile.approver_type !== 'Executive') {
+      console.log('Requester is not Executive type, using department flow');
       return approvalFlows;
     }
 
+    console.log('Requester is Executive type, loading executive approval routing');
     const category = isBudgeted ? 'budgeted' : 'non_budgeted';
 
     const { data: dynamicSteps, error: stepsError } = await supabase
