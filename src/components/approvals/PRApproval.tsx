@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft, History, ToggleLeft, ToggleRight } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries, filterApprovalFlowsForRequester } from '../../lib/approvalFlow';
 import { createSignedUrl, downloadAttachment } from '../../lib/storageHelper';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
@@ -80,6 +80,10 @@ export function PRApproval() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
+  const [budgetStatusChanges, setBudgetStatusChanges] = useState<any[]>([]);
+  const [changingBudgetStatus, setChangingBudgetStatus] = useState(false);
+  const [budgetChangeReason, setBudgetChangeReason] = useState('');
+  const [showBudgetChangeForm, setShowBudgetChangeForm] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -130,11 +134,68 @@ export function PRApproval() {
     setListLoading(false);
   };
 
+  const loadBudgetStatusHistory = async (requestId: string) => {
+    const { data } = await supabase
+      .from('budget_status_changes')
+      .select('*')
+      .eq('request_id', requestId)
+      .order('changed_at', { ascending: false });
+    setBudgetStatusChanges(data || []);
+  };
+
+  const handleBudgetStatusChange = async () => {
+    if (!selectedRequest || !profile) return;
+    if (!budgetChangeReason.trim()) {
+      alert('Please provide a reason for changing the budget status.');
+      return;
+    }
+
+    setChangingBudgetStatus(true);
+    try {
+      const previousStatus = selectedRequest.is_budgeted;
+      const newStatus = !previousStatus;
+
+      const { error: updateError } = await supabase
+        .from('purchase_requisitions')
+        .update({ is_budgeted: newStatus })
+        .eq('id', selectedRequest.id);
+
+      if (updateError) throw updateError;
+
+      const { error: historyError } = await supabase
+        .from('budget_status_changes')
+        .insert({
+          request_type: 'Purchase Requisition',
+          request_id: selectedRequest.id,
+          request_number: selectedRequest.document_no || selectedRequest.pr_number,
+          changed_by: profile.id,
+          changed_by_name: profile.full_name || 'Unknown',
+          previous_status: previousStatus,
+          new_status: newStatus,
+          reason: budgetChangeReason.trim(),
+        });
+
+      if (historyError) throw historyError;
+
+      setSelectedRequest({ ...selectedRequest, is_budgeted: newStatus });
+      setBudgetChangeReason('');
+      setShowBudgetChangeForm(false);
+      await loadBudgetStatusHistory(selectedRequest.id);
+    } catch (error: any) {
+      alert('Failed to change budget status: ' + error.message);
+    } finally {
+      setChangingBudgetStatus(false);
+    }
+  };
+
   const handleViewRequest = async (request: PurchaseReq) => {
     setSelectedRequest(request);
     setShowModal(true);
     setComments('');
+    setShowBudgetChangeForm(false);
+    setBudgetChangeReason('');
     setFlowsLoading(true);
+    loadBudgetStatusHistory(request.id);
 
     // Use the PR's company_id to look up the correct approval flow
     const prCompanyId = request.company_id || request.user_profiles?.company_id;
@@ -980,7 +1041,72 @@ export function PRApproval() {
                 )}
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>
-                  <p className="text-slate-900">{selectedRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}</p>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${selectedRequest.is_budgeted ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                      {selectedRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}
+                    </span>
+                    {canApprove() && !currentApproverStep?.for_checking && (
+                      <button
+                        onClick={() => setShowBudgetChangeForm(!showBudgetChangeForm)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                        title="Change budget status"
+                      >
+                        {showBudgetChangeForm ? <X size={12} /> : (selectedRequest.is_budgeted ? <ToggleRight size={14} /> : <ToggleLeft size={14} />)}
+                        {showBudgetChangeForm ? 'Cancel' : 'Change'}
+                      </button>
+                    )}
+                  </div>
+                  {showBudgetChangeForm && (
+                    <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                      <p className="text-xs text-slate-600">
+                        Change to: <span className="font-semibold">{selectedRequest.is_budgeted ? 'Non-Budgeted' : 'Budgeted'}</span>
+                      </p>
+                      <textarea
+                        value={budgetChangeReason}
+                        onChange={(e) => setBudgetChangeReason(e.target.value)}
+                        placeholder="Reason for changing budget status..."
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        rows={2}
+                      />
+                      <button
+                        onClick={handleBudgetStatusChange}
+                        disabled={changingBudgetStatus || !budgetChangeReason.trim()}
+                        className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        {changingBudgetStatus ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                        Confirm Change
+                      </button>
+                    </div>
+                  )}
+                  {budgetStatusChanges.length > 0 && (
+                    <div className="mt-2">
+                      <button
+                        onClick={() => {
+                          const el = document.getElementById('budget-history');
+                          if (el) el.classList.toggle('hidden');
+                        }}
+                        className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                      >
+                        <History size={12} />
+                        {budgetStatusChanges.length} change{budgetStatusChanges.length > 1 ? 's' : ''} recorded
+                      </button>
+                      <div id="budget-history" className="hidden mt-2 space-y-1.5 max-h-32 overflow-y-auto">
+                        {budgetStatusChanges.map((change) => (
+                          <div key={change.id} className="text-xs p-2 bg-slate-50 rounded border border-slate-100">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium text-slate-700">{change.changed_by_name}</span>
+                              <span className="text-slate-400">changed to</span>
+                              <span className={`font-medium ${change.new_status ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                {change.new_status ? 'Budgeted' : 'Non-Budgeted'}
+                              </span>
+                            </div>
+                            {change.reason && <p className="text-slate-500 mt-0.5">Reason: {change.reason}</p>}
+                            <p className="text-slate-400 mt-0.5">{new Date(change.changed_at).toLocaleString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Required Date</label>
