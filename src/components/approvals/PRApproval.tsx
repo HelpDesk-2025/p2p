@@ -177,6 +177,30 @@ export function PRApproval() {
 
       if (historyError) throw historyError;
 
+      // Send email notification to the requester
+      const requesterEmail = selectedRequest.user_profiles?.email;
+      const requesterName = selectedRequest.user_profiles?.full_name || 'Requester';
+      if (requesterEmail) {
+        const newStatusLabel = newStatus ? 'Budgeted' : 'Unbudgeted';
+        try {
+          await sendApprovalEmail(
+            requesterEmail,
+            requesterName,
+            'Purchase Requisition',
+            selectedRequest.document_no || selectedRequest.pr_number,
+            requesterName,
+            selectedRequest.department,
+            Number(selectedRequest.total_amount) || 0,
+            'Budget Status Changed',
+            profile.full_name || 'Administrator',
+            budgetChangeReason.trim(),
+            newStatusLabel
+          );
+        } catch (emailError) {
+          console.error('Failed to send budget status change email:', emailError);
+        }
+      }
+
       setSelectedRequest({ ...selectedRequest, is_budgeted: newStatus });
       setBudgetChangeReason('');
       setShowBudgetChangeForm(false);

@@ -28,14 +28,17 @@ function generateEmailHTML(data: EmailRequest): string {
   const isCashReleased = data.action === 'Cash Released';
   const isCashReceived = data.action === 'Cash Received';
   const isCashReleasePending = data.action === 'Cash Release Pending';
+  const isBudgetStatusChanged = data.action === 'Budget Status Changed';
   const isCashEvent = isCashReleased || isCashReceived || isCashReleasePending;
 
   const actionColor = data.action === 'Submitted' ? '#3b82f6' :
                       data.action === 'Approved' || isFullyApproved || isCashReleased || isCashReceived ? '#22c55e' :
-                      isCashReleasePending || isProcurementNotification ? '#f97316' : '#ef4444';
+                      isCashReleasePending || isProcurementNotification || isBudgetStatusChanged ? '#f97316' : '#ef4444';
 
   const headerBg = isProcurementNotification || isCashReleasePending
     ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
+    : isBudgetStatusChanged
+    ? 'linear-gradient(135deg, #d97706 0%, #b45309 100%)'
     : isFullyApproved || isCashReleased || isCashReceived
     ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
     : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
@@ -48,6 +51,8 @@ function generateEmailHTML(data: EmailRequest): string {
     ? `Cash for <strong>${data.requestType}</strong> ${data.documentNo} has been released by ${data.actionBy || 'the disbursing officer'}. Please log in to confirm receipt of the funds.`
     : isCashReceived
     ? `${data.actionBy || 'The requester'} has confirmed receipt of cash for <strong>${data.requestType}</strong> ${data.documentNo}.`
+    : isBudgetStatusChanged
+    ? `The budget status of your <strong>${data.requestType}</strong> (${data.documentNo}) has been changed by <strong>${data.actionBy || 'an administrator'}</strong>. Please review the details below.`
     : `A ${data.requestType.toLowerCase()} has been ${data.action.toLowerCase()} and requires your attention.`;
 
   const actionSection = data.action === 'Submitted'
@@ -63,6 +68,14 @@ function generateEmailHTML(data: EmailRequest): string {
         <p style="margin: 0; color: #9a3412; font-weight: 600;">Procurement Checking Required</p>
         <p style="margin: 8px 0 0 0; color: #7c2d12;">This Purchase Order PR has been fully approved. Please proceed with procurement checking and set it as Ready for Canvass.</p>
         ${data.comments ? `<p style="margin: 8px 0 0 0; color: #7c2d12;">Note: ${data.comments}</p>` : ''}
+      </div>
+    `
+    : isBudgetStatusChanged
+    ? `
+      <div style="background: #fffbeb; border-left: 4px solid #d97706; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0; color: #92400e; font-weight: 600;">Budget Status Changed by ${data.actionBy || 'Administrator'}</p>
+        <p style="margin: 8px 0 0 0; color: #78350f;"><strong>New Status:</strong> ${data.nextApprover || 'Updated'}</p>
+        ${data.comments ? `<p style="margin: 8px 0 0 0; color: #78350f;"><strong>Reason:</strong> ${data.comments}</p>` : ''}
       </div>
     `
     : `
