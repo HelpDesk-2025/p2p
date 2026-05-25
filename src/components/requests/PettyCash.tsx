@@ -1787,7 +1787,6 @@ export function PettyCash() {
               >
                 <option value="Department Expense">Department Expense</option>
                 <option value="ManCom Expense">ManCom Expense | Board Expense</option>
-                <option value="CEO Expense">CEO Expense</option>
               </select>
               <p className="text-xs text-slate-500 mt-1">Determines which approval workflow is used.</p>
             </div>

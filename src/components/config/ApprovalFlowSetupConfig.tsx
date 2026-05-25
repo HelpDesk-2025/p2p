@@ -672,14 +672,15 @@ export function ApprovalFlowSetupConfig() {
 
           {editingSetupId && selectedCompany && (() => {
             const isPettyCash = formData.request_type === 'Petty Cash';
+            const isExpenseCategoryBased = formData.request_type === 'Petty Cash' || formData.request_type === 'Reimbursement' || formData.request_type === 'Liquidation';
             const isPurchaseOrder = formData.request_type === 'Purchase Order';
-            const workflowTypes = isPurchaseOrder ? [1] : [1, 2, 3];
+            const workflowTypes = isPurchaseOrder ? [1] : isExpenseCategoryBased ? [1, 2] : [1, 2, 3];
             const presidentAmountLabel = selectedCompany.president_min_amount
               ? parseFloat(selectedCompany.president_min_amount).toLocaleString('en-US', { minimumFractionDigits: 0 })
               : '0';
             return (
             <>
-              {!isPettyCash && !isPurchaseOrder && (
+              {!isExpenseCategoryBased && !isPurchaseOrder && (
                 <div className="border-t border-slate-200 pt-6">
                   <h4 className="text-lg font-bold text-slate-900 mb-4">Approval Steps Configuration</h4>
                   <div className="bg-gradient-to-r from-blue-50 to-slate-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
@@ -701,14 +702,14 @@ export function ApprovalFlowSetupConfig() {
                   <h4 className="text-lg font-bold text-slate-900 mb-4">Approval Steps Configuration</h4>
                 </div>
               )}
-              {isPettyCash && (
+              {isExpenseCategoryBased && (
                 <div className="border-t border-slate-200 pt-6">
                   <h4 className="text-lg font-bold text-slate-900 mb-2">Approval Steps Configuration</h4>
-                  <p className="text-sm text-slate-600 mb-4">Petty Cash uses two expense categories. Each category drives its own approval workflow.</p>
+                  <p className="text-sm text-slate-600 mb-4">{formData.request_type} uses expense categories. Each category drives its own approval workflow.</p>
                 </div>
               )}
 
-              <div className={`grid grid-cols-1 ${isPurchaseOrder ? '' : 'lg:grid-cols-3'} gap-4`}>
+              <div className={`grid grid-cols-1 ${isPurchaseOrder ? '' : isExpenseCategoryBased ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4`}>
                 {workflowTypes.map((workflowType) => {
                   const colors = [
                     { bg: "from-red-50 to-orange-50", border: "border-red-200", btn: "bg-red-500 hover:bg-red-600", badge: "bg-red-100 text-red-800", ring: "focus:ring-red-500", borderLight: "border-red-200", borderDark: "border-red-300" },
@@ -716,13 +717,13 @@ export function ApprovalFlowSetupConfig() {
                     { bg: "from-amber-50 to-yellow-50", border: "border-amber-200", btn: "bg-amber-500 hover:bg-amber-600", badge: "bg-amber-100 text-amber-800", ring: "focus:ring-amber-500", borderLight: "border-amber-200", borderDark: "border-amber-300" }
                   ][workflowType - 1];
 
-                  const titles = isPettyCash
-                    ? ["Department Expense", "ManCom Expense", "CEO Expense"]
+                  const titles = isExpenseCategoryBased
+                    ? ["Department Expense", "ManCom Expense"]
                     : isPurchaseOrder
                     ? ["Approval Flow"]
                     : ["Unbudgeted", `Budgeted <${presidentAmountLabel}`, `Budgeted >${presidentAmountLabel}`];
-                  const subtitles = isPettyCash
-                    ? ["Routine department-level expenses", "Requires ManCom-level approval", "Requires CEO-level approval"]
+                  const subtitles = isExpenseCategoryBased
+                    ? ["Routine department-level expenses", "Requires ManCom-level approval"]
                     : isPurchaseOrder
                     ? ["Configure the approval steps for Purchase Orders"]
                     : ["No budget allocation", `Less than ₱${presidentAmountLabel}`, `More than ₱${presidentAmountLabel}`];
