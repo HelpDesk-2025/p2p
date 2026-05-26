@@ -2343,24 +2343,14 @@ export function CashAdvance() {
                   </>
                 )}
                 {viewingRequest.status === 'returned_to_maker' && (
-                  <>
-                    <button
-                      onClick={() => handleEditDraft(viewingRequest)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Edit size={18} />
-                      Edit & Resubmit
-                    </button>
-                    <button
-                      onClick={() => handleSubmitDraft(viewingRequest)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                      {submitting ? 'Submitting...' : 'Resubmit for Approval'}
-                    </button>
-                  </>
+                  <button
+                    onClick={() => handleEditDraft(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Edit size={18} />
+                    Edit & Resubmit
+                  </button>
                 )}
                 {viewingRequest.status === 'pending'
                   && (viewingRequest.current_approval_level ?? 0) === 0
