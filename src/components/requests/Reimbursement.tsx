@@ -71,6 +71,7 @@ export function Reimbursement() {
     { date: '', description: '', amount: 0 }
   ]);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<Attachment[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [cashAdvance, setCashAdvance] = useState<number>(0);
   const [requestType, setRequestType] = useState<'Reimbursement' | 'Liquidation'>('Reimbursement');
@@ -498,6 +499,8 @@ export function Reimbursement() {
     setCashAdvance((request as any).cash_advance || 0);
     setSelectedRequestId((request as any).linked_cash_advance_id || '');
     setSelectedRequestType((request as any).cash_advance_type || '');
+    setExistingAttachments(request.attachments || []);
+    setAttachments([]);
     setShowViewModal(false);
     setViewingRequest(null);
     setLinkedRequestDetails(null);
@@ -512,7 +515,7 @@ export function Reimbursement() {
     }
 
     // For editing, check if attachments exist either as new uploads or existing ones
-    if (editingRequest && attachments.length === 0 && (!editingRequest.attachments || editingRequest.attachments.length === 0)) {
+    if (editingRequest && attachments.length === 0 && existingAttachments.length === 0) {
       alert('Please upload receipts/supporting documents. Attachments are required for reimbursement requests.');
       return;
     }
@@ -564,7 +567,7 @@ export function Reimbursement() {
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
             date_needed: formData.date_needed || null,
-            attachments: uploadedAttachments.length > 0 ? uploadedAttachments : (editingRequest.attachments || []),
+            attachments: uploadedAttachments.length > 0 ? [...existingAttachments, ...uploadedAttachments] : existingAttachments,
             merged_pdf_path: mergedPdfPath || editingRequest.merged_pdf_path,
             status,
           })
@@ -733,6 +736,7 @@ export function Reimbursement() {
       setSelectedRequestType('');
       setApprovedRequests([]);
       setAttachments([]);
+      setExistingAttachments([]);
       setEditingRequest(null);
       loadRequests();
       if (!editingRequest) {
@@ -1574,8 +1578,39 @@ export function Reimbursement() {
                 <span className="text-xs text-slate-500">Images and PDFs only</span>
               </div>
 
+              {existingAttachments.length > 0 && (
+                <div className="border border-slate-300 rounded-lg divide-y divide-slate-200">
+                  <div className="px-4 py-2 bg-slate-50">
+                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Previously Uploaded</span>
+                  </div>
+                  {existingAttachments.map((file, index) => (
+                    <div key={`existing-${index}`} className="flex items-center justify-between px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <FileText size={16} className="text-blue-400" />
+                        <span className="text-sm text-slate-700">{file.name}</span>
+                        <span className="text-xs text-slate-500">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExistingAttachments(prev => prev.filter((_, i) => i !== index))}
+                        className="text-red-600 hover:text-red-700 transition"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {attachments.length > 0 && (
                 <div className="border border-slate-300 rounded-lg divide-y divide-slate-200">
+                  {existingAttachments.length > 0 && (
+                    <div className="px-4 py-2 bg-slate-50">
+                      <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">New Uploads</span>
+                    </div>
+                  )}
                   {attachments.map((file, index) => (
                     <div key={index} className="flex items-center justify-between px-4 py-2">
                       <div className="flex items-center gap-2">
