@@ -1975,7 +1975,7 @@ export function Reimbursement() {
             </div>
 
             <div className="p-6 space-y-6">
-              {(viewingRequest.status === 'pending' || viewingRequest.status === 'rejected') && (
+              {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected' || viewingRequest.status === 'returned_to_maker') && (
                 <ApprovalProgressTracker
                   requestType="Reimbursement"
                   requestId={viewingRequest.id}
