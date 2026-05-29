@@ -413,14 +413,9 @@ export function Canvass() {
   useEffect(() => {
     if (profile) {
       loadCompanies();
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    if (showForm) {
       loadWithholdingTaxRates();
     }
-  }, [showForm]);
+  }, [profile]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
