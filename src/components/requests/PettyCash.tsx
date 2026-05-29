@@ -217,8 +217,6 @@ export function PettyCash() {
 
   useEffect(() => {
     loadRequests();
-    loadPaymentModes();
-    loadExpenseTypes();
   }, []);
 
   useEffect(() => {
@@ -226,6 +224,13 @@ export function PettyCash() {
       loadCompanies();
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (showForm) {
+      loadPaymentModes();
+      loadExpenseTypes();
+    }
+  }, [showForm]);
 
   useEffect(() => {
     if (formData.request_type === 'For Liquidation') {

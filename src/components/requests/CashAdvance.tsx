@@ -130,7 +130,6 @@ export function CashAdvance() {
 
   useEffect(() => {
     loadRequests();
-    loadPaymentModes();
   }, []);
 
   useEffect(() => {
@@ -138,6 +137,12 @@ export function CashAdvance() {
       loadCompanies();
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (showForm) {
+      loadPaymentModes();
+    }
+  }, [showForm]);
 
   useEffect(() => {
     if (selectedCompanyId) {

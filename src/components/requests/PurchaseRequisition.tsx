@@ -138,20 +138,29 @@ export function PurchaseRequisition() {
 
   useEffect(() => {
     loadRequests();
-    loadPRChecklists();
-    loadPaymentModes();
   }, []);
 
   useEffect(() => {
     if (profile) {
       loadCompanies();
-      loadVendors();
-      loadItems();
     }
   }, [profile]);
 
   useEffect(() => {
-    loadPRChecklists();
+    if (showForm) {
+      loadPRChecklists();
+      loadPaymentModes();
+      if (profile) {
+        loadVendors();
+        loadItems();
+      }
+    }
+  }, [showForm]);
+
+  useEffect(() => {
+    if (showForm) {
+      loadPRChecklists();
+    }
   }, [formData.purchase_type]);
 
   useEffect(() => {
