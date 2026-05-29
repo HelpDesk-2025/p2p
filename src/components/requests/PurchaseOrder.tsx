@@ -31,6 +31,7 @@ import ExportModal from '../ExportModal';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import Pagination from '../Pagination';
+import { TableSkeleton } from '../TableSkeleton';
 
 type POStatus =
   | 'draft'
@@ -1072,9 +1073,7 @@ export function PurchaseOrder() {
           </div>
 
           {loading ? (
-            <div className="px-6 py-16 text-center text-slate-500 text-sm">
-              <Loader2 className="animate-spin inline mr-2" size={16} /> Loading purchase orders...
-            </div>
+            <TableSkeleton columns={7} />
           ) : (
             <>
               {/* Mobile Card View */}

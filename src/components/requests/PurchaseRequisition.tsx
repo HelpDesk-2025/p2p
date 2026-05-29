@@ -13,6 +13,7 @@ import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { regenerateRFP } from '../../lib/rfpGenerator';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { logAuditTrail } from '../../lib/auditTrail';
+import { TableSkeleton } from '../TableSkeleton';
 
 interface PRItem {
   description: string;
@@ -71,6 +72,7 @@ export function PurchaseRequisition() {
   const [requests, setRequests] = useState<PurchaseReq[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [prChecklists, setPrChecklists] = useState<any[]>([]);
@@ -214,6 +216,8 @@ export function PurchaseRequisition() {
       setRequests(filteredRequests || []);
     } catch (error) {
       console.error('Error loading requests:', error);
+    } finally {
+      setLoadingRequests(false);
     }
   };
 
@@ -2524,6 +2528,10 @@ export function PurchaseRequisition() {
             </button>
           </div>
         </div>
+        {loadingRequests ? (
+          <TableSkeleton columns={9} />
+        ) : (
+        <>
         {/* Mobile Card View */}
         <div className="lg:hidden w-full max-w-full overflow-x-hidden">
           {paginatedRequests.length === 0 ? (
@@ -2759,9 +2767,11 @@ export function PurchaseRequisition() {
             </tbody>
           </table>
         </div>
+        </>
+        )}
 
         {/* Pagination */}
-        {sortedRequests.length > 0 && (
+        {!loadingRequests && sortedRequests.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

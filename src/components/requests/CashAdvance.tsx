@@ -11,6 +11,7 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { logAuditTrail } from '../../lib/auditTrail';
+import { TableSkeleton } from '../TableSkeleton';
 
 interface PaymentModeLine {
   name: string;
@@ -63,6 +64,7 @@ interface CashAdvanceReq {
 export function CashAdvance() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<CashAdvanceReq[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const [vendors, setVendors] = useState<any[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(false);
   const [vendorSearchTerm, setVendorSearchTerm] = useState('');
@@ -176,26 +178,30 @@ export function CashAdvance() {
   };
 
   const loadRequests = async () => {
-    if (!profile?.company_id && profile?.role !== 'admin') return;
+    try {
+      if (!profile?.company_id && profile?.role !== 'admin') return;
 
-    let query = supabase
-      .from('cash_advance_requests')
-      .select('*, user_profiles!cash_advance_requests_requester_id_fkey(full_name, email, company_id, department), companies!cash_advance_requests_company_id_fkey(id, name)')
-      .order('created_at', { ascending: false });
+      let query = supabase
+        .from('cash_advance_requests')
+        .select('*, user_profiles!cash_advance_requests_requester_id_fkey(full_name, email, company_id, department), companies!cash_advance_requests_company_id_fkey(id, name)')
+        .order('created_at', { ascending: false });
 
-    // Only filter by requester_id if user is not an admin
-    if (profile?.role !== 'admin') {
-      query = query.eq('requester_id', profile?.id);
+      // Only filter by requester_id if user is not an admin
+      if (profile?.role !== 'admin') {
+        query = query.eq('requester_id', profile?.id);
+      }
+
+      const { data } = await query;
+
+      // For admin users, filter in-memory to show all requests
+      const filteredRequests = profile.role === 'admin'
+        ? data
+        : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
+
+      setRequests(filteredRequests || []);
+    } finally {
+      setLoadingRequests(false);
     }
-
-    const { data } = await query;
-
-    // For admin users, filter in-memory to show all requests
-    const filteredRequests = profile.role === 'admin'
-      ? data
-      : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
-
-    setRequests(filteredRequests || []);
   };
 
   const loadVendors = async () => {
@@ -1895,6 +1901,9 @@ export function CashAdvance() {
             </button>
           </div>
         </div>
+        {loadingRequests ? (
+          <TableSkeleton columns={7} />
+        ) : (
         <div className="overflow-auto flex-1">
         <table className="w-full border-collapse">
           <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
@@ -2036,7 +2045,8 @@ export function CashAdvance() {
           </tbody>
         </table>
         </div>
-        {sortedRequests.length > 0 && (
+        )}
+        {!loadingRequests && sortedRequests.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

@@ -26,6 +26,7 @@ import { generateGRNPdf } from '../../lib/grPdfGenerator';
 import ExportModal from '../ExportModal';
 import { FilterColumn, FilterValues } from '../FilterModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
+import { TableSkeleton } from '../TableSkeleton';
 
 type GRStatus = 'draft' | 'confirmed' | 'cancelled';
 type ReceiptType = 'full' | 'partial';
@@ -1072,9 +1073,7 @@ function ListView({
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-slate-500 text-sm">
-          <Loader2 className="animate-spin inline mr-2" size={16} /> Loading...
-        </div>
+        <TableSkeleton columns={7} />
       ) : grs.length === 0 ? (
         <div className="py-16 text-center text-slate-500 text-sm">
           <Package className="mx-auto mb-3 text-slate-300" size={36} />

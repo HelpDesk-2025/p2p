@@ -11,6 +11,7 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { logAuditTrail } from '../../lib/auditTrail';
+import { TableSkeleton } from '../TableSkeleton';
 
 interface ExpenseItem {
   date: string;
@@ -55,6 +56,7 @@ interface ReimbursementReq {
 export function Reimbursement() {
   const { profile } = useAuth();
   const [requests, setRequests] = useState<ReimbursementReq[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -239,26 +241,30 @@ export function Reimbursement() {
   };
 
   const loadRequests = async () => {
-    if (!profile?.company_id && profile?.role !== 'admin') return;
+    try {
+      if (!profile?.company_id && profile?.role !== 'admin') return;
 
-    let query = supabase
-      .from('reimbursement_requests')
-      .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id, full_name), companies!reimbursement_requests_company_id_fkey(id, name)')
-      .order('created_at', { ascending: false });
+      let query = supabase
+        .from('reimbursement_requests')
+        .select('*, user_profiles!reimbursement_requests_requester_id_fkey(company_id, full_name), companies!reimbursement_requests_company_id_fkey(id, name)')
+        .order('created_at', { ascending: false });
 
-    // Only filter by requester_id if user is not an admin
-    if (profile?.role !== 'admin') {
-      query = query.eq('requester_id', profile?.id);
+      // Only filter by requester_id if user is not an admin
+      if (profile?.role !== 'admin') {
+        query = query.eq('requester_id', profile?.id);
+      }
+
+      const { data } = await query;
+
+      // For admin users, filter in-memory to show all requests
+      const filteredRequests = profile.role === 'admin'
+        ? data
+        : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
+
+      setRequests(filteredRequests || []);
+    } finally {
+      setLoadingRequests(false);
     }
-
-    const { data } = await query;
-
-    // For admin users, filter in-memory to show all requests
-    const filteredRequests = profile.role === 'admin'
-      ? data
-      : data?.filter(req => req.company_id === profile.company_id || req.user_profiles?.company_id === profile.company_id);
-
-    setRequests(filteredRequests || []);
   };
 
   const loadApprovedRequestsForLiquidation = async () => {
@@ -1797,6 +1803,9 @@ export function Reimbursement() {
             </button>
           </div>
         </div>
+        {loadingRequests ? (
+          <TableSkeleton columns={7} />
+        ) : (
         <div className="overflow-auto flex-1">
         <table className="w-full border-collapse">
           <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
@@ -1942,7 +1951,8 @@ export function Reimbursement() {
           </tbody>
         </table>
         </div>
-        {sortedRequests.length > 0 && (
+        )}
+        {!loadingRequests && sortedRequests.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

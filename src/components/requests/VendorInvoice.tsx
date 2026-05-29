@@ -11,6 +11,7 @@ import { generateInvoiceMatchPdf } from '../../lib/invoiceMatchPdfGenerator';
 import ExportModal from '../ExportModal';
 import { FilterColumn, FilterValues } from '../FilterModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
+import { TableSkeleton } from '../TableSkeleton';
 
 type InvoiceStatus = 'draft' | 'pending_matching' | 'matched' | 'exception' | 'posted' | 'cancelled';
 type MatchStatus = 'matched' | 'mismatched' | 'pending_review' | 'resolved';
@@ -829,9 +830,7 @@ export function VendorInvoice() {
           </div>
 
           {loading ? (
-            <div className="p-8 flex items-center justify-center text-slate-500">
-              <Loader2 size={20} className="animate-spin mr-2" /> Loading...
-            </div>
+            <TableSkeleton columns={8} />
           ) : filteredInvoices.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
               <Receipt size={32} className="mx-auto mb-2 text-slate-300" />
