@@ -506,9 +506,10 @@ export function ApprovalProgressTracker({
             <span className="font-semibold">Request Fully Approved</span>
           </div>
 
-          {/* Hide MSBC sync for Purchase Order type PRs and Petty Cash */}
+          {/* Hide MSBC sync for Purchase Order type PRs, Petty Cash, and Reimbursement */}
           {!((requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') && purchaseType === 'Purchase Order') &&
-           !(requestType === 'Petty Cash' || requestType === 'petty_cash') && (
+           !(requestType === 'Petty Cash' || requestType === 'petty_cash') &&
+           !(requestType === 'Reimbursement' || requestType === 'reimbursement') && (
             <div className="relative">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 z-10">
