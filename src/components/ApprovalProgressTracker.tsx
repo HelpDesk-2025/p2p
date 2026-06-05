@@ -106,13 +106,17 @@ export function ApprovalProgressTracker({
 
             const isPR = requestType === 'Purchase Requisition' || requestType === 'purchase_requisition';
 
+            const expenseCategoryParam = (isPettyCash || isReimbursementOrLiquidation)
+              ? (data.expense_category || 'Department Expense')
+              : (isPR && data.is_mancom_expense) ? 'ManCom Expense' : undefined;
+
             const rawFlows = await getApprovalFlow(
               companyId,
               data.department || '',
               requestType,
               isBudgeted,
               data.total_amount || data.amount || 0,
-              (isPettyCash || isReimbursementOrLiquidation) ? (data.expense_category || 'Department Expense') : undefined,
+              expenseCategoryParam,
               isPR ? (data.purchase_type || undefined) : undefined
             );
 

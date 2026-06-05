@@ -125,6 +125,7 @@ export function PurchaseRequisition() {
     date_required: '',
     purpose: '',
     is_budgeted: false,
+    is_mancom_expense: false,
     purchase_type: 'Purchase Order',
     pr_checklist_id: '',
     checklist_items: [] as ChecklistItem[],
@@ -641,6 +642,7 @@ export function PurchaseRequisition() {
       date_required: request.date_required || request.required_date,
       purpose: request.purpose,
       is_budgeted: request.is_budgeted,
+      is_mancom_expense: (request as any).is_mancom_expense || false,
       purchase_type: request.purchase_type,
       pr_checklist_id: (request as any).pr_checklist_id || '',
       checklist_items: (request as any).checklist_items || [],
@@ -671,6 +673,7 @@ export function PurchaseRequisition() {
       date_required: request.date_required || (request as any).required_date,
       purpose: request.purpose,
       is_budgeted: request.is_budgeted,
+      is_mancom_expense: (request as any).is_mancom_expense || false,
       purchase_type: request.purchase_type,
       pr_checklist_id: (request as any).pr_checklist_id || '',
       checklist_items: (request as any).checklist_items || [],
@@ -910,6 +913,7 @@ export function PurchaseRequisition() {
         date_required: formData.date_required,
         purpose: formData.purpose,
         is_budgeted: formData.is_budgeted,
+        is_mancom_expense: formData.is_budgeted && formData.is_mancom_expense,
         purchase_type: formData.purchase_type,
         total_amount: total,
         status,
@@ -1014,7 +1018,7 @@ export function PurchaseRequisition() {
             'Purchase Requisition',
             formData.is_budgeted,
             total,
-            undefined,
+            formData.is_mancom_expense ? 'ManCom Expense' : undefined,
             formData.purchase_type
           );
 
@@ -1120,6 +1124,7 @@ export function PurchaseRequisition() {
       date_required: '',
       purpose: '',
       is_budgeted: false,
+      is_mancom_expense: false,
       purchase_type: 'Purchase Order',
       pr_checklist_id: '',
       checklist_items: [],
@@ -1264,7 +1269,7 @@ export function PurchaseRequisition() {
         'Purchase Requisition',
         request.is_budgeted,
         request.total_amount,
-        undefined,
+        (request as any).is_mancom_expense ? 'ManCom Expense' : undefined,
         request.purchase_type
       );
 
@@ -1655,12 +1660,23 @@ export function PurchaseRequisition() {
               </label>
               <select
                 value={formData.is_budgeted ? 'budgeted' : 'non-budgeted'}
-                onChange={(e) => setFormData({ ...formData, is_budgeted: e.target.value === 'budgeted' })}
+                onChange={(e) => setFormData({ ...formData, is_budgeted: e.target.value === 'budgeted', is_mancom_expense: false })}
                 className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               >
                 <option value="budgeted">Budgeted</option>
                 <option value="non-budgeted">Non-budgeted</option>
               </select>
+              {formData.is_budgeted && (
+                <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_mancom_expense}
+                    onChange={(e) => setFormData({ ...formData, is_mancom_expense: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-xs sm:text-sm text-slate-700 font-medium">ManCom Expense</span>
+                </label>
+              )}
             </div>
           </div>
 
@@ -2845,7 +2861,12 @@ export function PurchaseRequisition() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Budget Status</label>
-                  <p className="text-slate-900">{viewingRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}</p>
+                  <p className="text-slate-900">
+                    {viewingRequest.is_budgeted ? 'Budgeted' : 'Non-Budgeted'}
+                    {(viewingRequest as any).is_mancom_expense && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">ManCom Expense</span>
+                    )}
+                  </p>
                 </div>
                 {viewingRequest.purchase_type === 'Non-Purchase Order' && (
                   <div>

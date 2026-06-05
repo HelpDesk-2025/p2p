@@ -88,6 +88,8 @@ export async function getApprovalFlow(
     if (requestType === 'Purchase Requisition' || requestType === 'Canvass' || requestType === 'Cash Advance') {
       if (!isBudgeted) {
         workflowType = WORKFLOW_TYPES.UNBUDGETED;
+      } else if (expenseCategory === 'ManCom Expense') {
+        workflowType = WORKFLOW_TYPES.BUDGETED_ABOVE_MIN;
       } else if (totalAmount < presidentMinAmount) {
         workflowType = WORKFLOW_TYPES.BUDGETED_BELOW_MIN;
       } else {

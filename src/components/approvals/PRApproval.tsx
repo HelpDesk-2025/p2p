@@ -232,7 +232,7 @@ export function PRApproval() {
           'Purchase Requisition',
           request.is_budgeted,
           request.total_amount,
-          undefined,
+          (request as any).is_mancom_expense ? 'ManCom Expense' : undefined,
           request.purchase_type
         );
 
