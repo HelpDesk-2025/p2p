@@ -1666,7 +1666,7 @@ export function PurchaseRequisition() {
                 <option value="budgeted">Budgeted</option>
                 <option value="non-budgeted">Non-budgeted</option>
               </select>
-              {formData.is_budgeted && (
+              {formData.is_budgeted && formData.purchase_type === 'Non-Purchase Order' && (
                 <label className={`flex items-center gap-2.5 mt-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all ${formData.is_mancom_expense ? 'bg-amber-50 border-amber-400 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'}`}>
                   <input
                     type="checkbox"
@@ -1686,7 +1686,7 @@ export function PurchaseRequisition() {
             </label>
             <select
               value={formData.purchase_type}
-              onChange={(e) => setFormData({ ...formData, purchase_type: e.target.value, pr_checklist_id: '', checklist_items: [] })}
+              onChange={(e) => setFormData({ ...formData, purchase_type: e.target.value, pr_checklist_id: '', checklist_items: [], is_mancom_expense: e.target.value === 'Non-Purchase Order' ? formData.is_mancom_expense : false })}
               className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
               <option value="Purchase Order">Purchase Order</option>
