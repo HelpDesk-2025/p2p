@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, Save, Send, Eye, FileText, Upload, X, Download, RefreshCw, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, SlidersHorizontal, Ban, FileSpreadsheet, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import Pagination from '../Pagination';
 import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterCount } from '../FilterModal';
 import ExportModal from '../ExportModal';
@@ -118,6 +118,9 @@ export function PurchaseRequisition() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const companiesInitialized = useRef(false);
 
+  // ManCom routing validation
+  const [mancomRoutingStatus, setMancomRoutingStatus] = useState<'checking' | 'success' | 'empty' | 'not_found' | null>(null);
+
   const [formData, setFormData] = useState({
     document_no: '',
     description: '',
@@ -172,6 +175,59 @@ export function PurchaseRequisition() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showItemDropdown]);
+
+  // ManCom routing validation: check if payee has executive budgeted approval routing
+  useEffect(() => {
+    if (!formData.is_mancom_expense || !formData.payee.trim()) {
+      setMancomRoutingStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const checkMancomRouting = async () => {
+      setMancomRoutingStatus('checking');
+      try {
+        const { data: matchedUser } = await supabase
+          .from('user_profiles')
+          .select('id, approver_type, approver_email_budgeted, approver_email')
+          .ilike('full_name', formData.payee.trim())
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (!matchedUser) {
+          setMancomRoutingStatus('not_found');
+          return;
+        }
+
+        if (matchedUser.approver_type !== 'Executive') {
+          setMancomRoutingStatus('empty');
+          return;
+        }
+
+        const { data: steps } = await supabase
+          .from('executive_approval_steps')
+          .select('id')
+          .eq('user_profile_id', matchedUser.id)
+          .eq('category', 'budgeted')
+          .limit(1);
+
+        if (cancelled) return;
+
+        if (steps && steps.length > 0) {
+          setMancomRoutingStatus('success');
+        } else if (matchedUser.approver_email_budgeted || matchedUser.approver_email) {
+          setMancomRoutingStatus('success');
+        } else {
+          setMancomRoutingStatus('empty');
+        }
+      } catch (err) {
+        console.error('ManCom routing check error:', err);
+        if (!cancelled) setMancomRoutingStatus(null);
+      }
+    };
+    checkMancomRouting();
+    return () => { cancelled = true; };
+  }, [formData.is_mancom_expense, formData.payee]);
 
   const loadRequests = async () => {
     try {
@@ -805,6 +861,12 @@ export function PurchaseRequisition() {
     // Validate payee for Non-Purchase Order
     if (formData.purchase_type === 'Non-Purchase Order' && status === 'pending' && !formData.payee.trim()) {
       alert('Please enter a payee for Non-Purchase Order requests.');
+      return;
+    }
+
+    // Validate ManCom executive routing
+    if (status === 'pending' && formData.is_mancom_expense && mancomRoutingStatus === 'empty') {
+      alert('Cannot submit: The selected payee does not have executive budgeted approval routing configured. Please contact admin to set up the routing.');
       return;
     }
 
@@ -1702,15 +1764,41 @@ export function PurchaseRequisition() {
           </div>
 
           {formData.is_budgeted && formData.purchase_type === 'Non-Purchase Order' && (
-            <label className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${formData.is_mancom_expense ? 'bg-amber-50 border-amber-400 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'}`}>
-              <input
-                type="checkbox"
-                checked={formData.is_mancom_expense}
-                onChange={(e) => setFormData({ ...formData, is_mancom_expense: e.target.checked })}
-                className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500 accent-amber-600"
-              />
-              <span className={`text-xs sm:text-sm font-semibold ${formData.is_mancom_expense ? 'text-amber-800' : 'text-slate-600'}`}>ManCom Expense</span>
-            </label>
+            <div className="space-y-2">
+              <label className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${formData.is_mancom_expense ? 'bg-amber-50 border-amber-400 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'}`}>
+                <input
+                  type="checkbox"
+                  checked={formData.is_mancom_expense}
+                  onChange={(e) => setFormData({ ...formData, is_mancom_expense: e.target.checked })}
+                  className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500 accent-amber-600"
+                />
+                <span className={`text-xs sm:text-sm font-semibold ${formData.is_mancom_expense ? 'text-amber-800' : 'text-slate-600'}`}>ManCom Expense</span>
+              </label>
+              {formData.is_mancom_expense && mancomRoutingStatus === 'checking' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-500">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Checking approval routing...</span>
+                </div>
+              )}
+              {formData.is_mancom_expense && mancomRoutingStatus === 'success' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-green-700 bg-green-50 rounded-md border border-green-200">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Executive approval routing configured</span>
+                </div>
+              )}
+              {formData.is_mancom_expense && mancomRoutingStatus === 'empty' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-red-700 bg-red-50 rounded-md border border-red-200">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>No executive budgeted approval routing found for this payee</span>
+                </div>
+              )}
+              {formData.is_mancom_expense && mancomRoutingStatus === 'not_found' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 bg-amber-50 rounded-md border border-amber-200">
+                  <Info className="w-3.5 h-3.5" />
+                  <span>Payee not found in system users</span>
+                </div>
+              )}
+            </div>
           )}
 
           {formData.checklist_items.length > 0 && (
