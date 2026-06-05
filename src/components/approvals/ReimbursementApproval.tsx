@@ -251,7 +251,8 @@ export function ReimbursementApproval() {
           request.department || request.user_profiles?.department || profile.department || '',
           (request as any).request_type || 'Reimbursement',
           false,
-          request.amount
+          request.amount,
+          (request as any).expense_category
         );
 
         // Inject executive approvers if requester is Executive type

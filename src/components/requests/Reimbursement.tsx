@@ -778,7 +778,8 @@ export function Reimbursement() {
         department,
         draftRequestType,
         false,
-        request.amount
+        request.amount,
+        (request as any).expense_category
       );
 
       if (!rawApprovalFlows || rawApprovalFlows.length === 0) {

@@ -102,6 +102,7 @@ export function ApprovalProgressTracker({
             });
 
             const isPettyCash = requestType === 'Petty Cash' || requestType === 'petty_cash';
+            const isReimbursementOrLiquidation = requestType === 'Reimbursement' || requestType === 'Liquidation';
 
             const isPR = requestType === 'Purchase Requisition' || requestType === 'purchase_requisition';
 
@@ -111,7 +112,7 @@ export function ApprovalProgressTracker({
               requestType,
               isBudgeted,
               data.total_amount || data.amount || 0,
-              isPettyCash ? (data.expense_category || 'Department Expense') : undefined,
+              (isPettyCash || isReimbursementOrLiquidation) ? (data.expense_category || 'Department Expense') : undefined,
               isPR ? (data.purchase_type || undefined) : undefined
             );
 
