@@ -120,6 +120,7 @@ export function PurchaseRequisition() {
 
   // ManCom routing validation
   const [mancomRoutingStatus, setMancomRoutingStatus] = useState<'checking' | 'success' | 'empty' | 'not_found' | null>(null);
+  const [mancomPayeeUserId, setMancomPayeeUserId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     document_no: '',
@@ -180,11 +181,13 @@ export function PurchaseRequisition() {
   useEffect(() => {
     if (!formData.is_mancom_expense || !formData.payee.trim()) {
       setMancomRoutingStatus(null);
+      setMancomPayeeUserId(null);
       return;
     }
     let cancelled = false;
     const checkMancomRouting = async () => {
       setMancomRoutingStatus('checking');
+      setMancomPayeeUserId(null);
       try {
         const { data: matchedUser } = await supabase
           .from('user_profiles')
@@ -215,14 +218,19 @@ export function PurchaseRequisition() {
 
         if (steps && steps.length > 0) {
           setMancomRoutingStatus('success');
+          setMancomPayeeUserId(matchedUser.id);
         } else if (matchedUser.approver_email_budgeted || matchedUser.approver_email) {
           setMancomRoutingStatus('success');
+          setMancomPayeeUserId(matchedUser.id);
         } else {
           setMancomRoutingStatus('empty');
         }
       } catch (err) {
         console.error('ManCom routing check error:', err);
-        if (!cancelled) setMancomRoutingStatus(null);
+        if (!cancelled) {
+          setMancomRoutingStatus(null);
+          setMancomPayeeUserId(null);
+        }
       }
     };
     checkMancomRouting();
@@ -1088,12 +1096,15 @@ export function PurchaseRequisition() {
             throw new Error('No approval flow configured for this request. Please contact administrator.');
           }
 
-          // Add executive approval steps if requester is Executive
+          // Add executive approval steps: use payee's routing for ManCom expenses, else requester's
+          const executiveUserId = (formData.is_mancom_expense && mancomPayeeUserId && mancomRoutingStatus === 'success')
+            ? mancomPayeeUserId
+            : profile.id;
           let flowsWithExecutive = await addExecutiveApprovalSteps(
             rawApprovalFlows,
-            profile.id,
+            executiveUserId,
             requestCompanyId,
-            !!formData.is_budgeted
+            (formData.is_mancom_expense && mancomPayeeUserId) ? true : !!formData.is_budgeted
           );
 
           // Filter out requester from approval flows
@@ -1339,12 +1350,23 @@ export function PurchaseRequisition() {
         throw new Error('No approval flow configured for this request. Please contact administrator.');
       }
 
-      // Add executive approval steps if requester is Executive
+      // Add executive approval steps: use payee's routing for ManCom expenses
+      let executiveUserIdForDraft = profile.id;
+      if ((request as any).is_mancom_expense && request.payee) {
+        const { data: payeeUser } = await supabase
+          .from('user_profiles')
+          .select('id, approver_type')
+          .ilike('full_name', request.payee.trim())
+          .maybeSingle();
+        if (payeeUser && payeeUser.approver_type === 'Executive') {
+          executiveUserIdForDraft = payeeUser.id;
+        }
+      }
       let flowsWithExecutive = await addExecutiveApprovalSteps(
         rawApprovalFlows,
-        profile.id,
+        executiveUserIdForDraft,
         requestCompanyId,
-        !!request.is_budgeted
+        (request as any).is_mancom_expense ? true : !!request.is_budgeted
       );
 
       // Filter out requester from approval flows
