@@ -1666,17 +1666,6 @@ export function PurchaseRequisition() {
                 <option value="budgeted">Budgeted</option>
                 <option value="non-budgeted">Non-budgeted</option>
               </select>
-              {formData.is_budgeted && formData.purchase_type === 'Non-Purchase Order' && (
-                <label className={`flex items-center gap-2.5 mt-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all ${formData.is_mancom_expense ? 'bg-amber-50 border-amber-400 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'}`}>
-                  <input
-                    type="checkbox"
-                    checked={formData.is_mancom_expense}
-                    onChange={(e) => setFormData({ ...formData, is_mancom_expense: e.target.checked })}
-                    className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500 accent-amber-600"
-                  />
-                  <span className={`text-xs sm:text-sm font-semibold ${formData.is_mancom_expense ? 'text-amber-800' : 'text-slate-600'}`}>ManCom Expense</span>
-                </label>
-              )}
             </div>
           </div>
 
@@ -1711,6 +1700,18 @@ export function PurchaseRequisition() {
               ))}
             </select>
           </div>
+
+          {formData.is_budgeted && formData.purchase_type === 'Non-Purchase Order' && (
+            <label className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${formData.is_mancom_expense ? 'bg-amber-50 border-amber-400 shadow-sm' : 'bg-slate-50 border-slate-200 hover:border-amber-300 hover:bg-amber-50/50'}`}>
+              <input
+                type="checkbox"
+                checked={formData.is_mancom_expense}
+                onChange={(e) => setFormData({ ...formData, is_mancom_expense: e.target.checked })}
+                className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500 accent-amber-600"
+              />
+              <span className={`text-xs sm:text-sm font-semibold ${formData.is_mancom_expense ? 'text-amber-800' : 'text-slate-600'}`}>ManCom Expense</span>
+            </label>
+          )}
 
           {formData.checklist_items.length > 0 && (
             <div className="bg-slate-50 rounded-lg p-4 space-y-4">
