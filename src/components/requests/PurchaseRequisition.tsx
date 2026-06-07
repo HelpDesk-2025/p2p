@@ -873,8 +873,10 @@ export function PurchaseRequisition() {
     }
 
     // Validate ManCom executive routing
-    if (status === 'pending' && formData.is_mancom_expense && mancomRoutingStatus === 'empty') {
-      alert('Cannot submit: The selected payee does not have executive budgeted approval routing configured. Please contact admin to set up the routing.');
+    if (status === 'pending' && formData.is_mancom_expense && (mancomRoutingStatus === 'empty' || mancomRoutingStatus === 'not_found')) {
+      alert(mancomRoutingStatus === 'not_found'
+        ? 'Cannot submit: The payee was not found in system users. Please select a valid payee.'
+        : 'Cannot submit: The selected payee does not have executive budgeted approval routing configured. Please contact admin to set up the routing.');
       return;
     }
 
