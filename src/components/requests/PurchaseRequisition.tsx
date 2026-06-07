@@ -873,6 +873,10 @@ export function PurchaseRequisition() {
     }
 
     // Validate ManCom executive routing
+    if (status === 'pending' && formData.is_mancom_expense && mancomRoutingStatus === 'checking') {
+      alert('Please wait while the ManCom approval routing is being validated.');
+      return;
+    }
     if (status === 'pending' && formData.is_mancom_expense && (mancomRoutingStatus === 'empty' || mancomRoutingStatus === 'not_found')) {
       alert(mancomRoutingStatus === 'not_found'
         ? 'Cannot submit: The payee was not found in system users. Please select a valid payee.'
@@ -1099,14 +1103,25 @@ export function PurchaseRequisition() {
           }
 
           // Add executive approval steps: use payee's routing for ManCom expenses, else requester's
-          const executiveUserId = (formData.is_mancom_expense && mancomPayeeUserId && mancomRoutingStatus === 'success')
-            ? mancomPayeeUserId
+          let resolvedMancomPayeeId = mancomPayeeUserId;
+          if (formData.is_mancom_expense && formData.payee.trim() && !resolvedMancomPayeeId) {
+            const { data: payeeLookup } = await supabase
+              .from('user_profiles')
+              .select('id, approver_type')
+              .ilike('full_name', formData.payee.trim())
+              .maybeSingle();
+            if (payeeLookup && payeeLookup.approver_type === 'Executive') {
+              resolvedMancomPayeeId = payeeLookup.id;
+            }
+          }
+          const executiveUserId = (formData.is_mancom_expense && resolvedMancomPayeeId)
+            ? resolvedMancomPayeeId
             : profile.id;
           let flowsWithExecutive = await addExecutiveApprovalSteps(
             rawApprovalFlows,
             executiveUserId,
             requestCompanyId,
-            (formData.is_mancom_expense && mancomPayeeUserId) ? true : !!formData.is_budgeted
+            (formData.is_mancom_expense && resolvedMancomPayeeId) ? true : !!formData.is_budgeted
           );
 
           // Filter out requester from approval flows
