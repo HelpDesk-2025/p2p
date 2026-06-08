@@ -949,7 +949,7 @@ export function ReimbursementApproval() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Review Reimbursement Request</h3>
+                <h3 className="text-xl font-bold text-slate-900">Review Reimbursement | Liquidation Request</h3>
                 <p className="text-sm text-slate-600 mt-1">{selectedRequest.reimb_number}</p>
               </div>
               <button
@@ -969,7 +969,7 @@ export function ReimbursementApproval() {
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700">Reimbursement Number</label>
+                  <label className="text-sm font-semibold text-slate-700">Reimbursement | Liquidation Number</label>
                   <p className="text-slate-900 font-mono">{selectedRequest.reimb_number}</p>
                 </div>
                 <div>
