@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
+import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
@@ -23,6 +24,7 @@ interface ReimbursementReq {
   status: string;
   current_approval_level: number;
   receipts?: any[];
+  attachments?: Array<{ path: string; name: string; type: string; size: number }>;
   expense_items?: Array<{
     date: string;
     description: string;
@@ -163,7 +165,24 @@ export function ReimbursementApproval() {
 
       if (error) throw error;
 
-      const url = URL.createObjectURL(data);
+      let blob: Blob = data;
+      // If merged PDF is empty, re-merge from individual attachments
+      if (data.size < 1024 && selectedRequest?.attachments && selectedRequest.attachments.length > 0) {
+        const files: File[] = [];
+        for (const att of selectedRequest.attachments) {
+          const { data: fileData, error: fileError } = await supabase.storage
+            .from('attachments')
+            .download(att.path);
+          if (!fileError && fileData) {
+            files.push(new File([fileData], att.name, { type: att.type || 'application/pdf' }));
+          }
+        }
+        if (files.length > 0) {
+          blob = await mergeFilesToPDFBlob(files);
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `${reimbNumber}_Attachments.pdf`;
@@ -184,6 +203,28 @@ export function ReimbursementApproval() {
         .download(pdfPath);
 
       if (error) throw error;
+
+      // Check if the merged PDF is empty (< 1KB means it has no actual content)
+      if (data.size < 1024 && selectedRequest?.attachments && selectedRequest.attachments.length > 0) {
+        // Fall back to downloading individual attachments and merging on-the-fly
+        const files: File[] = [];
+        for (const att of selectedRequest.attachments as Array<{ path: string; name: string; type: string }>) {
+          const { data: fileData, error: fileError } = await supabase.storage
+            .from('attachments')
+            .download(att.path);
+          if (!fileError && fileData) {
+            files.push(new File([fileData], att.name, { type: att.type || 'application/pdf' }));
+          }
+        }
+        if (files.length > 0) {
+          const mergedBlob = await mergeFilesToPDFBlob(files);
+          const url = URL.createObjectURL(mergedBlob);
+          setPdfPreviewUrl(url);
+          setPdfPreviewTitle(title);
+          setShowPdfPreview(true);
+          return;
+        }
+      }
 
       const url = URL.createObjectURL(data);
       setPdfPreviewUrl(url);
