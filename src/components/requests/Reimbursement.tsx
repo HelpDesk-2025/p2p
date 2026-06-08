@@ -552,7 +552,7 @@ export function Reimbursement() {
           if (!requestCompanyId) throw new Error('Company ID is required');
           uploadedAttachments = await uploadAttachments(editingRequest.id, requestCompanyId);
           // Merge attachments into a single PDF
-          mergedPdfPath = await mergeAndUploadAttachmentsPDF(editingRequest.id, requestCompanyId, attachments);
+          mergedPdfPath = await mergeAndUploadAttachmentsPDF(editingRequest.id, attachments);
         }
 
         const { data, error } = await supabase
@@ -645,7 +645,7 @@ export function Reimbursement() {
           const uploadedAttachments = await uploadAttachments(insertedRequest.id, companyId);
 
           // Merge attachments into a single PDF
-          const mergedPdfPath = await mergeAndUploadAttachmentsPDF(insertedRequest.id, companyId, attachments);
+          const mergedPdfPath = await mergeAndUploadAttachmentsPDF(insertedRequest.id, attachments);
 
           // Update the request with attachment paths and merged PDF
           await supabase
