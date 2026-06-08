@@ -186,6 +186,7 @@ export async function addExecutiveApprovalSteps(
   isBudgeted: boolean = false
 ): Promise<ApprovalFlow[]> {
   try {
+    console.log('[ManCom] addExecutiveApprovalSteps called with:', { requesterId, companyId, isBudgeted });
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
       .select('approver_type, approver_email, checker_email, approver_email_non_budgeted, approver_email_budgeted, checker_email_non_budgeted, checker_email_budgeted')
@@ -193,15 +194,18 @@ export async function addExecutiveApprovalSteps(
       .maybeSingle();
 
     if (requesterError || !requesterProfile) {
-      console.error('Error fetching requester profile:', requesterError);
+      console.error('[ManCom] Error fetching requester profile:', requesterError, 'profile:', requesterProfile);
       return approvalFlows;
     }
 
+    console.log('[ManCom] requesterProfile.approver_type:', requesterProfile.approver_type);
     if (requesterProfile.approver_type !== 'Executive') {
+      console.log('[ManCom] Not Executive, returning original flows');
       return approvalFlows;
     }
 
     const category = isBudgeted ? 'budgeted' : 'non_budgeted';
+    console.log('[ManCom] Looking up executive_approval_steps for category:', category);
 
     const { data: dynamicSteps, error: stepsError } = await supabase
       .from('executive_approval_steps')
@@ -211,8 +215,9 @@ export async function addExecutiveApprovalSteps(
       .order('sequence', { ascending: true });
 
     if (stepsError) {
-      console.error('Error loading executive_approval_steps:', stepsError);
+      console.error('[ManCom] Error loading executive_approval_steps:', stepsError);
     }
+    console.log('[ManCom] dynamicSteps:', dynamicSteps);
 
     type Step = { step_type: 'approver' | 'checker'; email: string };
     const steps: Step[] = (dynamicSteps || [])
@@ -231,15 +236,16 @@ export async function addExecutiveApprovalSteps(
       if (checkerEmail) steps.push({ step_type: 'checker', email: checkerEmail });
     }
 
-    console.log('Executive steps resolved:', steps);
+    console.log('[ManCom] Executive steps resolved:', steps);
 
     const emails = steps.map((s) => s.email);
     const userByEmail: Record<string, { id: string; full_name: string | null; email: string }> = {};
     if (emails.length > 0) {
-      const { data: users } = await supabase
+      const { data: users, error: usersError } = await supabase
         .from('user_profiles')
         .select('id, full_name, email')
         .in('email', emails);
+      console.log('[ManCom] Email lookup result:', { users, usersError });
       (users || []).forEach((u: any) => { userByEmail[u.email] = u; });
     }
 
@@ -248,7 +254,7 @@ export async function addExecutiveApprovalSteps(
     for (const step of steps) {
       const user = userByEmail[step.email];
       if (!user) {
-        console.warn('No user_profile found for executive step email:', step.email);
+        console.warn('[ManCom] No user_profile found for executive step email:', step.email);
         continue;
       }
       const label = step.step_type === 'approver' ? 'Approver' : 'Checker';
@@ -270,10 +276,10 @@ export async function addExecutiveApprovalSteps(
       sequence++;
     }
 
-    console.log('Returning executive flows:', executiveFlows.length);
+    console.log('[ManCom] Returning executive flows:', executiveFlows.length, executiveFlows);
     return executiveFlows;
   } catch (error) {
-    console.error('Error adding executive approval steps:', error);
+    console.error('[ManCom] Error adding executive approval steps:', error);
     return approvalFlows;
   }
 }

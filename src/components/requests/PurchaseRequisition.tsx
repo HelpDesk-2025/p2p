@@ -1104,25 +1104,30 @@ export function PurchaseRequisition() {
 
           // Add executive approval steps: use payee's routing for ManCom expenses, else requester's
           let resolvedMancomPayeeId = mancomPayeeUserId;
+          console.log('[ManCom Submit] is_mancom_expense:', formData.is_mancom_expense, 'payee:', formData.payee, 'mancomPayeeUserId state:', mancomPayeeUserId, 'mancomRoutingStatus:', mancomRoutingStatus);
           if (formData.is_mancom_expense && formData.payee.trim() && !resolvedMancomPayeeId) {
-            const { data: payeeLookup } = await supabase
+            const { data: payeeLookup, error: payeeLookupError } = await supabase
               .from('user_profiles')
               .select('id, approver_type')
               .ilike('full_name', formData.payee.trim())
               .maybeSingle();
+            console.log('[ManCom Submit] Fallback lookup result:', payeeLookup, 'error:', payeeLookupError);
             if (payeeLookup && payeeLookup.approver_type === 'Executive') {
               resolvedMancomPayeeId = payeeLookup.id;
             }
           }
+          console.log('[ManCom Submit] resolvedMancomPayeeId:', resolvedMancomPayeeId, 'profile.id:', profile.id);
           const executiveUserId = (formData.is_mancom_expense && resolvedMancomPayeeId)
             ? resolvedMancomPayeeId
             : profile.id;
+          console.log('[ManCom Submit] executiveUserId:', executiveUserId);
           let flowsWithExecutive = await addExecutiveApprovalSteps(
             rawApprovalFlows,
             executiveUserId,
             requestCompanyId,
             (formData.is_mancom_expense && resolvedMancomPayeeId) ? true : !!formData.is_budgeted
           );
+          console.log('[ManCom Submit] flowsWithExecutive:', flowsWithExecutive);
 
           // Filter out requester from approval flows
           const approvalFlows = await filterApprovalFlowsForRequester(
