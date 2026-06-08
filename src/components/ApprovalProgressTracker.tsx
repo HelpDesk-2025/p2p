@@ -124,13 +124,27 @@ export function ApprovalProgressTracker({
 
             // For Petty Cash, the configured Approval Flow Setup is the source of truth
             // (Expense Category drives which workflow is used), so executive override is skipped.
+            let executiveUserId = requesterId;
+            // For ManCom expenses, use the payee's executive routing instead of the requester's
+            if (isPR && data.is_mancom_expense && data.payee) {
+              const { data: payeeUsers } = await supabase
+                .from('user_profiles')
+                .select('id, approver_type')
+                .ilike('full_name', data.payee.trim())
+                .eq('approver_type', 'Executive')
+                .limit(1);
+              if (payeeUsers && payeeUsers.length > 0) {
+                executiveUserId = payeeUsers[0].id;
+              }
+            }
+
             const flowsWithExecutive = isPettyCash
               ? (rawFlows || [])
               : await addExecutiveApprovalSteps(
                   rawFlows || [],
-                  requesterId,
+                  executiveUserId,
                   companyId,
-                  isBudgeted
+                  (isPR && data.is_mancom_expense) ? true : isBudgeted
                 );
 
             console.log('Flows after executive check:', flowsWithExecutive?.length || 0);

@@ -1103,17 +1103,19 @@ export function PurchaseRequisition() {
           }
 
           // Add executive approval steps: use payee's routing for ManCom expenses, else requester's
-          let resolvedMancomPayeeId = mancomPayeeUserId;
+          let resolvedMancomPayeeId: string | null = null;
           console.log('[ManCom Submit] is_mancom_expense:', formData.is_mancom_expense, 'payee:', formData.payee, 'mancomPayeeUserId state:', mancomPayeeUserId, 'mancomRoutingStatus:', mancomRoutingStatus);
-          if (formData.is_mancom_expense && formData.payee.trim() && !resolvedMancomPayeeId) {
-            const { data: payeeLookup, error: payeeLookupError } = await supabase
+          if (formData.is_mancom_expense && formData.payee.trim()) {
+            // Always do a fresh lookup to guarantee correct payee resolution
+            const { data: payeeLookupArr, error: payeeLookupError } = await supabase
               .from('user_profiles')
               .select('id, approver_type')
               .ilike('full_name', formData.payee.trim())
-              .maybeSingle();
-            console.log('[ManCom Submit] Fallback lookup result:', payeeLookup, 'error:', payeeLookupError);
-            if (payeeLookup && payeeLookup.approver_type === 'Executive') {
-              resolvedMancomPayeeId = payeeLookup.id;
+              .eq('approver_type', 'Executive')
+              .limit(1);
+            console.log('[ManCom Submit] Payee lookup:', payeeLookupArr, 'error:', payeeLookupError);
+            if (payeeLookupArr && payeeLookupArr.length > 0) {
+              resolvedMancomPayeeId = payeeLookupArr[0].id;
             }
           }
           console.log('[ManCom Submit] resolvedMancomPayeeId:', resolvedMancomPayeeId, 'profile.id:', profile.id);
