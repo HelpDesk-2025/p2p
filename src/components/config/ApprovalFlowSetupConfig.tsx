@@ -865,9 +865,20 @@ export function ApprovalFlowSetupConfig() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-700">
-                              Alternate Approver <span className="text-slate-400 font-normal">(optional — either can approve)</span>
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-semibold text-slate-700">
+                                Alternate Approver <span className="text-slate-400 font-normal">(optional — either can approve)</span>
+                              </label>
+                              {newStepData.alternate_approver_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setNewStepData({ ...newStepData, alternate_approver_id: "" }); setAlternateUserSearchQuery(""); }}
+                                  className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
                             <input
                               type="text"
                               placeholder="Search users..."
@@ -996,9 +1007,20 @@ export function ApprovalFlowSetupConfig() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-xs font-semibold text-slate-700">
-                              Alternate Approver <span className="text-slate-400 font-normal">(optional — either can approve)</span>
-                            </label>
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-semibold text-slate-700">
+                                Alternate Approver <span className="text-slate-400 font-normal">(optional — either can approve)</span>
+                              </label>
+                              {newStepData.alternate_approver_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setNewStepData({ ...newStepData, alternate_approver_id: "" }); setAlternateUserSearchQuery(""); }}
+                                  className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
                             <input
                               type="text"
                               placeholder="Search users..."
