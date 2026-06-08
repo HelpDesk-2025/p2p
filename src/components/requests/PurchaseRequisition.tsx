@@ -1117,16 +1117,81 @@ export function PurchaseRequisition() {
             }
           }
           console.log('[ManCom Submit] resolvedMancomPayeeId:', resolvedMancomPayeeId, 'profile.id:', profile.id);
-          const executiveUserId = (formData.is_mancom_expense && resolvedMancomPayeeId)
-            ? resolvedMancomPayeeId
-            : profile.id;
-          console.log('[ManCom Submit] executiveUserId:', executiveUserId);
-          let flowsWithExecutive = await addExecutiveApprovalSteps(
-            rawApprovalFlows,
-            executiveUserId,
-            requestCompanyId,
-            (formData.is_mancom_expense && resolvedMancomPayeeId) ? true : !!formData.is_budgeted
-          );
+
+          let flowsWithExecutive: typeof rawApprovalFlows;
+
+          if (formData.is_mancom_expense && resolvedMancomPayeeId) {
+            // For ManCom expenses: directly build approval flow from payee's executive_approval_steps (budgeted)
+            const { data: execSteps, error: execStepsError } = await supabase
+              .from('executive_approval_steps')
+              .select('step_type, email, sequence')
+              .eq('user_profile_id', resolvedMancomPayeeId)
+              .eq('category', 'budgeted')
+              .order('sequence', { ascending: true });
+
+            console.log('[ManCom Submit] executive_approval_steps query result:', execSteps, 'error:', execStepsError);
+
+            if (execSteps && execSteps.length > 0) {
+              // Resolve emails to user profiles
+              const stepEmails = execSteps.map(s => s.email).filter(Boolean);
+              const { data: stepUsers } = await supabase
+                .from('user_profiles')
+                .select('id, full_name, email')
+                .in('email', stepEmails);
+
+              console.log('[ManCom Submit] stepUsers lookup:', stepUsers);
+
+              const userByEmail: Record<string, { id: string; full_name: string | null; email: string }> = {};
+              (stepUsers || []).forEach((u: any) => { userByEmail[u.email] = u; });
+
+              const executiveFlows: typeof rawApprovalFlows = [];
+              let seq = 1;
+              for (const step of execSteps) {
+                const user = userByEmail[step.email];
+                if (!user) {
+                  console.warn('[ManCom Submit] No user found for email:', step.email);
+                  continue;
+                }
+                const label = step.step_type === 'approver' ? 'Approver' : 'Checker';
+                executiveFlows.push({
+                  id: `executive-${step.step_type}-${seq}-${resolvedMancomPayeeId}`,
+                  company_id: requestCompanyId,
+                  department_id: null,
+                  approver_type: `${user.full_name} (${label})`,
+                  sequence: seq,
+                  days_to_approve: 3,
+                  is_required: true,
+                  is_active: true,
+                  workflow_type: 1,
+                  user_id: user.id,
+                  alternate_approver_id: null,
+                  approval_flow_setup_id: 'executive-approval',
+                  for_checking: step.step_type === 'checker',
+                });
+                seq++;
+              }
+
+              console.log('[ManCom Submit] Built executive flows:', executiveFlows.length, executiveFlows);
+
+              if (executiveFlows.length > 0) {
+                flowsWithExecutive = executiveFlows;
+              } else {
+                flowsWithExecutive = await addExecutiveApprovalSteps(
+                  rawApprovalFlows, resolvedMancomPayeeId, requestCompanyId, true
+                );
+              }
+            } else {
+              // Fallback: use addExecutiveApprovalSteps
+              flowsWithExecutive = await addExecutiveApprovalSteps(
+                rawApprovalFlows, resolvedMancomPayeeId, requestCompanyId, true
+              );
+            }
+          } else {
+            // Non-ManCom: use regular executive steps for requester
+            flowsWithExecutive = await addExecutiveApprovalSteps(
+              rawApprovalFlows, profile.id, requestCompanyId, !!formData.is_budgeted
+            );
+          }
           console.log('[ManCom Submit] flowsWithExecutive:', flowsWithExecutive);
 
           // Filter out requester from approval flows
