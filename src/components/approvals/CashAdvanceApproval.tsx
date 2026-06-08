@@ -62,8 +62,6 @@ export function CashAdvanceApproval() {
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
-  const [showPdfPreview, setShowPdfPreview] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [outstandingAsl, setOutstandingAsl] = useState('None');
   const [remarks, setRemarks] = useState('OK');
   const [paymentModeName, setPaymentModeName] = useState<string | null>(null);
@@ -325,20 +323,11 @@ export function CashAdvanceApproval() {
       if (error) throw error;
 
       const url = URL.createObjectURL(data);
-      setPdfPreviewUrl(url);
-      setShowPdfPreview(true);
+      window.open(url, '_blank');
     } catch (error) {
       console.error('Error loading PDF preview:', error);
       alert('Failed to load PDF preview');
     }
-  };
-
-  const closePdfPreview = () => {
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-    }
-    setPdfPreviewUrl(null);
-    setShowPdfPreview(false);
   };
 
   const handleAction = async (action: 'approved' | 'rejected') => {
@@ -1353,37 +1342,6 @@ export function CashAdvanceApproval() {
                   </>
                 ) : null}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPdfPreview && pdfPreviewUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900">Attachments Preview</h3>
-              <button
-                onClick={closePdfPreview}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={pdfPreviewUrl}
-                className="w-full h-full"
-                title="PDF Preview"
-              />
-            </div>
-            <div className="p-4 border-t border-slate-200 flex justify-end">
-              <button
-                onClick={closePdfPreview}
-                className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

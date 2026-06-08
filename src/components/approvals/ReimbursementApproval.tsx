@@ -61,11 +61,6 @@ export function ReimbursementApproval() {
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [linkedRequestDetails, setLinkedRequestDetails] = useState<any>(null);
-  const [showPdfPreview, setShowPdfPreview] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [pdfPreviewTitle, setPdfPreviewTitle] = useState<string>('');
-  const [showLinkedPdfPreview, setShowLinkedPdfPreview] = useState(false);
-  const [linkedPdfPreviewUrl, setLinkedPdfPreviewUrl] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -196,7 +191,7 @@ export function ReimbursementApproval() {
     }
   };
 
-  const previewAttachments = async (pdfPath: string, title: string) => {
+  const previewAttachments = async (pdfPath: string, _title: string) => {
     try {
       const { data, error } = await supabase.storage
         .from('attachments')
@@ -206,7 +201,6 @@ export function ReimbursementApproval() {
 
       // Check if the merged PDF is empty (< 1KB means it has no actual content)
       if (data.size < 1024 && selectedRequest?.attachments && selectedRequest.attachments.length > 0) {
-        // Fall back to downloading individual attachments and merging on-the-fly
         const files: File[] = [];
         for (const att of selectedRequest.attachments as Array<{ path: string; name: string; type: string }>) {
           const { data: fileData, error: fileError } = await supabase.storage
@@ -219,30 +213,17 @@ export function ReimbursementApproval() {
         if (files.length > 0) {
           const mergedBlob = await mergeFilesToPDFBlob(files);
           const url = URL.createObjectURL(mergedBlob);
-          setPdfPreviewUrl(url);
-          setPdfPreviewTitle(title);
-          setShowPdfPreview(true);
+          window.open(url, '_blank');
           return;
         }
       }
 
       const url = URL.createObjectURL(data);
-      setPdfPreviewUrl(url);
-      setPdfPreviewTitle(title);
-      setShowPdfPreview(true);
+      window.open(url, '_blank');
     } catch (error) {
       console.error('Error loading PDF preview:', error);
       alert('Failed to load PDF preview');
     }
-  };
-
-  const closePdfPreview = () => {
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-    }
-    setPdfPreviewUrl(null);
-    setPdfPreviewTitle('');
-    setShowPdfPreview(false);
   };
 
   const previewLinkedRequest = async (pdfPath: string) => {
@@ -254,20 +235,11 @@ export function ReimbursementApproval() {
       if (error) throw error;
 
       const url = URL.createObjectURL(data);
-      setLinkedPdfPreviewUrl(url);
-      setShowLinkedPdfPreview(true);
+      window.open(url, '_blank');
     } catch (error) {
       console.error('Error loading PDF preview:', error);
       alert('Failed to load PDF preview');
     }
-  };
-
-  const closeLinkedPdfPreview = () => {
-    if (linkedPdfPreviewUrl) {
-      URL.revokeObjectURL(linkedPdfPreviewUrl);
-    }
-    setLinkedPdfPreviewUrl(null);
-    setShowLinkedPdfPreview(false);
   };
 
   const handleViewRequest = async (request: ReimbursementReq) => {
@@ -1215,52 +1187,6 @@ export function ReimbursementApproval() {
                 {returning ? <Loader2 size={20} className="animate-spin" /> : <CornerDownLeft size={20} />}
                 {returning ? 'Returning...' : 'Return to Maker'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPdfPreview && pdfPreviewUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900">{pdfPreviewTitle}</h3>
-              <button
-                onClick={closePdfPreview}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={pdfPreviewUrl}
-                className="w-full h-full"
-                title="PDF Preview"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showLinkedPdfPreview && linkedPdfPreviewUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-900">Approved {linkedRequestDetails?.type} Form Preview</h3>
-              <button
-                onClick={closeLinkedPdfPreview}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={linkedPdfPreviewUrl}
-                className="w-full h-full"
-                title="Linked Request Form Preview"
-              />
             </div>
           </div>
         </div>
