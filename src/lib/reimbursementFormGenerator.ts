@@ -306,7 +306,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   for (let i = 0; i < data.approvals.length; i++) {
     const colX = margin + ((i + 1) * colWidth) + 10;
-    const label = i === 0 ? 'Approved By' : 'Noted/Checked By';
+    const label = i === data.approvals.length - 1 ? 'Noted/Checked By' : 'Approved By';
     drawText(label, colX, signatoryY, 10, true);
   }
 
