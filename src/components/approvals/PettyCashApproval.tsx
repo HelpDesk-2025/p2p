@@ -1008,10 +1008,10 @@ export function PettyCashApproval() {
                 </div>
               )}
 
-              {selectedRequest.no_of_pax && (
+              {(selectedRequest.request_type === 'For Reimbursement' || (selectedRequest.no_of_pax != null && selectedRequest.no_of_pax > 0)) && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700">No. of Pax</label>
-                  <p className="text-slate-900">{selectedRequest.no_of_pax}</p>
+                  <p className="text-slate-900">{selectedRequest.no_of_pax || 0}</p>
                 </div>
               )}
 
