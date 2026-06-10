@@ -519,7 +519,8 @@ export function ReimbursementApproval() {
           'Approved',
           profile.full_name || 'Unknown',
           comments,
-          nextApprover.approver_type
+          nextApprover.approver_type,
+          selectedRequest.id
         );
       } else if (action === 'rejected') {
         // Send rejection email to requester

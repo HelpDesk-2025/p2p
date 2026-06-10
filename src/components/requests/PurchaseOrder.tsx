@@ -695,7 +695,8 @@ export function PurchaseOrder() {
       'Submitted',
       undefined,
       undefined,
-      firstApprover.approver_type
+      firstApprover.approver_type,
+      po.id
     );
   };
 

@@ -884,7 +884,8 @@ export function Canvass() {
             'Submitted',
             undefined,
             undefined,
-            firstApprover.approver_type
+            firstApprover.approver_type,
+            insertedRequest.id
           );
         }
       }
@@ -1029,7 +1030,8 @@ export function Canvass() {
         'Submitted',
         undefined,
         undefined,
-        firstApprover.approver_type
+        firstApprover.approver_type,
+        request.id
       );
 
       setShowViewModal(false);

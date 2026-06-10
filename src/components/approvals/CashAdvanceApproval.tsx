@@ -590,7 +590,8 @@ export function CashAdvanceApproval() {
           'Approved',
           profile.full_name || 'Unknown',
           comments,
-          nextApprover.approver_type
+          nextApprover.approver_type,
+          selectedRequest.id
         );
       } else if (action === 'approved' && isLastApproval) {
         await sendApprovalEmail(
