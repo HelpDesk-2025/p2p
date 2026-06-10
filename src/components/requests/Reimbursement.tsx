@@ -722,8 +722,7 @@ export function Reimbursement() {
             'Submitted',
             undefined,
             undefined,
-            firstApprover.approver_type,
-            insertedRequest.id
+            firstApprover.approver_type
           );
         }
       }
@@ -848,8 +847,7 @@ export function Reimbursement() {
         'Submitted',
         undefined,
         undefined,
-        firstApprover.approver_type,
-        request.id
+        firstApprover.approver_type
       );
 
       setShowViewModal(false);

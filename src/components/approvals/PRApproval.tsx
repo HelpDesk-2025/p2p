@@ -631,8 +631,7 @@ export function PRApproval() {
             'Approved',
             profile.full_name || 'Unknown',
             comments,
-            nextApprover.approver_type,
-            selectedRequest.id
+            nextApprover.approver_type
           );
 
           console.log(`✅ Step ${currentLevel + 1} approved, waiting for Step ${nextLevel + 1}`);

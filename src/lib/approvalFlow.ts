@@ -379,33 +379,6 @@ export async function createApprovalLedgerEntry(
   }
 }
 
-export async function notifyApprover(
-  approverUserId: string,
-  requestType: string,
-  requestNumber: string,
-  requestId: string,
-  requesterName: string,
-  targetView: string
-): Promise<void> {
-  try {
-    const { error } = await supabase.from('user_notifications').insert({
-      user_id: approverUserId,
-      title: 'Pending Your Approval',
-      message: `${requesterName} submitted ${requestType} ${requestNumber} for your approval`,
-      notification_type: 'system',
-      request_type: requestType,
-      request_number: requestNumber,
-      request_id: requestId,
-      target_view: targetView,
-    });
-    if (error) {
-      console.error('Error creating approver notification:', error);
-    }
-  } catch (err) {
-    console.error('Error notifying approver:', err);
-  }
-}
-
 export async function sendApprovalEmail(
   recipientEmail: string,
   recipientName: string,
@@ -588,8 +561,7 @@ export async function sendApprovalEmailToAll(
   action: string,
   actionBy?: string,
   comments?: string,
-  nextApprover?: string,
-  requestId?: string
+  nextApprover?: string
 ): Promise<void> {
   const recipients = await getAllApproverEmails(approvalFlow, companyId, department);
   for (const recipient of recipients) {
@@ -606,29 +578,6 @@ export async function sendApprovalEmailToAll(
       comments,
       nextApprover
     );
-  }
-
-  // Create in-app notification for the approver(s) when a request needs their action
-  if (requestId && (action === 'Submitted' || action === 'Approved')) {
-    const targetView = getTargetViewForRequestType(requestType);
-    if (approvalFlow.user_id) {
-      await notifyApprover(approvalFlow.user_id, requestType, documentNo, requestId, requesterName, targetView);
-    }
-    if (approvalFlow.alternate_approver_id) {
-      await notifyApprover(approvalFlow.alternate_approver_id, requestType, documentNo, requestId, requesterName, targetView);
-    }
-  }
-}
-
-function getTargetViewForRequestType(requestType: string): string {
-  switch (requestType) {
-    case 'Purchase Requisition': return 'pr-approval';
-    case 'Canvass': return 'canvass-approval';
-    case 'Petty Cash': return 'petty-cash-approval';
-    case 'Cash Advance': return 'cash-advance-approval';
-    case 'Reimbursement': return 'reimbursement-approval';
-    case 'Purchase Order': return 'po-approval';
-    default: return 'dashboard';
   }
 }
 

@@ -850,8 +850,7 @@ export function PettyCash() {
             'Submitted',
             undefined,
             undefined,
-            firstApprover.approver_type,
-            insertedRequest.id
+            firstApprover.approver_type
           );
         }
       }
@@ -968,8 +967,7 @@ export function PettyCash() {
         'Submitted',
         undefined,
         undefined,
-        firstApprover.approver_type,
-        request.id
+        firstApprover.approver_type
       );
 
       setShowViewModal(false);

@@ -408,8 +408,7 @@ export function PettyCashApproval() {
           'Approved',
           profile.full_name || 'Unknown',
           comments,
-          nextApprover.approver_type,
-          selectedRequest.id
+          nextApprover.approver_type
         );
       } else if (action === 'approved' && isLastApproval) {
         if (selectedRequest.request_type === 'For Liquidation') {

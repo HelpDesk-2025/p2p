@@ -440,8 +440,7 @@ export function POApproval() {
               'Approved',
               profile.full_name || 'Unknown',
               comments,
-              nextApprover.approver_type,
-              selectedRequest.id
+              nextApprover.approver_type
             );
           }
         } else {

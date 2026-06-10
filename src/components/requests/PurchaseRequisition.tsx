@@ -1251,8 +1251,7 @@ export function PurchaseRequisition() {
             'Submitted',
             undefined,
             undefined,
-            firstApprover.approver_type,
-            insertedPR.id
+            firstApprover.approver_type
           );
 
           console.log('✅ Approval process initiated successfully');
@@ -1502,8 +1501,7 @@ export function PurchaseRequisition() {
         'Submitted',
         undefined,
         undefined,
-        firstApprover.approver_type,
-        request.id
+        firstApprover.approver_type
       );
 
       setShowViewModal(false);
