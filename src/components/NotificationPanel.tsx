@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, X, CheckCircle, XCircle, RotateCcw, Send, Ban, UserCheck, Info, CheckCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -175,19 +176,22 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
         )}
       </button>
 
-      {/* Backdrop */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-[60] transition-opacity"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {/* Portal: Render backdrop + panel at document body to avoid sidebar transform clipping */}
+      {createPortal(
+        <>
+          {/* Backdrop */}
+          {isOpen && (
+            <div
+              className="fixed inset-0 bg-black/30 z-[60] transition-opacity"
+              onClick={() => setIsOpen(false)}
+            />
+          )}
 
-      {/* Slide-out Panel */}
-      <div
-        ref={panelRef}
-        className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
-      >
+          {/* Slide-out Panel */}
+          <div
+            ref={panelRef}
+            className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          >
         {/* Panel Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-2">
@@ -278,6 +282,9 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
           )}
         </div>
       </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
