@@ -221,7 +221,7 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         ) : totalCount > 0 ? (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-slate-400 text-white text-[11px] font-bold px-1 leading-none">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1 leading-none">
             {totalCount > 99 ? '99+' : totalCount}
           </span>
         ) : null}
@@ -370,3 +370,6 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
     </>
   );
 }
+
+
+export { NotificationBell }
