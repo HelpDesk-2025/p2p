@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { hasPermission, hasAnyPermission, MODULE_PERMISSIONS } from '../lib/permissions';
 import { supabase } from '../lib/supabase';
 import { ImpersonationBanner } from './ImpersonationBanner';
+import { NotificationBell } from './NotificationPanel';
 import {
   LayoutDashboard,
   FileText,
@@ -349,8 +350,13 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
               <img src="/p2p_logo.png" alt="Point to Point" className="h-10 w-auto object-contain" />
               <span className="text-2xl font-bold text-slate-900">P2P</span>
             </div>
-            <p className="text-sm text-slate-600 truncate">{profile?.full_name}</p>
-            <p className="text-xs text-slate-500 capitalize truncate">{profile?.role}</p>
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-slate-600 truncate">{profile?.full_name}</p>
+                <p className="text-xs text-slate-500 capitalize truncate">{profile?.role}</p>
+              </div>
+              <NotificationBell onNavigate={(view) => { onViewChange(view); setMobileMenuOpen(false); }} />
+            </div>
           </div>
 
           <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4">
