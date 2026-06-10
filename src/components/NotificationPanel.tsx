@@ -370,6 +370,3 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
     </>
   );
 }
-
-
-export { NotificationBell }
