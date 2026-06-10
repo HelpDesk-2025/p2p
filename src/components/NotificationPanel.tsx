@@ -71,8 +71,26 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
   const [hasMore, setHasMore] = useState(true);
   const [pulse, setPulse] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const [filterCounts, setFilterCounts] = useState<Record<string, number>>({});
   const panelRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 30;
+
+  const fetchFilterCounts = useCallback(async () => {
+    if (!profile?.id) return;
+    const types: FilterTab[] = ['approval', 'rejection', 'submission', 'cancellation', 'return'];
+    const counts: Record<string, number> = {};
+    await Promise.all(
+      types.map(async (type) => {
+        const { count } = await supabase
+          .from('user_notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', profile.id)
+          .eq('notification_type', type);
+        counts[type] = count || 0;
+      })
+    );
+    setFilterCounts(counts);
+  }, [profile?.id]);
 
   const fetchNotifications = useCallback(async (offset = 0, append = false, filter: FilterTab = 'all') => {
     if (!profile?.id) return;
@@ -114,7 +132,8 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
   useEffect(() => {
     fetchUnreadCount();
     fetchNotifications(0, false, 'all');
-  }, [fetchUnreadCount, fetchNotifications]);
+    fetchFilterCounts();
+  }, [fetchUnreadCount, fetchNotifications, fetchFilterCounts]);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -187,19 +206,25 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
     fetchNotifications(notifications.length, true, activeFilter);
   };
 
+  const totalCount = notifications.length;
+
   return (
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="relative p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+        className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors group"
         title="Notifications"
       >
-        <Bell size={20} className={`text-slate-600 ${pulse ? 'animate-bounce' : ''}`} />
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 leading-none">
+        <Bell size={20} className={`text-slate-600 group-hover:text-slate-900 transition-colors ${pulse ? 'animate-bounce' : ''}`} />
+        {unreadCount > 0 ? (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-bold px-1 leading-none shadow-sm animate-in">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
-        )}
+        ) : totalCount > 0 ? (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-slate-400 text-white text-[11px] font-bold px-1 leading-none">
+            {totalCount > 99 ? '99+' : totalCount}
+          </span>
+        ) : null}
       </button>
 
       {createPortal(
@@ -247,19 +272,29 @@ export function NotificationBell({ onNavigate }: NotificationPanelProps) {
 
             {/* Filter Tabs */}
             <div className="flex gap-1 px-4 py-2.5 border-b border-slate-100 bg-white flex-shrink-0 overflow-x-auto">
-              {FILTER_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => handleFilterChange(tab.key)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-                    activeFilter === tab.key
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+              {FILTER_TABS.map((tab) => {
+                const count = tab.key === 'all' ? Object.values(filterCounts).reduce((a, b) => a + b, 0) : (filterCounts[tab.key] || 0);
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => handleFilterChange(tab.key)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors flex items-center gap-1 ${
+                      activeFilter === tab.key
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                    {count > 0 && (
+                      <span className={`min-w-[16px] h-[16px] flex items-center justify-center rounded-full text-[10px] font-bold px-0.5 ${
+                        activeFilter === tab.key ? 'bg-white/20 text-white' : 'bg-slate-300/60 text-slate-700'
+                      }`}>
+                        {count > 99 ? '99+' : count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Notification List */}
