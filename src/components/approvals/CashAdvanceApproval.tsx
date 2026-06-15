@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send, CornerDownLeft } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send, CornerDownLeft, FileText } from 'lucide-react';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
@@ -1308,6 +1308,30 @@ export function CashAdvanceApproval() {
                   <p className="text-sm text-green-800 font-semibold">
                     This request has been fully approved.
                   </p>
+                </div>
+              )}
+
+              {selectedRequest.status === 'approved' && profile.role === 'admin' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Admin Actions</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleRegenerateRFP}
+                      disabled={regeneratingRfp || repostingToMsbc}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-medium"
+                    >
+                      {regeneratingRfp ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                      {regeneratingRfp ? 'Regenerating...' : 'Regenerate RFP'}
+                    </button>
+                    <button
+                      onClick={handleRepostToMsbc}
+                      disabled={regeneratingRfp || repostingToMsbc}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-medium"
+                    >
+                      {repostingToMsbc ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {repostingToMsbc ? 'Reposting...' : 'Repost to MSBC'}
+                    </button>
+                  </div>
                 </div>
               )}
 
