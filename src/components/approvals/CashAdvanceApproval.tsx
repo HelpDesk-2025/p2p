@@ -363,7 +363,7 @@ export function CashAdvanceApproval() {
       const isLastApproval = nextLevel >= approvalFlows.length || currentLevel >= approvalFlows.length;
       const newStatus = action === 'rejected' ? 'rejected' : (isLastApproval ? 'approved' : 'pending');
 
-      // Create approval ledger entry FIRST (before PDF generation and status update)
+      // Create approval ledger entry FIRST
       await createApprovalLedgerEntry(
         'Cash Advance',
         selectedRequest.id,
@@ -377,159 +377,7 @@ export function CashAdvanceApproval() {
         currentApproverStep?.for_checking || false
       );
 
-      let approvedCaPdfPath: string | null = null;
-
-      // Generate PDF if this is the last approval (BEFORE updating status)
-      if (action === 'approved' && isLastApproval) {
-        const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
-        const { generateRFP } = await import('../../lib/rfpGenerator');
-
-        const { data: companyData } = await supabase
-          .from('companies')
-          .select('name')
-          .eq('id', selectedRequest.company_id)
-          .single();
-
-        const { data: requestorData } = await supabase
-          .from('user_profiles')
-          .select('full_name, e_sig')
-          .eq('id', selectedRequest.requester_id)
-          .single();
-
-        const { data: payeeData } = await supabase
-          .from('user_profiles')
-          .select('e_sig')
-          .eq('full_name', selectedRequest.payee)
-          .maybeSingle();
-
-        // Get ALL approval records (including checkers) for Cash Advance form using enhanced retry logic
-        const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
-          selectedRequest.id,
-          'Cash Advance',
-          selectedRequest.current_level || 1
-        );
-
-        // Manually add current approver if not found (due to transaction timing)
-        const currentApproverInLedger = approvalRecordsWithSigs.some(
-          record => record.approver_name === profile.full_name
-        );
-
-        if (!currentApproverInLedger) {
-          approvalRecordsWithSigs.push({
-            approver_name: profile.full_name || 'Unknown',
-            approver_esig: profile.e_sig || null,
-            approval_date: new Date().toISOString(),
-            sequence: selectedRequest.current_approval_level + 1,
-            for_checking: currentApproverStep?.for_checking || false
-          });
-        }
-
-        const finalApprovalRecords = approvalRecordsWithSigs;
-
-        const approvedCaFormBytes = await generateCashAdvanceForm({
-          caNumber: selectedRequest.ca_number,
-          requestedBy: requestorData?.full_name || 'Unknown',
-          requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
-          amount: selectedRequest.amount,
-          company: companyData?.name || 'N/A',
-          department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
-          purpose: selectedRequest.purpose,
-          payee: selectedRequest.payee || 'Unknown',
-          payeeEsig: payeeData?.e_sig || null,
-          requestorEsig: requestorData?.e_sig || null,
-          outstandingAsl: outstandingAsl,
-          outstandingAslDate: new Date().toLocaleDateString(),
-          remarks: remarks,
-          approvals: finalApprovalRecords
-        });
-
-        let paymentModeName = '';
-        const paymentModeLines: Array<{ label: string; value: string }> = [];
-
-        if (selectedRequest.payment_mode_id) {
-          const { data: paymentModeData } = await supabase
-            .from('payment_modes')
-            .select('mode_name')
-            .eq('id', selectedRequest.payment_mode_id)
-            .maybeSingle();
-
-          paymentModeName = paymentModeData?.mode_name || '';
-
-          if (selectedRequest.payment_mode_lines) {
-            selectedRequest.payment_mode_lines.forEach((line) => {
-              paymentModeLines.push({
-                label: line.name,
-                value: line.value
-              });
-            });
-          }
-        }
-
-        // Filter out checkers for RFP (only include actual approvers, not for_checking)
-        const rfpApprovals = finalApprovalRecords.filter(record => !record.for_checking);
-
-        const rfpBytes = await generateRFP({
-          companyName: companyData?.name || 'N/A',
-          requestType: 'Cash Advance',
-          documentNumber: selectedRequest.ca_number,
-          dateOfRequest: new Date(selectedRequest.request_date).toLocaleDateString(),
-          payee: selectedRequest.payee || 'Unknown',
-          purpose: selectedRequest.purpose,
-          dateNeeded: selectedRequest.date_needed ? new Date(selectedRequest.date_needed).toLocaleDateString() : 'N/A',
-          amount: selectedRequest.amount,
-          budgeted: selectedRequest.budgeted,
-          paymentMode: paymentModeName,
-          paymentModeLines: paymentModeLines,
-          requestorName: requestorData?.full_name || 'Unknown',
-          requestorEsig: requestorData?.e_sig || null,
-          approvals: rfpApprovals
-        });
-
-        const { mergePDFBytes } = await import('../../lib/pdfMerger');
-
-        const pdfsToMerge: Uint8Array[] = [rfpBytes, approvedCaFormBytes];
-
-        if (selectedRequest.attachments_pdf_path) {
-          try {
-            const { data: attachmentData, error: attachmentError } = await supabase.storage
-              .from('attachments')
-              .download(selectedRequest.attachments_pdf_path);
-
-            if (!attachmentError && attachmentData) {
-              const attachmentBytes = new Uint8Array(await attachmentData.arrayBuffer());
-              pdfsToMerge.push(attachmentBytes);
-            }
-          } catch (error) {
-            console.error('Error downloading attachments:', error);
-          }
-        }
-
-        const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
-
-        const mergedFileName = `CA_${selectedRequest.ca_number}_Complete_${Date.now()}.pdf`;
-        const { data: mergedUploadData, error: mergedUploadError } = await supabase.storage
-          .from('attachments')
-          .upload(mergedFileName, mergedPdfBytes, {
-            contentType: 'application/pdf',
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (mergedUploadError) throw mergedUploadError;
-        approvedCaPdfPath = mergedUploadData.path;
-
-        const { error: pdfUpdateError } = await supabase
-          .from('cash_advance_requests')
-          .update({
-            rfp_pdf_path: null,
-            approved_ca_pdf_path: approvedCaPdfPath
-          })
-          .eq('id', selectedRequest.id);
-
-        if (pdfUpdateError) throw pdfUpdateError;
-      }
-
-      // Update request status AFTER PDF generation (if applicable)
+      // Update request status IMMEDIATELY (before PDF generation to prevent stuck requests)
       const updateData: any = {
         status: newStatus,
         current_approval_level: action === 'approved' ? nextLevel : selectedRequest.current_approval_level
@@ -546,6 +394,156 @@ export function CashAdvanceApproval() {
         .eq('id', selectedRequest.id);
 
       if (updateError) throw updateError;
+
+      // Generate PDF if this is the last approval (non-blocking - status already saved)
+      if (action === 'approved' && isLastApproval) {
+        try {
+          const { generateCashAdvanceForm } = await import('../../lib/cashAdvanceFormGenerator');
+          const { generateRFP } = await import('../../lib/rfpGenerator');
+
+          const { data: companyData } = await supabase
+            .from('companies')
+            .select('name')
+            .eq('id', selectedRequest.company_id)
+            .single();
+
+          const { data: requestorData } = await supabase
+            .from('user_profiles')
+            .select('full_name, e_sig')
+            .eq('id', selectedRequest.requester_id)
+            .single();
+
+          const { data: payeeData } = await supabase
+            .from('user_profiles')
+            .select('e_sig')
+            .eq('full_name', selectedRequest.payee)
+            .maybeSingle();
+
+          const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
+            selectedRequest.id,
+            'Cash Advance',
+            selectedRequest.current_level || 1
+          );
+
+          const currentApproverInLedger = approvalRecordsWithSigs.some(
+            record => record.approver_name === profile.full_name
+          );
+
+          if (!currentApproverInLedger) {
+            approvalRecordsWithSigs.push({
+              approver_name: profile.full_name || 'Unknown',
+              approver_esig: profile.e_sig || null,
+              approval_date: new Date().toISOString(),
+              sequence: selectedRequest.current_approval_level + 1,
+              for_checking: currentApproverStep?.for_checking || false
+            });
+          }
+
+          const finalApprovalRecords = approvalRecordsWithSigs;
+
+          const approvedCaFormBytes = await generateCashAdvanceForm({
+            caNumber: selectedRequest.ca_number,
+            requestedBy: requestorData?.full_name || 'Unknown',
+            requestDate: new Date(selectedRequest.request_date).toLocaleDateString(),
+            amount: selectedRequest.amount,
+            company: companyData?.name || 'N/A',
+            department: selectedRequest.department || selectedRequest.user_profiles?.department || 'N/A',
+            purpose: selectedRequest.purpose,
+            payee: selectedRequest.payee || 'Unknown',
+            payeeEsig: payeeData?.e_sig || null,
+            requestorEsig: requestorData?.e_sig || null,
+            outstandingAsl: outstandingAsl,
+            outstandingAslDate: new Date().toLocaleDateString(),
+            remarks: remarks,
+            approvals: finalApprovalRecords
+          });
+
+          let paymentModeName = '';
+          const paymentModeLines: Array<{ label: string; value: string }> = [];
+
+          if (selectedRequest.payment_mode_id) {
+            const { data: paymentModeData } = await supabase
+              .from('payment_modes')
+              .select('mode_name')
+              .eq('id', selectedRequest.payment_mode_id)
+              .maybeSingle();
+
+            paymentModeName = paymentModeData?.mode_name || '';
+
+            if (selectedRequest.payment_mode_lines) {
+              selectedRequest.payment_mode_lines.forEach((line) => {
+                paymentModeLines.push({
+                  label: line.name,
+                  value: line.value
+                });
+              });
+            }
+          }
+
+          const rfpApprovals = finalApprovalRecords.filter(record => !record.for_checking);
+
+          const rfpBytes = await generateRFP({
+            companyName: companyData?.name || 'N/A',
+            requestType: 'Cash Advance',
+            documentNumber: selectedRequest.ca_number,
+            dateOfRequest: new Date(selectedRequest.request_date).toLocaleDateString(),
+            payee: selectedRequest.payee || 'Unknown',
+            purpose: selectedRequest.purpose,
+            dateNeeded: selectedRequest.date_needed ? new Date(selectedRequest.date_needed).toLocaleDateString() : 'N/A',
+            amount: selectedRequest.amount,
+            budgeted: selectedRequest.budgeted,
+            paymentMode: paymentModeName,
+            paymentModeLines: paymentModeLines,
+            requestorName: requestorData?.full_name || 'Unknown',
+            requestorEsig: requestorData?.e_sig || null,
+            approvals: rfpApprovals
+          });
+
+          const { mergePDFBytes } = await import('../../lib/pdfMerger');
+
+          const pdfsToMerge: Uint8Array[] = [rfpBytes, approvedCaFormBytes];
+
+          if (selectedRequest.attachments_pdf_path) {
+            try {
+              const { data: attachmentData, error: attachmentError } = await supabase.storage
+                .from('attachments')
+                .download(selectedRequest.attachments_pdf_path);
+
+              if (!attachmentError && attachmentData) {
+                const attachmentBytes = new Uint8Array(await attachmentData.arrayBuffer());
+                pdfsToMerge.push(attachmentBytes);
+              }
+            } catch (dlError) {
+              console.error('Error downloading attachments:', dlError);
+            }
+          }
+
+          const mergedPdfBytes = await mergePDFBytes(pdfsToMerge);
+
+          const mergedFileName = `CA_${selectedRequest.ca_number}_Complete_${Date.now()}.pdf`;
+          const { data: mergedUploadData, error: mergedUploadError } = await supabase.storage
+            .from('attachments')
+            .upload(mergedFileName, mergedPdfBytes, {
+              contentType: 'application/pdf',
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (!mergedUploadError && mergedUploadData) {
+            await supabase
+              .from('cash_advance_requests')
+              .update({
+                rfp_pdf_path: null,
+                approved_ca_pdf_path: mergedUploadData.path
+              })
+              .eq('id', selectedRequest.id);
+          } else {
+            console.error('Error uploading merged PDF:', mergedUploadError);
+          }
+        } catch (pdfError: any) {
+          console.error('Error generating PDF (status already updated):', pdfError);
+        }
+      }
 
       // Fire-and-forget audit trail logging
       logAuditTrail({
