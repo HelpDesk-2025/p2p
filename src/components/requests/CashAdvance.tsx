@@ -1120,7 +1120,7 @@ export function CashAdvance() {
       const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
         request.id,
         'Cash Advance',
-        request.current_level || 1
+        request.current_approval_level || 1
       );
 
       // Generate Approved Cash Advance Form with ALL approvers (including checkers)

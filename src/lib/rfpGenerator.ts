@@ -2,6 +2,18 @@ import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
 import { supabase } from './supabase';
 import { mergeRFPWithAttachments } from './pdfMerger';
 
+function formatApprovalDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
+      ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch {
+    return dateStr;
+  }
+}
+
 async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
   const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
   const mimeType = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
@@ -164,7 +176,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
   drawText('PURPOSE', leftMargin, yPosition, 10, true);
   // Wrap purpose text if too long
   const maxPurposeWidth = width - leftMargin - labelWidth - 100;
-  const purposeWords = data.purpose.split(' ');
+  const purposeWords = (data.purpose || '').replace(/[\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(w => w.length > 0);
   let currentLine = '';
   let purposeStartY = yPosition;
 
@@ -263,7 +275,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
     drawText(approval.approver_name, leftMargin, yPosition, 10, false);
     yPosition -= 15;
-    drawText(approval.approval_date, leftMargin, yPosition, 10, false);
+    drawText(formatApprovalDate(approval.approval_date), leftMargin, yPosition, 10, false);
   } else if (totalApprovals >= 2) {
     // Multiple approvers - first to second-to-last are recommending, last is final approval
     const recommendingApprovers = data.approvals.slice(0, -1);
@@ -293,7 +305,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
       drawText(approval.approver_name, leftMargin, leftY, 10, false);
       leftY -= 15;
-      drawText(approval.approval_date, leftMargin, leftY, 10, false);
+      drawText(formatApprovalDate(approval.approval_date), leftMargin, leftY, 10, false);
       leftY -= 30;
     }
 
@@ -321,7 +333,7 @@ export async function generateRFP(data: RFPData): Promise<Uint8Array> {
 
     drawText(finalApprover.approver_name, rightMargin, rightY, 10, false);
     rightY -= 15;
-    drawText(finalApprover.approval_date, rightMargin, rightY, 10, false);
+    drawText(formatApprovalDate(finalApprover.approval_date), rightMargin, rightY, 10, false);
 
     yPosition = Math.min(leftY, rightY);
   }
@@ -902,7 +914,7 @@ export async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint
 
     drawText(approval.approver_name, leftMargin, yPosition, 9, false);
     yPosition -= 12;
-    drawText(approval.approval_date, leftMargin, yPosition, 9, false);
+    drawText(formatApprovalDate(approval.approval_date), leftMargin, yPosition, 9, false);
   } else if (totalApprovals >= 2) {
     const recommendingApprovers = data.approvals.slice(0, -1);
     const finalApprover = data.approvals[data.approvals.length - 1];
@@ -930,7 +942,7 @@ export async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint
 
       drawText(approval.approver_name, leftMargin, leftY, 9, false);
       leftY -= 12;
-      drawText(approval.approval_date, leftMargin, leftY, 9, false);
+      drawText(formatApprovalDate(approval.approval_date), leftMargin, leftY, 9, false);
       leftY -= 20;
     }
 
@@ -957,7 +969,7 @@ export async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint
 
     drawText(finalApprover.approver_name, rightMargin, rightY, 9, false);
     rightY -= 12;
-    drawText(finalApprover.approval_date, rightMargin, rightY, 9, false);
+    drawText(formatApprovalDate(finalApprover.approval_date), rightMargin, rightY, 9, false);
   }
 
   return await pdfDoc.save();

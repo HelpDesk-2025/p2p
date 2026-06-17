@@ -1411,7 +1411,7 @@ export function PettyCash() {
       const ledgerData = await fetchApprovalRecordsWithRetry(
         viewingRequest.id,
         'Petty Cash',
-        viewingRequest.current_level || 1
+        viewingRequest.current_approval_level || 1
       );
 
       if (!ledgerData || ledgerData.length === 0) {
@@ -1567,7 +1567,7 @@ export function PettyCash() {
       const ledgerDataRecords = await fetchApprovalRecordsWithRetry(
         request.id,
         'Petty Cash',
-        request.current_level || 1
+        request.current_approval_level || 1
       );
 
       if (!ledgerDataRecords || ledgerDataRecords.length === 0) {

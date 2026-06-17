@@ -137,7 +137,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   detailY -= 20;
 
   drawText('Amount', leftColX, detailY, 10, true);
-  drawText(data.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  drawText(Number(data.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     leftColX + valueOffset, detailY, 10, false);
   drawText('Company', rightColX, detailY, 10, true);
   drawText(data.company, rightColX + 85, detailY, 10, false);
@@ -152,7 +152,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   detailY -= 15;
 
   const maxPurposeWidth = width - 2 * margin - 20;
-  const purposeWords = data.purpose.split(' ');
+  const purposeWords = (data.purpose || '').replace(/[\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(w => w.length > 0);
   let currentLine = '';
   let purposeY = detailY;
 

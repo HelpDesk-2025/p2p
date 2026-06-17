@@ -422,7 +422,7 @@ export function CashAdvanceApproval() {
           const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
             selectedRequest.id,
             'Cash Advance',
-            selectedRequest.current_level || 1
+            selectedRequest.current_approval_level || 1
           );
 
           const currentApproverInLedger = approvalRecordsWithSigs.some(
@@ -781,7 +781,7 @@ export function CashAdvanceApproval() {
       const approvalRecordsWithSigs = await fetchApprovalRecordsWithRetry(
         selectedRequest.id,
         'Cash Advance',
-        selectedRequest.current_level || 1
+        selectedRequest.current_approval_level || 1
       );
 
       // Generate Cash Advance Form with ALL approvers (including checkers)

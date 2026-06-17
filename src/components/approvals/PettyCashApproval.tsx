@@ -417,7 +417,7 @@ export function PettyCashApproval() {
             const ledgerDataRecords = await fetchApprovalRecordsWithRetry(
               selectedRequest.id,
               'Petty Cash',
-              selectedRequest.current_level || 1
+              selectedRequest.current_approval_level || 1
             );
 
             if (ledgerDataRecords && ledgerDataRecords.length > 0) {
