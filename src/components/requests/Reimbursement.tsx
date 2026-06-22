@@ -2445,8 +2445,7 @@ export function Reimbursement() {
                   </button>
                 )}
                 {viewingRequest.status === 'approved' && profile?.role === 'admin' && (
-                  ((viewingRequest as any).request_type === 'Liquidation' && viewingRequest.reimbursement_form_pdf_path) ||
-                  ((viewingRequest as any).request_type === 'Reimbursement' && viewingRequest.rfp_pdf_path && viewingRequest.reimbursement_form_pdf_path)
+                  (viewingRequest as any).msbc_posting_status === 'Success' || (viewingRequest as any).msbc_posting_status === 'Failed'
                 ) && (
                   <button
                     onClick={() => handlePostToMSBC(viewingRequest)}
@@ -2454,7 +2453,7 @@ export function Reimbursement() {
                     className="flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                    {(viewingRequest as any).msbc_posting_status === 'Success' ? 'Repost to MSBC' : 'Post to MSBC'}
+                    Repost to MSBC
                   </button>
                 )}
                 {(viewingRequest as any).msbc_posting_status && (

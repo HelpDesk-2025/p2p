@@ -7,6 +7,7 @@ import { mergeFilesToPDFBlob } from '../../lib/pdfMerger';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateReimbursementForm } from '../../lib/reimbursementFormGenerator';
+import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 import { logAuditTrail } from '../../lib/auditTrail';
 
@@ -680,6 +681,61 @@ export function ReimbursementApproval() {
         } catch (pdfError: any) {
           console.error('Error generating reimbursement form:', pdfError);
           // Don't fail the approval if PDF generation fails
+        }
+
+        // Auto-generate RFP and post to MSBC
+        try {
+          console.log('🎯 Final approval - generating RFP for Reimbursement/Liquidation');
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          const rfpPath = await generateAndUploadRFP(
+            'reimbursement',
+            selectedRequest.id,
+            selectedRequest.reimb_number
+          );
+
+          if (rfpPath) {
+            console.log('✅ RFP generated:', rfpPath);
+
+            // Determine which edge function to call based on request_type
+            const isLiquidation = selectedRequest.request_type === 'Liquidation';
+            const functionName = isLiquidation ? 'post-liquidation-to-msbc' : 'post-reimbursement-to-msbc';
+            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
+
+            console.log(`🚀 Auto-posting ${selectedRequest.request_type} to MSBC via ${functionName}...`);
+            const msbcResponse = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ requestId: selectedRequest.id }),
+            });
+
+            if (msbcResponse.ok) {
+              const msbcResult = await msbcResponse.json();
+              console.log('✅ MSBC posting successful:', msbcResult);
+            } else {
+              const errorData = await msbcResponse.json().catch(() => ({}));
+              console.error('❌ MSBC posting failed:', errorData);
+              await supabase
+                .from('reimbursement_requests')
+                .update({
+                  msbc_posting_status: 'Failed',
+                  msbc_error_message: errorData.message || 'Auto-posting failed after final approval',
+                })
+                .eq('id', selectedRequest.id);
+            }
+          }
+        } catch (msbcError: any) {
+          console.error('❌ Error in RFP generation or MSBC posting:', msbcError);
+          await supabase
+            .from('reimbursement_requests')
+            .update({
+              msbc_posting_status: 'Failed',
+              msbc_error_message: msbcError.message || 'Auto-posting failed',
+            })
+            .eq('id', selectedRequest.id);
         }
       }
 

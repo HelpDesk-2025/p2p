@@ -683,7 +683,7 @@ export function ApprovalProgressTracker({
 
                   {!msbcPostingStatus && (
                     <p className="text-sm text-slate-500 mt-1">
-                      Awaiting admin to post to MSBC...
+                      Will auto-post to MSBC after final approval...
                     </p>
                   )}
 
