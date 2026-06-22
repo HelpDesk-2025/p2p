@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
       paymentModeName,
     });
 
-    // Download and merge RFP + Reimbursement Form PDFs
+    // Download and merge Reimbursement Form + Attachments + RFP PDFs
     const rfpPath = reimb.rfp_pdf_path;
     const reimbFormPath = reimb.reimbursement_form_pdf_path;
 
@@ -128,17 +128,7 @@ Deno.serve(async (req: Request) => {
 
     const pdfParts: Uint8Array[] = [];
 
-    console.log('📥 Downloading RFP PDF from:', rfpPath);
-    const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
-      .from('attachments')
-      .download(rfpPath);
-
-    if (rfpDownloadError || !rfpData) {
-      throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
-    }
-    pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
-    console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
-
+    // 1. Reimbursement Form first
     console.log('📥 Downloading Reimbursement Form PDF from:', reimbFormPath);
     const { data: formData, error: formDownloadError } = await supabaseClient.storage
       .from('attachments')
@@ -150,8 +140,36 @@ Deno.serve(async (req: Request) => {
     pdfParts.push(new Uint8Array(await formData.arrayBuffer()));
     console.log('✅ Reimbursement Form PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
 
-    // Merge the two PDFs
-    console.log('🔀 Merging RFP + Reimbursement Form PDFs...');
+    // 2. User attachments (merged_pdf_path) if available
+    const mergedAttachmentsPath = reimb.merged_pdf_path;
+    if (mergedAttachmentsPath) {
+      console.log('📥 Downloading user attachments PDF from:', mergedAttachmentsPath);
+      const { data: attachData, error: attachDownloadError } = await supabaseClient.storage
+        .from('attachments')
+        .download(mergedAttachmentsPath);
+
+      if (attachDownloadError || !attachData) {
+        console.warn('⚠️ Failed to download user attachments PDF, continuing without:', attachDownloadError?.message);
+      } else {
+        pdfParts.push(new Uint8Array(await attachData.arrayBuffer()));
+        console.log('✅ User attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+      }
+    }
+
+    // 3. RFP last
+    console.log('📥 Downloading RFP PDF from:', rfpPath);
+    const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
+      .from('attachments')
+      .download(rfpPath);
+
+    if (rfpDownloadError || !rfpData) {
+      throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
+    }
+    pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
+    console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+
+    // Merge all PDFs: Reimbursement Form + Attachments + RFP
+    console.log('🔀 Merging Reimbursement Form + Attachments + RFP PDFs...');
     const finalPdfBytes = await mergePDFs(pdfParts);
     console.log('✅ PDFs merged, final size:', finalPdfBytes.length);
 

@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { PDFDocument } from 'npm:pdf-lib@1.17.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,20 @@ const corsHeaders = {
 const MSBC_USERNAME = 'SJGIPA';
 const MSBC_PASSWORD = 'Superteams2025';
 const MSBC_BASE_URL = 'https://st-joseph-group.com:7048/BC140/api/beta';
+
+async function mergePDFs(pdfByteArrays: Uint8Array[]): Promise<Uint8Array> {
+  const mergedPdf = await PDFDocument.create();
+  for (const pdfBytes of pdfByteArrays) {
+    try {
+      const pdf = await PDFDocument.load(pdfBytes);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+      copiedPages.forEach((page) => mergedPdf.addPage(page));
+    } catch (error) {
+      console.warn('Error loading PDF for merge:', error);
+    }
+  }
+  return await mergedPdf.save();
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -131,6 +146,8 @@ Deno.serve(async (req: Request) => {
       throw new Error('No liquidation form PDF found. Please generate the liquidation form before posting to MSBC.');
     }
 
+    const pdfParts: Uint8Array[] = [];
+
     console.log('📥 Downloading liquidation form PDF from:', liquidationFormPath);
     const { data: pdfData, error: pdfDownloadError } = await supabaseClient.storage
       .from('attachments')
@@ -139,11 +156,31 @@ Deno.serve(async (req: Request) => {
     if (pdfDownloadError || !pdfData) {
       throw new Error(`Failed to download liquidation form PDF: ${pdfDownloadError?.message}`);
     }
+    pdfParts.push(new Uint8Array(await pdfData.arrayBuffer()));
+    console.log('✅ Liquidation form PDF downloaded, size:', pdfParts[0].length);
 
-    const finalPdfBytes = new Uint8Array(await pdfData.arrayBuffer());
-    console.log('✅ Liquidation form PDF downloaded, size:', finalPdfBytes.length);
+    // Download user attachments (merged_pdf_path) if available
+    const mergedAttachmentsPath = reimb.merged_pdf_path;
+    if (mergedAttachmentsPath) {
+      console.log('📥 Downloading user attachments PDF from:', mergedAttachmentsPath);
+      const { data: attachData, error: attachDownloadError } = await supabaseClient.storage
+        .from('attachments')
+        .download(mergedAttachmentsPath);
 
-    const attachmentFileName = `${documentNumber}_LIQUIDATION_FORM.pdf`;
+      if (attachDownloadError || !attachData) {
+        console.warn('⚠️ Failed to download user attachments PDF, continuing without:', attachDownloadError?.message);
+      } else {
+        pdfParts.push(new Uint8Array(await attachData.arrayBuffer()));
+        console.log('✅ User attachments PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+      }
+    }
+
+    // Merge liquidation form + user attachments into one PDF
+    console.log('🔀 Merging Liquidation Form + Attachments...');
+    const finalPdfBytes = pdfParts.length > 1 ? await mergePDFs(pdfParts) : pdfParts[0];
+    console.log('✅ Final PDF ready, size:', finalPdfBytes.length);
+
+    const attachmentFileName = `${documentNumber}_LIQUIDATION.pdf`;
     console.log('✅ PDF ready, filename:', attachmentFileName);
 
     const basicAuth = btoa(`${MSBC_USERNAME}:${MSBC_PASSWORD}`);
