@@ -128,7 +128,19 @@ Deno.serve(async (req: Request) => {
 
     const pdfParts: Uint8Array[] = [];
 
-    // 1. Reimbursement Form first
+    // 1. RFP first
+    console.log('📥 Downloading RFP PDF from:', rfpPath);
+    const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
+      .from('attachments')
+      .download(rfpPath);
+
+    if (rfpDownloadError || !rfpData) {
+      throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
+    }
+    pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
+    console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
+
+    // 2. Reimbursement Form
     console.log('📥 Downloading Reimbursement Form PDF from:', reimbFormPath);
     const { data: formData, error: formDownloadError } = await supabaseClient.storage
       .from('attachments')
@@ -140,7 +152,7 @@ Deno.serve(async (req: Request) => {
     pdfParts.push(new Uint8Array(await formData.arrayBuffer()));
     console.log('✅ Reimbursement Form PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
 
-    // 2. User attachments (merged_pdf_path) if available
+    // 3. User attachments (merged_pdf_path) if available
     const mergedAttachmentsPath = reimb.merged_pdf_path;
     if (mergedAttachmentsPath) {
       console.log('📥 Downloading user attachments PDF from:', mergedAttachmentsPath);
@@ -156,20 +168,8 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 3. RFP last
-    console.log('📥 Downloading RFP PDF from:', rfpPath);
-    const { data: rfpData, error: rfpDownloadError } = await supabaseClient.storage
-      .from('attachments')
-      .download(rfpPath);
-
-    if (rfpDownloadError || !rfpData) {
-      throw new Error(`Failed to download RFP PDF: ${rfpDownloadError?.message}`);
-    }
-    pdfParts.push(new Uint8Array(await rfpData.arrayBuffer()));
-    console.log('✅ RFP PDF downloaded, size:', pdfParts[pdfParts.length - 1].length);
-
-    // Merge all PDFs: Reimbursement Form + Attachments + RFP
-    console.log('🔀 Merging Reimbursement Form + Attachments + RFP PDFs...');
+    // Merge all PDFs: RFP + Reimbursement Form + Attachments
+    console.log('🔀 Merging RFP + Reimbursement Form + Attachments PDFs...');
     const finalPdfBytes = await mergePDFs(pdfParts);
     console.log('✅ PDFs merged, final size:', finalPdfBytes.length);
 
