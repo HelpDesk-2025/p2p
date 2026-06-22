@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const documentNumber = reimb.reimb_number;
-    const batchNumber = documentNumber.replace(/^(REIMB)0+/, '$1');
+    const batchNumber = documentNumber.replace(/^([A-Za-z]+)0+/, '$1');
     const purchaseAmount = parseFloat(reimb.amount || 0);
     const dateNeeded = reimb.date_needed
       ? new Date(reimb.date_needed).toISOString().split('T')[0]

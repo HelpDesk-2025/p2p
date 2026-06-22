@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const documentNumber = reimb.reimb_number;
-    const batchNumber = documentNumber.replace(/^(REIMB)0+/, '$1');
+    const batchNumber = documentNumber.replace(/^([A-Za-z]+)0+/, '$1');
     const totalExpenditures = parseFloat(reimb.amount || 0);
     const cashAdvance = parseFloat(reimb.cash_advance || 0);
     const netAmount = totalExpenditures - cashAdvance;
