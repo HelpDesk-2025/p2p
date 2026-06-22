@@ -22,6 +22,7 @@ interface ReimbursementReq {
   purpose: string;
   amount: number;
   payment_mode_id?: string;
+  payment_mode_lines?: Array<{ name: string; value: string }>;
   status: string;
   current_approval_level: number;
   receipts?: any[];
@@ -66,9 +67,11 @@ export function ReimbursementApproval() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
+  const [paymentModes, setPaymentModes] = useState<any[]>([]);
 
   useEffect(() => {
     loadRequests();
+    loadPaymentModes();
   }, [profile]);
 
   const loadRequests = async () => {
@@ -115,6 +118,19 @@ export function ReimbursementApproval() {
       setRequests([]);
     }
     setListLoading(false);
+  };
+
+  const loadPaymentModes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_modes')
+        .select('*')
+        .eq('is_active', true)
+        .order('mode_name', { ascending: true });
+      if (!error) setPaymentModes(data || []);
+    } catch (error) {
+      console.error('Error loading payment modes:', error);
+    }
   };
 
   const loadLinkedRequestDetails = async (linkedId: string, type: 'Cash Advance' | 'Petty Cash') => {
@@ -1058,6 +1074,25 @@ export function ReimbursementApproval() {
                 <label className="text-sm font-semibold text-slate-700">Purpose</label>
                 <p className="text-slate-900">{selectedRequest.purpose}</p>
               </div>
+
+              {selectedRequest.request_type === 'Reimbursement' && selectedRequest.payment_mode_id && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
+                  <p className="text-slate-900 font-medium mb-2">
+                    {paymentModes.find(m => m.id === selectedRequest.payment_mode_id)?.mode_name || 'N/A'}
+                  </p>
+                  {selectedRequest.payment_mode_lines && selectedRequest.payment_mode_lines.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                      {selectedRequest.payment_mode_lines.map((line: any, idx: number) => (
+                        <div key={idx}>
+                          <label className="text-xs font-medium text-slate-600">{line.name}</label>
+                          <p className="text-sm text-slate-900">{line.value || 'N/A'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Expense Itemization */}
               {selectedRequest.expense_items && selectedRequest.expense_items.length > 0 && (
