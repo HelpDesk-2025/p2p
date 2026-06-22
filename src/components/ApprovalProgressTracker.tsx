@@ -31,6 +31,9 @@ export function ApprovalProgressTracker({
   const [msbcSyncStatus, setMsbcSyncStatus] = useState('');
   const [msbcSyncDate, setMsbcSyncDate] = useState<string | null>(null);
   const [msbcSyncError, setMsbcSyncError] = useState<string | null>(null);
+  const [msbcPostingStatus, setMsbcPostingStatus] = useState('');
+  const [msbcPostingDate, setMsbcPostingDate] = useState<string | null>(null);
+  const [msbcPostingError, setMsbcPostingError] = useState<string | null>(null);
   const [purchaseType, setPurchaseType] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,6 +69,11 @@ export function ApprovalProgressTracker({
         setMsbcSyncStatus(data.msbc_sync_status || (isApprovedOrBeyond ? 'pending' : ''));
         setMsbcSyncDate(data.msbc_sync_date || null);
         setMsbcSyncError(data.msbc_sync_error || null);
+
+        // Read MSBC posting columns (used by Reimbursement/Liquidation)
+        setMsbcPostingStatus(data.msbc_posting_status || '');
+        setMsbcPostingDate(data.msbc_posting_date || null);
+        setMsbcPostingError(data.msbc_error_message || null);
 
         // Store purchase type for PR requests
         if (requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') {
@@ -525,7 +533,7 @@ export function ApprovalProgressTracker({
             <span className="font-semibold">Request Fully Approved</span>
           </div>
 
-          {/* Hide MSBC sync for Purchase Order type PRs, Petty Cash, and Reimbursement */}
+          {/* Hide MSBC sync for Purchase Order type PRs and Petty Cash */}
           {!((requestType === 'Purchase Requisition' || requestType === 'purchase_requisition') && purchaseType === 'Purchase Order') &&
            !(requestType === 'Petty Cash' || requestType === 'petty_cash') &&
            !(requestType === 'Reimbursement' || requestType === 'reimbursement') && (
@@ -601,6 +609,87 @@ export function ApprovalProgressTracker({
                   {msbcSyncStatus === 'syncing' && (
                     <p className="text-sm text-slate-500 mt-1">
                       Sending request to MSBC...
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MSBC Posting Status for Reimbursement/Liquidation */}
+          {(requestType === 'Reimbursement' || requestType === 'reimbursement') && (
+            <div className="relative">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 z-10">
+                  <div
+                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
+                      msbcPostingStatus === 'Success' ? 'bg-green-50 border-green-600' :
+                      msbcPostingStatus === 'Pending' ? 'bg-blue-50 border-blue-600' :
+                      msbcPostingStatus === 'Failed' ? 'bg-red-50 border-red-600' :
+                      'bg-gray-50 border-gray-300'
+                    }`}
+                  >
+                    {msbcPostingStatus === 'Success' ? (
+                      <CheckCircle className="text-green-600" size={24} />
+                    ) : msbcPostingStatus === 'Pending' ? (
+                      <Send className="text-blue-600 animate-pulse" size={24} />
+                    ) : msbcPostingStatus === 'Failed' ? (
+                      <XCircle className="text-red-600" size={24} />
+                    ) : (
+                      <Clock className="text-gray-400" size={24} />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-slate-900">
+                      Posted to MSBC
+                    </span>
+                    {!msbcPostingStatus && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-semibold">
+                        Not Yet Posted
+                      </span>
+                    )}
+                    {msbcPostingStatus === 'Pending' && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                        Posting...
+                      </span>
+                    )}
+                    {msbcPostingStatus === 'Success' && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                        Posted Successfully
+                      </span>
+                    )}
+                    {msbcPostingStatus === 'Failed' && (
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                        Failed
+                      </span>
+                    )}
+                  </div>
+
+                  {msbcPostingStatus === 'Success' && msbcPostingDate && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Posted to MSBC on {new Date(msbcPostingDate).toLocaleString()}
+                    </p>
+                  )}
+
+                  {msbcPostingStatus === 'Failed' && msbcPostingError && (
+                    <div className="mt-2 p-3 bg-red-50 rounded border border-red-200">
+                      <p className="text-sm text-red-700 font-semibold">Error:</p>
+                      <p className="text-sm text-red-600 mt-1">{msbcPostingError}</p>
+                    </div>
+                  )}
+
+                  {!msbcPostingStatus && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      Awaiting admin to post to MSBC...
+                    </p>
+                  )}
+
+                  {msbcPostingStatus === 'Pending' && (
+                    <p className="text-sm text-slate-500 mt-1">
+                      Posting request to MSBC...
                     </p>
                   )}
                 </div>
