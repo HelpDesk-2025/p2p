@@ -1359,13 +1359,20 @@ export function Reimbursement() {
   };
 
   const handlePostToMSBC = async (request: ReimbursementReq) => {
-    if (!confirm('Are you sure you want to post this liquidation to MSBC General Ledger?')) {
+    const reqType = (request as any).request_type || 'Reimbursement';
+    const isLiquidation = reqType === 'Liquidation';
+    const confirmMsg = isLiquidation
+      ? 'Are you sure you want to post this liquidation to MSBC General Ledger?'
+      : 'Are you sure you want to post this reimbursement to MSBC Purchase Journal?';
+
+    if (!confirm(confirmMsg)) {
       return;
     }
 
     setLoading(true);
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-liquidation-to-msbc`;
+      const functionName = isLiquidation ? 'post-liquidation-to-msbc' : 'post-reimbursement-to-msbc';
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
       const headers = {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
@@ -1388,7 +1395,10 @@ export function Reimbursement() {
       setShowViewModal(false);
       setViewingRequest(null);
 
-      alert('Liquidation posted to MSBC General Ledger successfully!\nJournal Batch ID: ' + postResult.journalBatchId);
+      const successMsg = isLiquidation
+        ? 'Liquidation posted to MSBC General Ledger successfully!\nJournal Batch ID: ' + postResult.journalBatchId
+        : 'Reimbursement posted to MSBC Purchase Journal successfully!\nJournal Batch ID: ' + postResult.journalBatchId;
+      alert(successMsg);
 
       await loadRequests();
     } catch (error) {
@@ -2434,7 +2444,10 @@ export function Reimbursement() {
                     Generate PDF
                   </button>
                 )}
-                {viewingRequest.status === 'approved' && (viewingRequest as any).request_type === 'Liquidation' && viewingRequest.reimbursement_form_pdf_path && profile?.role === 'admin' && (
+                {viewingRequest.status === 'approved' && profile?.role === 'admin' && (
+                  ((viewingRequest as any).request_type === 'Liquidation' && viewingRequest.reimbursement_form_pdf_path) ||
+                  ((viewingRequest as any).request_type === 'Reimbursement' && viewingRequest.rfp_pdf_path && viewingRequest.reimbursement_form_pdf_path)
+                ) && (
                   <button
                     onClick={() => handlePostToMSBC(viewingRequest)}
                     disabled={loading}
