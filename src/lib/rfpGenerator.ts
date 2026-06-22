@@ -1521,9 +1521,9 @@ export async function generateAndUploadRFP(
     // Format payment mode lines
     const paymentModeLines: PaymentModeLine[] = [];
 
-    // For PR, use payment_mode_lines if available
-    if (requestType === 'purchase_requisition' && request.payment_mode_lines && Array.isArray(request.payment_mode_lines)) {
-      // Map the PR payment_mode_lines structure to RFP structure
+    // For PR and Reimbursement, use payment_mode_lines if available
+    if ((requestType === 'purchase_requisition' || requestType === 'reimbursement') && request.payment_mode_lines && Array.isArray(request.payment_mode_lines)) {
+      // Map the payment_mode_lines structure to RFP structure
       paymentModeLines.push(...request.payment_mode_lines.map((line: any) => ({
         label: sanitizeForPDF(line.name || line.label || ''),
         value: sanitizeForPDF(line.value || '')

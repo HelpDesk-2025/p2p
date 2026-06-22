@@ -58,7 +58,8 @@ Deno.serve(async (req: Request) => {
       .select(`
         *,
         requester:user_profiles!requester_id(full_name, email),
-        company:companies!company_id(id, name, api_id, accounting_notification_email)
+        company:companies!company_id(id, name, api_id, accounting_notification_email),
+        payment_mode:payment_modes!payment_mode_id(mode_name)
       `)
       .eq('id', requestId)
       .single();
@@ -99,6 +100,8 @@ Deno.serve(async (req: Request) => {
       : new Date().toISOString().split('T')[0];
     const vendorNumber = reimb.payee_number || '';
     const purpose = (reimb.purpose || '').substring(0, 200);
+    const paymentModeName = reimb.payment_mode?.mode_name || '';
+    const paymentModeLines = reimb.payment_mode_lines || [];
 
     console.log('📊 Variables:', {
       companyAPIID,
@@ -108,6 +111,7 @@ Deno.serve(async (req: Request) => {
       dateNeeded,
       vendorNumber,
       purpose,
+      paymentModeName,
     });
 
     // Download and merge RFP + Reimbursement Form PDFs
@@ -199,6 +203,7 @@ Deno.serve(async (req: Request) => {
           externalDocumentNumber: documentNumber,
           amount: purchaseAmount,
           comment: purpose.substring(0, 70),
+          description: paymentModeName ? `${paymentModeName}` : '',
         }),
       }
     );

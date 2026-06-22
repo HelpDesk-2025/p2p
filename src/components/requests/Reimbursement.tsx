@@ -26,6 +26,12 @@ interface Attachment {
   size: number;
 }
 
+interface PaymentModeLine {
+  name: string;
+  value: string;
+  is_required?: boolean;
+}
+
 interface ReimbursementReq {
   id: string;
   reimb_number: string;
@@ -113,6 +119,10 @@ export function Reimbursement() {
     date_needed: '',
     purpose: '',
   });
+  const [paymentModes, setPaymentModes] = useState<any[]>([]);
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<any>(null);
+  const [paymentModeId, setPaymentModeId] = useState<string>('');
+  const [paymentModeLines, setPaymentModeLines] = useState<PaymentModeLine[]>([]);
 
   useEffect(() => {
     loadRequests();
@@ -121,6 +131,7 @@ export function Reimbursement() {
   useEffect(() => {
     if (profile) {
       loadCompanies();
+      loadPaymentModes();
     }
   }, [profile]);
 
@@ -144,6 +155,43 @@ export function Reimbursement() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const loadPaymentModes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_modes')
+        .select('*')
+        .eq('is_active', true)
+        .order('mode_name', { ascending: true });
+
+      if (error) throw error;
+      setPaymentModes(data || []);
+    } catch (error) {
+      console.error('Error loading payment modes:', error);
+    }
+  };
+
+  const handlePaymentModeChange = (modeId: string) => {
+    const mode = paymentModes.find(m => m.id === modeId);
+    setSelectedPaymentMode(mode);
+    setPaymentModeId(modeId);
+
+    const lines = mode?.line_names
+      ? (mode.line_names as Array<{name: string, is_required: boolean}>).map((lineItem) => ({
+          name: lineItem.name,
+          value: '',
+          is_required: lineItem.is_required
+        }))
+      : [];
+
+    setPaymentModeLines(lines);
+  };
+
+  const updatePaymentModeLine = (index: number, value: string) => {
+    const newLines = [...paymentModeLines];
+    newLines[index] = { ...newLines[index], value };
+    setPaymentModeLines(newLines);
+  };
 
   const loadVendors = async (companyId?: string, retryCount = 0) => {
     setLoadingVendors(true);
@@ -576,6 +624,13 @@ export function Reimbursement() {
     setSelectedRequestType((request as any).cash_advance_type || '');
     setExistingAttachments(request.attachments || []);
     setAttachments([]);
+    // Restore payment mode data
+    const reqPaymentModeId = (request as any).payment_mode_id || '';
+    setPaymentModeId(reqPaymentModeId);
+    setPaymentModeLines((request as any).payment_mode_lines || []);
+    if (reqPaymentModeId && paymentModes.length > 0) {
+      setSelectedPaymentMode(paymentModes.find(m => m.id === reqPaymentModeId) || null);
+    }
     setShowViewModal(false);
     setViewingRequest(null);
     setLinkedRequestDetails(null);
@@ -589,6 +644,20 @@ export function Reimbursement() {
     if (!hasAttachments) {
       alert('Please upload receipts/supporting documents. Attachments are required for reimbursement requests.');
       return;
+    }
+
+    // Validate payment mode for Reimbursement type on submit
+    if (status === 'pending' && requestType === 'Reimbursement') {
+      if (!paymentModeId) {
+        alert('Please select a Payment Mode before submitting.');
+        return;
+      }
+      const missingLines = paymentModeLines.filter(line => line.is_required && !line.value.trim());
+      if (missingLines.length > 0) {
+        const missingNames = missingLines.map(line => line.name).join(', ');
+        alert(`Please fill in the required Payment Mode fields: ${missingNames}`);
+        return;
+      }
     }
 
     if (status === 'draft') {
@@ -639,6 +708,8 @@ export function Reimbursement() {
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
             date_needed: formData.date_needed || null,
+            payment_mode_id: requestType === 'Reimbursement' ? (paymentModeId || null) : null,
+            payment_mode_lines: requestType === 'Reimbursement' ? paymentModeLines : [],
             attachments: uploadedAttachments.length > 0 ? [...existingAttachments, ...uploadedAttachments] : existingAttachments,
             merged_pdf_path: mergedPdfPath || editingRequest.merged_pdf_path,
             status,
@@ -687,6 +758,8 @@ export function Reimbursement() {
             linked_cash_advance_id: requestType === 'Liquidation' && selectedRequestId ? selectedRequestId : null,
             cash_advance_type: requestType === 'Liquidation' && selectedRequestType ? selectedRequestType : null,
             date_needed: formData.date_needed || null,
+            payment_mode_id: requestType === 'Reimbursement' ? (paymentModeId || null) : null,
+            payment_mode_lines: requestType === 'Reimbursement' ? paymentModeLines : [],
             status,
             current_approval_level: 0,
           })
@@ -811,6 +884,9 @@ export function Reimbursement() {
       setApprovedRequests([]);
       setAttachments([]);
       setExistingAttachments([]);
+      setPaymentModeId('');
+      setPaymentModeLines([]);
+      setSelectedPaymentMode(null);
       setEditingRequest(null);
       loadRequests();
       if (!editingRequest) {
@@ -1601,6 +1677,69 @@ export function Reimbursement() {
             />
           </div>
 
+          {requestType === 'Reimbursement' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Payment Mode <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paymentModeId}
+                  onChange={(e) => handlePaymentModeChange(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${!paymentModeId ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
+                  required
+                >
+                  <option value="">Select a payment mode</option>
+                  {paymentModes.map((mode) => (
+                    <option key={mode.id} value={mode.id}>
+                      {mode.mode_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {paymentModeLines.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-900">Payment Mode Details</h3>
+                    <span className="text-xs text-slate-500">
+                      {selectedPaymentMode?.mode_name}
+                    </span>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="divide-y divide-slate-200">
+                      {paymentModeLines.map((line, index) => (
+                        <div key={index} className="p-4 hover:bg-slate-50 transition-colors">
+                          <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <label className="block text-sm font-semibold text-slate-900">
+                                {line.name}
+                                {line.is_required && (
+                                  <span className="text-red-500 ml-1">*</span>
+                                )}
+                              </label>
+                              <input
+                                type="text"
+                                value={line.value}
+                                onChange={(e) => updatePaymentModeLine(index, e.target.value)}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                placeholder={`Enter ${line.name}`}
+                                required={line.is_required}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Purpose</label>
             <textarea
@@ -2193,6 +2332,25 @@ export function Reimbursement() {
                   </span>
                 </div>
               </div>
+
+              {(viewingRequest as any).request_type === 'Reimbursement' && (viewingRequest as any).payment_mode_id && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
+                  <p className="text-slate-900 font-medium mb-2">
+                    {paymentModes.find(m => m.id === (viewingRequest as any).payment_mode_id)?.mode_name || 'N/A'}
+                  </p>
+                  {(viewingRequest as any).payment_mode_lines && (viewingRequest as any).payment_mode_lines.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                      {(viewingRequest as any).payment_mode_lines.map((line: any, idx: number) => (
+                        <div key={idx}>
+                          <label className="text-xs font-medium text-slate-600">{line.name}</label>
+                          <p className="text-sm text-slate-900">{line.value || 'N/A'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {(viewingRequest as any).request_type === 'Liquidation' && linkedRequestDetails && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
