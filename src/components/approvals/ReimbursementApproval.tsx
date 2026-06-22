@@ -1045,6 +1045,10 @@ export function ReimbursementApproval() {
                   <p className="text-slate-900 font-mono">{selectedRequest.reimb_number}</p>
                 </div>
                 <div>
+                  <label className="text-sm font-semibold text-slate-700">Request Type</label>
+                  <p className="text-slate-900">{selectedRequest.request_type || 'Reimbursement'}</p>
+                </div>
+                <div>
                   <label className="text-sm font-semibold text-slate-700">Company</label>
                   <p className="text-slate-900">{selectedRequest.companies?.name || 'N/A'}</p>
                 </div>
