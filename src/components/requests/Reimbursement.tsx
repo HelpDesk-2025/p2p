@@ -51,6 +51,15 @@ interface ReimbursementReq {
     name: string;
   };
   current_approval_level?: number;
+  request_type?: string;
+  linked_cash_advance_id?: string;
+  cash_advance_type?: string;
+  cash_advance?: number;
+  msbc_posting_status?: string;
+  msbc_posting_date?: string;
+  msbc_journal_batch_id?: string;
+  msbc_error_message?: string;
+  payee_number?: string;
 }
 
 export function Reimbursement() {
@@ -1285,6 +1294,47 @@ export function Reimbursement() {
     }
   };
 
+  const handlePostToMSBC = async (request: ReimbursementReq) => {
+    if (!confirm('Are you sure you want to post this liquidation to MSBC General Ledger?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-liquidation-to-msbc`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const postResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ requestId: request.id }),
+      });
+
+      if (!postResponse.ok) {
+        const errorData = await postResponse.json();
+        throw new Error(errorData.message || 'Failed to post to MSBC');
+      }
+
+      const postResult = await postResponse.json();
+      console.log('MSBC posting successful:', postResult);
+
+      setShowViewModal(false);
+      setViewingRequest(null);
+
+      alert('Liquidation posted to MSBC General Ledger successfully!\nJournal Batch ID: ' + postResult.journalBatchId);
+
+      await loadRequests();
+    } catch (error) {
+      console.error('Error posting to MSBC:', error);
+      alert('Failed to post to MSBC: ' + (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (showForm) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -2279,6 +2329,25 @@ export function Reimbursement() {
                     {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
                     Generate PDF
                   </button>
+                )}
+                {viewingRequest.status === 'approved' && (viewingRequest as any).request_type === 'Liquidation' && viewingRequest.reimbursement_form_pdf_path && profile?.role === 'admin' && (
+                  <button
+                    onClick={() => handlePostToMSBC(viewingRequest)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                    {(viewingRequest as any).msbc_posting_status === 'Success' ? 'Repost to MSBC' : 'Post to MSBC'}
+                  </button>
+                )}
+                {(viewingRequest as any).msbc_posting_status && (
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
+                    (viewingRequest as any).msbc_posting_status === 'Success' ? 'bg-green-100 text-green-800' :
+                    (viewingRequest as any).msbc_posting_status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    MSBC: {(viewingRequest as any).msbc_posting_status}
+                  </span>
                 )}
               </div>
               <button
