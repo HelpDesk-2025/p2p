@@ -91,6 +91,11 @@ export function Reimbursement() {
   const [selectedRequestId, setSelectedRequestId] = useState<string>('');
   const [selectedRequestType, setSelectedRequestType] = useState<'Cash Advance' | 'Petty Cash' | ''>('');
   const [linkedRequestDetails, setLinkedRequestDetails] = useState<any>(null);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loadingVendors, setLoadingVendors] = useState(false);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const vendorDropdownRef = useRef<HTMLDivElement>(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -104,6 +109,7 @@ export function Reimbursement() {
   const [formData, setFormData] = useState({
     document_no: '',
     payee: '',
+    payee_number: '',
     date_needed: '',
     purpose: '',
   });
@@ -128,6 +134,57 @@ export function Reimbursement() {
       setCashAdvance(0);
     }
   }, [requestType, profile?.id, editingRequest?.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
+        setShowVendorDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const loadVendors = async (companyId?: string, retryCount = 0) => {
+    setLoadingVendors(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const targetCompanyId = companyId || (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-vendors${targetCompanyId ? `?company_id=${targetCompanyId}` : ''}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch vendors');
+
+      const data = await response.json();
+      if (data.error && retryCount < 2) {
+        setTimeout(() => loadVendors(companyId, retryCount + 1), 1500);
+        return;
+      }
+      const sortedVendors = (data.value || []).sort((a: any, b: any) =>
+        (a.displayName || '').localeCompare(b.displayName || '')
+      );
+      setVendors(sortedVendors);
+    } catch (error) {
+      console.error('Error loading vendors:', error);
+      if (retryCount < 2) {
+        setTimeout(() => loadVendors(companyId, retryCount + 1), 1500);
+      }
+    } finally {
+      setLoadingVendors(false);
+    }
+  };
+
+  const filteredVendors = vendors.filter((vendor) =>
+    vendor.displayName?.toLowerCase().includes(vendorSearchTerm.toLowerCase()) ||
+    vendor.number?.toLowerCase().includes(vendorSearchTerm.toLowerCase())
+  );
 
   const generateDocumentNo = async (overrideCompanyId?: string) => {
     const companyId = overrideCompanyId ?? (profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id);
@@ -241,6 +298,7 @@ export function Reimbursement() {
     if (companyId) {
       loadDepartments(companyId);
       generateDocumentNo(companyId);
+      loadVendors(companyId);
     } else {
       setFormData(prev => ({
         ...prev,
@@ -502,9 +560,11 @@ export function Reimbursement() {
     setFormData({
       document_no: request.reimb_number,
       payee: (request as any).payee || '',
+      payee_number: (request as any).payee_number || '',
       date_needed: (request as any).date_needed || '',
       purpose: request.purpose,
     });
+    setVendorSearchTerm((request as any).payee || '');
     setExpenseItems(request.expense_items && request.expense_items.length > 0
       ? request.expense_items
       : [{ date: '', description: '', amount: 0 }]
@@ -519,6 +579,7 @@ export function Reimbursement() {
     setShowViewModal(false);
     setViewingRequest(null);
     setLinkedRequestDetails(null);
+    loadVendors();
     setShowForm(true);
   };
 
@@ -568,6 +629,7 @@ export function Reimbursement() {
           .from('reimbursement_requests')
           .update({
             payee: formData.payee,
+            payee_number: formData.payee_number || null,
             purpose: formData.purpose,
             amount: totalAmount,
             expense_items: expenseItems,
@@ -615,6 +677,7 @@ export function Reimbursement() {
             department: department,
             request_date: new Date().toISOString(),
             payee: formData.payee,
+            payee_number: formData.payee_number || null,
             purpose: formData.purpose,
             amount: totalAmount,
             expense_items: expenseItems,
@@ -737,7 +800,8 @@ export function Reimbursement() {
       }
 
       setShowForm(false);
-      setFormData({ document_no: '', payee: '', date_needed: '', purpose: '' });
+      setFormData({ document_no: '', payee: '', payee_number: '', date_needed: '', purpose: '' });
+      setVendorSearchTerm('');
       setExpenseItems([{ date: '', description: '', amount: 0 }]);
       setRequestType('Reimbursement');
       setExpenseCategory('Department Expense');
@@ -1468,15 +1532,53 @@ export function Reimbursement() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Payee</label>
+          <div className="relative" ref={vendorDropdownRef}>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Payee <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
-              value={formData.payee}
-              onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
+              value={vendorSearchTerm || formData.payee}
+              onChange={(e) => {
+                setVendorSearchTerm(e.target.value);
+                setShowVendorDropdown(true);
+                if (!e.target.value) {
+                  setFormData({ ...formData, payee: '', payee_number: '' });
+                }
+              }}
+              onFocus={() => setShowVendorDropdown(true)}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder={loadingVendors ? 'Loading vendors...' : 'Search vendors...'}
+              disabled={loadingVendors}
               required
             />
+            <p className="mt-1 text-xs text-red-600 italic">
+              Note: If the Payee/Vendor does not appear in the options, it's either the payee/vendor is blocked or vendor posting group is blank.
+            </p>
+            {showVendorDropdown && !loadingVendors && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredVendors.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-slate-500">
+                    No vendors found
+                  </div>
+                ) : (
+                  filteredVendors.map((vendor) => (
+                    <div
+                      key={vendor.number}
+                      onClick={() => {
+                        setFormData({ ...formData, payee: vendor.displayName, payee_number: vendor.number });
+                        setVendorSearchTerm(vendor.displayName);
+                        setShowVendorDropdown(false);
+                      }}
+                      className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-100 last:border-0"
+                    >
+                      <div className="font-medium text-slate-900">{vendor.displayName}</div>
+                      <div className="text-xs text-slate-500">{vendor.number}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -1796,6 +1898,8 @@ export function Reimbursement() {
               onClick={() => {
                 setShowForm(true);
                 generateDocumentNo();
+                loadVendors();
+                setVendorSearchTerm('');
               }}
               className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
             >
