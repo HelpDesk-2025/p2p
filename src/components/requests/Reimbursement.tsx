@@ -79,7 +79,7 @@ export function Reimbursement() {
   const [viewingRequest, setViewingRequest] = useState<ReimbursementReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<ReimbursementReq | null>(null);
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string; min_reimbursement?: number; min_liquidation?: number }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
@@ -260,7 +260,7 @@ export function Reimbursement() {
       if (profile.role === 'admin') {
         const { data, error } = await supabase
           .from('companies')
-          .select('id, name')
+          .select('id, name, min_reimbursement, min_liquidation')
           .eq('is_active', true)
           .order('name', { ascending: true });
 
@@ -276,7 +276,7 @@ export function Reimbursement() {
       } else if (profile.enable_multi_company_requests && profile.allowed_companies && profile.allowed_companies.length > 0) {
         const { data, error } = await supabase
           .from('companies')
-          .select('id, name')
+          .select('id, name, min_reimbursement, min_liquidation')
           .in('id', profile.allowed_companies)
           .eq('is_active', true)
           .order('name', { ascending: true });
@@ -294,7 +294,7 @@ export function Reimbursement() {
         if (profile.company_id) {
           const { data: companyData, error: companyError } = await supabase
             .from('companies')
-            .select('id, name')
+            .select('id, name, min_reimbursement, min_liquidation')
             .eq('id', profile.company_id)
             .maybeSingle();
 
@@ -674,8 +674,13 @@ export function Reimbursement() {
         return;
       }
 
-      if (totalAmount < 5000) {
-        alert('Total Expenditures must not be lower than ₱5,000.00');
+      const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+      const minAmount = requestType === 'Reimbursement'
+        ? (selectedCompany?.min_reimbursement || 0)
+        : (selectedCompany?.min_liquidation || 0);
+
+      if (minAmount > 0 && totalAmount < minAmount) {
+        alert(`Total Expenditures must not be lower than \u20B1${minAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
         return;
       }
 
