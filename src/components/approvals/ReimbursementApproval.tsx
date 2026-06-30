@@ -667,7 +667,8 @@ export function ReimbursementApproval() {
             cashAdvance: selectedRequest.cash_advance || 0,
             netAmount: netAmount,
             payee: selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'Unknown',
-            approvals: approvals
+            approvals: approvals,
+            expenseCategory: selectedRequest.expense_category || 'Department Expense'
           });
 
           // Upload the reimbursement form to storage

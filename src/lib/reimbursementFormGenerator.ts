@@ -43,6 +43,7 @@ interface ReimbursementFormData {
   netAmount: number;
   payee: string;
   approvals: ApprovalRecord[];
+  expenseCategory?: string;
 }
 
 export async function generateReimbursementForm(data: ReimbursementFormData): Promise<Uint8Array> {
@@ -297,67 +298,162 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
   let signatoryY = yPos - 20;
 
-  // Calculate column widths based on number of approvers
-  const totalApprovers = data.approvals.length + 1; // +1 for payee
-  const colWidth = (width - 2 * margin) / totalApprovers;
+  const isManComReimbursement = data.requestType === 'Reimbursement' && data.expenseCategory === 'ManCom Expense' && data.approvals.length >= 2;
 
-  // Draw headers
-  drawText('Prepared By', leftColX, signatoryY, 10, true);
+  if (isManComReimbursement) {
+    // ManCom layout: "Prepared By" (Requestor + First Approver), "Approved By" (middle), "Noted By" (last)
+    const remainingApprovals = data.approvals.slice(1);
+    const totalColumns = 1 + remainingApprovals.length; // Prepared By + remaining approvers
+    const colWidth = (width - 2 * margin) / totalColumns;
 
-  for (let i = 0; i < data.approvals.length; i++) {
-    const colX = margin + ((i + 1) * colWidth) + 10;
-    const label = i === data.approvals.length - 1 ? 'Noted/Checked By' : 'Approved By';
-    drawText(label, colX, signatoryY, 10, true);
-  }
+    // Draw headers
+    drawText('Prepared By', leftColX, signatoryY, 10, true);
 
-  signatoryY -= 50;
-
-  // Draw requester signature
-  if (data.requestedByEsig) {
-    try {
-      const esigImage = await embedSignatureImage(pdfDoc, data.requestedByEsig);
-      const esigDims = esigImage.scale(0.35);
-      page.drawImage(esigImage, {
-        x: leftColX + 15,
-        y: signatoryY - 10,
-        width: esigDims.width,
-        height: esigDims.height,
-      });
-    } catch (error) {
-      console.error('Error embedding requester e-signature:', error);
+    for (let i = 0; i < remainingApprovals.length; i++) {
+      const colX = margin + ((i + 1) * colWidth) + 10;
+      const label = i === remainingApprovals.length - 1 ? 'Noted By' : 'Approved By';
+      drawText(label, colX, signatoryY, 10, true);
     }
-  }
 
-  drawText(data.requestedBy, leftColX, signatoryY - 30, 9, false);
-  drawText(data.requestDate, leftColX, signatoryY - 45, 8, false);
+    signatoryY -= 35;
 
-  // Draw approver signatures
-  for (let i = 0; i < data.approvals.length; i++) {
-    const approver = data.approvals[i];
-    const colX = margin + ((i + 1) * colWidth) + 10;
-
-    if (approver.approver_esig) {
+    // Draw requester signature in "Prepared By" column
+    if (data.requestedByEsig) {
       try {
-        const esigImage = await embedSignatureImage(pdfDoc, approver.approver_esig);
+        const esigImage = await embedSignatureImage(pdfDoc, data.requestedByEsig);
+        const esigDims = esigImage.scale(0.25);
+        page.drawImage(esigImage, {
+          x: leftColX + 5,
+          y: signatoryY - 5,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding requester e-signature:', error);
+      }
+    }
+
+    drawText(data.requestedBy, leftColX, signatoryY - 22, 8, false);
+    drawText(data.requestDate, leftColX, signatoryY - 33, 7, false);
+
+    // Draw first approver signature below requester in same "Prepared By" column
+    const firstApprover = data.approvals[0];
+    const firstApproverY = signatoryY - 50;
+
+    if (firstApprover.approver_esig) {
+      try {
+        const esigImage = await embedSignatureImage(pdfDoc, firstApprover.approver_esig);
+        const esigDims = esigImage.scale(0.25);
+        page.drawImage(esigImage, {
+          x: leftColX + 5,
+          y: firstApproverY - 5,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding first approver e-signature:', error);
+      }
+    }
+
+    drawText(firstApprover.approver_name, leftColX, firstApproverY - 22, 8, false);
+    const firstApproverDate = new Date(firstApprover.approval_date);
+    drawText(
+      firstApproverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      firstApproverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      leftColX, firstApproverY - 33, 7, false
+    );
+
+    // Draw remaining approver signatures
+    for (let i = 0; i < remainingApprovals.length; i++) {
+      const approver = remainingApprovals[i];
+      const colX = margin + ((i + 1) * colWidth) + 10;
+
+      if (approver.approver_esig) {
+        try {
+          const esigImage = await embedSignatureImage(pdfDoc, approver.approver_esig);
+          const esigDims = esigImage.scale(0.35);
+          page.drawImage(esigImage, {
+            x: colX + 15,
+            y: signatoryY - 10,
+            width: esigDims.width,
+            height: esigDims.height,
+          });
+        } catch (error) {
+          console.error(`Error embedding approver ${i + 2} e-signature:`, error);
+        }
+      }
+
+      drawText(approver.approver_name, colX, signatoryY - 30, 9, false);
+      const approverDate = new Date(approver.approval_date);
+      drawText(
+        approverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+        approverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        colX, signatoryY - 45, 8, false
+      );
+    }
+  } else {
+    // Default layout: "Prepared By" (Requestor), "Approved By" (all except last), "Noted/Checked By" (last)
+    const totalApprovers = data.approvals.length + 1; // +1 for payee
+    const colWidth = (width - 2 * margin) / totalApprovers;
+
+    // Draw headers
+    drawText('Prepared By', leftColX, signatoryY, 10, true);
+
+    for (let i = 0; i < data.approvals.length; i++) {
+      const colX = margin + ((i + 1) * colWidth) + 10;
+      const label = i === data.approvals.length - 1 ? 'Noted/Checked By' : 'Approved By';
+      drawText(label, colX, signatoryY, 10, true);
+    }
+
+    signatoryY -= 50;
+
+    // Draw requester signature
+    if (data.requestedByEsig) {
+      try {
+        const esigImage = await embedSignatureImage(pdfDoc, data.requestedByEsig);
         const esigDims = esigImage.scale(0.35);
         page.drawImage(esigImage, {
-          x: colX + 15,
+          x: leftColX + 15,
           y: signatoryY - 10,
           width: esigDims.width,
           height: esigDims.height,
         });
       } catch (error) {
-        console.error(`Error embedding approver ${i + 1} e-signature:`, error);
+        console.error('Error embedding requester e-signature:', error);
       }
     }
 
-    drawText(approver.approver_name, colX, signatoryY - 30, 9, false);
-    const approverDate = new Date(approver.approval_date);
-    drawText(
-      approverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
-      approverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      colX, signatoryY - 45, 8, false
-    );
+    drawText(data.requestedBy, leftColX, signatoryY - 30, 9, false);
+    drawText(data.requestDate, leftColX, signatoryY - 45, 8, false);
+
+    // Draw approver signatures
+    for (let i = 0; i < data.approvals.length; i++) {
+      const approver = data.approvals[i];
+      const colX = margin + ((i + 1) * colWidth) + 10;
+
+      if (approver.approver_esig) {
+        try {
+          const esigImage = await embedSignatureImage(pdfDoc, approver.approver_esig);
+          const esigDims = esigImage.scale(0.35);
+          page.drawImage(esigImage, {
+            x: colX + 15,
+            y: signatoryY - 10,
+            width: esigDims.width,
+            height: esigDims.height,
+          });
+        } catch (error) {
+          console.error(`Error embedding approver ${i + 1} e-signature:`, error);
+        }
+      }
+
+      drawText(approver.approver_name, colX, signatoryY - 30, 9, false);
+      const approverDate = new Date(approver.approval_date);
+      drawText(
+        approverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+        approverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        colX, signatoryY - 45, 8, false
+      );
+    }
   }
 
   const pdfBytes = await pdfDoc.save();
