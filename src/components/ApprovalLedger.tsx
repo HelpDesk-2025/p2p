@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar, CreditCard as Edit3, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar, CreditCard as Edit3, Check, X, ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 
 interface ApprovalEntry {
   id: string;
@@ -25,6 +25,29 @@ interface Company {
   name: string;
 }
 
+interface UserResult {
+  id: string;
+  full_name: string;
+}
+
+const REQUEST_TYPES = [
+  'Purchase Requisition',
+  'Canvass',
+  'Petty Cash',
+  'Reimbursement',
+  'Cash Advance',
+  'Purchase Order',
+];
+
+const ACTIONS = [
+  'Submitted',
+  'Approved',
+  'Rejected',
+  'Returned',
+  'Auto-Rejected',
+  'Cancelled',
+];
+
 export function ApprovalLedger() {
   const { profile } = useAuth();
   const [entries, setEntries] = useState<ApprovalEntry[]>([]);
@@ -44,9 +67,43 @@ export function ApprovalLedger() {
 
   const isAdmin = profile?.role === 'admin';
 
+  // Add Entry Modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [newApprovalDate, setNewApprovalDate] = useState('');
+  const [newRequestType, setNewRequestType] = useState('');
+  const [newRequestNumber, setNewRequestNumber] = useState('');
+  const [newApproverName, setNewApproverName] = useState('');
+  const [newApproverId, setNewApproverId] = useState<string | null>(null);
+  const [newApproverType, setNewApproverType] = useState('');
+  const [newAction, setNewAction] = useState('');
+  const [newSequence, setNewSequence] = useState<number>(1);
+  const [newComments, setNewComments] = useState('');
+  const [newForChecking, setNewForChecking] = useState(false);
+
+  // User search state
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState<UserResult[]>([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const userSearchRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     loadCompanies();
     loadApprovalLedger();
+  }, []);
+
+  // Close user dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userSearchRef.current && !userSearchRef.current.contains(e.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadCompanies = async () => {
@@ -200,6 +257,148 @@ export function ApprovalLedger() {
     }
   };
 
+  // User search with debounce
+  const searchUsers = useCallback(async (term: string) => {
+    if (term.length < 2) {
+      setUserSearchResults([]);
+      setShowUserDropdown(false);
+      return;
+    }
+
+    setSearchingUsers(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .ilike('full_name', `%${term}%`)
+        .order('full_name', { ascending: true })
+        .limit(10);
+
+      if (error) throw error;
+      setUserSearchResults(data || []);
+      setShowUserDropdown(true);
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setSearchingUsers(false);
+    }
+  }, []);
+
+  const handleUserSearchChange = (value: string) => {
+    setUserSearchTerm(value);
+    setNewApproverName(value);
+    setNewApproverId(null);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchUsers(value), 300);
+  };
+
+  const selectUser = (user: UserResult) => {
+    setNewApproverName(user.full_name);
+    setNewApproverId(user.id);
+    setUserSearchTerm(user.full_name);
+    setShowUserDropdown(false);
+  };
+
+  // Open add modal with defaults
+  const openAddModal = () => {
+    const now = new Date();
+    const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setNewApprovalDate(localIso);
+    setNewRequestType('');
+    setNewRequestNumber('');
+    setNewApproverName('');
+    setNewApproverId(null);
+    setNewApproverType('');
+    setNewAction('');
+    setNewSequence(1);
+    setNewComments('');
+    setNewForChecking(false);
+    setUserSearchTerm('');
+    setUserSearchResults([]);
+    setShowUserDropdown(false);
+    setAddError('');
+    setShowAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setAddError('');
+  };
+
+  // Look up request_id and company_id from the appropriate table
+  const lookupRequest = async (requestType: string, requestNumber: string): Promise<{ id: string; company_id: string } | null> => {
+    const tableMap: Record<string, { table: string; column: string }> = {
+      'Purchase Requisition': { table: 'purchase_requisitions', column: 'pr_number' },
+      'Canvass': { table: 'canvass_requests', column: 'canvass_number' },
+      'Petty Cash': { table: 'petty_cash_requests', column: 'pc_number' },
+      'Reimbursement': { table: 'reimbursement_requests', column: 'reimb_number' },
+      'Cash Advance': { table: 'cash_advance_requests', column: 'ca_number' },
+      'Purchase Order': { table: 'purchase_orders', column: 'po_number' },
+    };
+
+    const mapping = tableMap[requestType];
+    if (!mapping) return null;
+
+    const { data, error } = await supabase
+      .from(mapping.table)
+      .select('id, company_id')
+      .eq(mapping.column, requestNumber)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return { id: data.id, company_id: data.company_id };
+  };
+
+  const handleAddEntry = async () => {
+    setAddError('');
+
+    if (!newRequestType) { setAddError('Request Type is required'); return; }
+    if (!newRequestNumber.trim()) { setAddError('Request Number is required'); return; }
+    if (!newApproverName.trim()) { setAddError('Approver is required'); return; }
+    if (!newAction) { setAddError('Action is required'); return; }
+    if (!newApprovalDate) { setAddError('Date and Time is required'); return; }
+
+    setSubmitting(true);
+    try {
+      const requestData = await lookupRequest(newRequestType, newRequestNumber.trim());
+      if (!requestData) {
+        setAddError(`Request number "${newRequestNumber.trim()}" not found for type "${newRequestType}"`);
+        setSubmitting(false);
+        return;
+      }
+
+      const insertData: any = {
+        request_type: newRequestType,
+        request_id: requestData.id,
+        request_number: newRequestNumber.trim(),
+        approver_name: newApproverName.trim(),
+        approver_id: newApproverId || null,
+        approver_type: newApproverType.trim() || null,
+        action: newAction,
+        comments: newComments.trim() || null,
+        approval_date: new Date(newApprovalDate).toISOString(),
+        sequence: newSequence || null,
+        company_id: requestData.company_id || null,
+        for_checking: newForChecking,
+      };
+
+      const { error } = await supabase
+        .from('approval_ledger')
+        .insert(insertData);
+
+      if (error) throw error;
+
+      closeAddModal();
+      await loadApprovalLedger();
+    } catch (error: any) {
+      console.error('Error adding ledger entry:', error);
+      setAddError(error.message || 'Failed to add entry');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const filteredEntries = useMemo(() => entries.filter((entry) => {
     const matchesType = filterType === 'all' || entry.request_type === filterType;
     const matchesAction = filterAction === 'all' || entry.action === filterAction;
@@ -247,8 +446,19 @@ export function ApprovalLedger() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Approval Ledger</h2>
-        <p className="text-slate-600 mt-1 text-sm sm:text-base">Complete audit trail of all approval activities</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Approval Ledger</h2>
+            <p className="text-slate-600 mt-1 text-sm sm:text-base">Complete audit trail of all approval activities</p>
+          </div>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">Add Entry</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
@@ -542,6 +752,210 @@ export function ApprovalLedger() {
           </div>
         </div>
       </div>
+
+      {/* Add Entry Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">Add Manual Ledger Entry</h3>
+              <p className="text-sm text-slate-500 mt-1">Manually insert a new record into the approval ledger</p>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Date and Time */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Date and Time <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newApprovalDate}
+                    onChange={(e) => setNewApprovalDate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Request Type */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Request Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newRequestType}
+                    onChange={(e) => setNewRequestType(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select type...</option>
+                    {REQUEST_TYPES.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Request Number */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Request Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newRequestNumber}
+                    onChange={(e) => setNewRequestNumber(e.target.value)}
+                    placeholder="e.g., CA000000078"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                  />
+                </div>
+
+                {/* Action */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Action <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newAction}
+                    onChange={(e) => setNewAction(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select action...</option>
+                    {ACTIONS.map((action) => (
+                      <option key={action} value={action}>{action}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Approver (search dropdown) */}
+              <div ref={userSearchRef} className="relative">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Approver <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={userSearchTerm}
+                    onChange={(e) => handleUserSearchChange(e.target.value)}
+                    onFocus={() => { if (userSearchResults.length > 0) setShowUserDropdown(true); }}
+                    placeholder="Search by name..."
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {searchingUsers && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+                </div>
+                {newApproverId && (
+                  <p className="text-xs text-green-600 mt-1">User selected: {newApproverName}</p>
+                )}
+                {showUserDropdown && userSearchResults.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {userSearchResults.map((user) => (
+                      <button
+                        key={user.id}
+                        onClick={() => selectUser(user)}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-b border-slate-50 last:border-b-0"
+                      >
+                        {user.full_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showUserDropdown && userSearchResults.length === 0 && userSearchTerm.length >= 2 && !searchingUsers && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg p-3">
+                    <p className="text-sm text-slate-500 text-center">No users found</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Approver Type */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Approver Type</label>
+                  <input
+                    type="text"
+                    value={newApproverType}
+                    onChange={(e) => setNewApproverType(e.target.value)}
+                    placeholder="e.g., Specific User"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Sequence */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Sequence</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newSequence}
+                    onChange={(e) => setNewSequence(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Comments */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Comments</label>
+                <textarea
+                  value={newComments}
+                  onChange={(e) => setNewComments(e.target.value)}
+                  rows={3}
+                  placeholder="Optional comments..."
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* For Checking */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="forChecking"
+                  checked={newForChecking}
+                  onChange={(e) => setNewForChecking(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="forChecking" className="text-sm font-medium text-slate-700">
+                  For Checking Only
+                </label>
+              </div>
+
+              {/* Error message */}
+              {addError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{addError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-200 flex items-center justify-end gap-3">
+              <button
+                onClick={closeAddModal}
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEntry}
+                disabled={submitting}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Entry'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
