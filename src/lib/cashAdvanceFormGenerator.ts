@@ -267,8 +267,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   drawText('Payee', leftColX, cashAdvY, 9, true);
 
   // Right side: Accounting Department info
-  // Get first approver for accounting section
-  const firstApprover = data.approvals[0];
+  // Get the for_checking approver for accounting section (fall back to first approver)
+  const accountingApprover = data.approvals.find(a => a.for_checking) || data.approvals[0];
 
   let accountingY = yPos - 50;
   drawText('To be filled out by Accounting Department:', rightColX, accountingY, 9, true);
@@ -279,9 +279,9 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 18;
 
   drawText('Date', rightColX, accountingY, 9, true);
-  const approvalDate = firstApprover
-    ? new Date(firstApprover.approval_date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
-      new Date(firstApprover.approval_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const approvalDate = accountingApprover
+    ? new Date(accountingApprover.approval_date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+      new Date(accountingApprover.approval_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
     : data.outstandingAslDate;
   drawText(approvalDate, rightColX + 100, accountingY, 9, false);
   accountingY -= 18;
@@ -290,10 +290,10 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   drawText(data.remarks || 'OK', rightColX + 100, accountingY, 9, false);
   accountingY -= 35;
 
-  // Accounting signature (first approver)
-  if (firstApprover && firstApprover.approver_esig) {
+  // Accounting signature
+  if (accountingApprover && accountingApprover.approver_esig) {
     try {
-      const esigImage = await embedSignatureImage(pdfDoc, firstApprover.approver_esig);
+      const esigImage = await embedSignatureImage(pdfDoc, accountingApprover.approver_esig);
       const esigDims = esigImage.scale(0.35);
       page.drawImage(esigImage, {
         x: rightColX + 20,
@@ -307,8 +307,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   }
 
   accountingY -= 15;
-  if (firstApprover) {
-    drawText(firstApprover.approver_name, rightColX, accountingY, 9, false);
+  if (accountingApprover) {
+    drawText(accountingApprover.approver_name, rightColX, accountingY, 9, false);
   }
   accountingY -= 15;
   drawText('Accounting', rightColX, accountingY, 9, true);
@@ -326,8 +326,8 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   const app1X = width / 3 + 20;
   const app2X = (2 * width) / 3 + 10;
 
-  // Get approvers (excluding the first one who is Accounting)
-  const signatureApprovers = data.approvals.length > 1 ? data.approvals.slice(1) : [];
+  // Get approvers (excluding the accounting/for_checking approver)
+  const signatureApprovers = data.approvals.filter(a => a !== accountingApprover);
   const recommendedByApprovers = signatureApprovers.length > 1 ? signatureApprovers.slice(0, -1) : [];
   const approvedByApprover = signatureApprovers.length > 0 ? signatureApprovers[signatureApprovers.length - 1] : null;
 

@@ -1123,6 +1123,50 @@ export function CashAdvance() {
         request.current_approval_level || 1
       );
 
+      // If no for_checking approver is in the results, look up from approval flow definition
+      const hasForCheckingRecord = approvalRecordsWithSigs.some(r => r.for_checking);
+      if (!hasForCheckingRecord && request.company_id && request.department) {
+        const { data: setupData } = await supabase
+          .from('approval_flow_setups')
+          .select('id')
+          .eq('company_id', request.company_id)
+          .eq('request_type', 'Cash Advance')
+          .eq('department_id', request.department)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (setupData) {
+          const { data: checkerFlows } = await supabase
+            .from('approval_flows')
+            .select('user_id, sequence')
+            .eq('approval_flow_setup_id', setupData.id)
+            .eq('for_checking', true)
+            .order('sequence', { ascending: true })
+            .limit(1);
+
+          if (checkerFlows && checkerFlows.length > 0) {
+            const checkerUserId = checkerFlows[0].user_id;
+            const checkerSeq = checkerFlows[0].sequence;
+
+            const { data: checkerProfile } = await supabase
+              .from('user_profiles')
+              .select('full_name, e_sig')
+              .eq('id', checkerUserId)
+              .single();
+
+            if (checkerProfile) {
+              approvalRecordsWithSigs.unshift({
+                approver_name: checkerProfile.full_name || 'Unknown',
+                approver_esig: checkerProfile.e_sig || null,
+                approval_date: new Date().toISOString(),
+                sequence: checkerSeq,
+                for_checking: true
+              });
+            }
+          }
+        }
+      }
+
       // Generate Approved Cash Advance Form with ALL approvers (including checkers)
       const approvedCaFormBytes = await generateCashAdvanceForm({
         caNumber: request.ca_number,

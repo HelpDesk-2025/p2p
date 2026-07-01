@@ -439,6 +439,50 @@ export function CashAdvanceApproval() {
             });
           }
 
+          // If no for_checking approver is in the results, look up from approval flow definition
+          const hasForCheckingRecord = approvalRecordsWithSigs.some(r => r.for_checking);
+          if (!hasForCheckingRecord && selectedRequest.company_id && selectedRequest.department) {
+            const { data: setupData } = await supabase
+              .from('approval_flow_setups')
+              .select('id')
+              .eq('company_id', selectedRequest.company_id)
+              .eq('request_type', 'Cash Advance')
+              .eq('department_id', selectedRequest.department)
+              .eq('is_active', true)
+              .maybeSingle();
+
+            if (setupData) {
+              const { data: checkerFlows } = await supabase
+                .from('approval_flows')
+                .select('user_id, sequence')
+                .eq('approval_flow_setup_id', setupData.id)
+                .eq('for_checking', true)
+                .order('sequence', { ascending: true })
+                .limit(1);
+
+              if (checkerFlows && checkerFlows.length > 0) {
+                const checkerUserId = checkerFlows[0].user_id;
+                const checkerSeq = checkerFlows[0].sequence;
+
+                const { data: checkerProfile } = await supabase
+                  .from('user_profiles')
+                  .select('full_name, e_sig')
+                  .eq('id', checkerUserId)
+                  .single();
+
+                if (checkerProfile) {
+                  approvalRecordsWithSigs.unshift({
+                    approver_name: checkerProfile.full_name || 'Unknown',
+                    approver_esig: checkerProfile.e_sig || null,
+                    approval_date: new Date().toISOString(),
+                    sequence: checkerSeq,
+                    for_checking: true
+                  });
+                }
+              }
+            }
+          }
+
           const finalApprovalRecords = approvalRecordsWithSigs;
 
           const approvedCaFormBytes = await generateCashAdvanceForm({
@@ -783,6 +827,47 @@ export function CashAdvanceApproval() {
         'Cash Advance',
         selectedRequest.current_approval_level || 1
       );
+
+      // If no for_checking approver is in the results, look up from approval flow definition
+      const hasForCheckingInRfp = approvalRecordsWithSigs.some(r => r.for_checking);
+      if (!hasForCheckingInRfp && selectedRequest.company_id && selectedRequest.department) {
+        const { data: setupDataRfp } = await supabase
+          .from('approval_flow_setups')
+          .select('id')
+          .eq('company_id', selectedRequest.company_id)
+          .eq('request_type', 'Cash Advance')
+          .eq('department_id', selectedRequest.department)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (setupDataRfp) {
+          const { data: checkerFlowsRfp } = await supabase
+            .from('approval_flows')
+            .select('user_id, sequence')
+            .eq('approval_flow_setup_id', setupDataRfp.id)
+            .eq('for_checking', true)
+            .order('sequence', { ascending: true })
+            .limit(1);
+
+          if (checkerFlowsRfp && checkerFlowsRfp.length > 0) {
+            const { data: checkerProfileRfp } = await supabase
+              .from('user_profiles')
+              .select('full_name, e_sig')
+              .eq('id', checkerFlowsRfp[0].user_id)
+              .single();
+
+            if (checkerProfileRfp) {
+              approvalRecordsWithSigs.unshift({
+                approver_name: checkerProfileRfp.full_name || 'Unknown',
+                approver_esig: checkerProfileRfp.e_sig || null,
+                approval_date: new Date().toISOString(),
+                sequence: checkerFlowsRfp[0].sequence,
+                for_checking: true
+              });
+            }
+          }
+        }
+      }
 
       // Generate Cash Advance Form with ALL approvers (including checkers)
       console.log('Generating Cash Advance Form PDF...');
