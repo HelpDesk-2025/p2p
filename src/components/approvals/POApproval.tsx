@@ -7,6 +7,7 @@ import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { generateAndUploadPOMergedPdf } from '../../lib/poMergedPdfGenerator';
 import { logAuditTrail } from '../../lib/auditTrail';
+import ConfirmDialog from '../ConfirmDialog';
 
 type POStatus =
   | 'draft'
@@ -80,6 +81,12 @@ export function POApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [linkedPR, setLinkedPR] = useState<{ purpose: string; description: string } | null>(null);
@@ -309,7 +316,16 @@ export function POApproval() {
     }
 
     const actionText = action === 'approved' ? 'approve' : 'reject';
-    if (!confirm(`Are you sure you want to ${actionText} this Purchase Order (${selectedRequest.po_number})?`)) return;
+    setPendingConfirm({
+      title: action === 'approved' ? 'Confirm Approval' : 'Confirm Rejection',
+      message: `Are you sure you want to ${actionText} this Purchase Order (${selectedRequest.po_number})?`,
+      variant: action === 'rejected' ? 'danger' : 'primary',
+      onConfirm: () => executeAction(action),
+    });
+  };
+
+  const executeAction = async (action: 'approved' | 'rejected') => {
+    if (!selectedRequest || !profile || !user) return;
 
     if (action === 'approved') setApproving(true);
     else setRejecting(true);
@@ -553,7 +569,16 @@ export function POApproval() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to return this Purchase Order (${selectedRequest.po_number}) to the maker for revision?`)) return;
+    setPendingConfirm({
+      title: 'Return to Maker',
+      message: `Are you sure you want to return this Purchase Order (${selectedRequest.po_number}) to the maker for revision?`,
+      variant: 'danger',
+      onConfirm: executeReturnToMaker,
+    });
+  };
+
+  const executeReturnToMaker = async () => {
+    if (!selectedRequest || !profile || !user) return;
 
     setReturning(true);
     setLoading(true);
@@ -1082,6 +1107,20 @@ export function POApproval() {
           </div>
         );
       })()}
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        variant={pendingConfirm?.variant || 'primary'}
+        confirmLabel={pendingConfirm?.variant === 'danger' ? 'Yes, Proceed' : 'Confirm'}
+        onConfirm={() => {
+          const action = pendingConfirm?.onConfirm;
+          setPendingConfirm(null);
+          action?.();
+        }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

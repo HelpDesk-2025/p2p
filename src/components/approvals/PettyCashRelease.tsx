@@ -8,6 +8,7 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import { generatePettyCashReleaseBundle } from '../../lib/pettyCashReleaseBundleExporter';
 import { sendApprovalEmail } from '../../lib/approvalFlow';
 import { logAuditTrail } from '../../lib/auditTrail';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface ExpenseItem {
   date: string;
@@ -78,6 +79,12 @@ export function PettyCashRelease() {
   const [showModal, setShowModal] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [releasing, setReleasing] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [linkedPettyCashDetails, setLinkedPettyCashDetails] = useState<PettyCashReq | null>(null);
@@ -332,9 +339,16 @@ export function PettyCashRelease() {
       ? `Release Over for Reimbursement amount of ${'\u20B1'}${releaseAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for Petty Cash ${selectedRequest.pc_number} to ${selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'the requester'}?`
       : `Are you sure you want to release Petty Cash ${selectedRequest.pc_number} (${'\u20B1'}${releaseAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) to ${selectedRequest.payee || selectedRequest.user_profiles?.full_name || 'the requester'}?`;
 
-    if (!confirm(confirmMsg)) {
-      return;
-    }
+    setPendingConfirm({
+      title: 'Confirm Release',
+      message: confirmMsg,
+      variant: 'primary',
+      onConfirm: executeRelease,
+    });
+  };
+
+  const executeRelease = async () => {
+    if (!selectedRequest || !profile) return;
 
     setReleasing(true);
     try {
@@ -1705,6 +1719,20 @@ export function PettyCashRelease() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        variant={pendingConfirm?.variant || 'primary'}
+        confirmLabel={pendingConfirm?.variant === 'danger' ? 'Yes, Proceed' : 'Confirm'}
+        onConfirm={() => {
+          const action = pendingConfirm?.onConfirm;
+          setPendingConfirm(null);
+          action?.();
+        }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

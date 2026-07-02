@@ -617,10 +617,10 @@ function NavItem({ item, active, onClick }: { item: MenuItem; active: boolean; o
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition ${
+      className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg border-l-2 transition ${
         active
-          ? 'bg-blue-50 text-blue-700'
-          : 'text-slate-700 hover:bg-slate-100'
+          ? 'bg-blue-50 text-blue-700 border-gold-400'
+          : 'text-slate-700 border-transparent hover:bg-slate-100'
       }`}
     >
       <Icon size={20} className="flex-shrink-0" />

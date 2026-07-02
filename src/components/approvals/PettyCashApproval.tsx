@@ -8,6 +8,7 @@ import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
 import Pagination from '../Pagination';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 import { logAuditTrail } from '../../lib/auditTrail';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface ExpenseItem {
   date: string;
@@ -73,6 +74,12 @@ export function PettyCashApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -325,9 +332,16 @@ export function PettyCashApproval() {
     const actionText = action === 'approved' ? 'approve' : 'reject';
     const confirmMessage = `Are you sure you want to ${actionText} this Petty Cash (${selectedRequest.pc_number})?`;
 
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    setPendingConfirm({
+      title: action === 'approved' ? 'Confirm Approval' : 'Confirm Rejection',
+      message: confirmMessage,
+      variant: action === 'rejected' ? 'danger' : 'primary',
+      onConfirm: () => executeAction(action),
+    });
+  };
+
+  const executeAction = async (action: 'approved' | 'rejected') => {
+    if (!selectedRequest || !profile?.company_id) return;
 
     if (action === 'approved') {
       setApproving(true);
@@ -581,9 +595,16 @@ export function PettyCashApproval() {
       alert('Please provide a comment explaining the reason for returning this request.');
       return;
     }
-    if (!confirm(`Are you sure you want to return this Petty Cash (${selectedRequest.pc_number}) to the maker for revision?`)) {
-      return;
-    }
+    setPendingConfirm({
+      title: 'Return to Maker',
+      message: `Are you sure you want to return this Petty Cash (${selectedRequest.pc_number}) to the maker for revision?`,
+      variant: 'danger',
+      onConfirm: executeReturnToMaker,
+    });
+  };
+
+  const executeReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
 
     setReturning(true);
     setLoading(true);
@@ -1166,6 +1187,20 @@ export function PettyCashApproval() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        variant={pendingConfirm?.variant || 'primary'}
+        confirmLabel={pendingConfirm?.variant === 'danger' ? 'Yes, Proceed' : 'Confirm'}
+        onConfirm={() => {
+          const action = pendingConfirm?.onConfirm;
+          setPendingConfirm(null);
+          action?.();
+        }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

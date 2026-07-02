@@ -8,6 +8,7 @@ import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 import Pagination from '../Pagination';
 import { logAuditTrail } from '../../lib/auditTrail';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface PurchaseReq {
   id: string;
@@ -75,6 +76,12 @@ export function PRApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('request_date');
@@ -406,9 +413,16 @@ export function PRApproval() {
     const actionText = action === 'approved' ? 'approve' : 'reject';
     const confirmMessage = `Are you sure you want to ${actionText} this Purchase Requisition (${selectedRequest.document_no})?`;
 
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    setPendingConfirm({
+      title: action === 'approved' ? 'Confirm Approval' : 'Confirm Rejection',
+      message: confirmMessage,
+      variant: action === 'rejected' ? 'danger' : 'primary',
+      onConfirm: () => executeAction(action),
+    });
+  };
+
+  const executeAction = async (action: 'approved' | 'rejected') => {
+    if (!selectedRequest || !profile?.company_id) return;
 
     if (action === 'approved') {
       setApproving(true);
@@ -720,9 +734,16 @@ export function PRApproval() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to return this Purchase Requisition (${selectedRequest.document_no}) to the maker for revision?`)) {
-      return;
-    }
+    setPendingConfirm({
+      title: 'Return to Maker',
+      message: `Are you sure you want to return this Purchase Requisition (${selectedRequest.document_no}) to the maker for revision?`,
+      variant: 'danger',
+      onConfirm: executeReturnToMaker,
+    });
+  };
+
+  const executeReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
 
     setReturning(true);
     setLoading(true);
@@ -1449,19 +1470,25 @@ export function PRApproval() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-3">Admin Actions</label>
                   <button
-                    onClick={async () => {
-                      if (!confirm('Are you sure you want to regenerate the RFP document?')) return;
-                      setLoading(true);
-                      try {
-                        await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
-                        alert('RFP regenerated successfully!');
-                        fetchRequests();
-                      } catch (error) {
-                        console.error('Error regenerating RFP:', error);
-                        alert('Failed to regenerate RFP: ' + (error as Error).message);
-                      } finally {
-                        setLoading(false);
-                      }
+                    onClick={() => {
+                      setPendingConfirm({
+                        title: 'Regenerate RFP',
+                        message: 'Are you sure you want to regenerate the RFP document?',
+                        variant: 'primary',
+                        onConfirm: async () => {
+                          setLoading(true);
+                          try {
+                            await generateAndUploadRFP('purchase_requisition', selectedRequest.id, selectedRequest.document_no);
+                            alert('RFP regenerated successfully!');
+                            loadRequests();
+                          } catch (error) {
+                            console.error('Error regenerating RFP:', error);
+                            alert('Failed to regenerate RFP: ' + (error as Error).message);
+                          } finally {
+                            setLoading(false);
+                          }
+                        },
+                      });
                     }}
                     disabled={loading}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
@@ -1521,6 +1548,20 @@ export function PRApproval() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        variant={pendingConfirm?.variant || 'primary'}
+        confirmLabel={pendingConfirm?.variant === 'danger' ? 'Yes, Proceed' : 'Confirm'}
+        onConfirm={() => {
+          const action = pendingConfirm?.onConfirm;
+          setPendingConfirm(null);
+          action?.();
+        }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
 import { fetchApprovalRecordsWithRetry } from '../../lib/storageHelper';
 import { logAuditTrail } from '../../lib/auditTrail';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface PaymentModeLine {
   name: string;
@@ -60,6 +61,12 @@ export function CashAdvanceApproval() {
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    title: string;
+    message: string;
+    variant: 'danger' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
   const [outstandingAsl, setOutstandingAsl] = useState('None');
@@ -346,9 +353,16 @@ export function CashAdvanceApproval() {
     const actionText = action === 'approved' ? 'approve' : 'reject';
     const confirmMessage = `Are you sure you want to ${actionText} this Cash Advance (${selectedRequest.ca_number})?`;
 
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    setPendingConfirm({
+      title: action === 'approved' ? 'Confirm Approval' : 'Confirm Rejection',
+      message: confirmMessage,
+      variant: action === 'rejected' ? 'danger' : 'primary',
+      onConfirm: () => executeAction(action),
+    });
+  };
+
+  const executeAction = async (action: 'approved' | 'rejected') => {
+    if (!selectedRequest || !profile?.company_id) return;
 
     if (action === 'approved') {
       setApproving(true);
@@ -665,9 +679,16 @@ export function CashAdvanceApproval() {
       alert('Please provide a comment explaining the reason for returning this request.');
       return;
     }
-    if (!confirm(`Are you sure you want to return this Cash Advance (${selectedRequest.ca_number}) to the maker for revision?`)) {
-      return;
-    }
+    setPendingConfirm({
+      title: 'Return to Maker',
+      message: `Are you sure you want to return this Cash Advance (${selectedRequest.ca_number}) to the maker for revision?`,
+      variant: 'danger',
+      onConfirm: executeReturnToMaker,
+    });
+  };
+
+  const executeReturnToMaker = async () => {
+    if (!selectedRequest || !profile?.company_id) return;
 
     setReturning(true);
     setLoading(true);
@@ -746,10 +767,16 @@ export function CashAdvanceApproval() {
       return;
     }
 
-    const confirmMessage = 'Are you sure you want to regenerate the RFP for this Cash Advance? This will replace the existing RFP with updated signatures.';
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    setPendingConfirm({
+      title: 'Regenerate RFP',
+      message: 'Are you sure you want to regenerate the RFP for this Cash Advance? This will replace the existing RFP with updated signatures.',
+      variant: 'primary',
+      onConfirm: executeRegenerateRFP,
+    });
+  };
+
+  const executeRegenerateRFP = async () => {
+    if (!selectedRequest || !profile) return;
 
     setRegeneratingRfp(true);
 
@@ -914,10 +941,16 @@ export function CashAdvanceApproval() {
       return;
     }
 
-    const confirmMessage = 'Are you sure you want to repost this Cash Advance to MSBC? This will create a new entry in the MSBC system.';
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    setPendingConfirm({
+      title: 'Repost to MSBC',
+      message: 'Are you sure you want to repost this Cash Advance to MSBC? This will create a new entry in the MSBC system.',
+      variant: 'primary',
+      onConfirm: executeRepostToMsbc,
+    });
+  };
+
+  const executeRepostToMsbc = async () => {
+    if (!selectedRequest || !profile) return;
 
     setRepostingToMsbc(true);
 
@@ -1368,6 +1401,20 @@ export function CashAdvanceApproval() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!pendingConfirm}
+        title={pendingConfirm?.title || ''}
+        message={pendingConfirm?.message || ''}
+        variant={pendingConfirm?.variant || 'primary'}
+        confirmLabel={pendingConfirm?.variant === 'danger' ? 'Yes, Proceed' : 'Confirm'}
+        onConfirm={() => {
+          const action = pendingConfirm?.onConfirm;
+          setPendingConfirm(null);
+          action?.();
+        }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   );
 }
