@@ -241,7 +241,9 @@ export function PRApproval() {
           rawFlows,
           request.requester_id,
           prCompanyId,
-          !!request.is_budgeted
+          !!request.is_budgeted,
+          !!(request as any).is_mancom_expense,
+          request.department
         );
 
         // Filter out the requester from approval flows

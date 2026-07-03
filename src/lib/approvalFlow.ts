@@ -183,10 +183,12 @@ export async function addExecutiveApprovalSteps(
   approvalFlows: ApprovalFlow[],
   requesterId: string,
   companyId: string,
-  isBudgeted: boolean = false
+  isBudgeted: boolean = false,
+  isMancomExpense: boolean = false,
+  department?: string
 ): Promise<ApprovalFlow[]> {
   try {
-    console.log('[ManCom] addExecutiveApprovalSteps called with:', { requesterId, companyId, isBudgeted });
+    console.log('[ManCom] addExecutiveApprovalSteps called with:', { requesterId, companyId, isBudgeted, isMancomExpense, department });
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('user_profiles')
       .select('approver_type, approver_email, checker_email, approver_email_non_budgeted, approver_email_budgeted, checker_email_non_budgeted, checker_email_budgeted')
@@ -199,6 +201,78 @@ export async function addExecutiveApprovalSteps(
     }
 
     console.log('[ManCom] requesterProfile.approver_type:', requesterProfile.approver_type);
+
+    // For ManCom expense PRs from non-executive requesters, find the department's primary executive
+    // and use their executive approval steps
+    if (requesterProfile.approver_type !== 'Executive' && isMancomExpense && department) {
+      console.log('[ManCom] Non-executive requester with ManCom expense, finding department executive');
+
+      // Find the primary executive (first approver) in the department's normal flow
+      const firstApproverFlow = approvalFlows.find(f => f.sequence === 1 && !f.for_checking);
+      if (firstApproverFlow?.user_id) {
+        // Check if this user is an Executive with steps configured
+        const { data: execProfile } = await supabase
+          .from('user_profiles')
+          .select('id, approver_type')
+          .eq('id', firstApproverFlow.user_id)
+          .maybeSingle();
+
+        if (execProfile?.approver_type === 'Executive') {
+          const category = isBudgeted ? 'budgeted' : 'non_budgeted';
+          const { data: execSteps } = await supabase
+            .from('executive_approval_steps')
+            .select('step_type, email, sequence')
+            .eq('user_profile_id', execProfile.id)
+            .eq('category', category)
+            .order('sequence', { ascending: true });
+
+          if (execSteps && execSteps.length > 0) {
+            console.log('[ManCom] Found executive steps for department executive:', execSteps);
+            const emails = execSteps.map(s => s.email);
+            const { data: users } = await supabase
+              .from('user_profiles')
+              .select('id, full_name, email')
+              .in('email', emails);
+
+            const userByEmail: Record<string, { id: string; full_name: string | null; email: string }> = {};
+            (users || []).forEach((u: any) => { userByEmail[u.email] = u; });
+
+            const executiveFlows: ApprovalFlow[] = [];
+            let sequence = 1;
+            for (const step of execSteps) {
+              const user = userByEmail[step.email];
+              if (!user) continue;
+              const label = step.step_type === 'approver' ? 'Approver' : 'Checker';
+              executiveFlows.push({
+                id: `executive-mancom-${step.step_type}-${sequence}-${execProfile.id}`,
+                company_id: companyId,
+                department_id: null,
+                approver_type: `${user.full_name} (${label})`,
+                sequence,
+                days_to_approve: 3,
+                is_required: true,
+                is_active: true,
+                workflow_type: 1,
+                user_id: user.id,
+                alternate_approver_id: null,
+                approval_flow_setup_id: 'executive-approval',
+                for_checking: step.step_type === 'checker',
+              });
+              sequence++;
+            }
+
+            if (executiveFlows.length > 0) {
+              console.log('[ManCom] Returning ManCom executive flows:', executiveFlows);
+              return executiveFlows;
+            }
+          }
+        }
+      }
+
+      console.log('[ManCom] No executive steps found for ManCom expense, using normal flow');
+      return approvalFlows;
+    }
+
     if (requesterProfile.approver_type !== 'Executive') {
       console.log('[ManCom] Not Executive, returning original flows');
       return approvalFlows;
