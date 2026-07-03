@@ -345,8 +345,8 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
       <motion.aside
-        initial={{ x: -24, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
