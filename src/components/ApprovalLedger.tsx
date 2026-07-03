@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Clock, CheckCircle, XCircle, ArrowLeft, Filter, Calendar, CreditCard as Edit3, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -245,13 +246,25 @@ export function ApprovalLedger() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Approval Ledger</h2>
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 sm:space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
+        <h2 className="text-2xl sm:text-3xl font-display font-semibold text-slate-900">Approval Ledger</h2>
         <p className="text-slate-600 mt-1 text-sm sm:text-base">Complete audit trail of all approval activities</p>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
           <h3 className="text-base sm:text-lg font-semibold text-slate-900">Filters</h3>
@@ -263,7 +276,7 @@ export function ApprovalLedger() {
             <select
               value={filterCompany}
               onChange={(e) => setFilterCompany(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             >
               <option value="all">All Companies</option>
               {companies.map((c) => (
@@ -277,7 +290,7 @@ export function ApprovalLedger() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             >
               <option value="all">All Types</option>
               <option value="Purchase Requisition">Purchase Requisition</option>
@@ -292,7 +305,7 @@ export function ApprovalLedger() {
             <select
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             >
               <option value="all">All Actions</option>
               <option value="Submitted">Submitted</option>
@@ -308,7 +321,7 @@ export function ApprovalLedger() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             />
           </div>
 
@@ -318,7 +331,7 @@ export function ApprovalLedger() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             />
           </div>
 
@@ -329,7 +342,7 @@ export function ApprovalLedger() {
               placeholder="Request #, Approver..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             />
           </div>
         </div>
@@ -340,14 +353,17 @@ export function ApprovalLedger() {
           </p>
           <button
             onClick={clearFilters}
-            className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition"
+            className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-xl transition"
           >
             Clear Filters
           </button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden"
+      >
         {filteredEntries.length === 0 ? (
           <div className="p-12 text-center">
             <Clock size={48} className="mx-auto text-slate-300 mb-4" />
@@ -360,7 +376,7 @@ export function ApprovalLedger() {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Date & Time
@@ -389,8 +405,12 @@ export function ApprovalLedger() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {paginatedEntries.map((entry) => (
-                    <tr key={entry.id} className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all">
+                  {paginatedEntries.map((entry, index) => (
+                    <tr
+                      key={entry.id}
+                      className="group hover:bg-gold-50/40 transition-all animate-fade-in-up"
+                      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <Calendar size={16} className="text-slate-400" />
@@ -412,7 +432,7 @@ export function ApprovalLedger() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <FileText size={16} className="text-blue-600" />
-                          <span className="font-mono font-semibold text-slate-900 text-sm">
+                          <span className="font-mono font-semibold text-blue-900 text-sm">
                             {entry.request_number}
                           </span>
                         </div>
@@ -463,7 +483,7 @@ export function ApprovalLedger() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           {getActionIcon(entry.action)}
-                          <span className={`px-3 py-1 rounded-lg text-xs font-bold ${getActionColor(entry.action)}`}>
+                          <span className={`px-3 py-1 rounded-lg text-xs font-bold ring-1 ring-inset ring-black/5 ${getActionColor(entry.action)}`}>
                             {entry.action}
                           </span>
                         </div>
@@ -525,7 +545,7 @@ export function ApprovalLedger() {
             )}
           </>
         )}
-      </div>
+      </motion.div>
 
       <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl border border-blue-200 p-6">
         <div className="flex items-start gap-4">
@@ -542,6 +562,6 @@ export function ApprovalLedger() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

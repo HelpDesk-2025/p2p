@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, Eye, X, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, Banknote, FileText, FileDown, Filter, FileSpreadsheet, ClipboardList, Printer } from 'lucide-react';
@@ -819,22 +820,31 @@ export function PettyCashRelease() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 sm:space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Petty Cash Release</h2>
+          <h2 className="text-xl sm:text-2xl font-display font-semibold text-slate-900">Petty Cash Release</h2>
           <p className="text-slate-600 mt-1">Release approved petty cash requests to requesters</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowFilterModal(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-semibold shadow-sm relative"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition font-semibold shadow-sm relative"
             title="Filter requests"
           >
             <Filter size={18} />
             Filters
             {getActiveFilterCount(filterValues) > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-xs font-bold rounded-full bg-blue-600 text-white">
+              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-xs font-bold rounded-full bg-gold-500 text-white">
                 {getActiveFilterCount(filterValues)}
               </span>
             )}
@@ -845,7 +855,7 @@ export function PettyCashRelease() {
               setShowPreviewSetupModal(true);
             }}
             disabled={listLoading}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
             title="Set up filters and preview a styled summary"
           >
             <ClipboardList size={18} />
@@ -854,7 +864,7 @@ export function PettyCashRelease() {
           <button
             onClick={handleExportSummary}
             disabled={listLoading || selectedIds.size === 0}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
             title="Export the summary of the selected requests to an Excel-compatible (CSV) file"
           >
             <FileSpreadsheet size={18} />
@@ -863,7 +873,7 @@ export function PettyCashRelease() {
           <button
             onClick={handleExportBundle}
             disabled={exporting || listLoading || selectedIds.size === 0}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-luxury"
             title="Export all listed requests and their generated forms into a single PDF"
           >
             {exporting ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
@@ -874,7 +884,7 @@ export function PettyCashRelease() {
               : 'Export Selected'}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       <FilterModal
         isOpen={showFilterModal}
@@ -1067,7 +1077,9 @@ export function PettyCashRelease() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
           <div className="overflow-auto flex-1">
             <table className="w-full hidden lg:table">
@@ -1106,7 +1118,7 @@ export function PettyCashRelease() {
         ) : (
           <div className="overflow-auto flex-1">
             <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+              <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
                 <tr>
                   <th className="px-3 xl:px-4 py-3.5 text-center whitespace-nowrap w-10">
                     <input
@@ -1205,7 +1217,8 @@ export function PettyCashRelease() {
                 {paginatedRequests.map((request, index) => (
                   <tr
                     key={request.id}
-                    className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                   >
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <input
@@ -1229,19 +1242,19 @@ export function PettyCashRelease() {
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       {request.exported_at ? (
                         <span
-                          className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 ring-1 ring-inset ring-black/5"
                           title={`Exported on ${new Date(request.exported_at).toLocaleString()}`}
                         >
                           Exported
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500 ring-1 ring-inset ring-black/5">
                           Not yet
                         </span>
                       )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.pc_number}>
+                      <span className="font-mono font-bold text-sm text-blue-900 truncate block min-w-[120px]" title={request.pc_number}>
                         {request.pc_number}
                       </span>
                     </td>
@@ -1266,7 +1279,7 @@ export function PettyCashRelease() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ring-1 ring-inset ring-black/5 ${
                         request.request_type === 'For Liquidation'
                           ? 'bg-blue-100 text-blue-800'
                           : request.request_type === 'For Reimbursement'
@@ -1294,7 +1307,7 @@ export function PettyCashRelease() {
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       {isReleaseEligible(request) ? (
-                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ring-1 ring-inset ring-black/5 ${
                           request.cash_released
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-amber-100 text-amber-800'
@@ -1304,14 +1317,14 @@ export function PettyCashRelease() {
                           {request.cash_released ? 'Released' : 'Pending'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500 ring-1 ring-inset ring-black/5">
                           N/A
                         </span>
                       )}
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       {isReleaseEligible(request) ? (
-                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ring-1 ring-inset ring-black/5 ${
                           request.received_at
                             ? 'bg-green-100 text-green-800'
                             : 'bg-amber-100 text-amber-800'
@@ -1321,7 +1334,7 @@ export function PettyCashRelease() {
                           {request.received_at ? 'Received' : 'Pending'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500">
+                        <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-500 ring-1 ring-inset ring-black/5">
                           N/A
                         </span>
                       )}
@@ -1329,7 +1342,7 @@ export function PettyCashRelease() {
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button
                         onClick={() => handleViewRequest(request)}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                         title={request.cash_released ? 'View Request' : 'Review Request'}
                       >
                         <Eye className="w-4 h-4" />
@@ -1351,7 +1364,7 @@ export function PettyCashRelease() {
             onItemsPerPageChange={(n) => { setItemsPerPage(n); setCurrentPage(1); }}
           />
         )}
-      </div>
+      </motion.div>
 
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1733,6 +1746,6 @@ export function PettyCashRelease() {
         }}
         onCancel={() => setPendingConfirm(null)}
       />
-    </div>
+    </motion.div>
   );
 }

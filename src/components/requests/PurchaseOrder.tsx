@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Plus,
   Search,
@@ -163,7 +164,7 @@ function fmtMoney(n: number): string {
 function StatusBadge({ status }: { status: POStatus }) {
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ring-1 ring-inset ring-black/5 ${STATUS_STYLES[status]}`}
     >
       {STATUS_LABELS[status]}
     </span>
@@ -960,7 +961,12 @@ export function PurchaseOrder() {
   };
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4"
+    >
       {toast && (
         <div className="fixed top-4 right-4 z-[100]">
           <div
@@ -985,10 +991,14 @@ export function PurchaseOrder() {
       )}
 
       {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">Purchase Orders</h1>
+            <h1 className="font-display text-xl sm:text-2xl font-semibold text-slate-900">Purchase Orders</h1>
             <p className="text-sm text-slate-500">Create, track, and dispatch purchase orders</p>
           </div>
           <div className="flex items-center gap-2">
@@ -1004,14 +1014,14 @@ export function PurchaseOrder() {
               <>
                 <button
                   onClick={() => setShowExportModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors"
                 >
                   <FileSpreadsheet size={16} />
                   Export to Excel
                 </button>
                 <button
                   onClick={openCanvassPicker}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-luxury"
                 >
                   <Plus size={16} />
                   New Purchase Order
@@ -1020,11 +1030,14 @@ export function PurchaseOrder() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* List View */}
       {view === 'list' && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden w-full max-w-full">
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+          className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden w-full max-w-full"
+        >
           <div className="px-4 py-3 border-b border-slate-200">
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
@@ -1035,7 +1048,7 @@ export function PurchaseOrder() {
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { setSearchTerm(searchInput); setCurrentPage(1); } }}
                   placeholder="Search by PO number, vendor, department, status..."
-                  className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 outline-none transition-all"
                 />
                 {searchInput && (
                   <button
@@ -1048,23 +1061,23 @@ export function PurchaseOrder() {
               </div>
               <button
                 onClick={() => { setSearchTerm(searchInput); setCurrentPage(1); }}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                className="px-4 py-2 text-sm bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shadow-sm"
               >
                 <Search className="w-4 h-4" />
                 <span className="hidden sm:inline">Search</span>
               </button>
               <button
                 onClick={() => setShowFilterModal(true)}
-                className={`relative px-4 py-2 text-sm border rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                className={`relative px-4 py-2 text-sm border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                   getActiveFilterCount(filterValues) > 0
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                    ? 'bg-gold-50 border-gold-300 text-gold-700 hover:bg-gold-100'
                     : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 <span className="hidden sm:inline">Filter</span>
                 {getActiveFilterCount(filterValues) > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gold-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                     {getActiveFilterCount(filterValues)}
                   </span>
                 )}
@@ -1084,13 +1097,17 @@ export function PurchaseOrder() {
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-200 w-full">
-                    {paginatedOrders.map((o) => (
-                      <div key={o.id} className="p-4 hover:bg-slate-50 transition-colors w-full">
+                    {paginatedOrders.map((o, index) => (
+                      <div
+                        key={o.id}
+                        className="p-4 hover:bg-gold-50/40 transition-colors w-full animate-fade-in-up"
+                        style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                      >
                         <div className="space-y-3 w-full overflow-hidden">
                           <div className="flex items-start justify-between gap-2 w-full min-w-0">
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">PO Number</div>
-                              <div className="font-mono font-bold text-sm text-slate-900 truncate">{o.po_number}</div>
+                              <div className="font-mono font-bold text-sm text-blue-900 truncate">{o.po_number}</div>
                             </div>
                             <StatusBadge status={o.status} />
                           </div>
@@ -1122,7 +1139,7 @@ export function PurchaseOrder() {
 
                           <button
                             onClick={() => openDetail(o)}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-colors font-medium text-sm shadow-luxury"
                           >
                             <Eye className="w-4 h-4 flex-shrink-0" />
                             <span className="truncate">View Details</span>
@@ -1137,7 +1154,7 @@ export function PurchaseOrder() {
               {/* Desktop Table View */}
               <div className="hidden lg:block overflow-auto flex-1">
                 <table className="w-full border-collapse">
-                  <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+                  <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
                     <tr>
                       <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                         <button onClick={() => handleSort('po_number')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
@@ -1183,9 +1200,13 @@ export function PurchaseOrder() {
                       </tr>
                     ) : (
                       paginatedOrders.map((o, index) => (
-                        <tr key={o.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                        <tr
+                          key={o.id}
+                          className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                          style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                        >
                           <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                            <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={o.po_number}>
+                            <span className="font-mono font-bold text-sm text-blue-900 truncate block min-w-[120px]" title={o.po_number}>
                               {o.po_number}
                             </span>
                           </td>
@@ -1212,14 +1233,14 @@ export function PurchaseOrder() {
                             <div className="inline-flex items-center gap-2">
                               <button
                                 onClick={() => openDetail(o)}
-                                className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                                className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                                 title="View Details"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleDownloadPdf(o); }}
-                                className="inline-flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-all"
+                                className="inline-flex items-center justify-center p-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all"
                                 title="Download PDF"
                               >
                                 <Download className="w-4 h-4" />
@@ -1245,7 +1266,7 @@ export function PurchaseOrder() {
               )}
             </>
           )}
-        </div>
+        </motion.div>
       )}
 
       {view === 'create' && draftCanvass && (
@@ -1400,7 +1421,7 @@ export function PurchaseOrder() {
         onExport={handleExport}
         exporting={exporting}
       />
-    </div>
+    </motion.div>
   );
 }
 

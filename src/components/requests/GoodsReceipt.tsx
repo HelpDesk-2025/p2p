@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Plus,
   Search,
@@ -140,7 +141,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function StatusBadge({ status }: { status: GRStatus }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[status]}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ring-1 ring-inset ring-black/5 ${STATUS_STYLES[status]}`}>
       {STATUS_LABELS[status]}
     </span>
   );
@@ -817,7 +818,12 @@ export function GoodsReceipt() {
   };
 
   return (
-    <div className="space-y-4">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4"
+    >
       {toast && (
         <div className="fixed top-4 right-4 z-[100]">
           <div
@@ -841,17 +847,21 @@ export function GoodsReceipt() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">Goods Receipt</h1>
+            <h1 className="font-display text-xl sm:text-2xl font-semibold text-slate-900">Goods Receipt</h1>
             <p className="text-sm text-slate-500">Record deliveries against dispatched purchase orders</p>
           </div>
           <div className="flex items-center gap-2">
             {view !== 'list' && (
               <button
                 onClick={() => setView('list')}
-                className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                className="px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
               >
                 Back to list
               </button>
@@ -859,7 +869,7 @@ export function GoodsReceipt() {
             {view === 'list' && (
               <button
                 onClick={() => setShowExportModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors"
               >
                 <FileSpreadsheet size={16} />
                 Export to Excel
@@ -868,7 +878,7 @@ export function GoodsReceipt() {
             {view === 'list' && canCreate && (
               <button
                 onClick={openPoPicker}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-luxury"
               >
                 <Plus size={16} />
                 New Goods Receipt
@@ -876,19 +886,6 @@ export function GoodsReceipt() {
             )}
           </div>
         </div>
-
-        {view === 'list' && (
-          <ListView
-            grs={filteredGRs}
-            loading={loading}
-            search={search}
-            onSearch={setSearch}
-            statusFilter={statusFilter}
-            onStatusFilter={setStatusFilter}
-            onOpen={openDetail}
-            onDownload={downloadGRNPdf}
-          />
-        )}
 
         {view === 'create' && draftPO && (
           <CreateView
@@ -952,7 +949,25 @@ export function GoodsReceipt() {
             onDownloadAtt={downloadAttachment_}
           />
         )}
-      </div>
+      </motion.div>
+
+      {view === 'list' && (
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+          className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+        >
+          <ListView
+            grs={filteredGRs}
+            loading={loading}
+            search={search}
+            onSearch={setSearch}
+            statusFilter={statusFilter}
+            onStatusFilter={setStatusFilter}
+            onOpen={openDetail}
+            onDownload={downloadGRNPdf}
+          />
+        </motion.div>
+      )}
 
       {showPoPicker && (
         <Modal title="Select Dispatched Purchase Order" onClose={() => setShowPoPicker(false)}>
@@ -1023,7 +1038,7 @@ export function GoodsReceipt() {
         onExport={handleExport}
         exporting={exporting}
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -1055,13 +1070,13 @@ function ListView({
             placeholder="Search GR / PO / vendor..."
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm"
+            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => onStatusFilter(e.target.value as GRStatus | 'all')}
-          className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+          className="px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
         >
           <option value="all">All Statuses</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => (
@@ -1083,7 +1098,7 @@ function ListView({
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">
+              <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b-2 border-gold-200">
                 <th className="px-3 py-2">GR Number</th>
                 <th className="px-3 py-2">PO Number</th>
                 <th className="px-3 py-2">Vendor</th>
@@ -1094,9 +1109,14 @@ function ListView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {grs.map((g) => (
-                <tr key={g.id} onClick={() => onOpen(g)} className="cursor-pointer hover:bg-slate-50">
-                  <td className="px-3 py-2 font-medium text-slate-900">
+              {grs.map((g, index) => (
+                <tr
+                  key={g.id}
+                  onClick={() => onOpen(g)}
+                  className="cursor-pointer hover:bg-gold-50/40 animate-fade-in-up"
+                  style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                >
+                  <td className="px-3 py-2 font-medium text-blue-900">
                     <span className="inline-flex items-center gap-1.5">
                       {g.gr_number}
                       {g.locked_at && <Lock size={12} className="text-amber-500" />}
@@ -1106,7 +1126,7 @@ function ListView({
                   <td className="px-3 py-2 text-slate-700">{g.vendor_name}</td>
                   <td className="px-3 py-2 text-slate-600">{g.receipt_date}</td>
                   <td className="px-3 py-2">
-                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs border bg-blue-50 text-blue-700 border-blue-200 capitalize">
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs border bg-blue-50 text-blue-700 border-blue-200 capitalize ring-1 ring-inset ring-black/5">
                       {g.receipt_type}
                     </span>
                   </td>

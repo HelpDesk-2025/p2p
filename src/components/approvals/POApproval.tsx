@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft, Download } from 'lucide-react';
@@ -651,11 +652,20 @@ export function POApproval() {
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6 h-full">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 lg:p-6">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 lg:space-y-6 h-full"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 lg:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-900">Purchase Order Approvals</h2>
+            <h2 className="text-xl lg:text-2xl font-display font-semibold text-slate-900">Purchase Order Approvals</h2>
             <p className="text-slate-600 mt-1 text-sm lg:text-base">Review and approve purchase orders</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
@@ -663,9 +673,11 @@ export function POApproval() {
             <span className="text-lg font-bold text-blue-600">{requests.length}</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
           <div className="overflow-auto flex-1">
             <table className="w-full hidden lg:table">
@@ -714,15 +726,19 @@ export function POApproval() {
             {/* Mobile Card Layout */}
             <div className="lg:hidden overflow-auto flex-1">
               <div className="divide-y divide-slate-200">
-                {paginatedRequests.map((po) => (
-                  <div key={po.id} className="p-4 hover:bg-slate-50 transition-colors">
+                {paginatedRequests.map((po, index) => (
+                  <div
+                    key={po.id}
+                    className="p-4 hover:bg-gold-50/40 transition-colors animate-fade-in-up"
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                  >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">PO Number</div>
-                          <div className="font-mono font-bold text-base text-slate-900 truncate">{po.po_number}</div>
+                          <div className="font-mono font-bold text-base text-blue-900 truncate">{po.po_number}</div>
                         </div>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap ring-1 ring-inset ring-black/5">
                           Level {po.current_approval_level + 1}
                         </span>
                       </div>
@@ -748,7 +764,7 @@ export function POApproval() {
 
                       <button
                         onClick={() => handleViewRequest(po)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-luxury transition-colors font-medium text-sm"
                       >
                         <Eye className="w-4 h-4" />
                         Review Request
@@ -762,7 +778,7 @@ export function POApproval() {
             {/* Desktop Table Layout */}
             <div className="hidden lg:block overflow-auto flex-1">
               <table className="w-full border-collapse">
-                <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+                <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
                   <tr>
                     <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                       <button onClick={() => handleSort('po_number')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
@@ -804,10 +820,11 @@ export function POApproval() {
                   {paginatedRequests.map((po, index) => (
                     <tr
                       key={po.id}
-                      className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                      className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                     >
                       <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                        <span className="font-mono font-bold text-sm text-slate-900">{po.po_number}</span>
+                        <span className="font-mono font-bold text-sm text-blue-900">{po.po_number}</span>
                       </td>
                       <td className="px-3 xl:px-4 py-3">
                         <div className="flex flex-col min-w-[150px] max-w-[220px]">
@@ -834,14 +851,14 @@ export function POApproval() {
                         </span>
                       </td>
                       <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold ring-1 ring-inset ring-black/5">
                           L{po.current_approval_level + 1}
                         </span>
                       </td>
                       <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                         <button
                           onClick={() => handleViewRequest(po)}
-                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                           title="Review Request"
                         >
                           <Eye className="w-4 h-4" />
@@ -864,7 +881,7 @@ export function POApproval() {
             )}
           </>
         )}
-      </div>
+      </motion.div>
 
       {showModal && selectedRequest && (() => {
         const fmtMoney = (n: number) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1048,7 +1065,7 @@ export function POApproval() {
                             alert('Failed to download the merged PDF.');
                           }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-medium rounded-xl shadow-sm transition-colors"
                       >
                         <Download size={16} />
                         View / Download
@@ -1063,7 +1080,7 @@ export function POApproval() {
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
                     rows={4}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 outline-none"
                     placeholder="Add your comments here..."
                   />
                 </div>
@@ -1080,7 +1097,7 @@ export function POApproval() {
                   <button
                     onClick={() => handleAction('approved')}
                     disabled={loading || flowsLoading || !canApprove()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-xl shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                   >
                     {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                     {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
@@ -1088,7 +1105,7 @@ export function POApproval() {
                   <button
                     onClick={() => handleAction('rejected')}
                     disabled={loading || flowsLoading || !canApprove()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                   >
                     {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                     {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
@@ -1096,7 +1113,7 @@ export function POApproval() {
                   <button
                     onClick={handleReturnToMaker}
                     disabled={loading || flowsLoading || !canApprove()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                   >
                     {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
                     {returning ? 'Returning...' : 'Return to Maker'}
@@ -1121,7 +1138,7 @@ export function POApproval() {
         }}
         onCancel={() => setPendingConfirm(null)}
       />
-    </div>
+    </motion.div>
   );
 }
 

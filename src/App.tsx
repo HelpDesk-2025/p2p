@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
 import { ResetPassword } from './components/ResetPassword';
@@ -52,7 +53,27 @@ function AppContent() {
   if (loading) {
     return (
       <div className="h-full w-full bg-slate-50 flex items-center justify-center overflow-hidden">
-        <div className="text-slate-600">Loading...</div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-2 border-slate-200" />
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-transparent border-t-gold-400 border-r-gold-400"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+            />
+            <img
+              src="/p2p_logo.png"
+              alt=""
+              className="absolute inset-0 m-auto h-7 w-auto object-contain"
+            />
+          </div>
+          <p className="text-sm font-medium text-slate-500 tracking-wide">Loading Point to Point…</p>
+        </motion.div>
       </div>
     );
   }

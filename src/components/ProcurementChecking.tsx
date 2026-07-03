@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, X, FileText, Download, UserCheck, ClipboardList, ExternalLink, Loader2 } from 'lucide-react';
@@ -402,21 +403,33 @@ export function ProcurementChecking() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden flex items-center justify-between bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Procurement Checking</h2>
+          <h2 className="text-2xl font-display font-semibold text-slate-900">Procurement Checking</h2>
           <p className="text-sm text-slate-600 mt-1">
             Approved Purchase Order requests ready for procurement processing
           </p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="hidden md:block bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden"
+      >
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 border-b-2 border-gold-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Document No.
@@ -452,9 +465,13 @@ export function ProcurementChecking() {
                   </td>
                 </tr>
               ) : (
-                paginatedRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-slate-900">
+                paginatedRequests.map((req, index) => (
+                  <tr
+                    key={req.id}
+                    className="hover:bg-gold-50/40 animate-fade-in-up"
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-blue-900">
                       {req.document_no || req.pr_number}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -474,7 +491,7 @@ export function ProcurementChecking() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
+                        className={`px-2 py-1 text-xs font-medium rounded-full ring-1 ring-inset ring-black/5 ${getStatusColor(req.status)}`}
                       >
                         {req.status}
                       </span>
@@ -508,7 +525,7 @@ export function ProcurementChecking() {
             onItemsPerPageChange={handleItemsPerPageChange}
           />
         )}
-      </div>
+      </motion.div>
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
@@ -517,10 +534,11 @@ export function ProcurementChecking() {
             No approved purchase order requests found
           </div>
         ) : (
-          paginatedRequests.map((req) => (
+          paginatedRequests.map((req, index) => (
             <div
               key={req.id}
-              className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+              className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:bg-gold-50/40 animate-fade-in-up"
+              style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
             >
               <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -528,12 +546,12 @@ export function ProcurementChecking() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-medium text-slate-500">Document No.</span>
                       <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(req.status)}`}
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full ring-1 ring-inset ring-black/5 ${getStatusColor(req.status)}`}
                       >
                         {req.status}
                       </span>
                     </div>
-                    <p className="text-base font-mono font-bold text-slate-900 break-all">
+                    <p className="text-base font-mono font-bold text-blue-900 break-all">
                       {req.document_no || req.pr_number}
                     </p>
                   </div>
@@ -579,7 +597,7 @@ export function ProcurementChecking() {
                     setShowViewModal(true);
                     checkSmeRequestStatus(req.id);
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition shadow-luxury"
                 >
                   <Eye size={18} />
                   View Details
@@ -956,6 +974,6 @@ export function ProcurementChecking() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

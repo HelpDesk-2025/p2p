@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, X, ClipboardList, FileText, User, Download, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -318,17 +319,28 @@ export function SmeApproval() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 sm:space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">SME Approvals</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-slate-900">SME Approvals</h2>
           <p className="text-xs sm:text-sm text-slate-600 mt-1">
             Subject Matter Expert requests requiring your review
           </p>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
           <div className="overflow-auto flex-1">
             <table className="w-full hidden lg:table">
@@ -370,7 +382,7 @@ export function SmeApproval() {
         <>
         <div className="overflow-auto flex-1">
           <table className="w-full border-collapse">
-            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
               <tr>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
@@ -447,10 +459,11 @@ export function SmeApproval() {
                 paginatedRequests.map((req, index) => (
                   <tr
                     key={req.id}
-                    className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                   >
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}>
+                      <span className="font-mono font-bold text-sm text-blue-900 truncate block min-w-[120px]" title={req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}>
                         {req.purchase_requisitions?.document_no || req.purchase_requisitions?.pr_number}
                       </span>
                     </td>
@@ -486,7 +499,7 @@ export function SmeApproval() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ring-1 ring-inset ring-black/5 ${getStatusColor(req.status)}`}>
                         {req.status}
                       </span>
                     </td>
@@ -497,7 +510,7 @@ export function SmeApproval() {
                           setShowViewModal(true);
                           setComments(req.sme_comments || '');
                         }}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                         title="View Request"
                       >
                         <Eye className="w-4 h-4" />
@@ -521,7 +534,7 @@ export function SmeApproval() {
         )}
         </>
         )}
-      </div>
+      </motion.div>
 
       {showViewModal && viewingRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -595,7 +608,7 @@ export function SmeApproval() {
                 </div>
                 <div>
                   <label className="text-xs sm:text-sm font-semibold text-slate-700">Status</label>
-                  <span className={`inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(viewingRequest.status)}`}>
+                  <span className={`inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-full ring-1 ring-inset ring-black/5 ${getStatusColor(viewingRequest.status)}`}>
                     {viewingRequest.status}
                   </span>
                 </div>
@@ -628,7 +641,7 @@ export function SmeApproval() {
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => previewMergedPDF(viewingRequest.purchase_requisitions!.merged_pdf_path!)}
-                          className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition text-xs sm:text-sm flex-1 sm:flex-initial"
+                          className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition text-xs sm:text-sm flex-1 sm:flex-initial"
                         >
                           <ExternalLink size={14} className="sm:w-4 sm:h-4" />
                           Preview
@@ -638,7 +651,7 @@ export function SmeApproval() {
                             viewingRequest.purchase_requisitions!.merged_pdf_path!,
                             viewingRequest.purchase_requisitions?.document_no || viewingRequest.purchase_requisitions?.pr_number || 'document'
                           )}
-                          className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs sm:text-sm flex-1 sm:flex-initial"
+                          className="flex items-center justify-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition text-xs sm:text-sm flex-1 sm:flex-initial shadow-sm"
                         >
                           <Download size={14} className="sm:w-4 sm:h-4" />
                           Download
@@ -689,7 +702,7 @@ export function SmeApproval() {
                     onChange={(e) => setComments(e.target.value)}
                     rows={4}
                     placeholder="Add your comments or recommendations..."
-                    className="w-full px-3 py-2 sm:px-4 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 sm:px-4 text-sm sm:text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
                   />
                 </div>
               )}
@@ -709,7 +722,7 @@ export function SmeApproval() {
                 <button
                   onClick={handleReadyForCanvass}
                   disabled={actionLoading || !comments.trim()}
-                  className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                  className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base shadow-luxury"
                   title={!comments.trim() ? 'Please provide comments before marking as ready for canvass' : ''}
                 >
                   <ClipboardList size={18} className="sm:w-5 sm:h-5" />
@@ -721,7 +734,7 @@ export function SmeApproval() {
                     setViewingRequest(null);
                     setComments('');
                   }}
-                  className="px-4 py-2 sm:px-6 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition text-sm sm:text-base"
+                  className="px-4 py-2 sm:px-6 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition text-sm sm:text-base"
                 >
                   Close
                 </button>
@@ -736,7 +749,7 @@ export function SmeApproval() {
                     setViewingRequest(null);
                     setComments('');
                   }}
-                  className="px-4 py-2 sm:px-6 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition text-sm sm:text-base"
+                  className="px-4 py-2 sm:px-6 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition text-sm sm:text-base"
                 >
                   Close
                 </button>
@@ -745,6 +758,6 @@ export function SmeApproval() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

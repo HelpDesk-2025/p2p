@@ -57,17 +57,17 @@ export default function Pagination({
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
+    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <label htmlFor="itemsPerPage" className="text-sm text-gray-700">
+          <label htmlFor="itemsPerPage" className="text-sm text-slate-600">
             Rows per page:
           </label>
           <select
             id="itemsPerPage"
             value={itemsPerPage}
             onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
           >
             <option value={10}>10</option>
             <option value={25}>25</option>
@@ -75,7 +75,7 @@ export default function Pagination({
             <option value={100}>100</option>
           </select>
         </div>
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-slate-600 tabular-nums">
           {startItem}-{endItem} of {totalItems}
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
-          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="First page"
         >
           <ChevronsLeft className="w-5 h-5" />
@@ -92,7 +92,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Previous page"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -102,14 +102,14 @@ export default function Pagination({
           {getPageNumbers().map((page, index) => (
             <React.Fragment key={index}>
               {page === '...' ? (
-                <span className="px-3 py-1 text-gray-500">...</span>
+                <span className="px-3 py-1 text-slate-400">...</span>
               ) : (
                 <button
                   onClick={() => onPageChange(page as number)}
-                  className={`px-3 py-1 rounded text-sm ${
+                  className={`px-3 py-1 rounded-lg text-sm font-medium tabular-nums transition-all ${
                     currentPage === page
-                      ? 'bg-blue-600 text-white'
-                      : 'hover:bg-gray-100 text-gray-700'
+                      ? 'bg-gradient-to-r from-blue-800 to-blue-900 text-white shadow-sm'
+                      : 'hover:bg-slate-100 text-slate-600'
                   }`}
                 >
                   {page}
@@ -122,7 +122,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Next page"
         >
           <ChevronRight className="w-5 h-5" />
@@ -130,7 +130,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
-          className="p-1 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Last page"
         >
           <ChevronsRight className="w-5 h-5" />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
@@ -869,13 +870,19 @@ export function ReimbursementApproval() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Reimbursement | Liquidation Approvals</h2>
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-6"
+    >
+      <motion.div variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }} className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-6">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
+        <h2 className="text-3xl font-display font-semibold text-slate-900">Reimbursement | Liquidation Approvals</h2>
         <p className="text-slate-600 mt-1">Review and approve reimbursement | liquidation requests</p>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <motion.div variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }} className="rounded-2xl shadow-luxury border border-slate-200/70 bg-white overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
           <div className="overflow-auto flex-1">
             <table className="w-full hidden lg:table">
@@ -923,7 +930,7 @@ export function ReimbursementApproval() {
           <>
           <div className="overflow-auto flex-1">
             <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+              <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
                 <tr>
                   <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                     <button
@@ -977,10 +984,11 @@ export function ReimbursementApproval() {
                 {paginatedRequests.map((request, index) => (
                   <tr
                     key={request.id}
-                    className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                   >
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.reimb_number}>
+                      <span className="font-mono font-bold text-sm text-blue-900 truncate block min-w-[120px]" title={request.reimb_number}>
                         {request.reimb_number}
                       </span>
                     </td>
@@ -1005,14 +1013,14 @@ export function ReimbursementApproval() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold ring-1 ring-inset ring-black/5">
                         L{request.current_approval_level + 1}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       <button
                         onClick={() => handleViewRequest(request)}
-                        className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                        className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                         title="Review Request"
                       >
                         <Eye className="w-4 h-4" />
@@ -1035,7 +1043,7 @@ export function ReimbursementApproval() {
           )}
           </>
         )}
-      </div>
+      </motion.div>
 
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1205,7 +1213,7 @@ export function ReimbursementApproval() {
                       <div className="flex gap-3">
                         <button
                           onClick={() => previewLinkedRequest(linkedRequestDetails.rfp_pdf_path)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-sm transition"
                         >
                           <Eye size={18} />
                           Preview Form
@@ -1219,7 +1227,7 @@ export function ReimbursementApproval() {
                               window.open(data.signedUrl, '_blank');
                             }
                           }}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-sm transition"
                         >
                           <Download size={18} />
                           Download
@@ -1236,14 +1244,14 @@ export function ReimbursementApproval() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => previewAttachments(selectedRequest.merged_pdf_path!, 'Attachments Preview')}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-sm transition"
                     >
                       <Eye size={18} />
                       Preview Attachments
                     </button>
                     <button
                       onClick={() => downloadAttachments(selectedRequest.merged_pdf_path!, selectedRequest.reimb_number)}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl shadow-sm transition"
                     >
                       <Download size={18} />
                       Download
@@ -1263,7 +1271,7 @@ export function ReimbursementApproval() {
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 outline-none"
                   placeholder="Add your comments here..."
                 />
               </div>
@@ -1280,7 +1288,7 @@ export function ReimbursementApproval() {
                 <button
                   onClick={() => handleAction('approved')}
                   disabled={loading || flowsLoading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
                 >
                   {approving ? <Loader2 size={20} className="animate-spin" /> : flowsLoading ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle size={20} />}
                   {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
@@ -1288,7 +1296,7 @@ export function ReimbursementApproval() {
                 <button
                   onClick={() => handleAction('rejected')}
                   disabled={loading || flowsLoading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
                   {rejecting ? <Loader2 size={20} className="animate-spin" /> : flowsLoading ? <Loader2 size={20} className="animate-spin" /> : <XCircle size={20} />}
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
@@ -1298,7 +1306,7 @@ export function ReimbursementApproval() {
                 onClick={handleReturnToMaker}
                 disabled={loading || flowsLoading || !canApprove() || !comments.trim()}
                 title={!comments.trim() ? 'Please add comments explaining what needs to be revised' : ''}
-                className="w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                className="w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-sm"
               >
                 {returning ? <Loader2 size={20} className="animate-spin" /> : <CornerDownLeft size={20} />}
                 {returning ? 'Returning...' : 'Return to Maker'}
@@ -1321,6 +1329,6 @@ export function ReimbursementApproval() {
         }}
         onCancel={() => setPendingConfirm(null)}
       />
-    </div>
+    </motion.div>
   );
 }

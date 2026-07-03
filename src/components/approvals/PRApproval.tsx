@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, FileText, Download, RefreshCw, Send, Loader2, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft, History, ToggleLeft, ToggleRight } from 'lucide-react';
@@ -815,11 +816,20 @@ export function PRApproval() {
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6 h-full">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 lg:p-6">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 lg:space-y-6 h-full"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 lg:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-slate-900">Purchase Requisition Approvals</h2>
+            <h2 className="text-xl lg:text-2xl font-display font-semibold text-slate-900">Purchase Requisition Approvals</h2>
             <p className="text-slate-600 mt-1 text-sm lg:text-base">Review and approve purchase requisitions</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
@@ -827,9 +837,12 @@ export function PRApproval() {
             <span className="text-lg font-bold text-blue-600">{requests.length}</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}
+      >
         {listLoading ? (
           <div className="overflow-auto flex-1">
             <table className="w-full hidden lg:table">
@@ -878,10 +891,11 @@ export function PRApproval() {
             {/* Mobile Card Layout */}
             <div className="lg:hidden overflow-auto flex-1">
               <div className="divide-y divide-slate-200">
-                {paginatedRequests.map((request) => (
+                {paginatedRequests.map((request, index) => (
                   <div
                     key={request.id}
-                    className="p-4 hover:bg-slate-50 transition-colors"
+                    className="p-4 hover:bg-gold-50/40 transition-colors animate-fade-in-up"
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                   >
                     <div className="space-y-3">
                       {/* Header: Document No and Approval Level */}
@@ -890,11 +904,11 @@ export function PRApproval() {
                           <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
                             Document No.
                           </div>
-                          <div className="font-mono font-bold text-base text-slate-900 truncate">
+                          <div className="font-mono font-bold text-base text-blue-900 truncate">
                             {request.document_no}
                           </div>
                         </div>
-                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-semibold whitespace-nowrap ring-1 ring-inset ring-black/5">
                           Level {request.current_approval_level + 1}
                         </span>
                       </div>
@@ -939,7 +953,7 @@ export function PRApproval() {
                       {/* Action Button */}
                       <button
                         onClick={() => handleViewRequest(request)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-colors font-medium text-sm shadow-luxury"
                       >
                         <Eye className="w-4 h-4" />
                         Review Request
@@ -953,7 +967,7 @@ export function PRApproval() {
             {/* Desktop Table Layout */}
             <div className="hidden lg:block overflow-auto flex-1">
               <table className="w-full border-collapse">
-                <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+                <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
                   <tr>
                     <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                       <button
@@ -1025,11 +1039,12 @@ export function PRApproval() {
                   {paginatedRequests.map((request, index) => (
                     <tr
                       key={request.id}
-                      className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                      className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                     >
                       <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-col min-w-[120px]">
-                          <span className="font-mono font-bold text-sm text-slate-900 truncate" title={request.document_no}>
+                          <span className="font-mono font-bold text-sm text-blue-900 truncate" title={request.document_no}>
                             {request.document_no}
                           </span>
                           <span className="font-mono text-xs text-slate-500 truncate" title={request.pr_number}>
@@ -1072,14 +1087,14 @@ export function PRApproval() {
                         </span>
                       </td>
                       <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
+                        <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold ring-1 ring-inset ring-black/5">
                           L{request.current_approval_level + 1}
                         </span>
                       </td>
                       <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                         <button
                           onClick={() => handleViewRequest(request)}
-                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                           title="Review Request"
                         >
                           <Eye className="w-4 h-4" />
@@ -1102,7 +1117,7 @@ export function PRApproval() {
             )}
           </>
         )}
-      </div>
+      </motion.div>
 
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1171,13 +1186,13 @@ export function PRApproval() {
                         value={budgetChangeReason}
                         onChange={(e) => setBudgetChangeReason(e.target.value)}
                         placeholder="Reason for changing budget status..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 resize-none"
                         rows={2}
                       />
                       <button
                         onClick={handleBudgetStatusChange}
                         disabled={changingBudgetStatus || !budgetChangeReason.trim()}
-                        className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        className="px-3 py-1.5 text-xs font-medium bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm"
                       >
                         {changingBudgetStatus ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                         Confirm Change
@@ -1388,7 +1403,7 @@ export function PRApproval() {
                               alert('Error viewing PDF');
                             }
                           }}
-                          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 text-white text-sm rounded-xl hover:from-blue-700 hover:to-blue-800 transition font-semibold flex items-center justify-center gap-2 shadow-sm"
                         >
                           <Eye size={16} />
                           View PDF
@@ -1407,7 +1422,7 @@ export function PRApproval() {
                               alert('Error downloading PDF');
                             }
                           }}
-                          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-xl hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2 shadow-sm"
                         >
                           <Download size={16} />
                           Download
@@ -1442,7 +1457,7 @@ export function PRApproval() {
                                 window.open(url, '_blank');
                               });
                           }}
-                          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-semibold flex items-center justify-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 text-white text-sm rounded-xl hover:from-blue-700 hover:to-blue-800 transition font-semibold flex items-center justify-center gap-2 shadow-sm"
                         >
                           <Eye size={16} />
                           View PDF
@@ -1450,7 +1465,7 @@ export function PRApproval() {
                         <a
                           href={selectedRequest.merged_pdf}
                           download={`PR_${selectedRequest.pr_number}_Attachments.pdf`}
-                          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2"
+                          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white text-sm rounded-xl hover:bg-green-700 transition font-semibold flex items-center justify-center gap-2 shadow-sm"
                         >
                           <Download size={16} />
                           Download
@@ -1491,7 +1506,7 @@ export function PRApproval() {
                       });
                     }}
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-luxury"
                   >
                     <RefreshCw size={18} />
                     Regenerate RFP
@@ -1505,7 +1520,7 @@ export function PRApproval() {
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 outline-none"
                   placeholder="Add your comments here..."
                 />
               </div>
@@ -1522,7 +1537,7 @@ export function PRApproval() {
                 <button
                   onClick={() => handleAction('approved')}
                   disabled={loading || flowsLoading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-xl shadow-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
                   {approving ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {approving ? 'Approving...' : flowsLoading ? 'Loading...' : 'Approve'}
@@ -1530,7 +1545,7 @@ export function PRApproval() {
                 <button
                   onClick={() => handleAction('rejected')}
                   disabled={loading || flowsLoading || !canApprove()}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-red-600 text-white rounded-xl shadow-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
                   {rejecting ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : flowsLoading ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {rejecting ? 'Rejecting...' : flowsLoading ? 'Loading...' : 'Reject'}
@@ -1538,7 +1553,7 @@ export function PRApproval() {
                 <button
                   onClick={handleReturnToMaker}
                   disabled={loading || flowsLoading || !canApprove()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-amber-500 text-white rounded-xl shadow-sm hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold text-sm sm:text-base"
                 >
                   {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
                   {returning ? 'Returning...' : 'Return to Maker'}
@@ -1562,6 +1577,6 @@ export function PRApproval() {
         }}
         onCancel={() => setPendingConfirm(null)}
       />
-    </div>
+    </motion.div>
   );
 }

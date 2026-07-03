@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -269,14 +270,23 @@ export function ApprovedRejected() {
   const uniqueTypes = [...new Set(summaries.map((s) => s.request_type))];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Approval Logs</h1>
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
+        <h1 className="font-display text-2xl font-semibold text-slate-900">Approval Logs</h1>
         <p className="text-sm text-slate-500 mt-1">{isAdmin ? 'All approved and rejected requests across the system' : 'All requests you have been involved in as an approver'}</p>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
+        <div className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
             <CheckCircle size={20} className="text-green-600" />
           </div>
@@ -285,7 +295,7 @@ export function ApprovedRejected() {
             <p className="text-sm text-slate-500">Approved</p>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4">
+        <div className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
             <XCircle size={20} className="text-red-600" />
           </div>
@@ -296,7 +306,10 @@ export function ApprovedRejected() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4"
+      >
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -305,7 +318,7 @@ export function ApprovedRejected() {
               placeholder="Search by request number..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             />
           </div>
           <div className="relative">
@@ -313,7 +326,7 @@ export function ApprovedRejected() {
             <select
               value={filterType}
               onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-              className="pl-9 pr-8 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+              className="pl-9 pr-8 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 appearance-none bg-white"
             >
               <option value="all">All Types</option>
               {uniqueTypes.map((t) => (
@@ -326,7 +339,7 @@ export function ApprovedRejected() {
             <select
               value={filterAction}
               onChange={(e) => { setFilterAction(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white pr-8"
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 appearance-none bg-white pr-8"
             >
               <option value="all">All Actions</option>
               <option value="approved">Approved</option>
@@ -335,9 +348,9 @@ export function ApprovedRejected() {
             <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden">
         {loading ? (
           <div className="py-20 text-center text-slate-500">
             <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -355,7 +368,7 @@ export function ApprovedRejected() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="border-b-2 border-gold-200 bg-slate-50">
                   <th className="px-4 py-3 text-left">
                     <button onClick={() => handleSort('request_number')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
                       Request No. {getSortIcon('request_number')}
@@ -380,12 +393,16 @@ export function ApprovedRejected() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {paginated.map((summary) => {
+                {paginated.map((summary, index) => {
                   const rowKey = `${summary.request_type}__${summary.request_id}`;
                   return (
-                    <tr key={rowKey} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={rowKey}
+                      className="hover:bg-gold-50/40 transition-colors animate-fade-in-up"
+                      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                    >
                       <td className="px-4 py-3">
-                        <span className="font-semibold text-slate-900">{summary.request_number || '-'}</span>
+                        <span className="font-semibold text-blue-900">{summary.request_number || '-'}</span>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {REQUEST_TYPE_LABELS[summary.request_type] || summary.request_type}
@@ -395,7 +412,7 @@ export function ApprovedRejected() {
                           {summary.my_actions.map((action) => (
                             <span
                               key={action}
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[action.toLowerCase()] || 'bg-slate-100 text-slate-700'}`}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ring-black/5 ${STATUS_COLORS[action.toLowerCase()] || 'bg-slate-100 text-slate-700'}`}
                             >
                               {action === 'Approved' && <CheckCircle size={11} />}
                               {action === 'Rejected' && <XCircle size={11} />}
@@ -410,7 +427,7 @@ export function ApprovedRejected() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => handleViewDetails(summary)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 rounded-xl shadow-sm transition-colors"
                         >
                           <Eye size={13} />
                           View
@@ -528,7 +545,7 @@ export function ApprovedRejected() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 

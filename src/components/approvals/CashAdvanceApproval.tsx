@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send, CornerDownLeft, FileText } from 'lucide-react';
@@ -988,13 +989,24 @@ export function CashAdvanceApproval() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Cash Advance Approvals</h2>
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 sm:space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-slate-900">Cash Advance Approvals</h2>
         <p className="text-slate-600 mt-1">Review and approve cash advance requests</p>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 200px)' }}>
         {listLoading ? (
           <div className="overflow-auto flex-1">
             <table className="w-full hidden lg:table">
@@ -1042,7 +1054,7 @@ export function CashAdvanceApproval() {
           <>
           <div className="overflow-auto flex-1">
             <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+              <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
                 <tr>
                   <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button
@@ -1096,10 +1108,11 @@ export function CashAdvanceApproval() {
               {paginatedRequests.map((request, index) => (
                 <tr
                   key={request.id}
-                  className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                  className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                  style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                 >
                   <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                    <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.ca_number}>
+                    <span className="font-mono font-bold text-sm text-blue-900 truncate block min-w-[120px]" title={request.ca_number}>
                       {request.ca_number}
                     </span>
                   </td>
@@ -1124,14 +1137,14 @@ export function CashAdvanceApproval() {
                     </span>
                   </td>
                   <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                    <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">
+                    <span className="inline-flex items-center justify-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold ring-1 ring-inset ring-black/5">
                       L{request.current_approval_level + 1}
                     </span>
                   </td>
                   <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                     <button
                       onClick={() => handleViewRequest(request)}
-                      className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                      className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                       title="Review Request"
                     >
                       <Eye className="w-4 h-4" />
@@ -1154,7 +1167,7 @@ export function CashAdvanceApproval() {
           )}
           </>
         )}
-      </div>
+      </motion.div>
 
       {showModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1415,6 +1428,6 @@ export function CashAdvanceApproval() {
         }}
         onCancel={() => setPendingConfirm(null)}
       />
-    </div>
+    </motion.div>
   );
 }

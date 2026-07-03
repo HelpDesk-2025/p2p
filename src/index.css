@@ -10,10 +10,18 @@
 
   body {
     font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    @apply bg-slate-50 text-slate-900;
   }
 
   * {
     @apply box-border;
+  }
+
+  /* Visible, on-brand focus rings for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid #DFAD2E;
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
   /* Scrollbar styling */
@@ -32,6 +40,16 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400;
   }
+
+  /* Respect the user's motion preference across every animation/transition */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {
@@ -47,5 +65,35 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .font-display {
+    font-family: 'Fraunces', 'IBM Plex Sans', ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+  }
+
+  /* Animated champagne-gold shimmer sweep across text (headings, wordmarks) */
+  .text-shimmer {
+    background: linear-gradient(
+      110deg,
+      #B8860B 20%,
+      #F0C955 40%,
+      #FFF6DE 50%,
+      #F0C955 60%,
+      #B8860B 80%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 3.5s linear infinite;
+  }
+
+  /* Frosted glass surface for luxury overlays/panels */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
   }
 }

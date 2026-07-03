@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Plus, Search, Loader2, Send, Download, FileText, X, Trash2, Upload,
   Receipt, AlertTriangle, CheckCircle2, ChevronRight, Calendar, FileSpreadsheet,
@@ -119,7 +120,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function StatusBadge({ status }: { status: InvoiceStatus }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[status]}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ring-1 ring-inset ring-black/5 ${STATUS_STYLES[status]}`}>
       {STATUS_LABELS[status]}
     </span>
   );
@@ -133,7 +134,7 @@ function MatchBadge({ status }: { status: MatchStatus }) {
     resolved: 'bg-amber-50 text-amber-700 border-amber-200',
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${styles[status]}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ring-1 ring-inset ring-black/5 ${styles[status]}`}>
       {status === 'matched' ? 'Match' : status === 'mismatched' ? 'Mismatch' : status === 'resolved' ? 'Resolved' : 'Pending'}
     </span>
   );
@@ -764,11 +765,20 @@ export function VendorInvoice() {
   // ====================================================== RENDER ============
   if (view === 'list') {
     return (
-      <div className="space-y-4">
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+        className="space-y-4"
+      >
         <Toast toast={toast} />
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+          className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+            <h1 className="text-2xl font-display font-semibold text-slate-900 flex items-center gap-2">
               <Receipt size={24} className="text-blue-600" />
               Invoice Receipt & 3-Way Matching
             </h1>
@@ -777,18 +787,18 @@ export function VendorInvoice() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowExportModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 shadow-sm transition"
             >
               <FileSpreadsheet size={16} /> Export to Excel
             </button>
             <button
               onClick={openPoPicker}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-800 to-blue-900 text-white rounded-xl text-sm font-medium hover:from-blue-700 hover:to-blue-800 shadow-luxury transition"
             >
               <Plus size={16} /> New Invoice
             </button>
           </div>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <SummaryCard label="Total Invoices" value={summary.total} accent="text-slate-700" />
@@ -802,7 +812,10 @@ export function VendorInvoice() {
           />
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+          className="bg-white rounded-2xl border border-slate-200/70 shadow-luxury"
+        >
           <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -811,7 +824,7 @@ export function VendorInvoice() {
                 placeholder="Search by invoice ref, PO, vendor..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
               />
             </div>
             <select
@@ -839,7 +852,7 @@ export function VendorInvoice() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-slate-50 border-b-2 border-gold-200">
                   <tr className="text-left text-xs text-slate-500">
                     <th className="px-4 py-2 font-medium">Invoice Ref</th>
                     <th className="px-4 py-2 font-medium">PO Number</th>
@@ -852,13 +865,14 @@ export function VendorInvoice() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredInvoices.map((inv) => (
+                  {filteredInvoices.map((inv, index) => (
                     <tr
                       key={inv.id}
-                      className="hover:bg-slate-50 cursor-pointer"
+                      className="hover:bg-gold-50/40 cursor-pointer animate-fade-in-up"
+                      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                       onClick={() => openDetail(inv)}
                     >
-                      <td className="px-4 py-2 font-medium text-slate-900">{inv.invoice_ref_number}</td>
+                      <td className="px-4 py-2 font-medium text-blue-900">{inv.invoice_ref_number}</td>
                       <td className="px-4 py-2 text-slate-700">{inv.po_number}</td>
                       <td className="px-4 py-2 text-slate-700">{inv.vendor_name}</td>
                       <td className="px-4 py-2 text-right text-slate-700">
@@ -878,7 +892,7 @@ export function VendorInvoice() {
               </table>
             </div>
           )}
-        </div>
+        </motion.div>
 
         {showPoPicker && (
           <PoPickerModal
@@ -887,7 +901,7 @@ export function VendorInvoice() {
             onSelect={startCreateFromPO}
           />
         )}
-      </div>
+      </motion.div>
     );
   }
 

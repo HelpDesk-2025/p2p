@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { logAuditTrail } from '../../lib/auditTrail';
@@ -2514,14 +2515,23 @@ export function Canvass() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4 sm:space-y-6"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Canvass Requests</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-slate-900">Canvass Requests</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm sm:text-base transition-colors"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 text-sm sm:text-base transition-colors shadow-sm"
             >
               <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="sm:hidden">Export</span>
@@ -2532,7 +2542,7 @@ export function Canvass() {
                 loadAvailablePRs();
                 setShowPRSelection(true);
               }}
-              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm sm:text-base shadow-luxury"
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="sm:hidden">New</span>
@@ -2540,9 +2550,12 @@ export function Canvass() {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70 overflow-hidden"
+      >
         <div className="px-4 py-3 border-b border-slate-200">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
@@ -2553,7 +2566,7 @@ export function Canvass() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { setSearchTerm(searchInput); setCurrentPage(1); } }}
                 placeholder="Search by canvass no., company, PR no., date, status..."
-                className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full pl-10 pr-10 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400 outline-none transition-all"
               />
               {searchInput && (
                 <button
@@ -2566,23 +2579,23 @@ export function Canvass() {
             </div>
             <button
               onClick={() => { setSearchTerm(searchInput); setCurrentPage(1); }}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+              className="px-4 py-2 text-sm bg-gradient-to-r from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap shadow-sm"
             >
               <Search className="w-4 h-4" />
               <span className="hidden sm:inline">Search</span>
             </button>
             <button
               onClick={() => setShowFilterModal(true)}
-              className={`relative px-4 py-2 text-sm border rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              className={`relative px-4 py-2 text-sm border rounded-xl transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                 getActiveFilterCount(filterValues) > 0
-                  ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                  ? 'bg-gold-50 border-gold-300 text-gold-700 hover:bg-gold-100'
                   : 'border-slate-300 text-slate-600 hover:bg-slate-50'
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
               <span className="hidden sm:inline">Filter</span>
               {getActiveFilterCount(filterValues) > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gold-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {getActiveFilterCount(filterValues)}
                 </span>
               )}
@@ -2594,7 +2607,7 @@ export function Canvass() {
         ) : (
         <div className="overflow-auto flex-1">
           <table className="w-full border-collapse">
-            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200 z-10">
+            <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-gold-200 z-10">
               <tr>
                 <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('canvass_number')} className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors">
@@ -2645,9 +2658,13 @@ export function Canvass() {
                 </tr>
               ) : (
                 paginatedRequests.map((req, index) => (
-                  <tr key={req.id} className={`hover:bg-slate-50 transition-colors group ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                  <tr
+                    key={req.id}
+                    className={`hover:bg-gold-50/40 transition-colors group animate-fade-in-up ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                    style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+                  >
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.canvass_number}>
+                      <span className="font-mono font-bold text-sm text-blue-900 truncate block min-w-[120px]" title={req.canvass_number}>
                         {req.canvass_number}
                       </span>
                     </td>
@@ -2662,7 +2679,7 @@ export function Canvass() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap text-right">
-                      <span className="text-sm text-slate-900 font-semibold">
+                      <span className="text-sm text-blue-900 font-semibold">
                         {req.purchase_requisitions?.total_amount ? `₱${req.purchase_requisitions.total_amount.toLocaleString()}` : 'N/A'}
                       </span>
                     </td>
@@ -2685,7 +2702,7 @@ export function Canvass() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ring-1 ring-inset ring-black/5 ${getStatusColor(req.status)}`}>
                         {getStatusLabel(req.status)}
                       </span>
                     </td>
@@ -2693,7 +2710,7 @@ export function Canvass() {
                       <div className="inline-flex items-center gap-2">
                         <button
                           onClick={() => handleViewRequest(req)}
-                          className="inline-flex items-center justify-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm hover:shadow group-hover:scale-105 transform"
+                          className="inline-flex items-center justify-center p-2 bg-gradient-to-br from-blue-800 to-blue-900 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-luxury group-hover:scale-105 transform"
                           title="View Request"
                         >
                           <Eye className="w-4 h-4" />
@@ -2704,7 +2721,7 @@ export function Canvass() {
                           <button
                             onClick={() => handleCancelRequest(req)}
                             disabled={loading}
-                            className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="inline-flex items-center justify-center p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Cancel Request"
                           >
                             <Ban className="w-4 h-4" />
@@ -2729,7 +2746,7 @@ export function Canvass() {
           )}
         </div>
         )}
-      </div>
+      </motion.div>
 
       {showViewModal && viewingRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -3242,6 +3259,6 @@ export function Canvass() {
         onExport={handleExport}
         exporting={exporting}
       />
-    </div>
+    </motion.div>
   );
 }

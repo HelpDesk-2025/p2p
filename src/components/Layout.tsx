@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission, hasAnyPermission, MODULE_PERMISSIONS } from '../lib/permissions';
 import { supabase } from '../lib/supabase';
@@ -343,13 +344,24 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <motion.aside
+        initial={{ x: -24, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         <div className="h-full flex flex-col overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-slate-200 flex-shrink-0">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="p-4 sm:p-6 border-b border-slate-200 flex-shrink-0 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="flex items-center gap-2 mb-2"
+            >
               <img src="/p2p_logo.png" alt="Point to Point" className="h-10 w-auto object-contain" />
-              <span className="text-2xl font-bold text-slate-900">P2P</span>
-            </div>
+              <span className="font-display text-2xl font-semibold text-slate-900">P2P</span>
+            </motion.div>
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-slate-600 truncate">{profile?.full_name}</p>
@@ -360,7 +372,12 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
           </div>
 
           <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4">
-            <div className="space-y-1">
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.05 }}
+              className="space-y-1"
+            >
               <NavItem
                 item={filteredMenuItems.find((item) => item.id === 'dashboard')!}
                 active={currentView === 'dashboard'}
@@ -379,144 +396,89 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                   }}
                 />
               )}
-            </div>
+            </motion.div>
 
-            {requestItems.length > 0 && (
-              <div className="mt-6">
-                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Requests
-                </h3>
-                <div className="space-y-1">
-                  {requestItems.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      item={item}
-                      active={currentView === item.id}
-                      onClick={() => {
-                        onViewChange(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {approvalItems.length > 0 && (
-              <div className="mt-6">
-                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Approvals
-                </h3>
-                <div className="space-y-1">
-                  {approvalItems.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      item={item}
-                      active={currentView === item.id}
-                      onClick={() => {
-                        onViewChange(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {receivingItems.length > 0 && (
-              <div className="mt-6">
-                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Receiving
-                </h3>
-                <div className="space-y-1">
-                  {receivingItems.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      item={item}
-                      active={currentView === item.id}
-                      onClick={() => {
-                        onViewChange(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {apItems.length > 0 && (
-              <div className="mt-6">
-                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Matching
-                </h3>
-                <div className="space-y-1">
-                  {apItems.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      item={item}
-                      active={currentView === item.id}
-                      onClick={() => {
-                        onViewChange(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {procurementItems.length > 0 && (
-              <div className="mt-6">
-                <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                  Checking
-                </h3>
-                <div className="space-y-1">
-                  {procurementItems.map((item) => (
-                    <NavItem
-                      key={item.id}
-                      item={item}
-                      active={currentView === item.id}
-                      onClick={() => {
-                        onViewChange(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
+            {[
+              { items: requestItems, label: 'Requests' },
+              { items: approvalItems, label: 'Approvals' },
+              { items: receivingItems, label: 'Receiving' },
+              { items: apItems, label: 'Matching' },
+              { items: procurementItems, label: 'Checking' },
+            ].map(
+              (group, groupIdx) =>
+                group.items.length > 0 && (
+                  <motion.div
+                    key={group.label}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.08 + groupIdx * 0.04 }}
+                    className="mt-6"
+                  >
+                    <h3 className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                      {group.label}
+                    </h3>
+                    <div className="space-y-1">
+                      {group.items.map((item) => (
+                        <NavItem
+                          key={item.id}
+                          item={item}
+                          active={currentView === item.id}
+                          onClick={() => {
+                            onViewChange(item.id);
+                            setMobileMenuOpen(false);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )
             )}
 
             {filteredConfigItems.length > 0 && (
-              <div className="mt-6">
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+                className="mt-6"
+              >
                 <button
                   onClick={() => setConfigOpen(!configOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Settings size={20} />
                     Configuration
                   </div>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform ${configOpen ? 'rotate-180' : ''}`}
-                  />
+                  <motion.span animate={{ rotate: configOpen ? 180 : 0 }} transition={{ duration: 0.25 }}>
+                    <ChevronDown size={16} />
+                  </motion.span>
                 </button>
-                {configOpen && (
-                  <div className="mt-1 space-y-1 ml-4">
-                    {filteredConfigItems.map((item) => (
-                      <NavItem
-                        key={item.id}
-                        item={item}
-                        active={currentView === item.id}
-                        onClick={() => {
-                          onViewChange(item.id);
-                          setMobileMenuOpen(false);
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+                <AnimatePresence initial={false}>
+                  {configOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-1 space-y-1 ml-4">
+                        {filteredConfigItems.map((item) => (
+                          <NavItem
+                            key={item.id}
+                            item={item}
+                            active={currentView === item.id}
+                            onClick={() => {
+                              onViewChange(item.id);
+                              setMobileMenuOpen(false);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             )}
           </nav>
 
@@ -531,26 +493,29 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                 }}
               />
             )}
-            <button
+            <motion.button
               onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <LogOut size={20} />
               Sign Out
-            </button>
+            </motion.button>
           </div>
         </div>
-      </aside>
+      </motion.aside>
 
       <div className="flex-1 flex flex-col w-full min-w-0 overflow-hidden lg:ml-64">
         <header className="bg-white border-b border-slate-200 sticky top-0 z-40 w-full flex-shrink-0">
           <div className="px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
-            <button
+            <motion.button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              whileTap={{ scale: 0.9 }}
               className="lg:hidden p-2 rounded-lg hover:bg-slate-100 flex-shrink-0 -ml-2"
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            </motion.button>
             <div className="flex-1" />
           </div>
         </header>
@@ -562,52 +527,76 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
         </main>
       </div>
 
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {showInactivityWarning && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="bg-amber-50 border-b border-amber-100 px-6 py-5 flex items-center gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <AlertTriangle size={20} className="text-amber-600" />
+      <AnimatePresence>
+        {showInactivityWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="relative bg-white rounded-2xl shadow-luxury-lg w-full max-w-sm mx-4 overflow-hidden"
+            >
+              <div className="bg-amber-50 border-b border-amber-100 px-6 py-5 flex items-center gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Session Expiring Soon</h2>
+                  <p className="text-sm text-amber-700">Due to inactivity</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Session Expiring Soon</h2>
-                <p className="text-sm text-amber-700">Due to inactivity</p>
+              <div className="px-6 py-6 text-center">
+                <p className="text-slate-600 text-sm mb-4">
+                  You will be automatically logged out in
+                </p>
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 mb-4">
+                  <span className="text-2xl font-bold text-red-600">{inactivityCountdown}</span>
+                </div>
+                <p className="text-slate-500 text-xs">seconds</p>
               </div>
-            </div>
-            <div className="px-6 py-6 text-center">
-              <p className="text-slate-600 text-sm mb-4">
-                You will be automatically logged out in
-              </p>
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 mb-4">
-                <span className="text-2xl font-bold text-red-600">{inactivityCountdown}</span>
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  onClick={handleSignOut}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Log Out Now
+                </button>
+                <button
+                  onClick={handleStayLoggedIn}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-800 hover:bg-blue-900 rounded-lg transition-colors"
+                >
+                  Stay Logged In
+                </button>
               </div>
-              <p className="text-slate-500 text-xs">seconds</p>
-            </div>
-            <div className="px-6 pb-6 flex gap-3">
-              <button
-                onClick={handleSignOut}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                Log Out Now
-              </button>
-              <button
-                onClick={handleStayLoggedIn}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-              >
-                Stay Logged In
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -615,16 +604,23 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 function NavItem({ item, active, onClick }: { item: MenuItem; active: boolean; onClick: () => void }) {
   const Icon = item.icon;
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg border-l-2 transition ${
-        active
-          ? 'bg-blue-50 text-blue-700 border-gold-400'
-          : 'text-slate-700 border-transparent hover:bg-slate-100'
+      whileHover={{ x: 2 }}
+      whileTap={{ scale: 0.98 }}
+      className={`relative w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+        active ? 'text-blue-900' : 'text-slate-700 hover:bg-slate-100'
       }`}
     >
-      <Icon size={20} className="flex-shrink-0" />
-      <span className="text-left truncate">{item.label}</span>
-    </button>
+      {active && (
+        <motion.div
+          layoutId="nav-active-pill"
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+          className="absolute inset-0 bg-gradient-to-r from-gold-50 to-blue-50 rounded-lg border-l-2 border-gold-400 shadow-inner-gold"
+        />
+      )}
+      <Icon size={20} className="relative flex-shrink-0" />
+      <span className="relative text-left truncate">{item.label}</span>
+    </motion.button>
   );
 }

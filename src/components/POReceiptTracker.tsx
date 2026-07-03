@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Loader2, Package, ChevronDown, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
 type POStatus =
@@ -161,20 +162,34 @@ export function POReceiptTracker() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
-            <Package size={24} className="text-blue-600" />
-            PO Receipt Tracker
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Track receipt progress across dispatched purchase orders
-          </p>
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+      className="space-y-4"
+    >
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } }}
+        className="relative overflow-hidden bg-white rounded-2xl shadow-luxury border border-slate-200/70 p-4 sm:p-6"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="font-display font-semibold text-2xl text-slate-900 flex items-center gap-2">
+              <Package size={24} className="text-blue-600" />
+              PO Receipt Tracker
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Track receipt progress across dispatched purchase orders
+            </p>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <motion.div
+        variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut', delay: 0.05 } } }}
+        className="bg-white rounded-2xl shadow-luxury border border-slate-200/70"
+      >
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -183,7 +198,7 @@ export function POReceiptTracker() {
               placeholder="Search by PO number or vendor..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-gold-400/60 focus:border-gold-400"
             />
           </div>
           <select
@@ -210,11 +225,15 @@ export function POReceiptTracker() {
           </div>
         ) : (
           <div className="divide-y divide-slate-200">
-            {filtered.map((po) => (
-              <div key={po.id}>
+            {filtered.map((po, index) => (
+              <div
+                key={po.id}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
+              >
                 <button
                   onClick={() => toggleExpand(po.id)}
-                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition text-left"
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gold-50/40 transition text-left"
                 >
                   {expanded === po.id ? (
                     <ChevronDown size={18} className="text-slate-400 flex-shrink-0" />
@@ -223,7 +242,7 @@ export function POReceiptTracker() {
                   )}
                   <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 items-center">
                     <div>
-                      <div className="font-medium text-slate-900 truncate">{po.po_number}</div>
+                      <div className="font-medium text-blue-900 truncate">{po.po_number}</div>
                       <div className="text-xs text-slate-500">{po.po_date}</div>
                     </div>
                     <div className="text-sm text-slate-700 truncate">{po.vendor_name}</div>
@@ -231,7 +250,7 @@ export function POReceiptTracker() {
                       Total: {Number(po.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </div>
                     <div>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[po.status]}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ring-1 ring-inset ring-black/5 ${STATUS_STYLES[po.status]}`}>
                         {STATUS_LABELS[po.status]}
                       </span>
                     </div>
@@ -249,7 +268,7 @@ export function POReceiptTracker() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
+                            <tr className="text-left text-xs text-slate-500 border-b-2 border-gold-200">
                               <th className="pb-2 pr-3 font-medium">Description</th>
                               <th className="pb-2 px-3 font-medium">UOM</th>
                               <th className="pb-2 px-3 font-medium text-right">Ordered</th>
@@ -260,7 +279,7 @@ export function POReceiptTracker() {
                           </thead>
                           <tbody>
                             {(itemRowsByPO[po.id] || []).map((row) => (
-                              <tr key={row.po_item_id} className="border-b border-slate-100 last:border-0">
+                              <tr key={row.po_item_id} className="border-b border-slate-100 last:border-0 hover:bg-gold-50/40 transition">
                                 <td className="py-2 pr-3 text-slate-800">{row.description}</td>
                                 <td className="py-2 px-3 text-slate-600">{row.uom}</td>
                                 <td className="py-2 px-3 text-right text-slate-700">{row.ordered.toFixed(2)}</td>
@@ -281,7 +300,7 @@ export function POReceiptTracker() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
