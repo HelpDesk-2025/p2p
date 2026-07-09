@@ -388,6 +388,10 @@ export function ReimbursementApproval() {
         aVal = a.reimb_number;
         bVal = b.reimb_number;
         break;
+      case 'request_type':
+        aVal = (a.request_type || 'Reimbursement').toLowerCase();
+        bVal = (b.request_type || 'Reimbursement').toLowerCase();
+        break;
       case 'requester':
         aVal = a.user_profiles?.full_name || '';
         bVal = b.user_profiles?.full_name || '';
@@ -917,6 +921,15 @@ export function ReimbursementApproval() {
                   </th>
                   <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                     <button
+                      onClick={() => handleSort('request_type')}
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                    >
+                      Type
+                      {getSortIcon('request_type')}
+                    </button>
+                  </th>
+                  <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                    <button
                       onClick={() => handleSort('requester')}
                       className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                     >
@@ -963,6 +976,15 @@ export function ReimbursementApproval() {
                     <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={request.reimb_number}>
                         {request.reimb_number}
+                      </span>
+                    </td>
+                    <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                        request.request_type === 'Liquidation'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-teal-100 text-teal-800'
+                      }`}>
+                        {request.request_type || 'Reimbursement'}
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3">

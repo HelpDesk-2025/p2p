@@ -1146,6 +1146,10 @@ export function Reimbursement() {
         aVal = a.reimb_number;
         bVal = b.reimb_number;
         break;
+      case 'request_type':
+        aVal = ((a as any).request_type || 'Reimbursement').toLowerCase();
+        bVal = ((b as any).request_type || 'Reimbursement').toLowerCase();
+        break;
       case 'request_date':
         aVal = new Date(a.request_date).getTime();
         bVal = new Date(b.request_date).getTime();
@@ -2151,6 +2155,15 @@ export function Reimbursement() {
               </th>
               <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
                 <button
+                  onClick={() => handleSort('request_type')}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
+                >
+                  Type
+                  {getSortIcon('request_type')}
+                </button>
+              </th>
+              <th className="px-3 xl:px-4 py-3.5 text-left whitespace-nowrap">
+                <button
                   onClick={() => handleSort('request_date')}
                   className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:text-slate-900 transition-colors"
                 >
@@ -2204,7 +2217,7 @@ export function Reimbursement() {
           <tbody className="divide-y divide-slate-100">
             {paginatedRequests.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">No reimbursement/liquidation requests found</td>
+                <td colSpan={8} className="px-3 py-6 sm:px-6 sm:py-8 text-center text-xs sm:text-sm text-slate-500">No reimbursement/liquidation requests found</td>
               </tr>
             ) : (
               paginatedRequests.map((req, index) => (
@@ -2212,6 +2225,15 @@ export function Reimbursement() {
                   <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
                     <span className="font-mono font-bold text-sm text-slate-900 truncate block min-w-[120px]" title={req.reimb_number}>
                       {req.reimb_number}
+                    </span>
+                  </td>
+                  <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                      (req as any).request_type === 'Liquidation'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-teal-100 text-teal-800'
+                    }`}>
+                      {(req as any).request_type || 'Reimbursement'}
                     </span>
                   </td>
                   <td className="px-3 xl:px-4 py-3 whitespace-nowrap">
