@@ -1045,8 +1045,7 @@ export async function generateAndUploadCanvassRFP(
     const { data: approvalRecordsData, error: approvalsError } = await supabase
       .rpc('get_approval_records_with_signatures', {
         p_request_id: canvassId,
-        p_request_type: 'Canvass',
-        p_requester_id: canvass.requester_id
+        p_request_type: 'Canvass'
       });
 
     if (approvalsError) {

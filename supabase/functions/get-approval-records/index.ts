@@ -30,7 +30,6 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await supabaseClient.rpc('get_approval_records_with_signatures', {
       p_request_id: requestId,
       p_request_type: requestType,
-      p_requester_id: requesterId ?? null,
     });
 
     if (error) {

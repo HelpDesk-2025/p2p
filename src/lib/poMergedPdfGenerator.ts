@@ -45,7 +45,6 @@ export async function generateAndUploadPOMergedPdf(
     .rpc('get_approval_records_with_signatures', {
       p_request_id: po.id,
       p_request_type: 'Purchase Order',
-      p_requester_id: po.prepared_by || undefined,
     });
 
   const poApprovalRecords = Array.isArray(poApprovalData) ? poApprovalData : [];
@@ -230,7 +229,6 @@ async function buildCanvassRFP(canvass: any): Promise<Uint8Array | null> {
       .rpc('get_approval_records_with_signatures', {
         p_request_id: canvass.id,
         p_request_type: 'Canvass',
-        p_requester_id: canvass.requester_id,
       });
 
     const approvalRecords = Array.isArray(approvalRecordsData) ? approvalRecordsData : [];
@@ -310,7 +308,6 @@ async function buildCanvassSheet(canvass: any): Promise<Uint8Array | null> {
       .rpc('get_approval_records_with_signatures', {
         p_request_id: canvass.id,
         p_request_type: 'Canvass',
-        p_requester_id: canvass.requester_id,
       });
 
     const approvalRecords = Array.isArray(approvalRecordsData) ? approvalRecordsData : [];
