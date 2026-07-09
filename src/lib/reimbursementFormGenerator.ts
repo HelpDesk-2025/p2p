@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage, PDFPage, PDFFont } from 'pdf-lib';
 
 async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
   const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
@@ -47,54 +47,48 @@ interface ReimbursementFormData {
   expenseCategory?: string;
 }
 
+function sanitizeText(text: string): string {
+  if (!text) return '';
+  const str = String(text);
+  let sanitized = str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\r/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+
+  sanitized = sanitized
+    .replace(/["\u201C\u201D]/g, '"')
+    .replace(/['\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/\u2122/g, '(TM)').replace(/\u00AE/g, '(R)').replace(/\u00A9/g, '(C)')
+    .replace(/\u20AC/g, 'EUR').replace(/\u00A3/g, 'GBP').replace(/\u00A5/g, 'JPY');
+
+  sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
+  sanitized = sanitized.replace(/\s+/g, ' ').trim();
+  return sanitized;
+}
+
 export async function generateReimbursementForm(data: ReimbursementFormData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([612, 792]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const { width, height } = page.getSize();
+  const pageWidth = 612;
+  const pageHeight = 792;
   const margin = 50;
 
-  const sanitizeText = (text: string): string => {
-    if (!text) return '';
+  let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  let yPos = pageHeight - 60;
 
-    // Convert to string if needed
-    const str = String(text);
-
-    // First normalize Unicode characters to their closest ASCII equivalents
-    let sanitized = str
-      .normalize('NFD') // Decompose combined characters
-      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-      .replace(/\r\n/g, ' ')
-      .replace(/\r/g, ' ')
-      .replace(/\n/g, ' ')
-      .replace(/\t/g, ' ')
-      .replace(/[\x00-\x1F\x7F-\x9F]/g, ''); // Remove ALL control chars including 0x0A
-
-    // Replace common problematic characters with safe alternatives
-    sanitized = sanitized
-      .replace(/[""]/g, '"') // Smart quotes
-      .replace(/['']/g, "'") // Smart apostrophes
-      .replace(/[–—]/g, '-') // En dash, em dash
-      .replace(/…/g, '...') // Ellipsis
-      .replace(/™/g, '(TM)').replace(/®/g, '(R)').replace(/©/g, '(C)') // Symbols
-      .replace(/€/g, 'EUR').replace(/£/g, 'GBP').replace(/¥/g, 'JPY'); // Currency
-
-    // Remove any remaining characters outside WinAnsi safe range
-    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
-
-    // Clean up multiple spaces
-    sanitized = sanitized.replace(/\s+/g, ' ').trim();
-
-    return sanitized;
-  };
-
-  const drawText = (text: string, x: number, y: number, size = 10, isBold = false) => {
+  const drawTextOnPage = (currentPage: PDFPage, text: string, x: number, y: number, size = 10, isBold = false) => {
     if (!text || text.trim() === '') return;
     const sanitized = sanitizeText(text);
     if (!sanitized || sanitized.trim() === '') return;
-    page.drawText(sanitized, {
+    currentPage.drawText(sanitized, {
       x,
       y,
       size,
@@ -103,8 +97,8 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
     });
   };
 
-  const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
-    page.drawLine({
+  const drawLineOnPage = (currentPage: PDFPage, x1: number, y1: number, x2: number, y2: number) => {
+    currentPage.drawLine({
       start: { x: x1, y: y1 },
       end: { x: x2, y: y2 },
       thickness: 1,
@@ -112,53 +106,51 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
     });
   };
 
-  const drawBox = (x: number, y: number, width: number, height: number) => {
-    page.drawRectangle({
+  const drawBoxOnPage = (currentPage: PDFPage, x: number, y: number, w: number, h: number) => {
+    currentPage.drawRectangle({
       x,
       y,
-      width,
-      height,
+      width: w,
+      height: h,
       borderColor: rgb(0, 0, 0),
       borderWidth: 1,
     });
   };
 
-  let yPos = height - 60;
-
   // Header: Title and Document No.
-  drawBox(margin, yPos - 30, width - 2 * margin, 30);
+  drawBoxOnPage(page, margin, yPos - 30, pageWidth - 2 * margin, 30);
   const titleText = `${data.requestType} Request`;
-  drawText(titleText, margin + 10, yPos - 20, 14, true);
-  drawText(`${data.requestType === 'Liquidation' ? 'Liquidation' : 'Reimbursement'} No.: ${data.reimbNumber}`,
-    width - margin - 200, yPos - 20, 10, false);
+  drawTextOnPage(page, titleText, margin + 10, yPos - 20, 14, true);
+  drawTextOnPage(page, `${data.requestType === 'Liquidation' ? 'Liquidation' : 'Reimbursement'} No.: ${data.reimbNumber}`,
+    pageWidth - margin - 200, yPos - 20, 10, false);
   yPos -= 30;
 
   // First section: Request details
   const sectionHeight = 120;
-  drawBox(margin, yPos - sectionHeight, width - 2 * margin, sectionHeight);
+  drawBoxOnPage(page, margin, yPos - sectionHeight, pageWidth - 2 * margin, sectionHeight);
 
   const leftColX = margin + 10;
-  const rightColX = width / 2 + 10;
+  const rightColX = pageWidth / 2 + 10;
   const valueOffset = 90;
 
   let detailY = yPos - 20;
 
-  drawText('Payee', leftColX, detailY, 10, true);
-  drawText(data.payee, leftColX + valueOffset, detailY, 10, false);
-  drawText('Date', rightColX, detailY, 10, true);
-  drawText(data.requestDate, rightColX + 85, detailY, 10, false);
+  drawTextOnPage(page, 'Payee', leftColX, detailY, 10, true);
+  drawTextOnPage(page, data.payee, leftColX + valueOffset, detailY, 10, false);
+  drawTextOnPage(page, 'Date', rightColX, detailY, 10, true);
+  drawTextOnPage(page, data.requestDate, rightColX + 85, detailY, 10, false);
   detailY -= 20;
 
-  drawText('Company', leftColX, detailY, 10, true);
-  drawText(data.company, leftColX + valueOffset, detailY, 10, false);
-  drawText('Department', rightColX, detailY, 10, true);
-  drawText(data.department, rightColX + 85, detailY, 10, false);
+  drawTextOnPage(page, 'Company', leftColX, detailY, 10, true);
+  drawTextOnPage(page, data.company, leftColX + valueOffset, detailY, 10, false);
+  drawTextOnPage(page, 'Department', rightColX, detailY, 10, true);
+  drawTextOnPage(page, data.department, rightColX + 85, detailY, 10, false);
   detailY -= 20;
 
-  drawText('Purpose', leftColX, detailY, 10, true);
+  drawTextOnPage(page, 'Purpose', leftColX, detailY, 10, true);
   detailY -= 15;
 
-  const maxPurposeWidth = width - 2 * margin - 20;
+  const maxPurposeWidth = pageWidth - 2 * margin - 20;
   const purposeWords = data.purpose.split(' ');
   let currentLine = '';
   let purposeY = detailY;
@@ -168,7 +160,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
     const lineWidth = font.widthOfTextAtSize(testLine, 10);
 
     if (lineWidth > maxPurposeWidth && currentLine !== '') {
-      drawText(currentLine, leftColX, purposeY, 10, false);
+      drawTextOnPage(page, currentLine, leftColX, purposeY, 10, false);
       currentLine = word;
       purposeY -= 15;
     } else {
@@ -177,7 +169,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   }
 
   if (currentLine) {
-    drawText(currentLine, leftColX, purposeY, 10, false);
+    drawTextOnPage(page, currentLine, leftColX, purposeY, 10, false);
   }
 
   yPos -= sectionHeight + 10;
@@ -185,75 +177,96 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
   // Linked request details section (for Liquidation requests)
   if (data.requestType === 'Liquidation' && data.linkedRequestNumber) {
     const linkedSectionHeight = 100;
-    drawBox(margin, yPos - linkedSectionHeight, width - 2 * margin, linkedSectionHeight);
+    drawBoxOnPage(page, margin, yPos - linkedSectionHeight, pageWidth - 2 * margin, linkedSectionHeight);
 
     let linkedY = yPos - 20;
 
-    drawText('Linked Request Details', margin + 10, linkedY, 11, true);
+    drawTextOnPage(page, 'Linked Request Details', margin + 10, linkedY, 11, true);
     linkedY -= 20;
 
     if (data.linkedRequestType) {
-      drawText('Type:', leftColX, linkedY, 10, true);
-      drawText(data.linkedRequestType, leftColX + valueOffset, linkedY, 10, false);
+      drawTextOnPage(page, 'Type:', leftColX, linkedY, 10, true);
+      drawTextOnPage(page, data.linkedRequestType, leftColX + valueOffset, linkedY, 10, false);
     }
 
-    drawText('Number:', rightColX, linkedY, 10, true);
-    drawText(data.linkedRequestNumber, rightColX + 85, linkedY, 10, false);
+    drawTextOnPage(page, 'Number:', rightColX, linkedY, 10, true);
+    drawTextOnPage(page, data.linkedRequestNumber, rightColX + 85, linkedY, 10, false);
     linkedY -= 20;
 
     if (data.linkedRequestDate) {
-      drawText('Request Date:', leftColX, linkedY, 10, true);
-      drawText(data.linkedRequestDate, leftColX + valueOffset, linkedY, 10, false);
+      drawTextOnPage(page, 'Request Date:', leftColX, linkedY, 10, true);
+      drawTextOnPage(page, data.linkedRequestDate, leftColX + valueOffset, linkedY, 10, false);
     }
 
     if (data.linkedRequestAmount !== undefined) {
-      drawText('Amount:', rightColX, linkedY, 10, true);
-      drawText(`P${data.linkedRequestAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      drawTextOnPage(page, 'Amount:', rightColX, linkedY, 10, true);
+      drawTextOnPage(page, `P${data.linkedRequestAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         rightColX + 85, linkedY, 10, false);
     }
     linkedY -= 20;
 
     if (data.linkedRequestPurpose) {
-      drawText('Purpose:', leftColX, linkedY, 10, true);
-      const maxPurposeWidth = width - 2 * margin - valueOffset - 20;
+      drawTextOnPage(page, 'Purpose:', leftColX, linkedY, 10, true);
+      const linkedMaxWidth = pageWidth - 2 * margin - valueOffset - 20;
       const linkedPurpose = data.linkedRequestPurpose;
-      const purposeText = font.widthOfTextAtSize(linkedPurpose, 10) > maxPurposeWidth
+      const purposeText = font.widthOfTextAtSize(linkedPurpose, 10) > linkedMaxWidth
         ? linkedPurpose.substring(0, 60) + '...'
         : linkedPurpose;
-      drawText(purposeText, leftColX + valueOffset, linkedY, 10, false);
+      drawTextOnPage(page, purposeText, leftColX + valueOffset, linkedY, 10, false);
     }
 
     yPos -= linkedSectionHeight + 10;
   }
 
-  // Expense Itemization section
-  const itemsPerPage = 8;
+  // Expense Itemization section with multi-page support
   const itemHeight = 15;
-  const headerHeight = 20;
-  const footerHeight = 90;
-  const expenseTableHeight = headerHeight + (Math.min(data.expenseItems.length, itemsPerPage) * itemHeight) + footerHeight;
-
-  drawBox(margin, yPos - expenseTableHeight, width - 2 * margin, expenseTableHeight);
-
-  let expenseY = yPos - 15;
-
-  // Table header
-  drawText('Expense Itemization', margin + 10, expenseY, 11, true);
-  expenseY -= headerHeight;
-
-  // Column headers
   const dateColX = margin + 10;
   const descColX = margin + 100;
-  const amountColX = width - margin - 100;
+  const amountColX = pageWidth - margin - 100;
 
-  drawText('Date', dateColX, expenseY, 9, true);
-  drawText('Supplier Name & Particulars', descColX, expenseY, 9, true);
-  drawText('Amount', amountColX, expenseY, 9, true);
-  expenseY -= 15;
+  // Space needed for summary + signatories after items
+  const summaryAndSignatorySpace = 270;
+  const minYForItems = margin + summaryAndSignatorySpace;
 
-  // Draw expense items
-  for (const item of data.expenseItems.slice(0, itemsPerPage)) {
-    drawText(new Date(item.date).toLocaleDateString(), dateColX, expenseY, 9, false);
+  // Draw table header on current page
+  const drawTableHeader = (currentPage: PDFPage, y: number): number => {
+    drawTextOnPage(currentPage, 'Expense Itemization', margin + 10, y, 11, true);
+    y -= 20;
+    drawTextOnPage(currentPage, 'Date', dateColX, y, 9, true);
+    drawTextOnPage(currentPage, 'Supplier Name & Particulars', descColX, y, 9, true);
+    drawTextOnPage(currentPage, 'Amount', amountColX, y, 9, true);
+    y -= 15;
+    return y;
+  };
+
+  let expenseY = yPos - 15;
+  expenseY = drawTableHeader(page, expenseY);
+
+  let itemsDrawn = 0;
+  const totalItems = data.expenseItems.length;
+
+  for (let idx = 0; idx < totalItems; idx++) {
+    const item = data.expenseItems[idx];
+
+    // Check if we need a new page
+    if (expenseY < minYForItems) {
+      // Draw continuation note
+      drawTextOnPage(page, `(continued on next page...)`, margin + 10, expenseY, 8, false);
+
+      // Start new page
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      yPos = pageHeight - 60;
+
+      // Draw page header
+      drawBoxOnPage(page, margin, yPos - 25, pageWidth - 2 * margin, 25);
+      drawTextOnPage(page, `${data.requestType} Request - ${data.reimbNumber} (continued)`, margin + 10, yPos - 17, 10, true);
+      yPos -= 35;
+
+      expenseY = yPos;
+      expenseY = drawTableHeader(page, expenseY);
+    }
+
+    drawTextOnPage(page, new Date(item.date).toLocaleDateString(), dateColX, expenseY, 9, false);
 
     const maxDescWidth = amountColX - descColX - 10;
     let description = item.description;
@@ -263,64 +276,68 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
       }
       description += '...';
     }
-    drawText(description, descColX, expenseY, 9, false);
+    drawTextOnPage(page, description, descColX, expenseY, 9, false);
 
-    drawText(`P${item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    drawTextOnPage(page, `P${item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       amountColX, expenseY, 9, false);
     expenseY -= itemHeight;
+    itemsDrawn++;
   }
 
   // Draw footer line
-  drawLine(margin, expenseY + 10, width - margin, expenseY + 10);
+  drawLineOnPage(page, margin, expenseY + 10, pageWidth - margin, expenseY + 10);
   expenseY -= 5;
 
   // Summary calculations
-  drawText('Total Expenditures:', amountColX - 150, expenseY, 10, true);
-  drawText(`P${data.totalExpenditures.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  drawTextOnPage(page, 'Total Expenditures:', amountColX - 150, expenseY, 10, true);
+  drawTextOnPage(page, `P${data.totalExpenditures.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     amountColX, expenseY, 10, true);
   expenseY -= 18;
 
-  drawText('Less: Cash Advance:', amountColX - 150, expenseY, 10, true);
-  drawText(`P${data.cashAdvance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  drawTextOnPage(page, 'Less: Cash Advance:', amountColX - 150, expenseY, 10, true);
+  drawTextOnPage(page, `P${data.cashAdvance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     amountColX, expenseY, 10, false);
   expenseY -= 20;
 
   const isReimbursement = data.netAmount >= 0;
-  drawText(isReimbursement ? 'Over for Reimbursement:' : 'Excess for Deposit:',
+  drawTextOnPage(page, isReimbursement ? 'Over for Reimbursement:' : 'Excess for Deposit:',
     amountColX - 150, expenseY, 11, true);
-  drawText(`P${Math.abs(data.netAmount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  drawTextOnPage(page, `P${Math.abs(data.netAmount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     amountColX, expenseY, 11, true);
 
-  yPos -= expenseTableHeight + 10;
+  yPos = expenseY - 20;
+
+  // Check if signatories fit on current page
+  const signatoryHeight = 150;
+  if (yPos - signatoryHeight < margin) {
+    page = pdfDoc.addPage([pageWidth, pageHeight]);
+    yPos = pageHeight - 60;
+  }
 
   // Signatories section
-  const signatoryHeight = 150;
-  drawBox(margin, yPos - signatoryHeight, width - 2 * margin, signatoryHeight);
+  drawBoxOnPage(page, margin, yPos - signatoryHeight, pageWidth - 2 * margin, signatoryHeight);
 
   let signatoryY = yPos - 20;
 
   const isManComReimbursement = data.requestType === 'Reimbursement' && data.expenseCategory === 'ManCom Expense' && data.approvals.length >= 2;
 
   if (isManComReimbursement) {
-    // ManCom layout: "Prepared By" (Requestor + First Approver), "Approved By" (middle), "Noted By" (last)
     const remainingApprovals = data.approvals.slice(1);
-    const totalColumns = 1 + remainingApprovals.length; // Prepared By + remaining approvers
-    const colWidth = (width - 2 * margin) / totalColumns;
+    const totalColumns = 1 + remainingApprovals.length;
+    const colWidth = (pageWidth - 2 * margin) / totalColumns;
 
-    // Draw headers
-    drawText('Prepared By', leftColX, signatoryY, 10, true);
+    drawTextOnPage(page, 'Prepared By', leftColX, signatoryY, 10, true);
 
     for (let i = 0; i < remainingApprovals.length; i++) {
       const colX = margin + ((i + 1) * colWidth) + 10;
       const isChecker = remainingApprovals[i].for_checking === true ||
         (!remainingApprovals.some(a => a.for_checking) && i === remainingApprovals.length - 1);
       const label = isChecker ? 'Noted/Checked By' : 'Approved By';
-      drawText(label, colX, signatoryY, 10, true);
+      drawTextOnPage(page, label, colX, signatoryY, 10, true);
     }
 
     signatoryY -= 35;
 
-    // Draw requester signature in "Prepared By" column
     if (data.requestedByEsig) {
       try {
         const esigImage = await embedSignatureImage(pdfDoc, data.requestedByEsig);
@@ -336,10 +353,9 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
       }
     }
 
-    drawText(data.requestedBy, leftColX, signatoryY - 22, 8, false);
-    drawText(data.requestDate, leftColX, signatoryY - 33, 7, false);
+    drawTextOnPage(page, data.requestedBy, leftColX, signatoryY - 22, 8, false);
+    drawTextOnPage(page, data.requestDate, leftColX, signatoryY - 33, 7, false);
 
-    // Draw first approver signature below requester in same "Prepared By" column
     const firstApprover = data.approvals[0];
     const firstApproverY = signatoryY - 50;
 
@@ -358,15 +374,14 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
       }
     }
 
-    drawText(firstApprover.approver_name, leftColX, firstApproverY - 22, 8, false);
+    drawTextOnPage(page, firstApprover.approver_name, leftColX, firstApproverY - 22, 8, false);
     const firstApproverDate = new Date(firstApprover.approval_date);
-    drawText(
+    drawTextOnPage(page,
       firstApproverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
       firstApproverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
       leftColX, firstApproverY - 33, 7, false
     );
 
-    // Draw remaining approver signatures
     for (let i = 0; i < remainingApprovals.length; i++) {
       const approver = remainingApprovals[i];
       const colX = margin + ((i + 1) * colWidth) + 10;
@@ -386,33 +401,30 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
         }
       }
 
-      drawText(approver.approver_name, colX, signatoryY - 30, 9, false);
+      drawTextOnPage(page, approver.approver_name, colX, signatoryY - 30, 9, false);
       const approverDate = new Date(approver.approval_date);
-      drawText(
+      drawTextOnPage(page,
         approverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
         approverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         colX, signatoryY - 45, 8, false
       );
     }
   } else {
-    // Default layout: "Prepared By" (Requestor), "Approved By" (non-checker approvers), "Noted/Checked By" (checker/validator)
-    const totalApprovers = data.approvals.length + 1; // +1 for payee
-    const colWidth = (width - 2 * margin) / totalApprovers;
+    const totalApprovers = data.approvals.length + 1;
+    const colWidth = (pageWidth - 2 * margin) / totalApprovers;
 
-    // Draw headers
-    drawText('Prepared By', leftColX, signatoryY, 10, true);
+    drawTextOnPage(page, 'Prepared By', leftColX, signatoryY, 10, true);
 
     for (let i = 0; i < data.approvals.length; i++) {
       const colX = margin + ((i + 1) * colWidth) + 10;
       const isChecker = data.approvals[i].for_checking === true ||
         (!data.approvals.some(a => a.for_checking) && i === data.approvals.length - 1);
       const label = isChecker ? 'Noted/Checked By' : 'Approved By';
-      drawText(label, colX, signatoryY, 10, true);
+      drawTextOnPage(page, label, colX, signatoryY, 10, true);
     }
 
     signatoryY -= 50;
 
-    // Draw requester signature
     if (data.requestedByEsig) {
       try {
         const esigImage = await embedSignatureImage(pdfDoc, data.requestedByEsig);
@@ -428,10 +440,9 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
       }
     }
 
-    drawText(data.requestedBy, leftColX, signatoryY - 30, 9, false);
-    drawText(data.requestDate, leftColX, signatoryY - 45, 8, false);
+    drawTextOnPage(page, data.requestedBy, leftColX, signatoryY - 30, 9, false);
+    drawTextOnPage(page, data.requestDate, leftColX, signatoryY - 45, 8, false);
 
-    // Draw approver signatures
     for (let i = 0; i < data.approvals.length; i++) {
       const approver = data.approvals[i];
       const colX = margin + ((i + 1) * colWidth) + 10;
@@ -451,9 +462,9 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
         }
       }
 
-      drawText(approver.approver_name, colX, signatoryY - 30, 9, false);
+      drawTextOnPage(page, approver.approver_name, colX, signatoryY - 30, 9, false);
       const approverDate = new Date(approver.approval_date);
-      drawText(
+      drawTextOnPage(page,
         approverDate.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
         approverDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         colX, signatoryY - 45, 8, false

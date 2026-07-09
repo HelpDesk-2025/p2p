@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts, PDFImage } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFImage, PDFPage, PDFFont } from 'pdf-lib';
 
 async function embedSignatureImage(pdfDoc: PDFDocument, esigData: string): Promise<PDFImage> {
   const mimeMatch = esigData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
@@ -58,49 +58,76 @@ interface LiquidationFormData {
   linkedPettyCashRequest?: LinkedPettyCashRequest | null;
 }
 
+function sanitizeText(text: string | number | null | undefined): string {
+  if (text === null || text === undefined) return '';
+  const str = typeof text === 'number' ? text.toString() : String(text);
+  if (!str) return '';
+
+  let sanitized = str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\r/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+
+  sanitized = sanitized
+    .replace(/["\u201C\u201D]/g, '"')
+    .replace(/['\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/\u2122/g, '(TM)').replace(/\u00AE/g, '(R)').replace(/\u00A9/g, '(C)')
+    .replace(/\u20AC/g, 'EUR').replace(/\u00A3/g, 'GBP').replace(/\u00A5/g, 'JPY');
+
+  sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
+  sanitized = sanitized.replace(/\s+/g, ' ').trim();
+  return sanitized;
+}
+
+function wrapText(text: string, maxWidth: number, fontSize: number, font: PDFFont): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  const avgCharWidth = fontSize * 0.5;
+
+  words.forEach((word) => {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = testLine.length * avgCharWidth;
+
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
 export async function generateLiquidationForm(data: LiquidationFormData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([612, 792]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const { width, height } = page.getSize();
+  const pageWidth = 612;
+  const pageHeight = 792;
   const margin = 50;
 
-  const sanitizeText = (text: string | number | null | undefined): string => {
-    if (text === null || text === undefined) return '';
-    const str = typeof text === 'number' ? text.toString() : String(text);
-    if (!str) return '';
+  let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  let currentY = pageHeight - margin;
 
-    // First normalize Unicode characters to their closest ASCII equivalents
-    let sanitized = str
-      .normalize('NFD') // Decompose combined characters
-      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-      .replace(/\r\n/g, ' ')
-      .replace(/\r/g, ' ')
-      .replace(/\n/g, ' ')
-      .replace(/\t/g, ' ')
-      .replace(/[\x00-\x1F\x7F-\x9F]/g, ''); // Remove ALL control chars including 0x0A
+  const leftCol = margin;
+  const rightCol = pageWidth / 2 + 30;
 
-    // Replace common problematic characters with safe alternatives
-    sanitized = sanitized
-      .replace(/[""]/g, '"') // Smart quotes
-      .replace(/['']/g, "'") // Smart apostrophes
-      .replace(/[–—]/g, '-') // En dash, em dash
-      .replace(/…/g, '...') // Ellipsis
-      .replace(/™/g, '(TM)').replace(/®/g, '(R)').replace(/©/g, '(C)') // Symbols
-      .replace(/€/g, 'EUR').replace(/£/g, 'GBP').replace(/¥/g, 'JPY'); // Currency
-
-    // Remove any remaining characters outside WinAnsi safe range
-    sanitized = sanitized.replace(/[^\x20-\x7E\xA0-\xFF]/g, ' ');
-
-    // Clean up multiple spaces
-    sanitized = sanitized.replace(/\s+/g, ' ').trim();
-
-    return sanitized;
-  };
-
-  let currentY = height - margin;
+  // Space needed for summary + signatures
+  const summaryAndSignatureSpace = 220;
 
   page.drawText(sanitizeText(data.company), {
     x: margin,
@@ -112,7 +139,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   currentY -= 25;
 
   page.drawText('LIQUIDATION REPORT', {
-    x: width / 2 - 90,
+    x: pageWidth / 2 - 90,
     y: currentY,
     size: 16,
     font: boldFont,
@@ -122,14 +149,11 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
 
   page.drawLine({
     start: { x: margin, y: currentY },
-    end: { x: width - margin, y: currentY },
+    end: { x: pageWidth - margin, y: currentY },
     thickness: 1,
     color: rgb(0, 0, 0),
   });
   currentY -= 20;
-
-  const leftCol = margin;
-  const rightCol = width / 2 + 30;
 
   page.drawText('Document No:', { x: leftCol, y: currentY, size: 10, font: boldFont });
   page.drawText(sanitizeText(data.pcNumber), { x: leftCol + 90, y: currentY, size: 10, font });
@@ -147,7 +171,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   currentY -= 15;
 
   page.drawText('Purpose:', { x: leftCol, y: currentY, size: 10, font: boldFont });
-  const maxPurposeWidth = width - margin - leftCol - 80;
+  const maxPurposeWidth = pageWidth - margin - leftCol - 80;
   const purposeLines = wrapText(sanitizeText(data.purpose), maxPurposeWidth, 10, font);
   purposeLines.forEach((line, index) => {
     page.drawText(line, {
@@ -171,7 +195,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     page.drawRectangle({
       x: margin,
       y: currentY - 75,
-      width: width - 2 * margin,
+      width: pageWidth - 2 * margin,
       height: 85,
       color: rgb(0.95, 0.98, 0.95),
       borderColor: rgb(0.7, 0.85, 0.7),
@@ -221,6 +245,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     currentY -= 25;
   }
 
+  // EXPENSE ITEMS section with multi-page support
   page.drawText('EXPENSE ITEMS', {
     x: leftCol,
     y: currentY,
@@ -236,37 +261,60 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     description: 280,
     amount: 100,
   };
+  const tableWidth = colWidths.date + colWidths.description + colWidths.amount;
 
-  page.drawRectangle({
-    x: tableX,
-    y: currentY - 15,
-    width: colWidths.date + colWidths.description + colWidths.amount,
-    height: 18,
-    color: rgb(0.9, 0.9, 0.9),
-  });
+  const drawExpenseTableHeader = (p: PDFPage, y: number): number => {
+    p.drawRectangle({
+      x: tableX,
+      y: y - 15,
+      width: tableWidth,
+      height: 18,
+      color: rgb(0.9, 0.9, 0.9),
+    });
 
-  page.drawText('Date', { x: tableX + 5, y: currentY, size: 9, font: boldFont });
-  page.drawText('Description', { x: tableX + colWidths.date + 5, y: currentY, size: 9, font: boldFont });
-  page.drawText('Amount', { x: tableX + colWidths.date + colWidths.description + 5, y: currentY, size: 9, font: boldFont });
-  currentY -= 18;
+    p.drawText('Date', { x: tableX + 5, y: y, size: 9, font: boldFont });
+    p.drawText('Description', { x: tableX + colWidths.date + 5, y: y, size: 9, font: boldFont });
+    p.drawText('Amount', { x: tableX + colWidths.date + colWidths.description + 5, y: y, size: 9, font: boldFont });
+    y -= 18;
 
-  page.drawLine({
-    start: { x: tableX, y: currentY },
-    end: { x: tableX + colWidths.date + colWidths.description + colWidths.amount, y: currentY },
-    thickness: 1,
-    color: rgb(0, 0, 0),
-  });
-  currentY -= 12;
+    p.drawLine({
+      start: { x: tableX, y: y },
+      end: { x: tableX + tableWidth, y: y },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+    y -= 12;
+    return y;
+  };
 
-  data.expenseItems.forEach((item, index) => {
-    if (currentY < margin + 80) {
-      return;
+  currentY = drawExpenseTableHeader(page, currentY);
+
+  for (let idx = 0; idx < data.expenseItems.length; idx++) {
+    const item = data.expenseItems[idx];
+    const descLines = wrapText(sanitizeText(item.description), colWidths.description - 10, 8, font);
+    const rowHeight = Math.max(15, descLines.length * 10);
+
+    // Check if we need a new page
+    if (currentY - rowHeight < margin + summaryAndSignatureSpace) {
+      page.drawText('(continued on next page...)', { x: tableX + 5, y: currentY, size: 7, font });
+
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      currentY = pageHeight - margin;
+
+      page.drawText(sanitizeText(data.company), {
+        x: margin, y: currentY, size: 10, font: boldFont, color: rgb(0, 0, 0),
+      });
+      page.drawText(`LIQUIDATION REPORT - ${sanitizeText(data.pcNumber)} (continued)`, {
+        x: margin, y: currentY - 15, size: 10, font: boldFont, color: rgb(0, 0, 0),
+      });
+      currentY -= 35;
+
+      currentY = drawExpenseTableHeader(page, currentY);
     }
 
     const rowY = currentY;
     page.drawText(sanitizeText(item.date), { x: tableX + 5, y: rowY, size: 8, font });
 
-    const descLines = wrapText(sanitizeText(item.description), colWidths.description - 10, 8, font);
     descLines.forEach((line, lineIndex) => {
       if (lineIndex < 2) {
         page.drawText(line, { x: tableX + colWidths.date + 5, y: rowY - (lineIndex * 10), size: 8, font });
@@ -280,29 +328,35 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
       font
     });
 
-    currentY -= Math.max(15, descLines.length * 10);
+    currentY -= rowHeight;
 
-    if (index < data.expenseItems.length - 1 && currentY > margin + 80) {
+    if (idx < data.expenseItems.length - 1) {
       page.drawLine({
         start: { x: tableX, y: currentY + 3 },
-        end: { x: tableX + colWidths.date + colWidths.description + colWidths.amount, y: currentY + 3 },
+        end: { x: tableX + tableWidth, y: currentY + 3 },
         thickness: 0.5,
         color: rgb(0.8, 0.8, 0.8),
       });
     }
-  });
+  }
 
   currentY -= 10;
 
   page.drawLine({
     start: { x: tableX, y: currentY },
-    end: { x: tableX + colWidths.date + colWidths.description + colWidths.amount, y: currentY },
+    end: { x: tableX + tableWidth, y: currentY },
     thickness: 1,
     color: rgb(0, 0, 0),
   });
   currentY -= 20;
 
+  // Expense type breakdown
   if (data.expenseTypeItems && data.expenseTypeItems.length > 0) {
+    if (currentY < margin + summaryAndSignatureSpace + (data.expenseTypeItems.length * 12)) {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      currentY = pageHeight - margin;
+    }
+
     page.drawText('EXPENSE TYPE BREAKDOWN', {
       x: leftCol,
       y: currentY,
@@ -311,8 +365,11 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
     });
     currentY -= 15;
 
-    data.expenseTypeItems.forEach((item) => {
-      if (currentY < margin + 80) return;
+    for (const item of data.expenseTypeItems) {
+      if (currentY < margin + summaryAndSignatureSpace) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        currentY = pageHeight - margin;
+      }
 
       const itemText = `${item.expense_type_name} - ${item.sub_item_name}${
         item.specify_value ? `: ${item.specify_value}` : ''
@@ -325,11 +382,18 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
         font
       });
       currentY -= 12;
-    });
+    }
     currentY -= 8;
   }
 
-  const summaryX = width - margin - 200;
+  // Check if summary + signatures fit on current page
+  if (currentY < margin + 180) {
+    page = pdfDoc.addPage([pageWidth, pageHeight]);
+    currentY = pageHeight - margin;
+  }
+
+  // Summary section
+  const summaryX = pageWidth - margin - 200;
 
   page.drawText('Cash Advance Received:', { x: summaryX, y: currentY, size: 10, font: boldFont });
   page.drawText(sanitizeText(data.cashAdvanceReceived.toFixed(2)), {
@@ -351,7 +415,7 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
 
   page.drawLine({
     start: { x: summaryX, y: currentY },
-    end: { x: width - margin, y: currentY },
+    end: { x: pageWidth - margin, y: currentY },
     thickness: 1,
     color: rgb(0, 0, 0),
   });
@@ -368,10 +432,11 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   });
   currentY -= 40;
 
+  // Signatures
   const sigWidth = 200;
   const sigHeight = 80;
   const sig1X = margin + 30;
-  const sig2X = width - margin - sigWidth - 30;
+  const sig2X = pageWidth - margin - sigWidth - 30;
 
   page.drawText('Prepared by:', { x: sig1X, y: currentY, size: 9, font: boldFont });
   if (data.preparedByEsig) {
@@ -443,30 +508,4 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
-}
-
-function wrapText(text: string, maxWidth: number, fontSize: number, font: any): string[] {
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-
-  const avgCharWidth = fontSize * 0.5;
-
-  words.forEach((word) => {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const testWidth = testLine.length * avgCharWidth;
-
-    if (testWidth > maxWidth && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  });
-
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
-  return lines;
 }
