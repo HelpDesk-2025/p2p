@@ -11,6 +11,7 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { logAuditTrail } from '../../lib/auditTrail';
+import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 import { TableSkeleton } from '../TableSkeleton';
 
 interface ExpenseItem {
@@ -1249,7 +1250,7 @@ export function Reimbursement() {
   };
 
   const regenerateReimbursementForm = async (request: ReimbursementReq) => {
-    if (!confirm('Are you sure you want to regenerate the reimbursement form PDF? This will replace the existing form.')) {
+    if (!confirm('Are you sure you want to regenerate the RFP and Reimbursement Form PDFs? This will replace the existing forms.')) {
       return;
     }
 
@@ -1424,17 +1425,36 @@ export function Reimbursement() {
 
       if (updateError) throw updateError;
 
-      alert('Reimbursement form generated successfully!');
+      // Also regenerate the RFP (Request for Payment) PDF
+      let rfpPath: string | null = null;
+      try {
+        rfpPath = await generateAndUploadRFP(
+          'reimbursement',
+          fullRequest.id,
+          fullRequest.reimb_number
+        );
+        if (rfpPath) {
+          console.log('RFP regenerated:', rfpPath);
+        }
+      } catch (rfpError) {
+        console.error('Error regenerating RFP:', rfpError);
+      }
+
+      alert('Reimbursement form and RFP generated successfully!');
       await loadRequests();
 
       // Update viewing request if currently viewing
       if (viewingRequest?.id === fullRequest.id) {
-        const updatedRequest = { ...fullRequest, reimbursement_form_pdf_path: formPath };
+        const updatedRequest = {
+          ...fullRequest,
+          reimbursement_form_pdf_path: formPath,
+          ...(rfpPath ? { rfp_pdf_path: rfpPath } : {})
+        };
         setViewingRequest(updatedRequest as ReimbursementReq);
       }
     } catch (error) {
       console.error('Error generating reimbursement form:', error);
-      alert('Failed to generate reimbursement form. Please try again.');
+      alert('Failed to generate forms. Please try again.');
     } finally {
       setLoading(false);
     }
