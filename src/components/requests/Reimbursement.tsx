@@ -1319,13 +1319,29 @@ export function Reimbursement() {
       const { data: approvalRecordsData, error: ledgerError } = await supabase
         .rpc('get_approval_records_with_signatures', {
           p_request_id: fullRequest.id,
-          p_request_type: 'Reimbursement'
+          p_request_type: fullRequest.request_type || 'Reimbursement'
         });
 
       if (ledgerError) throw ledgerError;
 
       // RPC now returns JSONB array directly
       const approvalRecords = Array.isArray(approvalRecordsData) ? approvalRecordsData : (approvalRecordsData ? [approvalRecordsData] : []);
+
+      // Also fetch for_checking (validator) records for the reimbursement form "Noted By" section
+      const { data: checkerRecords } = await supabase
+        .from('approval_ledger')
+        .select('approver_name, approver_id, approval_date, sequence')
+        .eq('request_id', fullRequest.id)
+        .eq('request_type', fullRequest.request_type || 'Reimbursement')
+        .eq('action', 'Approved')
+        .eq('for_checking', true)
+        .order('sequence', { ascending: true });
+
+      const checkerApprovals = (checkerRecords || []).map((r: any) => ({
+        ...r,
+        approver_esig: null,
+        for_checking: true
+      }));
 
       // Fetch signature data for each approver to avoid HTTP header size limits
       const approvalsWithSignatures = await Promise.all(
@@ -1367,6 +1383,48 @@ export function Reimbursement() {
         })
       );
 
+      // Fetch signatures for checker/validator approvals (for reimbursement form "Noted By")
+      const checkersWithSignatures = await Promise.all(
+        checkerApprovals.map(async (record: any) => {
+          let signatureData = null;
+
+          if (record.approver_id) {
+            const { data: profileData } = await supabase
+              .from('user_profiles')
+              .select('e_sig, signature_path')
+              .eq('id', record.approver_id)
+              .single();
+
+            if (profileData?.signature_path) {
+              try {
+                const { data: fileData } = await supabase.storage
+                  .from('attachments')
+                  .download(profileData.signature_path);
+                if (fileData) {
+                  const arrayBuffer = await fileData.arrayBuffer();
+                  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                  signatureData = `data:${fileData.type};base64,${base64}`;
+                }
+              } catch (error) {
+                console.error('Failed to fetch checker signature from storage:', error);
+              }
+            }
+            if (!signatureData && profileData?.e_sig) {
+              signatureData = profileData.e_sig;
+            }
+          }
+
+          return {
+            ...record,
+            approver_esig: signatureData
+          };
+        })
+      );
+
+      // Combine regular approvals + checker approvals sorted by sequence for the reimbursement form
+      const allApprovalsForForm = [...approvalsWithSignatures, ...checkersWithSignatures]
+        .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+
       // Use the requester info from the fetched request
       const requesterData = {
         full_name: fullRequest.user_profiles?.full_name || 'Unknown',
@@ -1401,7 +1459,7 @@ export function Reimbursement() {
         cashAdvance: fullRequest.cash_advance || 0,
         netAmount: netAmount,
         payee: fullRequest.payee || requesterData.full_name || 'Unknown',
-        approvals: approvalsWithSignatures,
+        approvals: allApprovalsForForm,
         expenseCategory: fullRequest.expense_category || 'Department Expense'
       });
 
