@@ -21,6 +21,7 @@ interface ApprovalRecord {
   approver_name: string;
   approver_esig: string | null;
   approval_date: string;
+  for_checking?: boolean;
 }
 
 interface ReimbursementFormData {
@@ -311,7 +312,9 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
     for (let i = 0; i < remainingApprovals.length; i++) {
       const colX = margin + ((i + 1) * colWidth) + 10;
-      const label = i === remainingApprovals.length - 1 ? 'Noted By' : 'Approved By';
+      const isChecker = remainingApprovals[i].for_checking === true ||
+        (!remainingApprovals.some(a => a.for_checking) && i === remainingApprovals.length - 1);
+      const label = isChecker ? 'Noted/Checked By' : 'Approved By';
       drawText(label, colX, signatoryY, 10, true);
     }
 
@@ -392,7 +395,7 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
       );
     }
   } else {
-    // Default layout: "Prepared By" (Requestor), "Approved By" (all except last), "Noted/Checked By" (last)
+    // Default layout: "Prepared By" (Requestor), "Approved By" (non-checker approvers), "Noted/Checked By" (checker/validator)
     const totalApprovers = data.approvals.length + 1; // +1 for payee
     const colWidth = (width - 2 * margin) / totalApprovers;
 
@@ -401,7 +404,9 @@ export async function generateReimbursementForm(data: ReimbursementFormData): Pr
 
     for (let i = 0; i < data.approvals.length; i++) {
       const colX = margin + ((i + 1) * colWidth) + 10;
-      const label = i === data.approvals.length - 1 ? 'Noted/Checked By' : 'Approved By';
+      const isChecker = data.approvals[i].for_checking === true ||
+        (!data.approvals.some(a => a.for_checking) && i === data.approvals.length - 1);
+      const label = isChecker ? 'Noted/Checked By' : 'Approved By';
       drawText(label, colX, signatoryY, 10, true);
     }
 

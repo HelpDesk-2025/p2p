@@ -637,6 +637,7 @@ export function ReimbursementApproval() {
             approver_name: record.approver_name,
             approver_esig: record.approver_esig || null,
             approval_date: record.approval_date,
+            for_checking: record.for_checking || false,
           }));
 
           // Calculate net amount
