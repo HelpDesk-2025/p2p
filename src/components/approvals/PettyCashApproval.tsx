@@ -421,16 +421,27 @@ export function PettyCashApproval() {
             );
 
             if (ledgerDataRecords && ledgerDataRecords.length > 0) {
-              // "Approved By" signatory uses the second-to-the-last approver in the chain.
-              const approvedByIndex = Math.max(ledgerDataRecords.length - 2, 0);
-              const firstApprover = {
-                approver_name: ledgerDataRecords[approvedByIndex].approver_name,
-                approval_date: ledgerDataRecords[approvedByIndex].approval_date,
-                approver_id: ledgerDataRecords[approvedByIndex].sequence,
-                user_profiles: {
-                  e_sig: ledgerDataRecords[approvedByIndex].approver_esig
-                }
-              };
+              // Build approvers list from all approval records
+              const approversList = ledgerDataRecords
+                .filter((r: any) => !r.for_checking)
+                .map((r: any) => ({
+                  name: r.approver_name,
+                  esig: r.approver_esig || null,
+                  date: new Date(r.approval_date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                  label: 'Approved by',
+                }));
+
+              const notedByList = ledgerDataRecords
+                .filter((r: any) => r.for_checking)
+                .map((r: any) => ({
+                  name: r.approver_name,
+                  esig: r.approver_esig || null,
+                  date: new Date(r.approval_date).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                  label: 'Noted by',
+                }));
+
+              const allApprovers = [...notedByList, ...approversList];
+              const lastApprover = approversList.length > 0 ? approversList[approversList.length - 1] : null;
 
               const { data: companyData } = await supabase
                 .from('companies')
@@ -443,7 +454,7 @@ export function PettyCashApproval() {
               const balance = cashAdvanceReceived - totalExpenses;
 
               const requestDateObj = new Date(selectedRequest.request_date);
-              const approvedDateObj = new Date(firstApprover.approval_date);
+              const approvedDateObj = lastApprover ? new Date(lastApprover.date) : new Date();
               const preparedDateObj = new Date();
 
               let linkedRequestData = null;
@@ -486,9 +497,10 @@ export function PettyCashApproval() {
                 preparedByName: selectedRequest.user_profiles?.full_name || 'Unknown',
                 preparedByEsig: selectedRequest.user_profiles?.e_sig || null,
                 preparedByDate: preparedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
-                approvedByName: firstApprover.approver_name,
-                approvedByEsig: firstApprover.user_profiles?.e_sig || null,
+                approvedByName: lastApprover?.name || '',
+                approvedByEsig: lastApprover?.esig || null,
                 approvedByDate: approvedDateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+                approvers: allApprovers,
                 linkedPettyCashRequest: linkedRequestData,
               });
 

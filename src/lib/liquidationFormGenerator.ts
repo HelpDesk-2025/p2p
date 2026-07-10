@@ -34,6 +34,13 @@ interface LinkedPettyCashRequest {
   status: string;
 }
 
+interface ApproverSignatory {
+  name: string;
+  esig: string | null;
+  date: string;
+  label?: string;
+}
+
 interface LiquidationFormData {
   pcNumber: string;
   accountable: string;
@@ -55,6 +62,7 @@ interface LiquidationFormData {
   approvedByName: string;
   approvedByEsig: string | null;
   approvedByDate: string;
+  approvers?: ApproverSignatory[];
   linkedPettyCashRequest?: LinkedPettyCashRequest | null;
 }
 
@@ -432,79 +440,90 @@ export async function generateLiquidationForm(data: LiquidationFormData): Promis
   });
   currentY -= 40;
 
-  // Signatures
+  // Signatures - build list of all signatories
+  const signatories: { label: string; name: string; esig: string | null; date: string }[] = [];
+
+  signatories.push({
+    label: 'Prepared by',
+    name: data.preparedByName,
+    esig: data.preparedByEsig,
+    date: data.preparedByDate,
+  });
+
+  if (data.approvers && data.approvers.length > 0) {
+    for (const approver of data.approvers) {
+      signatories.push({
+        label: approver.label || 'Approved by',
+        name: approver.name,
+        esig: approver.esig,
+        date: approver.date,
+      });
+    }
+  } else {
+    signatories.push({
+      label: 'Approved by',
+      name: data.approvedByName,
+      esig: data.approvedByEsig,
+      date: data.approvedByDate,
+    });
+  }
+
   const sigWidth = 200;
   const sigHeight = 80;
-  const sig1X = margin + 30;
-  const sig2X = pageWidth - margin - sigWidth - 30;
+  const sigRowHeight = sigHeight + 40;
+  const cols = 2;
+  const colSpacing = (pageWidth - 2 * margin) / cols;
 
-  page.drawText('Prepared by:', { x: sig1X, y: currentY, size: 9, font: boldFont });
-  if (data.preparedByEsig) {
-    try {
-      const esigImage = await embedSignatureImage(pdfDoc, data.preparedByEsig);
-      const esigDims = esigImage.scale(0.4);
-      page.drawImage(esigImage, {
-        x: sig1X + 10,
-        y: currentY - sigHeight + 10,
-        width: esigDims.width,
-        height: esigDims.height,
-      });
-    } catch (error) {
-      console.error('Error embedding e-signature:', error);
+  for (let i = 0; i < signatories.length; i++) {
+    const col = i % cols;
+    if (col === 0 && i > 0) {
+      currentY -= sigRowHeight;
     }
-  }
-  page.drawLine({
-    start: { x: sig1X, y: currentY - sigHeight },
-    end: { x: sig1X + sigWidth, y: currentY - sigHeight },
-    thickness: 1,
-    color: rgb(0, 0, 0),
-  });
-  page.drawText(sanitizeText(data.preparedByName), {
-    x: sig1X,
-    y: currentY - sigHeight - 12,
-    size: 9,
-    font: boldFont
-  });
-  page.drawText(sanitizeText(data.preparedByDate), {
-    x: sig1X,
-    y: currentY - sigHeight - 24,
-    size: 8,
-    font
-  });
+    if (currentY - sigRowHeight < margin + 20) {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      currentY = pageHeight - margin;
+    }
 
-  page.drawText('Approved by:', { x: sig2X, y: currentY, size: 9, font: boldFont });
-  if (data.approvedByEsig) {
-    try {
-      const esigImage = await embedSignatureImage(pdfDoc, data.approvedByEsig);
-      const esigDims = esigImage.scale(0.4);
-      page.drawImage(esigImage, {
-        x: sig2X + 10,
-        y: currentY - sigHeight + 10,
-        width: esigDims.width,
-        height: esigDims.height,
-      });
-    } catch (error) {
-      console.error('Error embedding e-signature:', error);
+    const sigX = margin + col * colSpacing + 15;
+    const sig = signatories[i];
+
+    page.drawText(`${sig.label}:`, { x: sigX, y: currentY, size: 9, font: boldFont });
+    if (sig.esig) {
+      try {
+        const esigImage = await embedSignatureImage(pdfDoc, sig.esig);
+        const esigDims = esigImage.scale(0.4);
+        page.drawImage(esigImage, {
+          x: sigX + 10,
+          y: currentY - sigHeight + 10,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding e-signature:', error);
+      }
     }
+    page.drawLine({
+      start: { x: sigX, y: currentY - sigHeight },
+      end: { x: sigX + sigWidth, y: currentY - sigHeight },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(sanitizeText(sig.name), {
+      x: sigX,
+      y: currentY - sigHeight - 12,
+      size: 9,
+      font: boldFont,
+    });
+    page.drawText(sanitizeText(sig.date), {
+      x: sigX,
+      y: currentY - sigHeight - 24,
+      size: 8,
+      font,
+    });
   }
-  page.drawLine({
-    start: { x: sig2X, y: currentY - sigHeight },
-    end: { x: sig2X + sigWidth, y: currentY - sigHeight },
-    thickness: 1,
-    color: rgb(0, 0, 0),
-  });
-  page.drawText(sanitizeText(data.approvedByName), {
-    x: sig2X,
-    y: currentY - sigHeight - 12,
-    size: 9,
-    font: boldFont
-  });
-  page.drawText(sanitizeText(data.approvedByDate), {
-    x: sig2X,
-    y: currentY - sigHeight - 24,
-    size: 8,
-    font
-  });
+  if (signatories.length % cols !== 0 || signatories.length > 0) {
+    currentY -= sigRowHeight;
+  }
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
