@@ -1082,7 +1082,7 @@ export async function generateAndUploadCanvassRFP(
     const winningNetOfVat = parseFloat(winningVendorData?.net_of_vat || (winningTotal / 1.12));
     const winningVat12 = parseFloat(winningVendorData?.vat_12 || (winningTotal - winningNetOfVat));
     const winningEwt = parseFloat(winningVendorData?.ewt || (winningNetOfVat * 0.02));
-    const winningNetPayable = (winningNetOfVat + winningVat12) - winningEwt;
+    const winningNetPayable = Math.round(((winningNetOfVat + winningVat12) - winningEwt) * 100) / 100;
     console.log('Winning vendor net payable:', winningNetPayable);
 
     // Use RPC function to bypass RLS and get all approval records with signatures
@@ -1320,7 +1320,7 @@ export async function generateAndUploadCanvassRFP(
         const netOfVat = parseFloat(supplier.net_of_vat || (total / 1.12));
         const vat12 = parseFloat(supplier.vat_12 || (total - netOfVat));
         const ewt = parseFloat(supplier.ewt || (netOfVat * 0.02));
-        const netPayable = (netOfVat + vat12) - ewt;
+        const netPayable = Math.round(((netOfVat + vat12) - ewt) * 100) / 100;
         const isWinner = supplierIndex === (canvass.recommended_quotation_index || 0);
 
         return {
