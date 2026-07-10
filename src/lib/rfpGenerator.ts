@@ -1061,6 +1061,17 @@ export async function generateAndUploadCanvassRFP(
 
     console.log('Canvass data fetched:', canvass);
 
+    // Fetch the original PR requester's profile for the RFP signatories
+    let prRequester: { full_name: string; e_sig: string | null } | null = null;
+    if (canvass.pr?.requester_id) {
+      const { data: prRequesterData } = await supabase
+        .from('user_profiles')
+        .select('full_name, e_sig')
+        .eq('id', canvass.pr.requester_id)
+        .single();
+      prRequester = prRequesterData;
+    }
+
     const winningVendorIndex = canvass.recommended_quotation_index || 0;
     const winningVendorData = canvass.suppliers?.[winningVendorIndex];
     const winningVendor = winningVendorData?.vendor_name || winningVendorData?.name || '';
@@ -1234,8 +1245,8 @@ export async function generateAndUploadCanvassRFP(
       budgeted: canvass.pr?.is_budgeted !== false,
       paymentMode: '',
       paymentModeLines: [],
-      requestorName: sanitizeForPDF(canvass.requester?.full_name || ''),
-      requestorEsig: canvass.requester?.e_sig || null,
+      requestorName: sanitizeForPDF(prRequester?.full_name || canvass.requester?.full_name || ''),
+      requestorEsig: prRequester?.e_sig || canvass.requester?.e_sig || null,
       approvals: (prApprovals || []).map((a: any) => {
         const approvalDate = new Date(a.approval_date);
         return {
