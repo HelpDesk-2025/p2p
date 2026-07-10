@@ -1254,7 +1254,8 @@ export function Reimbursement() {
   };
 
   const regenerateReimbursementForm = async (request: ReimbursementReq) => {
-    if (!confirm('Are you sure you want to regenerate the RFP and Reimbursement Form PDFs? This will replace the existing forms.')) {
+    const formLabel = request.request_type === 'Liquidation' ? 'Liquidation' : 'Reimbursement';
+    if (!confirm(`Are you sure you want to regenerate the RFP and ${formLabel} Form PDFs? This will replace the existing forms.`)) {
       return;
     }
 
