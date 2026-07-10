@@ -3057,7 +3057,7 @@ export function Canvass() {
               {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Canvass Sheet & RFP Document</label>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 flex-wrap">
                     <button
                       onClick={async () => {
                         try {
@@ -3112,6 +3112,28 @@ export function Canvass() {
                     >
                       <FileText size={16} />
                       Download Document
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Are you sure you want to regenerate the Canvass Sheet & RFP document? This will replace the existing document.')) return;
+                        try {
+                          setLoading(true);
+                          await generateAndUploadCanvassRFP(viewingRequest.id, viewingRequest.canvass_number);
+                          alert('Document regenerated successfully!');
+                          loadRequests();
+                          setShowViewModal(false);
+                        } catch (error: any) {
+                          console.error('Error regenerating document:', error);
+                          alert('Error regenerating document: ' + error.message);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                      {loading ? 'Regenerating...' : 'Regenerate Document'}
                     </button>
                   </div>
                 </div>
