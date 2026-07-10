@@ -521,37 +521,16 @@ export function CanvassApproval() {
           console.error('Error generating RFP:', rfpError);
         }
 
-        // Automatically post to MSBC if vendor number is available
-        if (selectedVendorIndex !== null) {
-          const winningVendor = selectedRequest.suppliers[selectedVendorIndex];
-          if (winningVendor?.vendor_number) {
-            try {
-              const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-canvass-to-msbc`;
-              const headers = {
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-              };
-
-              const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  canvass_id: selectedRequest.id
-                })
-              });
-
-              if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to post to MSBC');
-              }
-
-              const result = await response.json();
-              console.log('Successfully posted to MSBC:', result);
-            } catch (msbcError: any) {
-              console.error('Error posting to MSBC:', msbcError);
-            }
-          }
-        }
+        // MSBC auto-posting disabled for now
+        // if (selectedVendorIndex !== null) {
+        //   const winningVendor = selectedRequest.suppliers[selectedVendorIndex];
+        //   if (winningVendor?.vendor_number) {
+        //     try {
+        //       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/post-canvass-to-msbc`;
+        //       const response = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ canvass_id: selectedRequest.id }) });
+        //     } catch (msbcError) { console.error('Error posting to MSBC:', msbcError); }
+        //   }
+        // }
 
         await sendApprovalEmail(
           selectedRequest.user_profiles?.email || '',
