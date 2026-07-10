@@ -1361,35 +1361,36 @@ export async function generateAndUploadCanvassRFP(
     const canvassSheetBytes = await generateCanvassSheet(canvassSheetData);
     console.log('Canvass Sheet PDF generated, size:', canvassSheetBytes.length);
 
-    // Get winning vendor's quotation file
-    const winningSupplier = canvassSheetData.suppliers.find(s => s.isWinner);
+    // Get all vendor quotation files
     const attachmentsToMerge: Array<{ data: Uint8Array; type: string }> = [
       { data: rfpBytes, type: 'application/pdf' }
     ];
 
-    if (winningSupplier?.quotationFilePath) {
-      try {
-        console.log('Downloading winning vendor quotation:', winningSupplier.quotationFilePath);
-        const { data: quotationFile, error: downloadError } = await supabase.storage
-          .from('attachments')
-          .download(winningSupplier.quotationFilePath);
+    for (const supplier of canvassSheetData.suppliers) {
+      if (supplier.quotationFilePath) {
+        try {
+          console.log('Downloading vendor quotation:', supplier.name, supplier.quotationFilePath);
+          const { data: quotationFile, error: downloadError } = await supabase.storage
+            .from('attachments')
+            .download(supplier.quotationFilePath);
 
-        if (!downloadError && quotationFile) {
-          const quotationBytes = new Uint8Array(await quotationFile.arrayBuffer());
-          attachmentsToMerge.push({
-            data: quotationBytes,
-            type: quotationFile.type
-          });
-          console.log('Winning vendor quotation added to merge');
-        } else {
-          console.warn('Could not download winning vendor quotation:', downloadError);
+          if (!downloadError && quotationFile) {
+            const quotationBytes = new Uint8Array(await quotationFile.arrayBuffer());
+            attachmentsToMerge.push({
+              data: quotationBytes,
+              type: quotationFile.type
+            });
+            console.log('Vendor quotation added to merge:', supplier.name);
+          } else {
+            console.warn('Could not download vendor quotation for', supplier.name, ':', downloadError);
+          }
+        } catch (error) {
+          console.error('Error downloading vendor quotation for', supplier.name, ':', error);
         }
-      } catch (error) {
-        console.error('Error downloading winning vendor quotation:', error);
       }
     }
 
-    // Merge Canvass Sheet, RFP, and winning vendor quotation
+    // Merge Canvass Sheet, RFP, and all vendor quotations
     console.log('Merging Canvass Sheet, RFP, and attachments');
     const mergedPdfBytes = await mergeRFPWithAttachments(canvassSheetBytes, attachmentsToMerge);
     console.log('PDFs merged, size:', mergedPdfBytes.length);
