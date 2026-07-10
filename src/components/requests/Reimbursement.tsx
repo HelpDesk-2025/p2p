@@ -1254,8 +1254,11 @@ export function Reimbursement() {
   };
 
   const regenerateReimbursementForm = async (request: ReimbursementReq) => {
-    const formLabel = request.request_type === 'Liquidation' ? 'Liquidation' : 'Reimbursement';
-    if (!confirm(`Are you sure you want to regenerate the RFP and ${formLabel} Form PDFs? This will replace the existing forms.`)) {
+    const isLiquidation = request.request_type === 'Liquidation';
+    const confirmMsg = isLiquidation
+      ? 'Are you sure you want to regenerate the Liquidation Form PDF? This will replace the existing form.'
+      : 'Are you sure you want to regenerate the RFP and Reimbursement Form PDFs? This will replace the existing forms.';
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -1488,22 +1491,27 @@ export function Reimbursement() {
 
       if (updateError) throw updateError;
 
-      // Also regenerate the RFP (Request for Payment) PDF
+      // Also regenerate the RFP (Request for Payment) PDF - only for Reimbursement, not Liquidation
       let rfpPath: string | null = null;
-      try {
-        rfpPath = await generateAndUploadRFP(
-          'reimbursement',
-          fullRequest.id,
-          fullRequest.reimb_number
-        );
-        if (rfpPath) {
-          console.log('RFP regenerated:', rfpPath);
+      if (fullRequest.request_type !== 'Liquidation') {
+        try {
+          rfpPath = await generateAndUploadRFP(
+            'reimbursement',
+            fullRequest.id,
+            fullRequest.reimb_number
+          );
+          if (rfpPath) {
+            console.log('RFP regenerated:', rfpPath);
+          }
+        } catch (rfpError) {
+          console.error('Error regenerating RFP:', rfpError);
         }
-      } catch (rfpError) {
-        console.error('Error regenerating RFP:', rfpError);
       }
 
-      alert('Reimbursement form and RFP generated successfully!');
+      const successMsg = fullRequest.request_type === 'Liquidation'
+        ? 'Liquidation form generated successfully!'
+        : 'Reimbursement form and RFP generated successfully!';
+      alert(successMsg);
       await loadRequests();
 
       // Update viewing request if currently viewing
