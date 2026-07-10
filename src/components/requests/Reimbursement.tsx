@@ -1319,11 +1319,14 @@ export function Reimbursement() {
         }
       }
 
+      // Approval ledger always stores Liquidation entries as 'Reimbursement'
+      const ledgerRequestType = 'Reimbursement';
+
       // Use RPC function to get approval records (excludes for_checking approvers)
       const { data: approvalRecordsData, error: ledgerError } = await supabase
         .rpc('get_approval_records_with_signatures', {
           p_request_id: fullRequest.id,
-          p_request_type: fullRequest.request_type || 'Reimbursement'
+          p_request_type: ledgerRequestType
         });
 
       if (ledgerError) throw ledgerError;
@@ -1336,7 +1339,7 @@ export function Reimbursement() {
         .from('approval_ledger')
         .select('approver_name, approver_id, approval_date, sequence')
         .eq('request_id', fullRequest.id)
-        .eq('request_type', fullRequest.request_type || 'Reimbursement')
+        .eq('request_type', ledgerRequestType)
         .eq('action', 'Approved')
         .eq('for_checking', true)
         .order('sequence', { ascending: true });
