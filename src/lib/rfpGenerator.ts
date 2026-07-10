@@ -348,6 +348,9 @@ export interface CanvassSheetData {
   vatTin: string;
   date: string;
   requestFor: string;
+  requestorName?: string;
+  requestorEsig?: string | null;
+  requestDate?: string;
   items: Array<{
     description: string;
     quantity: number;
@@ -889,7 +892,36 @@ export async function generateCanvassSheet(data: CanvassSheetData): Promise<Uint
   // Approvals section on the same page
   yPosition -= 20;
   const totalApprovals = data.approvals.length;
-  const leftMargin = 100;
+  const leftMargin = 50;
+
+  // "Prepared By" section for the requestor
+  if (data.requestorName) {
+    drawText('PREPARED BY:', leftMargin, yPosition, 9, true);
+    yPosition -= 10;
+
+    if (data.requestorEsig) {
+      try {
+        const esigImage = await embedSignatureImage(pdfDoc, data.requestorEsig);
+        const esigDims = esigImage.scale(0.3);
+        page.drawImage(esigImage, {
+          x: leftMargin + 20,
+          y: yPosition - esigDims.height,
+          width: esigDims.width,
+          height: esigDims.height,
+        });
+      } catch (error) {
+        console.error('Error embedding requestor signature:', error);
+      }
+    }
+    yPosition -= 35;
+
+    drawText(data.requestorName, leftMargin, yPosition, 9, false);
+    yPosition -= 12;
+    if (data.requestDate) {
+      drawText(data.requestDate, leftMargin, yPosition, 9, false);
+    }
+    yPosition -= 25;
+  }
 
   if (totalApprovals === 1) {
     const approval = data.approvals[0];
@@ -1016,7 +1048,7 @@ export async function generateAndUploadCanvassRFP(
         *,
         requester:user_profiles!requester_id(full_name, e_sig),
         company:companies!company_id(name),
-        pr:purchase_requisitions!pr_id(purpose, required_date, is_budgeted)
+        pr:purchase_requisitions!pr_id(id, pr_number, purpose, required_date, is_budgeted, requester_id)
       `)
       .eq('id', canvassId)
       .single();
@@ -1037,8 +1069,9 @@ export async function generateAndUploadCanvassRFP(
     // Calculate net payable for the winning vendor
     const winningTotal = parseFloat(winningVendorData?.total || winningVendorData?.purchase_price || 0);
     const winningNetOfVat = parseFloat(winningVendorData?.net_of_vat || (winningTotal / 1.12));
+    const winningVat12 = parseFloat(winningVendorData?.vat_12 || (winningTotal - winningNetOfVat));
     const winningEwt = parseFloat(winningVendorData?.ewt || (winningNetOfVat * 0.02));
-    const winningNetPayable = parseFloat(winningVendorData?.net_payable || (winningTotal - winningEwt));
+    const winningNetPayable = parseFloat(winningVendorData?.net_payable || ((winningNetOfVat + winningVat12) - winningEwt));
     console.log('Winning vendor net payable:', winningNetPayable);
 
     // Use RPC function to bypass RLS and get all approval records with signatures
@@ -1105,7 +1138,7 @@ export async function generateAndUploadCanvassRFP(
       })
     );
 
-    // Transform RPC results to match expected format
+    // Transform RPC results to match expected format (for canvass sheet signatories)
     const approvals = (approvalRecordsWithSignatures || []).map((record: any) => ({
       approval_date: record.approval_date,
       sequence: record.sequence,
@@ -1115,10 +1148,74 @@ export async function generateAndUploadCanvassRFP(
       }
     }));
 
+    // Fetch linked PR approval records for the RFP signatories
+    let prApprovals = approvals;
+    const prId = canvass.pr?.id;
+    const prNumber = canvass.pr?.pr_number;
+    if (prId) {
+      const { data: prApprovalRecordsData } = await supabase
+        .rpc('get_approval_records_with_signatures', {
+          p_request_id: prId,
+          p_request_type: 'Purchase Requisition'
+        });
+
+      const prApprovalRecords = Array.isArray(prApprovalRecordsData) ? prApprovalRecordsData : (prApprovalRecordsData ? [prApprovalRecordsData] : []);
+
+      if (prApprovalRecords.length > 0) {
+        const prApprovalRecordsWithSignatures = await Promise.all(
+          prApprovalRecords.map(async (record: any) => {
+            let signatureData = null;
+
+            if (record.approver_esig && record.approver_esig.startsWith('data:image')) {
+              signatureData = record.approver_esig;
+            } else if (record.approver_esig && record.approver_esig.startsWith('attachments/')) {
+              try {
+                const { data: fileData } = await supabase.storage
+                  .from('attachments')
+                  .download(record.approver_esig);
+                if (fileData) {
+                  const arrayBuffer = await fileData.arrayBuffer();
+                  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+                  signatureData = `data:${fileData.type};base64,${base64}`;
+                }
+              } catch (error) {
+                console.error(`Failed to fetch PR signature from storage for ${record.approver_name}:`, error);
+              }
+            }
+
+            if (!signatureData && record.approver_id) {
+              const { data: profileData } = await supabase
+                .from('user_profiles')
+                .select('e_sig')
+                .eq('id', record.approver_id)
+                .single();
+              if (profileData?.e_sig) {
+                signatureData = profileData.e_sig;
+              }
+            }
+
+            return {
+              ...record,
+              signature_data: signatureData
+            };
+          })
+        );
+
+        prApprovals = prApprovalRecordsWithSignatures.map((record: any) => ({
+          approval_date: record.approval_date,
+          sequence: record.sequence,
+          approver: {
+            full_name: record.approver_name,
+            e_sig: record.signature_data
+          }
+        }));
+      }
+    }
+
     const rfpData: RFPData = {
       companyName: sanitizeForPDF(canvass.company?.name || 'Company Name'),
       requestType: 'Canvass',
-      documentNumber: sanitizeForPDF(canvassNumber),
+      documentNumber: sanitizeForPDF(prNumber || canvassNumber),
       dateOfRequest: new Date(canvass.request_date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
@@ -1139,7 +1236,7 @@ export async function generateAndUploadCanvassRFP(
       paymentModeLines: [],
       requestorName: sanitizeForPDF(canvass.requester?.full_name || ''),
       requestorEsig: canvass.requester?.e_sig || null,
-      approvals: (approvals || []).map((a: any) => {
+      approvals: (prApprovals || []).map((a: any) => {
         const approvalDate = new Date(a.approval_date);
         return {
           approver_name: sanitizeForPDF(a.approver?.full_name || ''),
@@ -1173,6 +1270,13 @@ export async function generateAndUploadCanvassRFP(
         year: 'numeric'
       }),
       requestFor: sanitizeForPDF(canvass.pr?.purpose || ''),
+      requestorName: sanitizeForPDF(canvass.requester?.full_name || ''),
+      requestorEsig: canvass.requester?.e_sig || null,
+      requestDate: new Date(canvass.request_date).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      }),
       items: (() => {
         // If suppliers have items with descriptions, use the first supplier's items as the canonical list
         if (canvass.suppliers?.[0]?.items && canvass.suppliers[0].items.length > 0) {
@@ -1205,7 +1309,7 @@ export async function generateAndUploadCanvassRFP(
         const netOfVat = parseFloat(supplier.net_of_vat || (total / 1.12));
         const vat12 = parseFloat(supplier.vat_12 || (total - netOfVat));
         const ewt = parseFloat(supplier.ewt || (netOfVat * 0.02));
-        const netPayable = parseFloat(supplier.net_payable || (total - ewt));
+        const netPayable = parseFloat(supplier.net_payable || ((netOfVat + vat12) - ewt));
         const isWinner = supplierIndex === (canvass.recommended_quotation_index || 0);
 
         return {
