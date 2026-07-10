@@ -2670,7 +2670,7 @@ export function Reimbursement() {
                     Cancel Request
                   </button>
                 )}
-                {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && (
+                {viewingRequest.status === 'approved' && viewingRequest.rfp_pdf_path && viewingRequest.request_type !== 'Liquidation' && (
                   <button
                     onClick={() => downloadRFP(viewingRequest.rfp_pdf_path!, viewingRequest.reimb_number)}
                     className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
