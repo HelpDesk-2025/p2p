@@ -1372,9 +1372,9 @@ export async function generateAndUploadCanvassRFP(
     const canvassSheetBytes = await generateCanvassSheet(canvassSheetData);
     console.log('Canvass Sheet PDF generated, size:', canvassSheetBytes.length);
 
-    // Get all vendor quotation files
+    // Get all vendor quotation files - canvass sheet follows the RFP
     const attachmentsToMerge: Array<{ data: Uint8Array; type: string }> = [
-      { data: rfpBytes, type: 'application/pdf' }
+      { data: canvassSheetBytes, type: 'application/pdf' }
     ];
 
     for (const supplier of canvassSheetData.suppliers) {
@@ -1401,9 +1401,9 @@ export async function generateAndUploadCanvassRFP(
       }
     }
 
-    // Merge Canvass Sheet, RFP, and all vendor quotations
-    console.log('Merging Canvass Sheet, RFP, and attachments');
-    const mergedPdfBytes = await mergeRFPWithAttachments(canvassSheetBytes, attachmentsToMerge);
+    // Merge RFP (first page), Canvass Sheet, and all vendor quotations
+    console.log('Merging RFP, Canvass Sheet, and attachments');
+    const mergedPdfBytes = await mergeRFPWithAttachments(rfpBytes, attachmentsToMerge);
     console.log('PDFs merged, size:', mergedPdfBytes.length);
 
     const fileName = `rfp_${canvassNumber}_${Date.now()}.pdf`;
