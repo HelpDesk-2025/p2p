@@ -2178,6 +2178,32 @@ export function CashAdvance() {
                 <p className="text-slate-900">{viewingRequest.purpose}</p>
               </div>
 
+              {viewingRequest.status === 'approved' && (viewingRequest.outstanding_asl || viewingRequest.remarks) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Accounting Department Information</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {viewingRequest.outstanding_asl && (
+                      <div>
+                        <label className="text-xs font-medium text-slate-500">Outstanding ASL</label>
+                        <p className="text-slate-900 mt-0.5">{viewingRequest.outstanding_asl}</p>
+                      </div>
+                    )}
+                    {viewingRequest.outstanding_asl_date && (
+                      <div>
+                        <label className="text-xs font-medium text-slate-500">ASL Date</label>
+                        <p className="text-slate-900 mt-0.5">{new Date(viewingRequest.outstanding_asl_date).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {viewingRequest.remarks && (
+                      <div className="sm:col-span-2">
+                        <label className="text-xs font-medium text-slate-500">Remarks</label>
+                        <p className="text-slate-900 mt-0.5">{viewingRequest.remarks}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {viewingRequest.payment_mode_lines && viewingRequest.payment_mode_lines.length > 0 && (
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-3 block">Payment Mode Details</label>
