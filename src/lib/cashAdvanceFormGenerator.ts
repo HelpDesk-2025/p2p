@@ -275,7 +275,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 25;
 
   drawText('Outstanding ASL', rightColX, accountingY, 9, true);
-  drawText(data.outstandingAsl || 'None', rightColX + 100, accountingY, 9, false);
+  drawText(data.outstandingAsl || '', rightColX + 100, accountingY, 9, false);
   accountingY -= 18;
 
   drawText('Date', rightColX, accountingY, 9, true);
@@ -287,7 +287,7 @@ export async function generateCashAdvanceForm(data: CashAdvanceFormData): Promis
   accountingY -= 18;
 
   drawText('Remarks', rightColX, accountingY, 9, true);
-  drawText(data.remarks || 'OK', rightColX + 100, accountingY, 9, false);
+  drawText(data.remarks || '', rightColX + 100, accountingY, 9, false);
   accountingY -= 35;
 
   // Accounting signature
