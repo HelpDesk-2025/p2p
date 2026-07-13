@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { Plus, CreditCard as Edit, Trash2, X, Search, Filter, ArrowUpDown } from "lucide-react";
+import { Plus, CreditCard as Edit, Trash2, X, Search, Filter, ArrowUpDown, Download } from "lucide-react";
 import Pagination from "../Pagination";
 import { logAuditTrail } from '../../lib/auditTrail';
 import { useAuth } from '../../contexts/AuthContext';
+import { exportToStyledExcel } from '../../lib/excelExporter';
 
 interface ApprovalFlowSetup {
   id: string;
@@ -607,6 +608,126 @@ export function ApprovalFlowSetupConfig() {
     setCurrentPage(1);
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const allSteps: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data } = await supabase
+          .from("approval_flows")
+          .select("*")
+          .not("approval_flow_setup_id", "is", null)
+          .range(from, from + pageSize - 1);
+        if (!data || data.length === 0) break;
+        allSteps.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      const userIds = new Set<string>();
+      allSteps.forEach(s => {
+        if (s.user_id) userIds.add(s.user_id);
+        if (s.alternate_approver_id) userIds.add(s.alternate_approver_id);
+      });
+      const userMap: Record<string, any> = {};
+      if (userIds.size > 0) {
+        const ids = Array.from(userIds);
+        for (let i = 0; i < ids.length; i += 50) {
+          const batch = ids.slice(i, i + 50);
+          const { data: userData } = await supabase
+            .from("user_profiles")
+            .select("id, full_name, email, company")
+            .in("id", batch);
+          (userData || []).forEach(u => { userMap[u.id] = u; });
+        }
+      }
+
+      const stepsGrouped: Record<string, any[]> = {};
+      allSteps.forEach(step => {
+        if (!stepsGrouped[step.approval_flow_setup_id]) stepsGrouped[step.approval_flow_setup_id] = [];
+        stepsGrouped[step.approval_flow_setup_id].push(step);
+      });
+
+      const workflowTypeLabel = (wt: number, requestType: string) => {
+        const isExpenseCategory = requestType === 'Petty Cash' || requestType === 'Reimbursement' || requestType === 'Liquidation';
+        const isPO = requestType === 'Purchase Order';
+        if (isPO) return 'Approval Flow';
+        if (isExpenseCategory) return ['Department Expense', 'ManCom Expense', 'CEO Expense'][wt - 1] || `Type ${wt}`;
+        return ['Unbudgeted', 'Budgeted (Below Threshold)', 'Budgeted (Above Threshold)'][wt - 1] || `Type ${wt}`;
+      };
+
+      const rows: any[][] = [];
+      filteredAndSortedSetups.forEach(setup => {
+        const setupSteps = (stepsGrouped[setup.id] || []).sort((a, b) => {
+          if (a.workflow_type !== b.workflow_type) return a.workflow_type - b.workflow_type;
+          return a.sequence - b.sequence;
+        });
+
+        if (setupSteps.length === 0) {
+          rows.push([
+            setup.name,
+            setup.companies?.name || '-',
+            setup.department_id || 'Whole Company',
+            setup.request_type,
+            setup.is_active ? 'Active' : 'Inactive',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-',
+            '-'
+          ]);
+        } else {
+          setupSteps.forEach(step => {
+            const approver = step.user_id ? userMap[step.user_id] : null;
+            const alternate = step.alternate_approver_id ? userMap[step.alternate_approver_id] : null;
+            rows.push([
+              setup.name,
+              setup.companies?.name || '-',
+              setup.department_id || 'Whole Company',
+              setup.request_type,
+              setup.is_active ? 'Active' : 'Inactive',
+              workflowTypeLabel(step.workflow_type, setup.request_type),
+              step.sequence,
+              approver ? `${approver.full_name} (${approver.company})` : '-',
+              alternate ? `${alternate.full_name} (${alternate.company})` : '-',
+              step.days_to_approve,
+              step.for_checking ? 'Yes' : 'No',
+              step.applies_to_po && step.applies_to_non_po ? 'Both' : step.applies_to_po ? 'PO Only' : step.applies_to_non_po ? 'Non-PO Only' : '-'
+            ]);
+          });
+        }
+      });
+
+      const columns = [
+        { header: 'Setup Name', width: 40 },
+        { header: 'Company', width: 25 },
+        { header: 'Department', width: 20 },
+        { header: 'Request Type', width: 20 },
+        { header: 'Status', width: 10 },
+        { header: 'Workflow Type', width: 25 },
+        { header: 'Sequence', width: 10 },
+        { header: 'Primary Approver', width: 35 },
+        { header: 'Alternate Approver', width: 35 },
+        { header: 'Days to Approve', width: 15 },
+        { header: 'For Checking', width: 12 },
+        { header: 'Purchase Type', width: 15 },
+      ];
+
+      const timestamp = new Date().toISOString().slice(0, 10);
+      exportToStyledExcel(rows, columns, 'Approval Flows', `Approval_Flows_${timestamp}.xlsx`);
+    } catch (error: any) {
+      alert('Export failed: ' + error.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -619,17 +740,27 @@ export function ApprovalFlowSetupConfig() {
           <h2 className="text-3xl font-bold text-slate-900">Approval Flow Setups</h2>
           <p className="text-slate-600 mt-1">Create and manage approval workflows with 3 budget scenarios</p>
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-            setEditingSetupId(null);
-            setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
-          }}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30 transition-all"
-        >
-          <Plus size={20} />
-          Add Setup
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting || filteredAndSortedSetups.length === 0}
+            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-emerald-800 shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={20} />
+            {exporting ? 'Exporting...' : 'Export Excel'}
+          </button>
+          <button
+            onClick={() => {
+              setShowForm(true);
+              setEditingSetupId(null);
+              setFormData({ name: "", company_id: "", department: "", request_type: "Purchase Requisition" });
+            }}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30 transition-all"
+          >
+            <Plus size={20} />
+            Add Setup
+          </button>
+        </div>
       </div>
 
       {showForm && (
