@@ -14,7 +14,7 @@ import { logAuditTrail } from '../../lib/auditTrail';
 import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
-import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { AttachmentChangeBlockingBanner, AttachmentChangeBanner } from './AttachmentChangeBanner';
 import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 interface ExpenseItem {
@@ -2432,6 +2432,13 @@ export function Reimbursement() {
             </div>
 
             <div className="p-6 space-y-6">
+              {pendingChangeRequest && pendingChangeRequest.request_id === viewingRequest.id && (
+                <AttachmentChangeBanner
+                  changeRequest={pendingChangeRequest}
+                  onResolve={() => setShowReplaceAttachmentModal(true)}
+                />
+              )}
+
               {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected' || viewingRequest.status === 'returned_to_maker') && (
                 <ApprovalProgressTracker
                   requestType="Reimbursement"
