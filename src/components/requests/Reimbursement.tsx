@@ -15,6 +15,7 @@ import { generateAndUploadRFP } from '../../lib/rfpGenerator';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
 import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 interface ExpenseItem {
   date: string;
@@ -82,6 +83,7 @@ export function Reimbursement() {
   const [submitting, setSubmitting] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<ReimbursementReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<ReimbursementReq | null>(null);
   const [companies, setCompanies] = useState<{ id: string; name: string; min_reimbursement?: number; min_liquidation?: number }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -2135,7 +2137,16 @@ export function Reimbursement() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {pendingChangeRequest && pendingChangeRequest.request_type === 'Reimbursement' && (
-        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+        <AttachmentChangeBlockingBanner
+          changeRequest={pendingChangeRequest}
+          onResolve={() => {
+            const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+            if (req) {
+              setViewingRequest(req);
+              setShowReplaceAttachmentModal(true);
+            }
+          }}
+        />
       )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -2786,6 +2797,35 @@ export function Reimbursement() {
         onExport={handleExport}
         exporting={exporting}
       />
+
+      {showReplaceAttachmentModal && pendingChangeRequest && viewingRequest && (
+        <ReplaceAttachmentModal
+          isOpen={showReplaceAttachmentModal}
+          onClose={() => {
+            setShowReplaceAttachmentModal(false);
+            fetchPendingChange();
+            loadRequests();
+          }}
+          changeRequest={pendingChangeRequest}
+          requestType="Reimbursement"
+          requestId={viewingRequest.id}
+          requestNumber={viewingRequest.reimbursement_number}
+          requesterId={viewingRequest.requester_id}
+          companyId={viewingRequest.company_id}
+          existingChecklist={(viewingRequest.attachments || []).map((item: any) => ({
+            item_name: item.name || 'Attachment',
+            fileName: item.name,
+            is_required: false,
+          }))}
+          existingMergedPdfPath={viewingRequest.merged_pdf_path}
+          onComplete={async (newPath, updatedChecklist) => {
+            await supabase
+              .from('reimbursement_requests')
+              .update({ merged_pdf_path: newPath })
+              .eq('id', viewingRequest.id);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { logAuditTrail } from '../../lib/auditTrail';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
 import { AttachmentChangeBanner, AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 interface PRItem {
   description: string;
@@ -94,6 +95,7 @@ export function PurchaseRequisition() {
   const itemDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [viewingRequest, setViewingRequest] = useState<PurchaseReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PurchaseReq | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
@@ -2692,7 +2694,16 @@ export function PurchaseRequisition() {
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {pendingChangeRequest && pendingChangeRequest.request_type === 'Purchase Requisition' && (
-        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+        <AttachmentChangeBlockingBanner
+          changeRequest={pendingChangeRequest}
+          onResolve={() => {
+            const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+            if (req) {
+              setViewingRequest(req);
+              setShowReplaceAttachmentModal(true);
+            }
+          }}
+        />
       )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 w-full max-w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -3057,16 +3068,7 @@ export function PurchaseRequisition() {
               {pendingChangeRequest && pendingChangeRequest.request_id === viewingRequest.id && (
                 <AttachmentChangeBanner
                   changeRequest={pendingChangeRequest}
-                  onResolve={() => {
-                    setShowViewModal(false);
-                    setViewingRequest(null);
-                    // Open edit mode for this request
-                    const req = requests.find(r => r.id === pendingChangeRequest.request_id);
-                    if (req) {
-                      setEditingRequest(req);
-                      setShowForm(true);
-                    }
-                  }}
+                  onResolve={() => setShowReplaceAttachmentModal(true)}
                 />
               )}
               {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected' || viewingRequest.status === 'returned_to_maker') && (
@@ -3385,6 +3387,35 @@ export function PurchaseRequisition() {
         onExport={(vals) => { handleExport(vals); }}
         exporting={exporting}
       />
+
+      {showReplaceAttachmentModal && pendingChangeRequest && viewingRequest && (
+        <ReplaceAttachmentModal
+          isOpen={showReplaceAttachmentModal}
+          onClose={() => {
+            setShowReplaceAttachmentModal(false);
+            fetchPendingChange();
+            loadRequests();
+          }}
+          changeRequest={pendingChangeRequest}
+          requestType="Purchase Requisition"
+          requestId={viewingRequest.id}
+          requestNumber={viewingRequest.pr_number || viewingRequest.document_no}
+          requesterId={viewingRequest.requester_id}
+          companyId={viewingRequest.company_id}
+          existingChecklist={(viewingRequest.checklist_items || []).map((item: any) => ({
+            item_name: item.item_name || item.name || 'Attachment',
+            fileName: item.fileName || item.file_name,
+            is_required: item.is_required,
+          }))}
+          existingMergedPdfPath={viewingRequest.merged_pdf_path}
+          onComplete={async (newPath, updatedChecklist) => {
+            await supabase
+              .from('purchase_requisitions')
+              .update({ merged_pdf_path: newPath, checklist_items: updatedChecklist })
+              .eq('id', viewingRequest.id);
+          }}
+        />
+      )}
     </div>
   );
 }

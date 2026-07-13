@@ -14,6 +14,7 @@ import { exportToStyledExcel } from '../../lib/excelExporter';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
 import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 // Helper function to convert image to PDF
 const convertImageToPDF = async (imageFile: File): Promise<Blob> => {
@@ -191,6 +192,7 @@ export function Canvass() {
   const [submitting, setSubmitting] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<CanvassReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CanvassReq | null>(null);
   const [viewingPR, setViewingPR] = useState<PurchaseRequisition | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -2519,7 +2521,16 @@ export function Canvass() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {pendingChangeRequest && pendingChangeRequest.request_type === 'Canvass' && (
-        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+        <AttachmentChangeBlockingBanner
+          changeRequest={pendingChangeRequest}
+          onResolve={() => {
+            const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+            if (req) {
+              setViewingRequest(req);
+              setShowReplaceAttachmentModal(true);
+            }
+          }}
+        />
       )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -3278,6 +3289,35 @@ export function Canvass() {
         onExport={handleExport}
         exporting={exporting}
       />
+
+      {showReplaceAttachmentModal && pendingChangeRequest && viewingRequest && (
+        <ReplaceAttachmentModal
+          isOpen={showReplaceAttachmentModal}
+          onClose={() => {
+            setShowReplaceAttachmentModal(false);
+            fetchPendingChange();
+            loadRequests();
+          }}
+          changeRequest={pendingChangeRequest}
+          requestType="Canvass"
+          requestId={viewingRequest.id}
+          requestNumber={viewingRequest.canvass_number}
+          requesterId={viewingRequest.requester_id}
+          companyId={viewingRequest.company_id}
+          existingChecklist={(viewingRequest.suppliers || []).filter((s: any) => s.quotation_file_path).map((s: any, idx: number) => ({
+            item_name: `Quotation - ${s.vendor_name || `Supplier ${idx + 1}`}`,
+            fileName: s.quotation_file_path?.split('/').pop(),
+            is_required: false,
+          }))}
+          existingMergedPdfPath={viewingRequest.rfp_pdf_path}
+          onComplete={async (newPath) => {
+            await supabase
+              .from('canvass_requests')
+              .update({ rfp_pdf_path: newPath })
+              .eq('id', viewingRequest.id);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { logAuditTrail } from '../../lib/auditTrail';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
 import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 interface PaymentMode {
   id: string;
@@ -95,6 +96,7 @@ export function PettyCash() {
   const [submitting, setSubmitting] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<PettyCashReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PettyCashReq | null>(null);
   const [companies, setCompanies] = useState<{ id: string; name: string; max_petty_cash_advance?: number; max_petty_cash_reimbursement?: number }[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -2311,7 +2313,16 @@ export function PettyCash() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {pendingChangeRequest && pendingChangeRequest.request_type === 'Petty Cash' && (
-        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+        <AttachmentChangeBlockingBanner
+          changeRequest={pendingChangeRequest}
+          onResolve={() => {
+            const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+            if (req) {
+              setViewingRequest(req);
+              setShowReplaceAttachmentModal(true);
+            }
+          }}
+        />
       )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -3047,6 +3058,39 @@ export function PettyCash() {
         onExport={handleExport}
         exporting={exporting}
       />
+
+      {showReplaceAttachmentModal && pendingChangeRequest && viewingRequest && (
+        <ReplaceAttachmentModal
+          isOpen={showReplaceAttachmentModal}
+          onClose={() => {
+            setShowReplaceAttachmentModal(false);
+            fetchPendingChange();
+            loadRequests();
+          }}
+          changeRequest={pendingChangeRequest}
+          requestType="Petty Cash"
+          requestId={viewingRequest.id}
+          requestNumber={viewingRequest.pc_number}
+          requesterId={viewingRequest.requester_id}
+          companyId={viewingRequest.company_id}
+          existingChecklist={(viewingRequest.attachments || []).map((item: any) => ({
+            item_name: item.file_name || 'Attachment',
+            fileName: item.file_name,
+            is_required: false,
+          }))}
+          existingMergedPdfPath={null}
+          onComplete={async (newPath, updatedChecklist) => {
+            const attachments = updatedChecklist.map((item: any, idx: number) => ({
+              ...((viewingRequest.attachments || [])[idx] || {}),
+              file_name: item.fileName || item.item_name,
+            }));
+            await supabase
+              .from('petty_cash_requests')
+              .update({ attachments })
+              .eq('id', viewingRequest.id);
+          }}
+        />
+      )}
     </div>
   );
 }

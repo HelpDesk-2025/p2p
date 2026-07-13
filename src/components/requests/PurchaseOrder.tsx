@@ -34,6 +34,7 @@ import Pagination from '../Pagination';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
 import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 type POStatus =
   | 'draft'
@@ -190,6 +191,7 @@ export function PurchaseOrder() {
   const { user, profile } = useAuth();
   const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
+  const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState('');
@@ -989,7 +991,16 @@ export function PurchaseOrder() {
 
       {/* Header */}
       {pendingChangeRequest && pendingChangeRequest.request_type === 'Purchase Order' && (
-        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+        <AttachmentChangeBlockingBanner
+          changeRequest={pendingChangeRequest}
+          onResolve={() => {
+            const po = orders.find(o => o.id === pendingChangeRequest.request_id);
+            if (po) {
+              setActiveOrder(po);
+              setShowReplaceAttachmentModal(true);
+            }
+          }}
+        />
       )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -1413,6 +1424,31 @@ export function PurchaseOrder() {
         onExport={handleExport}
         exporting={exporting}
       />
+
+      {showReplaceAttachmentModal && pendingChangeRequest && activeOrder && (
+        <ReplaceAttachmentModal
+          isOpen={showReplaceAttachmentModal}
+          onClose={() => {
+            setShowReplaceAttachmentModal(false);
+            fetchPendingChange();
+            loadOrders();
+          }}
+          changeRequest={pendingChangeRequest}
+          requestType="Purchase Order"
+          requestId={activeOrder.id}
+          requestNumber={activeOrder.po_number}
+          requesterId={activeOrder.prepared_by || ''}
+          companyId={activeOrder.company_id || undefined}
+          existingChecklist={[{ item_name: 'PO Merged Document', fileName: activeOrder.merged_pdf_path?.split('/').pop(), is_required: false }]}
+          existingMergedPdfPath={activeOrder.merged_pdf_path}
+          onComplete={async (newPath) => {
+            await supabase
+              .from('purchase_orders')
+              .update({ merged_pdf_path: newPath })
+              .eq('id', activeOrder.id);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { logAuditTrail } from '../../lib/auditTrail';
 import { TableSkeleton } from '../TableSkeleton';
 import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
 import { AttachmentChangeBanner, AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
+import { ReplaceAttachmentModal } from './ReplaceAttachmentModal';
 
 interface PaymentModeLine {
   name: string;
@@ -79,6 +80,7 @@ export function CashAdvance() {
   const [submitting, setSubmitting] = useState(false);
   const [viewingRequest, setViewingRequest] = useState<CashAdvanceReq | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [editingRequest, setEditingRequest] = useState<CashAdvanceReq | null>(null);
   const [breakdownAttachments, setBreakdownAttachments] = useState<File[]>([]);
   const [boardApprovalAttachments, setBoardApprovalAttachments] = useState<File[]>([]);
@@ -1890,7 +1892,16 @@ export function CashAdvance() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {pendingChangeRequest && pendingChangeRequest.request_type === 'Cash Advance' && (
-        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+        <AttachmentChangeBlockingBanner
+          changeRequest={pendingChangeRequest}
+          onResolve={() => {
+            const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+            if (req) {
+              setViewingRequest(req);
+              setShowReplaceAttachmentModal(true);
+            }
+          }}
+        />
       )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -2155,15 +2166,7 @@ export function CashAdvance() {
               {pendingChangeRequest && pendingChangeRequest.request_id === viewingRequest.id && (
                 <AttachmentChangeBanner
                   changeRequest={pendingChangeRequest}
-                  onResolve={() => {
-                    setShowViewModal(false);
-                    setViewingRequest(null);
-                    const req = requests.find(r => r.id === pendingChangeRequest.request_id);
-                    if (req) {
-                      setEditingRequest(req);
-                      setShowForm(true);
-                    }
-                  }}
+                  onResolve={() => setShowReplaceAttachmentModal(true)}
                 />
               )}
               {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected') && (
@@ -2558,6 +2561,35 @@ export function CashAdvance() {
         onExport={handleExport}
         exporting={exporting}
       />
+
+      {showReplaceAttachmentModal && pendingChangeRequest && viewingRequest && (
+        <ReplaceAttachmentModal
+          isOpen={showReplaceAttachmentModal}
+          onClose={() => {
+            setShowReplaceAttachmentModal(false);
+            fetchPendingChange();
+            loadRequests();
+          }}
+          changeRequest={pendingChangeRequest}
+          requestType="Cash Advance"
+          requestId={viewingRequest.id}
+          requestNumber={viewingRequest.ca_number}
+          requesterId={viewingRequest.requester_id}
+          companyId={viewingRequest.company_id}
+          existingChecklist={(viewingRequest.attachment_metadata || []).map((item: any) => ({
+            item_name: item.name || 'Attachment',
+            fileName: item.name,
+            is_required: false,
+          }))}
+          existingMergedPdfPath={viewingRequest.attachments_pdf_path}
+          onComplete={async (newPath, updatedChecklist) => {
+            await supabase
+              .from('cash_advance_requests')
+              .update({ attachments_pdf_path: newPath, attachment_metadata: updatedChecklist })
+              .eq('id', viewingRequest.id);
+          }}
+        />
+      )}
     </div>
   );
 }

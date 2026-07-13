@@ -57,9 +57,10 @@ export function AttachmentChangeBanner({ changeRequest, onResolve }: AttachmentC
 
 interface BlockingBannerProps {
   changeRequest: AttachmentChangeRequest;
+  onResolve?: () => void;
 }
 
-export function AttachmentChangeBlockingBanner({ changeRequest }: BlockingBannerProps) {
+export function AttachmentChangeBlockingBanner({ changeRequest, onResolve }: BlockingBannerProps) {
   return (
     <div className="bg-orange-50 border border-orange-300 rounded-xl p-4 mb-4 shadow-sm">
       <div className="flex items-start gap-3">
@@ -82,6 +83,14 @@ export function AttachmentChangeBlockingBanner({ changeRequest }: BlockingBanner
           <p className="text-xs text-orange-600 mt-2 italic">
             Requested by {changeRequest.requested_by_name} - "{changeRequest.remarks}"
           </p>
+          {onResolve && (
+            <button
+              onClick={onResolve}
+              className="mt-3 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition"
+            >
+              Replace Attachment(s)
+            </button>
+          )}
         </div>
       </div>
     </div>
