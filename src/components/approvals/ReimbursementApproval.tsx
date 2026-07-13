@@ -1328,7 +1328,7 @@ export function ReimbursementApproval() {
           onClose={() => setShowChangeAttachmentModal(false)}
           requestType="Reimbursement"
           requestId={selectedRequest.id}
-          requestNumber={selectedRequest.reimbursement_number}
+          requestNumber={selectedRequest.reimb_number}
           requesterId={selectedRequest.requester_id}
           companyId={selectedRequest.company_id}
           approverId={profile!.id}
