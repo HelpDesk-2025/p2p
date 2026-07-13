@@ -1212,7 +1212,14 @@ export function PurchaseOrder() {
                             <span className="text-sm font-bold text-slate-900">₱{fmtMoney(Number(o.total_amount))}</span>
                           </td>
                           <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                            <StatusBadge status={o.status} />
+                            <div className="flex flex-col items-center gap-1">
+                              <StatusBadge status={o.status} />
+                              {pendingChangeRequest && pendingChangeRequest.request_id === o.id && (
+                                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 text-orange-700">
+                                  Change Attachment
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                             <div className="inline-flex items-center gap-2">

@@ -2510,9 +2510,16 @@ export function PettyCash() {
                       </span>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
-                        {getStatusLabel(req.status)}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full ${getStatusColor(req.status)}`}>
+                          {getStatusLabel(req.status)}
+                        </span>
+                        {pendingChangeRequest && pendingChangeRequest.request_id === req.id && (
+                          <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 text-orange-700">
+                            Change Attachment
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 xl:px-4 py-3 text-center whitespace-nowrap">
                       {req.status === 'approved' && (
