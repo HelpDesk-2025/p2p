@@ -189,7 +189,7 @@ function BudgetBadge({ status }: { status: PurchaseOrder['budget_status'] }) {
 
 export function PurchaseOrder() {
   const { user, profile } = useAuth();
-  const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
+  const { pendingChangeRequest, fetchPendingChange, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [showReplaceAttachmentModal, setShowReplaceAttachmentModal] = useState(false);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);

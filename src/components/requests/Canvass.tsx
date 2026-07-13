@@ -180,7 +180,7 @@ interface Vendor {
 
 export function Canvass() {
   const { profile } = useAuth();
-  const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
+  const { pendingChangeRequest, fetchPendingChange, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [requests, setRequests] = useState<CanvassReq[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [showForm, setShowForm] = useState(false);

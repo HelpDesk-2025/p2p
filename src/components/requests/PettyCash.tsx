@@ -86,7 +86,7 @@ interface PettyCashReq {
 
 export function PettyCash() {
   const { profile } = useAuth();
-  const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
+  const { pendingChangeRequest, fetchPendingChange, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [requests, setRequests] = useState<PettyCashReq[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [showForm, setShowForm] = useState(false);

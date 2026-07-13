@@ -74,7 +74,7 @@ interface ReimbursementReq {
 
 export function Reimbursement() {
   const { profile } = useAuth();
-  const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
+  const { pendingChangeRequest, fetchPendingChange, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [requests, setRequests] = useState<ReimbursementReq[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [showForm, setShowForm] = useState(false);
