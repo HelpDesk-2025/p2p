@@ -3087,10 +3087,15 @@ export function PettyCash() {
           }))}
           existingMergedPdfPath={null}
           onComplete={async (newPath, updatedChecklist) => {
-            const attachments = updatedChecklist.map((item: any, idx: number) => ({
-              ...((viewingRequest.attachments || [])[idx] || {}),
-              file_name: item.fileName || item.item_name,
-            }));
+            const attachments = updatedChecklist.map((item: any, idx: number) => {
+              const existing = (viewingRequest.attachments || [])[idx] || {};
+              const wasReplaced = item.fileName !== existing.file_name;
+              return {
+                ...existing,
+                file_name: item.fileName || item.item_name,
+                ...(wasReplaced ? { file_path: newPath } : {}),
+              };
+            });
             await supabase
               .from('petty_cash_requests')
               .update({ attachments })
