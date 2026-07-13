@@ -12,6 +12,8 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { TableSkeleton } from '../TableSkeleton';
+import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
+import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
 
 // Helper function to convert image to PDF
 const convertImageToPDF = async (imageFile: File): Promise<Blob> => {
@@ -177,6 +179,7 @@ interface Vendor {
 
 export function Canvass() {
   const { profile } = useAuth();
+  const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [requests, setRequests] = useState<CanvassReq[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -2515,6 +2518,9 @@ export function Canvass() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {pendingChangeRequest && pendingChangeRequest.request_type === 'Canvass' && (
+        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+      )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Canvass Requests</h2>
@@ -2532,7 +2538,8 @@ export function Canvass() {
                 loadAvailablePRs();
                 setShowPRSelection(true);
               }}
-              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!!pendingChangeRequest}
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="sm:hidden">New</span>

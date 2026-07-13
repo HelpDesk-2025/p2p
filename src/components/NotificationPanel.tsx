@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, X, CheckCircle, XCircle, RotateCcw, Send, Ban, UserCheck, Info, CheckCheck } from 'lucide-react';
+import { Bell, X, CheckCircle, XCircle, RotateCcw, Send, Ban, UserCheck, Info, CheckCheck, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ViewType } from './Layout';
@@ -22,7 +22,7 @@ interface NotificationPanelProps {
   onNavigate: (view: ViewType) => void;
 }
 
-type FilterTab = 'all' | 'approval' | 'rejection' | 'submission' | 'cancellation' | 'return';
+type FilterTab = 'all' | 'approval' | 'rejection' | 'submission' | 'cancellation' | 'return' | 'attachment_change';
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -31,6 +31,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'submission', label: 'Submitted' },
   { key: 'return', label: 'Returned' },
   { key: 'cancellation', label: 'Cancelled' },
+  { key: 'attachment_change', label: 'Attachment' },
 ];
 
 function getRelativeTime(dateStr: string): string {
@@ -58,6 +59,7 @@ function getNotificationIcon(type: string) {
     case 'submission': return <Send size={18} className="text-blue-500" />;
     case 'cancellation': return <Ban size={18} className="text-slate-500" />;
     case 'account': return <UserCheck size={18} className="text-indigo-500" />;
+    case 'attachment_change': return <Paperclip size={18} className="text-orange-500" />;
     default: return <Info size={18} className="text-slate-400" />;
   }
 }

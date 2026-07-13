@@ -14,6 +14,8 @@ import { regenerateRFP } from '../../lib/rfpGenerator';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { logAuditTrail } from '../../lib/auditTrail';
 import { TableSkeleton } from '../TableSkeleton';
+import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
+import { AttachmentChangeBanner, AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
 
 interface PRItem {
   description: string;
@@ -69,6 +71,7 @@ interface PurchaseReq {
 
 export function PurchaseRequisition() {
   const { profile } = useAuth();
+  const { pendingChangeRequest, fetchPendingChange, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [requests, setRequests] = useState<PurchaseReq[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1044,6 +1047,21 @@ export function PurchaseRequisition() {
           performedByName: profile?.full_name || 'Unknown',
           companyId: insertedPR.company_id || profile?.company_id || null,
         });
+
+        // If there's a pending attachment change request for this PR, complete it
+        if (pendingChangeRequest && pendingChangeRequest.request_id === editingRequest.id && filesToUpload.length > 0) {
+          try {
+            const { data: approvers } = await supabase
+              .from('approval_ledger')
+              .select('approver_id')
+              .eq('request_id', editingRequest.id)
+              .eq('request_type', 'Purchase Requisition');
+            const approverIds = [...new Set((approvers || []).map(a => a.approver_id).filter(Boolean))];
+            await completeChangeRequest(pendingChangeRequest.id, approverIds, 'Purchase Requisition', editingRequest.pr_number || editingRequest.document_no);
+          } catch (changeErr) {
+            console.error('Error completing attachment change request:', changeErr);
+          }
+        }
       } else {
         // Create new request
         payload.document_no = formData.document_no;
@@ -2673,6 +2691,9 @@ export function PurchaseRequisition() {
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
+      {pendingChangeRequest && pendingChangeRequest.request_type === 'Purchase Requisition' && (
+        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+      )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6 w-full max-w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Purchase Requisitions</h2>
@@ -2687,7 +2708,9 @@ export function PurchaseRequisition() {
             </button>
             <button
               onClick={handleNewRequest}
-              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+              disabled={!!pendingChangeRequest}
+              title={pendingChangeRequest ? 'Resolve the pending attachment change request first' : ''}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="sm:hidden">New</span>
@@ -3019,6 +3042,21 @@ export function PurchaseRequisition() {
             </div>
 
             <div className="p-6 space-y-6">
+              {pendingChangeRequest && pendingChangeRequest.request_id === viewingRequest.id && (
+                <AttachmentChangeBanner
+                  changeRequest={pendingChangeRequest}
+                  onResolve={() => {
+                    setShowViewModal(false);
+                    setViewingRequest(null);
+                    // Open edit mode for this request
+                    const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+                    if (req) {
+                      setEditingRequest(req);
+                      setShowForm(true);
+                    }
+                  }}
+                />
+              )}
               {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected' || viewingRequest.status === 'returned_to_maker') && (
                 <ApprovalProgressTracker
                   requestType="Purchase Requisition"

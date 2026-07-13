@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, FileText, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft, Paperclip } from 'lucide-react';
+import { ChangeAttachmentModal } from './ChangeAttachmentModal';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateAndUploadCanvassRFP } from '../../lib/rfpGenerator';
@@ -84,6 +85,7 @@ export function CanvassApproval() {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
+  const [showChangeAttachmentModal, setShowChangeAttachmentModal] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -1409,9 +1411,37 @@ export function CanvassApproval() {
                 {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
                 {returning ? 'Returning...' : 'Return to Maker'}
               </button>
+              {selectedRequest.suppliers && selectedRequest.suppliers.some((s: any) => s.quotation_file_path) && (
+                <button
+                  onClick={() => setShowChangeAttachmentModal(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-semibold text-sm sm:text-base"
+                >
+                  <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Change Attachment
+                </button>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+      {showChangeAttachmentModal && selectedRequest && (
+        <ChangeAttachmentModal
+          isOpen={showChangeAttachmentModal}
+          onClose={() => setShowChangeAttachmentModal(false)}
+          requestType="Canvass"
+          requestId={selectedRequest.id}
+          requestNumber={selectedRequest.canvass_number}
+          requesterId={selectedRequest.requester_id}
+          companyId={selectedRequest.company_id}
+          approverId={profile!.id}
+          approverName={profile!.full_name}
+          attachments={(selectedRequest.suppliers || []).filter((s: any) => s.quotation_file_path).map((s: any, idx: number) => ({
+            name: `Quotation - ${s.vendor_name || `Supplier ${idx + 1}`}`,
+            index: idx,
+          }))}
+          onSuccess={() => {}}
+        />
       )}
     </div>
   );

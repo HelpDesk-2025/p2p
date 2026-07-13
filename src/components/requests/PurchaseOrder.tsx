@@ -32,6 +32,8 @@ import FilterModal, { FilterColumn, FilterValues, applyFilters, getActiveFilterC
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import Pagination from '../Pagination';
 import { TableSkeleton } from '../TableSkeleton';
+import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
+import { AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
 
 type POStatus =
   | 'draft'
@@ -186,6 +188,7 @@ function BudgetBadge({ status }: { status: PurchaseOrder['budget_status'] }) {
 
 export function PurchaseOrder() {
   const { user, profile } = useAuth();
+  const { pendingChangeRequest, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -985,6 +988,9 @@ export function PurchaseOrder() {
       )}
 
       {/* Header */}
+      {pendingChangeRequest && pendingChangeRequest.request_type === 'Purchase Order' && (
+        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+      )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>

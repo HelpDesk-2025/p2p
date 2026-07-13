@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send, CornerDownLeft, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, X, Loader2, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Send, CornerDownLeft, FileText, Paperclip } from 'lucide-react';
+import { ChangeAttachmentModal } from './ChangeAttachmentModal';
 import { getApprovalFlow, addExecutiveApprovalSteps, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import Pagination from '../Pagination';
@@ -59,6 +60,7 @@ export function CashAdvanceApproval() {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
+  const [showChangeAttachmentModal, setShowChangeAttachmentModal] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -1446,12 +1448,40 @@ export function CashAdvanceApproval() {
                       {returning ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <CornerDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
                       {returning ? 'Returning...' : 'Return to Maker'}
                     </button>
+                    {selectedRequest.attachment_metadata && selectedRequest.attachment_metadata.length > 0 && (
+                      <button
+                        onClick={() => setShowChangeAttachmentModal(true)}
+                        className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-semibold text-sm sm:text-base"
+                      >
+                        <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
+                        Change Attachment
+                      </button>
+                    )}
                   </>
                 ) : null}
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {showChangeAttachmentModal && selectedRequest && (
+        <ChangeAttachmentModal
+          isOpen={showChangeAttachmentModal}
+          onClose={() => setShowChangeAttachmentModal(false)}
+          requestType="Cash Advance"
+          requestId={selectedRequest.id}
+          requestNumber={selectedRequest.ca_number}
+          requesterId={selectedRequest.requester_id}
+          companyId={selectedRequest.company_id}
+          approverId={profile!.id}
+          approverName={profile!.full_name}
+          attachments={(selectedRequest.attachment_metadata || []).map((item: any, idx: number) => ({
+            name: item.name || `Attachment ${idx + 1}`,
+            index: idx,
+          }))}
+          onSuccess={() => {}}
+        />
       )}
     </div>
   );

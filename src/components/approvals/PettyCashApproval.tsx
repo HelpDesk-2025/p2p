@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle, XCircle, Eye, X, ArrowRight, Loader2, Download, Paperclip, ArrowUpDown, ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react';
+import { ChangeAttachmentModal } from './ChangeAttachmentModal';
 import { getApprovalFlow, filterApprovalFlowsForRequester, getNextApprover, createApprovalLedgerEntry, ApprovalFlow, sendApprovalEmail, sendApprovalEmailToAll, createRejectedLedgerEntries } from '../../lib/approvalFlow';
 import { ApprovalProgressTracker } from '../ApprovalProgressTracker';
 import { generateLiquidationForm } from '../../lib/liquidationFormGenerator';
@@ -72,6 +73,7 @@ export function PettyCashApproval() {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [returning, setReturning] = useState(false);
+  const [showChangeAttachmentModal, setShowChangeAttachmentModal] = useState(false);
   const [flowsLoading, setFlowsLoading] = useState(false);
   const [approvalFlows, setApprovalFlows] = useState<ApprovalFlow[]>([]);
   const [currentApproverStep, setCurrentApproverStep] = useState<ApprovalFlow | null>(null);
@@ -1174,9 +1176,37 @@ export function PettyCashApproval() {
                 {returning ? <Loader2 size={20} className="animate-spin" /> : <CornerDownLeft size={20} />}
                 {returning ? 'Returning...' : 'Return to Maker'}
               </button>
+              {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+                <button
+                  onClick={() => setShowChangeAttachmentModal(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-semibold"
+                >
+                  <Paperclip size={20} />
+                  Change Attachment
+                </button>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+      {showChangeAttachmentModal && selectedRequest && (
+        <ChangeAttachmentModal
+          isOpen={showChangeAttachmentModal}
+          onClose={() => setShowChangeAttachmentModal(false)}
+          requestType="Petty Cash"
+          requestId={selectedRequest.id}
+          requestNumber={selectedRequest.pc_number}
+          requesterId={selectedRequest.requester_id}
+          companyId={selectedRequest.company_id}
+          approverId={profile!.id}
+          approverName={profile!.full_name}
+          attachments={(selectedRequest.attachments || []).map((item: any, idx: number) => ({
+            name: item.file_name || `Attachment ${idx + 1}`,
+            index: idx,
+          }))}
+          onSuccess={() => {}}
+        />
       )}
     </div>
   );

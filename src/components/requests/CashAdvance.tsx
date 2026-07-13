@@ -12,6 +12,8 @@ import ExportModal from '../ExportModal';
 import { exportToStyledExcel } from '../../lib/excelExporter';
 import { logAuditTrail } from '../../lib/auditTrail';
 import { TableSkeleton } from '../TableSkeleton';
+import { useAttachmentChangeRequests } from '../../lib/useAttachmentChangeRequests';
+import { AttachmentChangeBanner, AttachmentChangeBlockingBanner } from './AttachmentChangeBanner';
 
 interface PaymentModeLine {
   name: string;
@@ -63,6 +65,7 @@ interface CashAdvanceReq {
 
 export function CashAdvance() {
   const { profile } = useAuth();
+  const { pendingChangeRequest, fetchPendingChange, completeChangeRequest } = useAttachmentChangeRequests(profile?.id);
   const [requests, setRequests] = useState<CashAdvanceReq[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [vendors, setVendors] = useState<any[]>([]);
@@ -616,6 +619,21 @@ export function CashAdvance() {
           performedByName: profile?.full_name || '',
           companyId: insertedRequest?.company_id || null,
         });
+
+        // If there's a pending attachment change request for this CA, complete it
+        if (pendingChangeRequest && pendingChangeRequest.request_id === editingRequest.id && breakdownAttachments.length > 0) {
+          try {
+            const { data: approvers } = await supabase
+              .from('approval_ledger')
+              .select('approver_id')
+              .eq('request_id', editingRequest.id)
+              .eq('request_type', 'Cash Advance');
+            const approverIds = [...new Set((approvers || []).map(a => a.approver_id).filter(Boolean))];
+            await completeChangeRequest(pendingChangeRequest.id, approverIds, 'Cash Advance', editingRequest.ca_number);
+          } catch (changeErr) {
+            console.error('Error completing attachment change request:', changeErr);
+          }
+        }
       } else {
         const requestCompanyId = profile?.enable_multi_company_requests ? selectedCompanyId : profile?.company_id;
         const requestDepartment = profile?.enable_multi_company_requests ? selectedDepartment : (profile?.department || '');
@@ -1871,6 +1889,9 @@ export function CashAdvance() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {pendingChangeRequest && pendingChangeRequest.request_type === 'Cash Advance' && (
+        <AttachmentChangeBlockingBanner changeRequest={pendingChangeRequest} />
+      )}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Cash Advance Requests</h2>
@@ -1888,7 +1909,9 @@ export function CashAdvance() {
                 setShowForm(true);
                 generateDocumentNo();
               }}
-              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!!pendingChangeRequest}
+              title={pendingChangeRequest ? 'Resolve the pending attachment change request first' : ''}
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="sm:hidden">New</span>
@@ -2122,6 +2145,20 @@ export function CashAdvance() {
             </div>
 
             <div className="p-6 space-y-6">
+              {pendingChangeRequest && pendingChangeRequest.request_id === viewingRequest.id && (
+                <AttachmentChangeBanner
+                  changeRequest={pendingChangeRequest}
+                  onResolve={() => {
+                    setShowViewModal(false);
+                    setViewingRequest(null);
+                    const req = requests.find(r => r.id === pendingChangeRequest.request_id);
+                    if (req) {
+                      setEditingRequest(req);
+                      setShowForm(true);
+                    }
+                  }}
+                />
+              )}
               {(viewingRequest.status === 'pending' || viewingRequest.status === 'approved' || viewingRequest.status === 'rejected') && (
                 <ApprovalProgressTracker
                   requestType="Cash Advance"
