@@ -882,11 +882,11 @@ export function CashAdvanceApproval() {
         payee: selectedRequest.payee || 'Unknown',
         payeeEsig: payeeData?.e_sig || null,
         requestorEsig: requestorData?.e_sig || null,
-        outstandingAsl: selectedRequest.outstanding_asl || 'None',
+        outstandingAsl: selectedRequest.outstanding_asl || '',
         outstandingAslDate: selectedRequest.outstanding_asl_date
           ? new Date(selectedRequest.outstanding_asl_date).toLocaleDateString()
           : new Date().toLocaleDateString(),
-        remarks: selectedRequest.remarks || 'OK',
+        remarks: selectedRequest.remarks || '',
         approvals: approvalRecordsWithSigs
       });
 
