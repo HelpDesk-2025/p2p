@@ -1476,10 +1476,6 @@ export function CashAdvanceApproval() {
           companyId={selectedRequest.company_id}
           approverId={profile!.id}
           approverName={profile!.full_name}
-          attachments={(selectedRequest.attachment_metadata || []).map((item: any, idx: number) => ({
-            name: item.name || `Attachment ${idx + 1}`,
-            index: idx,
-          }))}
           onSuccess={() => {}}
         />
       )}

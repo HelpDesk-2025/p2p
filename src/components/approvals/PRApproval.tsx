@@ -1546,10 +1546,6 @@ export function PRApproval() {
           companyId={selectedRequest.company_id}
           approverId={profile!.id}
           approverName={profile!.full_name}
-          attachments={(selectedRequest.checklist_items || []).map((item: any, idx: number) => ({
-            name: item.item_name || item.name || `Attachment ${idx + 1}`,
-            index: idx,
-          }))}
           onSuccess={() => {}}
         />
       )}

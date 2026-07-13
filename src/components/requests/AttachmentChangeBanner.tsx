@@ -1,4 +1,4 @@
-import { AlertTriangle, Paperclip } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 interface AttachmentChangeRequest {
   id: string;
@@ -26,23 +26,12 @@ export function AttachmentChangeBanner({ changeRequest, onResolve }: AttachmentC
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-bold text-orange-900">Attachment Change Required</h4>
           <p className="text-sm text-orange-800 mt-1">
-            <span className="font-semibold">{changeRequest.requested_by_name}</span> has requested you to replace the following attachment(s) on <span className="font-semibold">{changeRequest.request_number}</span>:
+            <span className="font-semibold">{changeRequest.requested_by_name}</span> has requested an attachment change on <span className="font-semibold">{changeRequest.request_number}</span>.
           </p>
-          <div className="mt-2 space-y-1">
-            {changeRequest.attachments_to_replace.map((att, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-sm text-orange-800">
-                <Paperclip className="w-3.5 h-3.5 text-orange-500" />
-                <span className="font-medium">{att.name}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 bg-white/60 rounded-lg p-2 border border-orange-200">
-            <p className="text-xs font-semibold text-orange-700">Remarks:</p>
+          <div className="mt-2 bg-white/60 rounded-lg p-2.5 border border-orange-200">
+            <p className="text-xs font-semibold text-orange-700 mb-0.5">Instructions:</p>
             <p className="text-sm text-orange-800">{changeRequest.remarks}</p>
           </div>
-          <p className="text-xs text-orange-600 mt-2">
-            You must resolve this before performing other actions. Replace the flagged attachment(s) and save.
-          </p>
           <button
             onClick={onResolve}
             className="mt-3 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition"
@@ -72,17 +61,10 @@ export function AttachmentChangeBlockingBanner({ changeRequest, onResolve }: Blo
           <p className="text-sm text-orange-800 mt-1">
             An approver has requested an attachment change on <span className="font-semibold">{changeRequest.request_number}</span>. You must resolve this before submitting new requests or editing other documents.
           </p>
-          <div className="mt-2 space-y-1">
-            {changeRequest.attachments_to_replace.map((att, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-sm text-orange-800">
-                <Paperclip className="w-3.5 h-3.5 text-orange-500" />
-                <span className="font-medium">{att.name}</span>
-              </div>
-            ))}
+          <div className="mt-2 bg-white/60 rounded-lg p-2.5 border border-orange-200">
+            <p className="text-xs font-semibold text-orange-700 mb-0.5">Instructions from {changeRequest.requested_by_name}:</p>
+            <p className="text-sm text-orange-800">{changeRequest.remarks}</p>
           </div>
-          <p className="text-xs text-orange-600 mt-2 italic">
-            Requested by {changeRequest.requested_by_name} - "{changeRequest.remarks}"
-          </p>
           {onResolve && (
             <button
               onClick={onResolve}

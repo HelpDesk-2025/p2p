@@ -35,17 +35,15 @@ export function ReplaceAttachmentModal({
   const [files, setFiles] = useState<Record<number, File | null>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const flaggedIndices = changeRequest.attachments_to_replace.map(a => a.index);
-
   const handleFileChange = (index: number, file: File | null) => {
     setFiles(prev => ({ ...prev, [index]: file }));
   };
 
-  const allFlaggedHaveFiles = flaggedIndices.every(idx => files[idx]);
+  const hasAtLeastOneFile = Object.values(files).some(f => f !== null);
 
   const handleSubmit = async () => {
-    if (!allFlaggedHaveFiles) {
-      alert('Please upload replacement files for all flagged attachments.');
+    if (!hasAtLeastOneFile) {
+      alert('Please upload at least one replacement file.');
       return;
     }
 
@@ -55,7 +53,6 @@ export function ReplaceAttachmentModal({
 
     setSubmitting(true);
     try {
-      // Build new checklist with replaced files
       const updatedChecklist = existingChecklist.map((item, idx) => {
         if (files[idx]) {
           return { ...item, fileName: files[idx]!.name };
@@ -63,9 +60,10 @@ export function ReplaceAttachmentModal({
         return item;
       });
 
-      // Merge all files into PDF (use new files for flagged, need existing for others)
-      // We only re-merge the flagged items since that's what changed
-      const filesToMerge = flaggedIndices.map(idx => files[idx]!);
+      const filesToMerge = Object.entries(files)
+        .filter(([, f]) => f !== null)
+        .map(([, f]) => f!);
+
       const mergedPdfBlob = await mergeFilesToPDFBlob(filesToMerge);
 
       const maxSizeInBytes = 40 * 1024 * 1024;
@@ -83,7 +81,6 @@ export function ReplaceAttachmentModal({
 
       await onComplete(path, updatedChecklist);
 
-      // Complete the change request
       const { data: approvers } = await supabase
         .from('approval_ledger')
         .select('approver_id')
@@ -91,13 +88,11 @@ export function ReplaceAttachmentModal({
         .eq('request_type', requestType);
       const approverIds = [...new Set((approvers || []).map(a => a.approver_id).filter(Boolean))];
 
-      // Mark completed
       await supabase
         .from('attachment_change_requests')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', changeRequest.id);
 
-      // Notify approvers
       if (approverIds.length > 0) {
         const notifications = approverIds.map(approverId => ({
           user_id: approverId,
@@ -143,45 +138,44 @@ export function ReplaceAttachmentModal({
 
         <div className="px-6 py-5 space-y-5">
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-            <p className="text-sm text-orange-800">
-              <span className="font-semibold">{changeRequest.requested_by_name}</span> has requested you to replace the following attachment(s):
-            </p>
-            <p className="text-sm text-orange-700 mt-1 italic">"{changeRequest.remarks}"</p>
+            <p className="text-sm font-semibold text-orange-900 mb-1">Instructions from {changeRequest.requested_by_name}:</p>
+            <p className="text-sm text-orange-800 italic">"{changeRequest.remarks}"</p>
           </div>
 
-          <div className="space-y-3">
-            {flaggedIndices.map(idx => {
-              const item = existingChecklist[idx];
-              if (!item) return null;
-              const file = files[idx];
-              return (
-                <div key={idx} className="border border-slate-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-slate-800">{item.item_name}</span>
-                    {file && <CheckCircle className="w-4 h-4 text-green-500" />}
-                  </div>
-                  {item.fileName && (
-                    <p className="text-xs text-slate-500 mb-2">Current: {item.fileName}</p>
-                  )}
-                  <label className="block">
-                    <div className={`flex items-center gap-2 px-3 py-2.5 border-2 border-dashed rounded-lg cursor-pointer transition ${
-                      file ? 'border-green-300 bg-green-50' : 'border-slate-300 hover:border-orange-400 hover:bg-orange-50'
-                    }`}>
-                      <Upload className={`w-4 h-4 ${file ? 'text-green-600' : 'text-slate-400'}`} />
-                      <span className={`text-sm ${file ? 'text-green-700 font-medium' : 'text-slate-500'}`}>
-                        {file ? file.name : 'Choose replacement file...'}
-                      </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-700 mb-3">Upload replacement file(s):</p>
+            <div className="space-y-3">
+              {existingChecklist.map((item, idx) => {
+                const file = files[idx];
+                return (
+                  <div key={idx} className="border border-slate-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-slate-800">{item.item_name}</span>
+                      {file && <CheckCircle className="w-4 h-4 text-green-500" />}
                     </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                      onChange={(e) => handleFileChange(idx, e.target.files?.[0] || null)}
-                    />
-                  </label>
-                </div>
-              );
-            })}
+                    {item.fileName && (
+                      <p className="text-xs text-slate-500 mb-2">Current: {item.fileName}</p>
+                    )}
+                    <label className="block">
+                      <div className={`flex items-center gap-2 px-3 py-2.5 border-2 border-dashed rounded-lg cursor-pointer transition ${
+                        file ? 'border-green-300 bg-green-50' : 'border-slate-300 hover:border-orange-400 hover:bg-orange-50'
+                      }`}>
+                        <Upload className={`w-4 h-4 ${file ? 'text-green-600' : 'text-slate-400'}`} />
+                        <span className={`text-sm ${file ? 'text-green-700 font-medium' : 'text-slate-500'}`}>
+                          {file ? file.name : 'Choose replacement file...'}
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                        onChange={(e) => handleFileChange(idx, e.target.files?.[0] || null)}
+                      />
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -195,7 +189,7 @@ export function ReplaceAttachmentModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting || !allFlaggedHaveFiles}
+            disabled={submitting || !hasAtLeastOneFile}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}

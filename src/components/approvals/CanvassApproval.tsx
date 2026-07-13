@@ -1436,10 +1436,6 @@ export function CanvassApproval() {
           companyId={selectedRequest.company_id}
           approverId={profile!.id}
           approverName={profile!.full_name}
-          attachments={(selectedRequest.suppliers || []).filter((s: any) => s.quotation_file_path).map((s: any, idx: number) => ({
-            name: `Quotation - ${s.vendor_name || `Supplier ${idx + 1}`}`,
-            index: idx,
-          }))}
           onSuccess={() => {}}
         />
       )}

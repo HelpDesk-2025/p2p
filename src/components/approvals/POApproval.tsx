@@ -1105,7 +1105,6 @@ export function POApproval() {
           companyId={selectedRequest.company_id || undefined}
           approverId={profile!.id}
           approverName={profile!.full_name}
-          attachments={[{ name: 'PO Merged Document', index: 0 }]}
           onSuccess={() => {}}
         />
       )}

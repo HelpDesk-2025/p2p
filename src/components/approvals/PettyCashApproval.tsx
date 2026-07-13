@@ -1201,10 +1201,6 @@ export function PettyCashApproval() {
           companyId={selectedRequest.company_id}
           approverId={profile!.id}
           approverName={profile!.full_name}
-          attachments={(selectedRequest.attachments || []).map((item: any, idx: number) => ({
-            name: item.file_name || `Attachment ${idx + 1}`,
-            index: idx,
-          }))}
           onSuccess={() => {}}
         />
       )}
