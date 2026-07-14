@@ -498,9 +498,11 @@ export function CashAdvanceApproval() {
             payee: selectedRequest.payee || 'Unknown',
             payeeEsig: payeeData?.e_sig || null,
             requestorEsig: requestorData?.e_sig || null,
-            outstandingAsl: outstandingAsl,
-            outstandingAslDate: new Date().toLocaleDateString(),
-            remarks: remarks,
+            outstandingAsl: selectedRequest.outstanding_asl || outstandingAsl,
+            outstandingAslDate: selectedRequest.outstanding_asl_date
+              ? new Date(selectedRequest.outstanding_asl_date).toLocaleDateString()
+              : new Date().toLocaleDateString(),
+            remarks: selectedRequest.remarks || remarks,
             approvals: finalApprovalRecords
           });
 
