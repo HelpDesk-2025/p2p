@@ -722,12 +722,7 @@ export function ApprovalFlowSetupConfig() {
           }
         });
 
-        // Create acronym from company name (e.g. "Crystal Ventures Management Partners" -> "CVMP")
-        const companyAcronym = group.company
-          .split(/\s+/)
-          .map(w => w[0]?.toUpperCase() || '')
-          .join('');
-        const sheetName = `${companyAcronym} ${group.requestType}`;
+        const sheetName = `${group.company} ${group.requestType}`;
         sheets.push({ name: sheetName, data: sheetRows });
       });
 
