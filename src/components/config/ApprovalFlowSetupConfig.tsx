@@ -609,8 +609,11 @@ export function ApprovalFlowSetupConfig() {
   };
 
   const [exporting, setExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportCompanyId, setExportCompanyId] = useState<string>('all');
 
   const handleExportExcel = async () => {
+    setShowExportModal(false);
     setExporting(true);
     try {
       const allSteps: any[] = [];
@@ -660,9 +663,14 @@ export function ApprovalFlowSetupConfig() {
         return ['Unbudgeted', 'Budgeted (Below Threshold)', 'Budgeted (Above Threshold)'][wt - 1] || `Type ${wt}`;
       };
 
+      // Filter by selected export company
+      const exportSetups = exportCompanyId === 'all'
+        ? filteredAndSortedSetups
+        : filteredAndSortedSetups.filter(s => s.company_id === exportCompanyId);
+
       // Group setups by Company + Request Type for separate sheets
       const sheetGroups: Record<string, { company: string; requestType: string; setups: typeof filteredAndSortedSetups }> = {};
-      filteredAndSortedSetups.forEach(setup => {
+      exportSetups.forEach(setup => {
         const companyName = setup.companies?.name || 'Unknown';
         const key = `${companyName}|||${setup.request_type}`;
         if (!sheetGroups[key]) {
@@ -761,7 +769,7 @@ export function ApprovalFlowSetupConfig() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleExportExcel}
+            onClick={() => { setExportCompanyId('all'); setShowExportModal(true); }}
             disabled={exporting || filteredAndSortedSetups.length === 0}
             className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-emerald-800 shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -1545,6 +1553,40 @@ export function ApprovalFlowSetupConfig() {
           onItemsPerPageChange={handleItemsPerPageChange}
         />
       </div>
+
+      {/* Export Company Selection Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">Export Approval Flows</h3>
+            <p className="text-sm text-slate-600 mb-4">Select a company to export, or export all companies.</p>
+            <select
+              value={exportCompanyId}
+              onChange={(e) => setExportCompanyId(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 mb-6"
+            >
+              <option value="all">All Companies</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>{company.name}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExportExcel}
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
