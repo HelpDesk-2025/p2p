@@ -1074,6 +1074,12 @@ export function ReimbursementApproval() {
                   <label className="text-sm font-semibold text-slate-700">Request Type</label>
                   <p className="text-slate-900">{selectedRequest.request_type || 'Reimbursement'}</p>
                 </div>
+                {selectedRequest.request_type === 'Liquidation' && selectedRequest.expense_category && (
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">Expense Category</label>
+                    <p className="text-slate-900">{selectedRequest.expense_category}</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Company</label>
                   <p className="text-slate-900">{selectedRequest.companies?.name || 'N/A'}</p>
