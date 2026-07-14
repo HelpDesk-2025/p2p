@@ -4,7 +4,7 @@ import { Plus, CreditCard as Edit, Trash2, X, Search, Filter, ArrowUpDown, Downl
 import Pagination from "../Pagination";
 import { logAuditTrail } from '../../lib/auditTrail';
 import { useAuth } from '../../contexts/AuthContext';
-import { exportToStyledExcel } from '../../lib/excelExporter';
+import { exportToMultiSheetExcel } from '../../lib/excelExporter';
 
 interface ApprovalFlowSetup {
   id: string;
@@ -660,57 +660,76 @@ export function ApprovalFlowSetupConfig() {
         return ['Unbudgeted', 'Budgeted (Below Threshold)', 'Budgeted (Above Threshold)'][wt - 1] || `Type ${wt}`;
       };
 
-      const rows: any[][] = [];
+      // Group setups by Company + Request Type for separate sheets
+      const sheetGroups: Record<string, { company: string; requestType: string; setups: typeof filteredAndSortedSetups }> = {};
       filteredAndSortedSetups.forEach(setup => {
-        const setupSteps = (stepsGrouped[setup.id] || []).sort((a, b) => {
-          if (a.workflow_type !== b.workflow_type) return a.workflow_type - b.workflow_type;
-          return a.sequence - b.sequence;
+        const companyName = setup.companies?.name || 'Unknown';
+        const key = `${companyName}|||${setup.request_type}`;
+        if (!sheetGroups[key]) {
+          sheetGroups[key] = { company: companyName, requestType: setup.request_type, setups: [] };
+        }
+        sheetGroups[key].setups.push(setup);
+      });
+
+      // Sort sheet groups by company then request type
+      const sortedKeys = Object.keys(sheetGroups).sort((a, b) => {
+        const ga = sheetGroups[a];
+        const gb = sheetGroups[b];
+        const compCompare = ga.company.localeCompare(gb.company);
+        if (compCompare !== 0) return compCompare;
+        return ga.requestType.localeCompare(gb.requestType);
+      });
+
+      const sheets: { name: string; data: any[][] }[] = [];
+      sortedKeys.forEach(key => {
+        const group = sheetGroups[key];
+        const sheetRows: any[][] = [];
+
+        group.setups.forEach(setup => {
+          const setupSteps = (stepsGrouped[setup.id] || []).sort((a, b) => {
+            if (a.workflow_type !== b.workflow_type) return a.workflow_type - b.workflow_type;
+            return a.sequence - b.sequence;
+          });
+
+          if (setupSteps.length === 0) {
+            sheetRows.push([
+              setup.department_id || 'Whole Company',
+              setup.is_active ? 'Active' : 'Inactive',
+              '-',
+              '-',
+              '-',
+              '-',
+              '-',
+              '-',
+              '-'
+            ]);
+          } else {
+            setupSteps.forEach(step => {
+              const approver = step.user_id ? userMap[step.user_id] : null;
+              const alternate = step.alternate_approver_id ? userMap[step.alternate_approver_id] : null;
+              sheetRows.push([
+                setup.department_id || 'Whole Company',
+                setup.is_active ? 'Active' : 'Inactive',
+                workflowTypeLabel(step.workflow_type, setup.request_type),
+                step.sequence,
+                approver ? `${approver.full_name} (${approver.company})` : '-',
+                alternate ? `${alternate.full_name} (${alternate.company})` : '-',
+                step.days_to_approve,
+                step.for_checking ? 'Yes' : 'No',
+                step.applies_to_po && step.applies_to_non_po ? 'Both' : step.applies_to_po ? 'PO Only' : step.applies_to_non_po ? 'Non-PO Only' : '-'
+              ]);
+            });
+          }
         });
 
-        if (setupSteps.length === 0) {
-          rows.push([
-            setup.name,
-            setup.companies?.name || '-',
-            setup.department_id || 'Whole Company',
-            setup.request_type,
-            setup.is_active ? 'Active' : 'Inactive',
-            '-',
-            '-',
-            '-',
-            '-',
-            '-',
-            '-',
-            '-'
-          ]);
-        } else {
-          setupSteps.forEach(step => {
-            const approver = step.user_id ? userMap[step.user_id] : null;
-            const alternate = step.alternate_approver_id ? userMap[step.alternate_approver_id] : null;
-            rows.push([
-              setup.name,
-              setup.companies?.name || '-',
-              setup.department_id || 'Whole Company',
-              setup.request_type,
-              setup.is_active ? 'Active' : 'Inactive',
-              workflowTypeLabel(step.workflow_type, setup.request_type),
-              step.sequence,
-              approver ? `${approver.full_name} (${approver.company})` : '-',
-              alternate ? `${alternate.full_name} (${alternate.company})` : '-',
-              step.days_to_approve,
-              step.for_checking ? 'Yes' : 'No',
-              step.applies_to_po && step.applies_to_non_po ? 'Both' : step.applies_to_po ? 'PO Only' : step.applies_to_non_po ? 'Non-PO Only' : '-'
-            ]);
-          });
-        }
+        const sheetName = `${group.company} ${group.requestType}`;
+        sheets.push({ name: sheetName, data: sheetRows });
       });
 
       const columns = [
-        { header: 'Setup Name', width: 40 },
-        { header: 'Company', width: 25 },
-        { header: 'Department', width: 20 },
-        { header: 'Request Type', width: 20 },
+        { header: 'Department', width: 22 },
         { header: 'Status', width: 10 },
-        { header: 'Workflow Type', width: 25 },
+        { header: 'Workflow Type', width: 28 },
         { header: 'Sequence', width: 10 },
         { header: 'Primary Approver', width: 35 },
         { header: 'Alternate Approver', width: 35 },
@@ -720,7 +739,7 @@ export function ApprovalFlowSetupConfig() {
       ];
 
       const timestamp = new Date().toISOString().slice(0, 10);
-      exportToStyledExcel(rows, columns, 'Approval Flows', `Approval_Flows_${timestamp}.xlsx`);
+      exportToMultiSheetExcel(sheets, columns, `Approval_Flows_${timestamp}.xlsx`);
     } catch (error: any) {
       alert('Export failed: ' + error.message);
     } finally {
