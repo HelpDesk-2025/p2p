@@ -114,6 +114,8 @@ export function exportToMultiSheetExcel(
     alignment: { horizontal: 'right' as const, vertical: 'center' as const },
   };
 
+  const usedNames = new Set<string>();
+
   sheets.forEach(sheet => {
     const wsData = [headers, ...sheet.data];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -140,9 +142,20 @@ export function exportToMultiSheetExcel(
     }
 
     ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-    // Sheet names max 31 chars in Excel
-    const safeName = sheet.name.slice(0, 31);
-    XLSX.utils.book_append_sheet(wb, ws, safeName);
+
+    // Sanitize sheet name: remove invalid chars, trim to 31 chars, deduplicate
+    let safeName = sheet.name.replace(/[\\\/\?\*\[\]\|:]/g, '').trim().slice(0, 31);
+    if (!safeName) safeName = 'Sheet';
+    let finalName = safeName;
+    let counter = 2;
+    while (usedNames.has(finalName)) {
+      const suffix = ` (${counter})`;
+      finalName = safeName.slice(0, 31 - suffix.length) + suffix;
+      counter++;
+    }
+    usedNames.add(finalName);
+
+    XLSX.utils.book_append_sheet(wb, ws, finalName);
   });
 
   XLSX.writeFile(wb, fileName);
