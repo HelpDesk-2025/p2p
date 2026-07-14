@@ -722,18 +722,12 @@ export function ApprovalFlowSetupConfig() {
           }
         });
 
-        // Use short request type codes to preserve space for company name
-        const rtShort: Record<string, string> = {
-          'Purchase Requisition': 'PR',
-          'Canvass': 'Canvass',
-          'Purchase Order': 'PO',
-          'Petty Cash': 'Petty Cash',
-          'Cash Advance': 'Cash Adv',
-          'Reimbursement': 'Reimb',
-          'Liquidation': 'Liquidation',
-        };
-        const shortType = rtShort[group.requestType] || group.requestType;
-        const sheetName = `${group.company} - ${shortType}`;
+        // Create acronym from company name (e.g. "Crystal Ventures Management Partners" -> "CVMP")
+        const companyAcronym = group.company
+          .split(/\s+/)
+          .map(w => w[0]?.toUpperCase() || '')
+          .join('');
+        const sheetName = `${companyAcronym} ${group.requestType}`;
         sheets.push({ name: sheetName, data: sheetRows });
       });
 
